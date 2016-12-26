@@ -31,11 +31,11 @@ void Tausch::startTausch() {
     // Create an empty array for holding the received halo data
     if(recvbuffer != nullptr)
         delete[] recvbuffer;
-    recvbuffer = new double[2*dim_x+2*dim_y]{};
+    recvbuffer = new double[2*dim_x+2*dim_y + 4]{};
 
     // count how many send/recvs were created
     sendRecvCount = 0;
-    sendRecvRequest = new MPI_Request[8];
+    sendRecvRequest = new MPI_Request[2*8];
 
     // send/recv to/from below
     if(mpi_rank > mpi_dim_x-1) {
@@ -62,6 +62,35 @@ void Tausch::startTausch() {
     if(mpi_rank < mpi_size-mpi_dim_x) {
         MPI_Isend(&cpuboundary[dim_x+2*dim_y], dim_x, MPI_DOUBLE, mpi_rank+mpi_dim_x, 3, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
         MPI_Irecv(&recvbuffer[dim_x+2*dim_y], dim_x, MPI_DOUBLE, mpi_rank+mpi_dim_x, 0, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
+        ++sendRecvCount;
+    }
+
+    // send/recv bottom left corner
+    if(mpi_rank > mpi_dim_x-1 && mpi_rank%mpi_dim_x != 0) {
+        MPI_Isend(&cpuboundary[0], 1, MPI_DOUBLE, mpi_rank-mpi_dim_x-1, 4, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
+        MPI_Irecv(&recvbuffer[2*dim_x+2*dim_y], 1, MPI_DOUBLE, mpi_rank-mpi_dim_x-1, 6, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
+        ++sendRecvCount;
+    }
+
+    // send/recv bottom right corner
+    if(mpi_rank > mpi_dim_x-1 && (mpi_rank+1)%mpi_dim_x != 0) {
+        MPI_Isend(&cpuboundary[dim_x-1], 1, MPI_DOUBLE, mpi_rank-mpi_dim_x+1, 5, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
+        MPI_Irecv(&recvbuffer[2*dim_x+2*dim_y+1], 1, MPI_DOUBLE, mpi_rank-mpi_dim_x+1, 7, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
+        ++sendRecvCount;
+    }
+
+    // send/recv top left corner
+    if(mpi_rank < mpi_size-mpi_dim_x && mpi_rank%mpi_dim_x != 0) {
+        std::cout << "bot left " << cpuboundary[dim_x+2*dim_y] << std::endl;
+        MPI_Isend(&cpuboundary[dim_x+2*dim_y], 1, MPI_DOUBLE, mpi_rank+mpi_dim_x-1, 7, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
+        MPI_Irecv(&recvbuffer[2*dim_x+2*dim_y+2], 1, MPI_DOUBLE, mpi_rank+mpi_dim_x-1, 5, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
+        ++sendRecvCount;
+    }
+
+    // send/recv top right corner
+    if(mpi_rank < mpi_size-mpi_dim_x && (mpi_rank+1)%mpi_dim_x != 0) {
+        MPI_Isend(&cpuboundary[2*dim_x+2*dim_y -1], 1, MPI_DOUBLE, mpi_rank+mpi_dim_x+1, 6, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
+        MPI_Irecv(&recvbuffer[2*dim_x+2*dim_y+3], 1, MPI_DOUBLE, mpi_rank+mpi_dim_x+1, 4, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
         ++sendRecvCount;
     }
 
@@ -111,7 +140,7 @@ double *Tausch::collectCPUBoundaryData() {
     // top
     if(mpi_rank < mpi_size-mpi_dim_x) {
         for(int i = 0; i < dim_x; ++i)
-            ret[dim_x+2*dim_y+i] = cpudat[dim_y*(dim_x+2)+2 + i];
+            ret[dim_x+2*dim_y+i] = cpudat[dim_y*(dim_x+2)+1 + i];
     }
 
     return ret;
@@ -141,6 +170,19 @@ void Tausch::distributeCPUHaloData() {
         for(int i = 0; i < dim_x; ++i)
             cpudat[(dim_y+1)*(dim_x+2)+1+i] = recvbuffer[dim_x+2*dim_y+i];
     }
+
+    // bottom left corner
+    if(mpi_rank > mpi_dim_x-1 && mpi_rank%mpi_dim_x != 0)
+        cpudat[0] = recvbuffer[2*dim_x+2*dim_y];
+    // bottom right corner
+    if(mpi_rank > mpi_dim_x-1 && (mpi_rank+1)%mpi_dim_x != 0)
+        cpudat[dim_x+2 -1] = recvbuffer[2*dim_x+2*dim_y + 1];
+    // top left corner
+    if(mpi_rank < mpi_size-mpi_dim_x && mpi_rank%mpi_dim_x != 0)
+        cpudat[(dim_y+1)*(dim_x+2)] = recvbuffer[2*dim_x+2*dim_y + 2];
+    // top right corner
+    if(mpi_rank < mpi_size-mpi_dim_x && (mpi_rank+1)%mpi_dim_x != 0)
+        cpudat[(dim_y+2)*(dim_x+2)-1] = recvbuffer[2*dim_x+2*dim_y + 3];
 
 }
 

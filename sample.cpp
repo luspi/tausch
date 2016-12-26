@@ -41,11 +41,12 @@ Sample::Sample() {
 
     tau.setCPUHaloInfo(halowidth, dat);
 
-    dat[dim_y*(dim_x+2)+1 + 1] = 1;
-    dat[dim_y*(dim_x+2)+1 + 2] = 2;
-    dat[dim_y*(dim_x+2)+1 + 3] = 3;
-    dat[dim_y*(dim_x+2)+1 + 4] = 4;
-    dat[dim_y*(dim_x+2)+1 + 5] = 5;
+    dat[dim_y*(dim_x+2)+1] = 1;
+    dat[dim_y*(dim_x+2)+1 + 1] = 2;
+    dat[dim_y*(dim_x+2)+1 + 2] = 3;
+    dat[dim_y*(dim_x+2)+1 + 3] = 4;
+    dat[dim_y*(dim_x+2)+1 + 4] = 5;
+    dat[dim_y*(dim_x+2)+1 + 5] = 6;
 
     // how many points only on the device and an OpenCL buffer for them
     int gpunum = (7+2)*(7+2);
