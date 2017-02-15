@@ -1,193 +1,310 @@
 #include "tausch.h"
 
-Tausch::Tausch(int dim_x, int dim_y) {
+Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool withOpenCL) {
 
     // get MPI info
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-    mpi_dim_x = std::sqrt(mpi_size);
-    mpi_dim_y = mpi_dim_x;
+    this->mpiNumX = mpiNumX;
+    this->mpiNumY = mpiNumY;
 
     // store configuration
-    this->dim_x = dim_x;
-    this->dim_y = dim_y;
+    this->localDimX = localDimX;
+    this->localDimY = localDimY;
 
-    recvbuffer = nullptr;
+    haveLeftBorder = (mpiRank%mpiNumX == 0);
+    haveRightBorder = ((mpiRank+1)%mpiNumX == 0);
+    haveTopBorder = (mpiRank > mpiSize-mpiNumX-1);
+    haveBottomBorder = (mpiRank < mpiNumX);
 
-    setupOpenCL();
+    haveLeftBoundary = !haveLeftBorder;
+    haveRightBoundary = !haveRightBorder;
+    haveTopBoundary = !haveTopBorder;
+    haveBottomBoundary = !haveBottomBorder;
+
+    cpuToGpuSendBuffer = nullptr;
+    cpuToGpuRecvBuffer = nullptr;
+    gpuToCpuSendBuffer = nullptr;
+    gpuToCpuRecvBuffer = nullptr;
+
+    cpuToCpuSendBuffer = new double[2*localDimX+2*localDimY]{};
+    cpuToCpuRecvBuffer = new double[2*localDimX+2*localDimY]{};
+
+    gpuEnabled = false;
+    if(withOpenCL)
+        setupOpenCL();
+
+    gpuInfoGiven = false;
+    cpuInfoGiven = false;
 
 }
 
 Tausch::~Tausch() {
+//    if(cpuToCpuSendBuffer != nullptr)
+//        delete[] cpuToCpuSendBuffer;
+//    if(cpuToCpuRecvBuffer != nullptr)
+//        delete[] cpuToCpuRecvBuffer;
+//    if(cpuToGpuSendBuffer != nullptr)
+//        delete[] cpuToGpuSendBuffer;
+//    if(cpuToGpuRecvBuffer != nullptr)
+//        delete[] cpuToGpuRecvBuffer;
+//    if(gpuToCpuSendBuffer != nullptr)
+//        delete[] gpuToCpuSendBuffer;
+//    if(gpuToCpuRecvBuffer != nullptr)
+//        delete[] gpuToCpuRecvBuffer;
+}
+
+void Tausch::setCPUData(double *dat) {
+    cpuInfoGiven = true;
+    cpuData = dat;
+}
+void Tausch::setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight) {
+    if(!gpuEnabled) {
+        std::cerr << "ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
+        exit(1);
+    }
+    gpuInfoGiven = true;
+    this->haloWidth = haloWidth;
+    gpuData = dat;
+    this->gpuWidth = gpuWidth;
+    this->gpuHeight = gpuHeight;
+
+    cpuToGpuSendBuffer = new double[2*gpuWidth + 2*gpuHeight]{};
+    cpuToGpuRecvBuffer = new double[2*gpuWidth + 2*gpuHeight]{};
+    gpuToCpuSendBuffer = new double[2*gpuWidth + 2*gpuHeight]{};
+    gpuToCpuRecvBuffer = new double[2*gpuWidth + 2*gpuHeight]{};
+
+    try {
+        cl_gpuToCpuSendBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuWidth+2*gpuHeight)*sizeof(double));
+        cl_gpuToCpuRecvBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuWidth+2*gpuHeight)*sizeof(double));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuSendBuffer, 0, 0, 2*gpuWidth + 2*gpuHeight*sizeof(double));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuRecvBuffer, 0, 0, 2*gpuWidth + 2*gpuHeight*sizeof(double));
+        cl_gpuWidth = cl::Buffer(cl_context, &gpuWidth, (&gpuWidth)+1, true);
+        cl_gpuHeight = cl::Buffer(cl_context, &gpuHeight, (&gpuHeight)+1, true);
+    } catch(cl::Error error) {
+        std::cout << "[setup send/recv buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
+
+}
+
+void Tausch::postCpuReceives() {
+
+    MPI_Request req;
+
+    if(haveLeftBoundary) {
+        MPI_Irecv(&cpuToCpuRecvBuffer[0], localDimY, MPI_DOUBLE, mpiRank-1, 0, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
+    }
+    if(haveRightBoundary) {
+        MPI_Irecv(&cpuToCpuRecvBuffer[localDimY], localDimY, MPI_DOUBLE, mpiRank+1, 2, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
+    }
+    if(haveTopBoundary) {
+        MPI_Irecv(&cpuToCpuRecvBuffer[2*localDimY], localDimX, MPI_DOUBLE, mpiRank+mpiNumX, 1, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
+    }
+    if(haveBottomBoundary) {
+        MPI_Irecv(&cpuToCpuRecvBuffer[2*localDimY+localDimX], localDimX, MPI_DOUBLE, mpiRank-mpiNumX, 3, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
+    }
+
+    if(gpuEnabled) {
+
+        MPI_Irecv(&cpuToGpuRecvBuffer[0], gpuWidth, MPI_DOUBLE, mpiRank, 10, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
+
+        MPI_Irecv(&cpuToGpuRecvBuffer[gpuWidth], gpuWidth, MPI_DOUBLE, mpiRank, 12, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
+
+        MPI_Irecv(&cpuToGpuRecvBuffer[2*gpuWidth], gpuHeight, MPI_DOUBLE, mpiRank, 11, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
+
+        MPI_Irecv(&cpuToGpuRecvBuffer[2*gpuWidth + gpuHeight], gpuHeight, MPI_DOUBLE, mpiRank, 13, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
+
+    }
+
+}
+
+void Tausch::postGpuReceives() {
+
+    MPI_Request req;
+
+    MPI_Irecv(&gpuToCpuRecvBuffer[0], gpuWidth, MPI_DOUBLE, mpiRank, 14, MPI_COMM_WORLD, &req);
+    allGpuRequests.push_back(req);
+
+    MPI_Irecv(&gpuToCpuRecvBuffer[gpuWidth], gpuWidth, MPI_DOUBLE, mpiRank, 16, MPI_COMM_WORLD, &req);
+    allGpuRequests.push_back(req);
+
+    MPI_Irecv(&gpuToCpuRecvBuffer[2*gpuWidth], gpuHeight, MPI_DOUBLE, mpiRank, 15, MPI_COMM_WORLD, &req);
+    allGpuRequests.push_back(req);
+
+    MPI_Irecv(&gpuToCpuRecvBuffer[2*gpuWidth + gpuHeight], gpuHeight, MPI_DOUBLE, mpiRank, 17, MPI_COMM_WORLD, &req);
+    allGpuRequests.push_back(req);
+
 }
 
 // Start creating sends and recvs for the halo data
-void Tausch::startTausch() {
+void Tausch::startCpuTausch() {
 
-    // Get the current boundary data as one array
-    double *cpuboundary = collectCPUBoundaryData();
-
-    // Create an empty array for holding the received halo data
-    if(recvbuffer != nullptr)
-        delete[] recvbuffer;
-    recvbuffer = new double[2*dim_x+2*dim_y + 4]{};
-
-    // count how many send/recvs were created
-    sendRecvCount = 0;
-    sendRecvRequest = new MPI_Request[2*8];
-
-    // send/recv to/from below
-    if(mpi_rank > mpi_dim_x-1) {
-        MPI_Isend(&cpuboundary[0], dim_x, MPI_DOUBLE, mpi_rank-mpi_dim_x, 0, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
-        MPI_Irecv(&recvbuffer[0], dim_x, MPI_DOUBLE, mpi_rank-mpi_dim_x, 3, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
-        ++sendRecvCount;
+    if(!cpuInfoGiven) {
+        std::cerr << "ERROR: You didn't tell me yet where to find the data! Abort..." << std::endl;
+        exit(1);
     }
 
-    // send/recv to/from left
-    if(mpi_rank%mpi_dim_x != 0) {
-        MPI_Isend(&cpuboundary[dim_x], dim_y, MPI_DOUBLE, mpi_rank-1, 1, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
-        MPI_Irecv(&recvbuffer[dim_x], dim_y, MPI_DOUBLE, mpi_rank-1, 2, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
-        ++sendRecvCount;
+    MPI_Request req;
+
+    // Left
+    if(haveLeftBoundary) {
+        for(int i = 0; i < localDimY; ++i)
+            cpuToCpuSendBuffer[i] = cpuData[1+ (i+1)*localDimX+2];
+        MPI_Isend(&cpuToCpuSendBuffer[0], localDimY, MPI_DOUBLE, mpiRank-1, 2, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
     }
 
-    // send/recv to/from right
-    if((mpi_rank+1)%mpi_dim_x != 0) {
-        MPI_Isend(&cpuboundary[dim_x+dim_y], dim_y, MPI_DOUBLE, mpi_rank+1, 2, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
-        MPI_Irecv(&recvbuffer[dim_x+dim_y], dim_y, MPI_DOUBLE, mpi_rank+1, 1, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
-        ++sendRecvCount;
+    // Right
+    if(haveRightBoundary) {
+        for(int i = 0; i < localDimY; ++i)
+            cpuToCpuSendBuffer[localDimY + i] = cpuData[(i+2)*localDimX+2 -2];
+        MPI_Isend(&cpuToCpuSendBuffer[localDimY], localDimY, MPI_DOUBLE, mpiRank+1, 0, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
     }
 
-    //send/recv to/from top
-    if(mpi_rank < mpi_size-mpi_dim_x) {
-        MPI_Isend(&cpuboundary[dim_x+2*dim_y], dim_x, MPI_DOUBLE, mpi_rank+mpi_dim_x, 3, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
-        MPI_Irecv(&recvbuffer[dim_x+2*dim_y], dim_x, MPI_DOUBLE, mpi_rank+mpi_dim_x, 0, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
-        ++sendRecvCount;
+    // Top
+    if(haveTopBoundary) {
+        for(int i = 0; i < localDimX; ++i)
+            cpuToCpuSendBuffer[2*localDimY + i] = cpuData[(localDimX+2)*localDimY+1 + i];
+        MPI_Isend(&cpuToCpuSendBuffer[2*localDimY], localDimX, MPI_DOUBLE, mpiRank+mpiNumX, 3, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
     }
 
-    // send/recv bottom left corner
-    if(mpi_rank > mpi_dim_x-1 && mpi_rank%mpi_dim_x != 0) {
-        MPI_Isend(&cpuboundary[0], 1, MPI_DOUBLE, mpi_rank-mpi_dim_x-1, 4, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
-        MPI_Irecv(&recvbuffer[2*dim_x+2*dim_y], 1, MPI_DOUBLE, mpi_rank-mpi_dim_x-1, 6, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
-        ++sendRecvCount;
+    // Bottom
+    if(haveBottomBoundary) {
+        for(int i = 0; i < localDimX; ++i)
+            cpuToCpuSendBuffer[2*localDimY+localDimX + i] = cpuData[1+ localDimX+2 + i];
+        MPI_Isend(&cpuToCpuSendBuffer[2*localDimY+localDimX], localDimX, MPI_DOUBLE, mpiRank-mpiNumX, 1, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
     }
 
-    // send/recv bottom right corner
-    if(mpi_rank > mpi_dim_x-1 && (mpi_rank+1)%mpi_dim_x != 0) {
-        MPI_Isend(&cpuboundary[dim_x-1], 1, MPI_DOUBLE, mpi_rank-mpi_dim_x+1, 5, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
-        MPI_Irecv(&recvbuffer[2*dim_x+2*dim_y+1], 1, MPI_DOUBLE, mpi_rank-mpi_dim_x+1, 7, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
-        ++sendRecvCount;
-    }
+    if(gpuEnabled) {
 
-    // send/recv top left corner
-    if(mpi_rank < mpi_size-mpi_dim_x && mpi_rank%mpi_dim_x != 0) {
-        std::cout << "bot left " << cpuboundary[dim_x+2*dim_y] << std::endl;
-        MPI_Isend(&cpuboundary[dim_x+2*dim_y], 1, MPI_DOUBLE, mpi_rank+mpi_dim_x-1, 7, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
-        MPI_Irecv(&recvbuffer[2*dim_x+2*dim_y+2], 1, MPI_DOUBLE, mpi_rank+mpi_dim_x-1, 5, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
-        ++sendRecvCount;
-    }
+        // left
+        for(int i = 0; i < gpuHeight; ++ i)
+            cpuToGpuSendBuffer[i] = cpuData[((localDimY-gpuHeight)/2 +i)*(localDimX+2) + (localDimX-gpuWidth)/2];
+        MPI_Isend(&cpuToGpuSendBuffer[0], gpuHeight, MPI_DOUBLE, mpiRank, 14, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
+        // right
+        for(int i = 0; i < gpuHeight; ++ i)
+            cpuToGpuSendBuffer[gpuHeight + i] = cpuData[((localDimY-gpuHeight)/2 +i)*(localDimX+2) + (localDimX-gpuWidth)/2 + gpuWidth+1];
+        MPI_Isend(&cpuToGpuSendBuffer[gpuHeight], gpuHeight, MPI_DOUBLE, mpiRank, 16, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
+        // top
+        for(int i = 0; i < gpuWidth; ++ i)
+            cpuToGpuSendBuffer[2*gpuHeight + i] = cpuData[((localDimY-gpuHeight)/2 +gpuHeight+1)*(localDimX+2) + (localDimX-gpuWidth)/2 + i];
+        MPI_Isend(&cpuToGpuSendBuffer[2*gpuHeight], gpuWidth, MPI_DOUBLE, mpiRank, 15, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
+        // left
+        for(int i = 0; i < gpuHeight; ++ i)
+            cpuToGpuSendBuffer[2*gpuHeight+gpuWidth + i] = cpuData[((localDimY-gpuHeight)/2)*(localDimX+2) + (localDimX-gpuWidth)/2 + i];
+        MPI_Isend(&cpuToGpuSendBuffer[2*gpuHeight+gpuWidth], gpuWidth, MPI_DOUBLE, mpiRank, 17, MPI_COMM_WORLD, &req);
+        allCpuRequests.push_back(req);
 
-    // send/recv top right corner
-    if(mpi_rank < mpi_size-mpi_dim_x && (mpi_rank+1)%mpi_dim_x != 0) {
-        MPI_Isend(&cpuboundary[2*dim_x+2*dim_y -1], 1, MPI_DOUBLE, mpi_rank+mpi_dim_x+1, 6, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount]);
-        MPI_Irecv(&recvbuffer[2*dim_x+2*dim_y+3], 1, MPI_DOUBLE, mpi_rank+mpi_dim_x+1, 4, MPI_COMM_WORLD, &sendRecvRequest[2*sendRecvCount+1]);
-        ++sendRecvCount;
     }
 
 }
 
-void Tausch::completeTausch() {
+void Tausch::startGpuTausch() {
+
+    try {
+
+        auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloData");
+
+        int globalSize = ((2*gpuWidth+2*gpuHeight)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+
+        kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
+                           cl_gpuWidth, cl_gpuHeight, gpuData, cl_gpuToCpuSendBuffer);
+
+        cl::copy(cl_queue, cl_gpuToCpuSendBuffer, &gpuToCpuSendBuffer[0], (&gpuToCpuSendBuffer[2*gpuWidth+2*gpuHeight-1])+1);
+
+    } catch(cl::Error error) {
+        std::cout << "[kernel collectHalo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
+
+    MPI_Request req;
+
+    // left
+    MPI_Isend(&gpuToCpuSendBuffer[0], gpuHeight, MPI_DOUBLE, mpiRank, 10, MPI_COMM_WORLD, &req);
+    allGpuRequests.push_back(req);
+
+    // right
+    MPI_Isend(&gpuToCpuSendBuffer[gpuHeight], gpuHeight, MPI_DOUBLE, mpiRank, 12, MPI_COMM_WORLD, &req);
+    allGpuRequests.push_back(req);
+
+    // top
+    MPI_Isend(&gpuToCpuSendBuffer[2*gpuHeight], gpuWidth, MPI_DOUBLE, mpiRank, 11, MPI_COMM_WORLD, &req);
+    allGpuRequests.push_back(req);
+
+    // bottom
+    MPI_Isend(&gpuToCpuSendBuffer[2*gpuHeight + gpuWidth], gpuWidth, MPI_DOUBLE, mpiRank, 13, MPI_COMM_WORLD, &req);
+    allGpuRequests.push_back(req);
+
+}
+
+void Tausch::completeCpuTausch() {
 
     // wait for all the local send/recvs to complete before moving on
-    MPI_Waitall(2*sendRecvCount, sendRecvRequest, MPI_STATUSES_IGNORE);
+    MPI_Waitall(allCpuRequests.size(), &allCpuRequests[0], MPI_STATUS_IGNORE);
 
     // distribute received data into halo regions
-    distributeCPUHaloData();
 
+    // left
+    for(int i = 0; i < localDimY; ++i)
+        cpuData[(i+1)*(localDimX+2)] = cpuToCpuRecvBuffer[i];
 
+    // right
+    for(int i = 0; i < localDimY; ++i)
+        cpuData[(i+2)*(localDimX+2)-1] = cpuToCpuRecvBuffer[localDimY+i];
 
+    // top
+    for(int i = 0; i < localDimX; ++i)
+        cpuData[(localDimX+2)*(localDimY+1)+1 + i] = cpuToCpuRecvBuffer[2*localDimY+i];
 
-    std::stringstream str;
-    str << mpi_rank << " :: ";
-    for(int i = 0; i < dim_x+2; ++i)
-        str << cpudat[i] << "  ";
-    str << std::endl;
-    std::cout << str.str();
-
+    // bottom
+    for(int i = 0; i < localDimX; ++i)
+        cpuData[1+i] = cpuToCpuRecvBuffer[2*localDimY+localDimX+i];
 
 }
 
-// function to collect the current boundary data and put it all into one array
-double *Tausch::collectCPUBoundaryData() {
+void Tausch::completeGpuTausch() {
 
-    double *ret = new double[2*dim_x+2*dim_y]{};
+    MPI_Waitall(allGpuRequests.size(), &allGpuRequests[0], MPI_STATUS_IGNORE);
 
-    // bottom
-    if(mpi_rank < mpi_dim_x-1) {
-        for(int i = 0; i < dim_x; ++i)
-            ret[i] = cpudat[1+(dim_x+2) + i];
-    }
-    // left
-    if(mpi_rank%mpi_dim_x != 0) {
-        for(int i = 0; i < dim_y; ++i)
-            ret[dim_x+i] = cpudat[1+(dim_x+2) + i*(dim_x+2)];
-    }
-    // right
-    if((mpi_rank+1)%mpi_dim_x != 0) {
-        for(int i = 0; i < dim_y; ++i)
-            ret[dim_x+dim_y+i] = cpudat[2*(dim_x+2)-2 + i*(dim_x+2)];
-    }
-    // top
-    if(mpi_rank < mpi_size-mpi_dim_x) {
-        for(int i = 0; i < dim_x; ++i)
-            ret[dim_x+2*dim_y+i] = cpudat[dim_y*(dim_x+2)+1 + i];
-    }
+    try {
 
-    return ret;
+        cl::copy(cl_queue, &gpuToCpuRecvBuffer[0], (&gpuToCpuRecvBuffer[2*gpuWidth+2*gpuHeight-1])+1, cl_gpuToCpuRecvBuffer);
 
-}
+        auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
 
-// function to distribute the received boundary data into the right halo region
-void Tausch::distributeCPUHaloData() {
+        int globalSize = ((2*gpuWidth + 2*gpuHeight)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
-    // bottom
-    if(mpi_rank > mpi_dim_x-1) {
-        for(int i = 0; i < dim_x; ++i)
-            cpudat[1+i] = recvbuffer[i];
-    }
-    // left
-    if(mpi_rank%mpi_dim_x != 0) {
-        for(int i = 0; i < dim_y; ++i)
-            cpudat[(i+1)*(dim_x+2)] = recvbuffer[dim_x+i];
-    }
-    // right
-    if((mpi_rank+1)%mpi_dim_x != 0) {
-        for(int i = 0; i < dim_y; ++i)
-            cpudat[(i+2)*(dim_x+2)-1] = recvbuffer[dim_x+dim_y+i];
-    }
-    // top
-    if(mpi_rank < mpi_size-mpi_dim_x) {
-        for(int i = 0; i < dim_x; ++i)
-            cpudat[(dim_y+1)*(dim_x+2)+1+i] = recvbuffer[dim_x+2*dim_y+i];
-    }
+        kernel_distributeHaloData(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
+                                  cl_gpuWidth, cl_gpuHeight, gpuData, cl_gpuToCpuRecvBuffer);
 
-    // bottom left corner
-    if(mpi_rank > mpi_dim_x-1 && mpi_rank%mpi_dim_x != 0)
-        cpudat[0] = recvbuffer[2*dim_x+2*dim_y];
-    // bottom right corner
-    if(mpi_rank > mpi_dim_x-1 && (mpi_rank+1)%mpi_dim_x != 0)
-        cpudat[dim_x+2 -1] = recvbuffer[2*dim_x+2*dim_y + 1];
-    // top left corner
-    if(mpi_rank < mpi_size-mpi_dim_x && mpi_rank%mpi_dim_x != 0)
-        cpudat[(dim_y+1)*(dim_x+2)] = recvbuffer[2*dim_x+2*dim_y + 2];
-    // top right corner
-    if(mpi_rank < mpi_size-mpi_dim_x && (mpi_rank+1)%mpi_dim_x != 0)
-        cpudat[(dim_y+2)*(dim_x+2)-1] = recvbuffer[2*dim_x+2*dim_y + 3];
+    } catch(cl::Error error) {
+        std::cout << "[dist halo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
 
 }
 
 // Create OpenCL context and choose a device (if multiple devices are available, the MPI ranks will split up evenly)
 void Tausch::setupOpenCL() {
+
+    gpuEnabled = true;
+    cl_kernelLocalSize = 64;
 
     try {
 
@@ -196,9 +313,9 @@ void Tausch::setupOpenCL() {
         cl::Platform::get(&all_platforms);
         int platform_length = all_platforms.size();
 
-        // We need at most mpi_size many devices
-        int *platform_num = new int[mpi_size]{};
-        int *device_num = new int[mpi_size]{};
+        // We need at most mpiSize many devices
+        int *platform_num = new int[mpiSize]{};
+        int *device_num = new int[mpiSize]{};
 
         // Counter so that we know when to stop
         int num = 0;
@@ -216,7 +333,7 @@ void Tausch::setupOpenCL() {
                 device_num[num] = j;
                 ++num;
                 // and stop
-                if(num == mpi_size) {
+                if(num == mpiSize) {
                     i = platform_length;
                     break;
                 }
@@ -224,23 +341,23 @@ void Tausch::setupOpenCL() {
         }
 
         // Get the platform and device to be used by this MPI thread
-        cl_platform = all_platforms[platform_num[mpi_rank%num]];
+        cl_platform = all_platforms[platform_num[mpiRank%num]];
         std::vector<cl::Device> all_devices;
         cl_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
-        cl_default_device = all_devices[device_num[mpi_rank%num]];
+        cl_defaultDevice = all_devices[device_num[mpiRank%num]];
 
         // Give some feedback of the choice.
-        std::cout << "Rank " << mpi_rank << " using OpenCL platform #" << platform_num[mpi_rank%num] << " with device #" << device_num[mpi_rank%num] << ": " << cl_default_device.getInfo<CL_DEVICE_NAME>() << std::endl;
+        std::cout << "Rank " << mpiRank << " using OpenCL platform #" << platform_num[mpiRank%num] << " with device #" << device_num[mpiRank%num] << ": " << cl_defaultDevice.getInfo<CL_DEVICE_NAME>() << std::endl;
 
         delete[] platform_num;
         delete[] device_num;
 
         // Create context and queue
-        cl_context = cl::Context({cl_default_device});
-        cl_queue = cl::CommandQueue(cl_context,cl_default_device);
+        cl_context = cl::Context({cl_defaultDevice});
+        cl_queue = cl::CommandQueue(cl_context,cl_defaultDevice);
 
         // The OpenCL kernel
-        std::ifstream cl_file("kernel.cl");
+        std::ifstream cl_file(std::string(SOURCEDIR) + "/kernels.cl");
         std::string str;
         cl_file.seekg(0, std::ios::end);
         str.reserve(cl_file.tellg());
@@ -254,7 +371,7 @@ void Tausch::setupOpenCL() {
     } catch(cl::Error error) {
         std::cout << "[setup] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         if(error.err() == -11) {
-            std::string log = cl_programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl_default_device);
+            std::string log = cl_programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl_defaultDevice);
             std::cout << std::endl << " ******************** " << std::endl << " ** BUILD LOG" << std::endl << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** " << std::endl << std::endl;
         }
         exit(1);

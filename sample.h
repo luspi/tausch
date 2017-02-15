@@ -14,6 +14,8 @@ private:
     int dim;
     int mpi_rank, mpi_size;
 
+    void EveryoneOutput(const std::string &inMessage);
+
 };
 
 #endif
