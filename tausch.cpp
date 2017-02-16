@@ -89,8 +89,8 @@ void Tausch::setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight) {
     try {
         cl_gpuToCpuSendBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuWidth+2*gpuHeight)*sizeof(double));
         cl_gpuToCpuRecvBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*(gpuWidth+2)+2*gpuHeight)*sizeof(double));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuSendBuffer, 0, 0, 2*gpuWidth + 2*gpuHeight*sizeof(double));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuRecvBuffer, 0, 0, 2*(gpuWidth+2) + 2*gpuHeight*sizeof(double));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuSendBuffer, 0, 0, (2*gpuWidth + 2*gpuHeight)*sizeof(double));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuRecvBuffer, 0, 0, (2*(gpuWidth+2) + 2*gpuHeight)*sizeof(double));
         cl_gpuWidth = cl::Buffer(cl_context, &gpuWidth, (&gpuWidth)+1, true);
         cl_gpuHeight = cl::Buffer(cl_context, &gpuHeight, (&gpuHeight)+1, true);
     } catch(cl::Error error) {
