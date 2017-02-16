@@ -19,23 +19,26 @@ int main(int argc, char** argv) {
     double portionGPU = std::sqrt(0.5);
     int mpiNumX = std::sqrt(mpiSize);
     int mpiNumY = mpiNumX;
+    int loops = 1;
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {
 
             if(argv[i] == std::string("-x") && i < argc-1)
-                localDimX = atoi(argv[i++]);
+                localDimX = atoi(argv[++i]);
             else if(argv[i] == std::string("-y") && i < argc-1)
-                localDimY = atoi(argv[i++]);
+                localDimY = atoi(argv[++i]);
             else if(argv[i] == std::string("-gpu") && i < argc-1)
-                portionGPU = atof(argv[i++]);
+                portionGPU = atof(argv[++i]);
             else if(argv[i] == std::string("-xy") && i < argc-1) {
-                localDimX = atoi(argv[i++]);
+                localDimX = atoi(argv[++i]);
                 localDimY = localDimX;
             } else if(argv[i] == std::string("-mpix") && i < argc-1)
-                mpiNumX = atoi(argv[i++]);
+                mpiNumX = atoi(argv[++i]);
             else if(argv[i] == std::string("-mpiy") && i < argc-1)
-                mpiNumY = atoi(argv[i++]);
+                mpiNumY = atoi(argv[++i]);
+            else if(argv[i] == std::string("-num") && i < argc-1)
+                loops = atoi(argv[++i]);
         }
     }
 
@@ -51,7 +54,7 @@ int main(int argc, char** argv) {
 
     }
 
-    Sample sample(localDimX, localDimY, portionGPU, mpiNumX, mpiNumY);
+    Sample sample(localDimX, localDimY, portionGPU, loops, mpiNumX, mpiNumY);
 
     MPI_Finalize();
 

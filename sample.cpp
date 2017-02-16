@@ -21,7 +21,7 @@
  *
  *******************************/
 
-Sample::Sample(int localDimX, int localDimY, double portionGPU, int mpiNumX, int mpiNumY) {
+Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int mpiNumX, int mpiNumY) {
 
     // obtain MPI rank
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -91,17 +91,17 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int mpiNumX, int
     tau.postCpuReceives();
     tau.postGpuReceives();
 
-    // initiate sending of the data
-    tau.startCpuTausch();
-    tau.startGpuTausch();
+    for(int run = 0; run < loops; ++run) {
 
-    // Wait for communication to be finished and distribute result
-    tau.completeCpuTausch();
-    tau.completeGpuTausch();
+        // initiate sending of the data
+        tau.startCpuTausch();
+        tau.startGpuTausch();
 
+        // Wait for communication to be finished and distribute result
+        tau.completeCpuTausch();
+        tau.completeGpuTausch();
 
-    // copy result from device back to host
-    cl::copy(tau.cl_queue, bufdat, &gpudat__host[0], (&gpudat__host[gpunum-1])+1);
+    }
 
     MPI_Barrier(MPI_COMM_WORLD);
     auto tEnd = std::chrono::steady_clock::now();
