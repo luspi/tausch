@@ -60,10 +60,21 @@ void Tausch::setCPUData(double *dat) {
     cpuData = dat;
 }
 void Tausch::setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight) {
+
     if(!gpuEnabled) {
         std::cerr << "ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
         exit(1);
     }
+
+    if((localDimX-gpuWidth)%2 != 0) {
+        std::cout << "ERROR: CPU blocks must be equal left and right of GPU block! Try reducing GPU width by 1!" << std::endl;
+        exit(1);
+    }
+    if((localDimY-gpuHeight)%2 != 0) {
+        std::cout << "ERROR: CPU blocks must be equal top and bottom of GPU block! Try reducing GPU height by 1!" << std::endl;
+        exit(1);
+    }
+
     gpuInfoGiven = true;
     this->haloWidth = haloWidth;
     gpuData = dat;
