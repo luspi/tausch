@@ -9,25 +9,24 @@ kernel void collectHaloData(global const int * restrict const dimX, global const
 
     // left
     if(current < *dimY) {
-//        printf("%i, %i -> %i\n",current, *dimY,(1+current)*(*dimX+2));
-        sync[current] = vec[(1+current)*(*dimX+2)];
+        sync[current] = vec[(1+current)*(*dimX+2) +1];
         return;
     }
 
     // right
     if(current < 2*(*dimY)) {
-        sync[current] = vec[(2+(current-(*dimY)))*(*dimX+2) -1];
+        sync[current] = vec[(2+(current-(*dimY)))*(*dimX+2) -2];
         return;
     }
 
     // top
     if(current < 2*(*dimY) + *dimX) {
-        sync[current] = vec[(*dimX+2)*(*dimY+1)+1 + current-(2*(*dimY))];
+        sync[current] = vec[(*dimX+2)*(*dimY)+1 + current-(2*(*dimY))];
         return;
     }
 
     // bottom
-    sync[current] = vec[1+current-2*(*dimY)-(*dimX)];
+    sync[current] = vec[1+(*dimX+2)+(current-2*(*dimY)-(*dimX))];
 
 
 }
@@ -36,7 +35,7 @@ kernel void distributeHaloData(global const int * restrict const dimX, global co
                                global double * vec, global const double * restrict const sync) {
 
     unsigned int current = get_global_id(0);
-    unsigned int maxNum = 2*(*dimX) + 2*(*dimY);
+    unsigned int maxNum = 2*(*dimX+2) + 2*(*dimY);
 
     if(current >= maxNum)
         return;
@@ -54,13 +53,13 @@ kernel void distributeHaloData(global const int * restrict const dimX, global co
     }
 
     // top
-    if(current < 2*(*dimY)+(*dimX)) {
-        vec[(*dimX+2)*(*dimY+1)+1 + current-(2*(*dimY))] = sync[current];
+    if(current < 2*(*dimY)+(*dimX+2)) {
+        vec[(*dimX+2)*(*dimY+1) + current-(2*(*dimY))] = sync[current];
         return;
     }
 
     // bottom
-    vec[1+current-2*(*dimY)-(*dimX)] = sync[current];
+    vec[current-2*(*dimY)-(*dimX+2)] = sync[current];
 
 
 

@@ -4,6 +4,7 @@
 #include "tausch.h"
 #include <fstream>
 #include <cmath>
+#include <iomanip>
 
 class Sample {
 
@@ -11,10 +12,13 @@ public:
     explicit Sample();
 
 private:
-    int dim;
-    int mpi_rank, mpi_size;
+    int dimX, dimY, gpuDimX, gpuDimY;
+    int mpiRank, mpiSize;
 
     void EveryoneOutput(const std::string &inMessage);
+
+    void printCPU(double *dat);
+    void printGPU(double *dat);
 
 };
 

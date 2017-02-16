@@ -24,36 +24,45 @@
 Sample::Sample() {
 
     // obtain MPI rank
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
     // the overall x and y dimension of the local partition
-    int dim_x = 20, dim_y = 20;
-    int gpuDimX = dim_x*0.5, gpuDimY = dim_y*0.5;
+    dimX = 20, dimY = 20;
+    gpuDimX = dimX*0.5, gpuDimY = dimY*0.5;
 
-    Tausch tau(dim_x, dim_y, std::sqrt(mpi_size), std::sqrt(mpi_size), true);
+    Tausch tau(dimX, dimY, std::sqrt(mpiSize), std::sqrt(mpiSize), true);
 
     // the width of the halos
     int halowidth = 1;
 
     // how many points overall in the mesh and a CPU buffer for all of them
-    int num = (dim_x+2)*(dim_y+2);
+    int num = (dimX+2)*(dimY+2);
     double *dat = new double[num]{};
 
     tau.setHaloWidth(1);
 
     tau.setCPUData(dat);
 
-    dat[dim_y*(dim_x+2)+1] = 1;
-    dat[dim_y*(dim_x+2)+1 + 1] = 2;
-    dat[dim_y*(dim_x+2)+1 + 2] = 3;
-    dat[dim_y*(dim_x+2)+1 + 3] = 4;
-    dat[dim_y*(dim_x+2)+1 + 4] = 5;
-    dat[dim_y*(dim_x+2)+1 + 5] = 6;
+    for(int i = 0; i < dimY; ++i)
+        for(int j = 0; j < dimX; ++j)
+            if(!(i >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
+               && j >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY))
+                dat[(i+1)*(dimX+2) + j+1] = i*dimX+j;
+
 
     // how many points only on the device and an OpenCL buffer for them
     int gpunum = (gpuDimX+2)*(gpuDimY+2);
     double *gpudat__host = new double[gpunum]{};
+
+    for(int i = 0; i < gpuDimY; ++i)
+        for(int j = 0; j < gpuDimX; ++j)
+            gpudat__host[(i+1)*(gpuDimX+2) + j+1] = i*gpuDimX+j;
+
+
+    printCPU(dat);
+    std::cout << "-----------------------" << std::endl;
+    printGPU(gpudat__host);
 
     cl::Buffer bufdat;
 
@@ -77,15 +86,25 @@ Sample::Sample() {
     tau.startGpuTausch();
 
     std::stringstream ss;
-    ss << mpi_rank << " started halo exchange" << std::endl;
+    ss << mpiRank << " started halo exchange" << std::endl;
     EveryoneOutput(ss.str());
 
     tau.completeCpuTausch();
     tau.completeGpuTausch();
 
-    std::stringstream ss2;
-    ss2 << mpi_rank << " completed halo exchange" << std::endl;
-    EveryoneOutput(ss2.str());
+    cl::copy(tau.cl_queue, bufdat, &gpudat__host[0], (&gpudat__host[gpunum-1])+1);
+
+    if(mpiRank == 3) {
+
+        std::cout << "-----------------------" << std::endl;
+        std::cout << "-----------------------" << std::endl;
+        std::cout << "-----------------------" << std::endl;
+        printCPU(dat);
+        std::cout << "-----------------------" << std::endl;
+        printGPU(gpudat__host);
+
+    }
+
 
     delete[] dat;
 
@@ -93,15 +112,54 @@ Sample::Sample() {
 
 void Sample::EveryoneOutput(const std::string &inMessage) {
 
-    int myRank  = 0;
-    int numProc = 1;
-    MPI_Comm_rank(MPI_COMM_WORLD,&myRank);
-    MPI_Comm_size(MPI_COMM_WORLD,&numProc);
-    for(int iRank = 0; iRank < numProc; ++iRank){
-        if(myRank == iRank)
+    for(int iRank = 0; iRank < mpiSize; ++iRank){
+        if(mpiRank == iRank)
             std::cout << inMessage;
         MPI_Barrier(MPI_COMM_WORLD);
     }
+
+}
+
+void Sample::printCPU(double *dat) {
+
+    std::stringstream ss;
+
+    for(int i = 0; i < dimY+2; ++i) {
+        std:: stringstream tmp;
+        for(int j = 0; j < dimX+2; ++j) {
+            if(i-1 > (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
+               && j-1 > (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY)
+                tmp << std::setw(3) << "    ";
+            else
+                tmp << std::setw(3) << dat[i*(dimX+2) + j] << " ";
+        }
+        tmp << std::endl;
+        std::string str = ss.str();
+        ss.clear();
+        ss.str("");
+        ss << tmp.str() << str;
+    }
+
+    std::cout << ss.str();
+
+}
+
+void Sample::printGPU(double *dat) {
+
+    std::stringstream ss;
+
+    for(int i = 0; i < gpuDimY+2; ++i) {
+        std:: stringstream tmp;
+        for(int j = 0; j < gpuDimX+2; ++j)
+            tmp << std::setw(3) << dat[i*(gpuDimX+2) + j] << " ";
+        tmp << std::endl;
+        std::string str = ss.str();
+        ss.clear();
+        ss.str("");
+        ss << tmp.str() << str;
+    }
+
+    std::cout << ss.str();
 
 }
 

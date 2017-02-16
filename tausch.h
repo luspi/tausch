@@ -82,6 +82,44 @@ private:
     int cl_kernelLocalSize;
 
 
+
+    MPI_Request cpuToCpuLeftSendRequest;
+    MPI_Request cpuToCpuRightSendRequest;
+    MPI_Request cpuToCpuTopSendRequest;
+    MPI_Request cpuToCpuBottomSendRequest;
+    MPI_Request cpuToCpuLeftRecvRequest;
+    MPI_Request cpuToCpuRightRecvRequest;
+    MPI_Request cpuToCpuTopRecvRequest;
+    MPI_Request cpuToCpuBottomRecvRequest;
+
+    MPI_Request cpuToCpuBottomLeftSendRequest;
+    MPI_Request cpuToCpuBottomRightSendRequest;
+    MPI_Request cpuToCpuTopLeftSendRequest;
+    MPI_Request cpuToCpuTopRightSendRequest;
+    MPI_Request cpuToCpuBottomLeftRecvRequest;
+    MPI_Request cpuToCpuBottomRightRecvRequest;
+    MPI_Request cpuToCpuTopLeftRecvRequest;
+    MPI_Request cpuToCpuTopRightRecvRequest;
+
+    MPI_Request cpuToGpuLeftSendRequest;
+    MPI_Request cpuToGpuRightSendRequest;
+    MPI_Request cpuToGpuTopSendRequest;
+    MPI_Request cpuToGpuBottomSendRequest;
+    MPI_Request cpuToGpuLeftRecvRequest;
+    MPI_Request cpuToGpuRightRecvRequest;
+    MPI_Request cpuToGpuTopRecvRequest;
+    MPI_Request cpuToGpuBottomRecvRequest;
+
+    MPI_Request gpuToCpuLeftSendRequest;
+    MPI_Request gpuToCpuRightSendRequest;
+    MPI_Request gpuToCpuTopSendRequest;
+    MPI_Request gpuToCpuBottomSendRequest;
+    MPI_Request gpuToCpuLeftRecvRequest;
+    MPI_Request gpuToCpuRightRecvRequest;
+    MPI_Request gpuToCpuTopRecvRequest;
+    MPI_Request gpuToCpuBottomRecvRequest;
+
+
 };
 
 #endif
