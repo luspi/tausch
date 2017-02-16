@@ -40,10 +40,6 @@ Sample::Sample() {
     int num = (dimX+2)*(dimY+2);
     double *dat = new double[num]{};
 
-    tau.setHaloWidth(1);
-
-    tau.setCPUData(dat);
-
     for(int i = 0; i < dimY; ++i)
         for(int j = 0; j < dimX; ++j)
             if(!(i >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
@@ -59,11 +55,6 @@ Sample::Sample() {
         for(int j = 0; j < gpuDimX; ++j)
             gpudat__host[(i+1)*(gpuDimX+2) + j+1] = i*gpuDimX+j;
 
-
-    printCPU(dat);
-    std::cout << "-----------------------" << std::endl;
-    printGPU(gpudat__host);
-
     cl::Buffer bufdat;
 
     try {
@@ -75,25 +66,31 @@ Sample::Sample() {
         exit(1);
     }
 
+
+    // currently redundant, can only be 1
+    tau.setHaloWidth(1);
+
+    // pass pointers to the two data containers
+    tau.setCPUData(dat);
     tau.setGPUData(bufdat, gpuDimX, gpuDimY);
 
+    // post the receives
     tau.postCpuReceives();
     tau.postGpuReceives();
 
-    /**********************************************/
-
+    // initiate sending of the data
     tau.startCpuTausch();
     tau.startGpuTausch();
 
-    std::stringstream ss;
-    ss << mpiRank << " started halo exchange" << std::endl;
-    EveryoneOutput(ss.str());
-
+    // Wait for communication to be finished and distribute result
     tau.completeCpuTausch();
     tau.completeGpuTausch();
 
+
+    // copy result from device back to host
     cl::copy(tau.cl_queue, bufdat, &gpudat__host[0], (&gpudat__host[gpunum-1])+1);
 
+    // output resulting data of one of the MPI ranks
     if(mpiRank == 0) {
 
         std::cout << "-----------------------" << std::endl;

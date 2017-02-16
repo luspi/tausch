@@ -38,6 +38,11 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool with
     gpuInfoGiven = false;
     cpuInfoGiven = false;
 
+    cpuRecvsPosted = false;
+    gpuRecvsPosted = false;
+    cpuStarted = false;
+    gpuStarted = false;
+
 }
 
 Tausch::~Tausch() {
@@ -63,15 +68,6 @@ void Tausch::setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight) {
 
     if(!gpuEnabled) {
         std::cerr << "ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
-        exit(1);
-    }
-
-    if((localDimX-gpuWidth)%2 != 0) {
-        std::cout << "ERROR: CPU blocks must be equal left and right of GPU block! Try reducing GPU width by 1!" << std::endl;
-        exit(1);
-    }
-    if((localDimY-gpuHeight)%2 != 0) {
-        std::cout << "ERROR: CPU blocks must be equal top and bottom of GPU block! Try reducing GPU height by 1!" << std::endl;
         exit(1);
     }
 
@@ -101,6 +97,13 @@ void Tausch::setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight) {
 }
 
 void Tausch::postCpuReceives() {
+
+    if(!cpuInfoGiven) {
+        std::cerr << "ERROR: You didn't tell me yet where to find the data! Abort..." << std::endl;
+        exit(1);
+    }
+
+    cpuRecvsPosted = true;
 
     if(haveLeftBoundary) {
         MPI_Irecv(&cpuToCpuRecvBuffer[0], localDimY, MPI_DOUBLE, mpiRank-1, 0, MPI_COMM_WORLD, &cpuToCpuLeftRecvRequest);
@@ -138,6 +141,11 @@ void Tausch::postCpuReceives() {
 
     if(gpuEnabled) {
 
+        if(!gpuInfoGiven) {
+            std::cerr << "ERROR: GPU information not set! Did you call setGPUData()?" << std::endl;
+            exit(1);
+        }
+
         MPI_Irecv(&cpuToGpuRecvBuffer[0], gpuWidth, MPI_DOUBLE, mpiRank, 10, MPI_COMM_WORLD, &cpuToGpuLeftRecvRequest);
         allCpuRequests.push_back(cpuToGpuLeftRecvRequest);
 
@@ -155,6 +163,13 @@ void Tausch::postCpuReceives() {
 }
 
 void Tausch::postGpuReceives() {
+
+    if(!gpuInfoGiven) {
+        std::cerr << "ERROR: GPU information not set! Did you call setGPUData()? Abort!" << std::endl;
+        exit(1);
+    }
+
+    gpuRecvsPosted = true;
 
     MPI_Request req;
 
@@ -175,10 +190,12 @@ void Tausch::postGpuReceives() {
 // Start creating sends and recvs for the halo data
 void Tausch::startCpuTausch() {
 
-    if(!cpuInfoGiven) {
-        std::cerr << "ERROR: You didn't tell me yet where to find the data! Abort..." << std::endl;
+    if(!cpuRecvsPosted) {
+        std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
         exit(1);
     }
+
+    cpuStarted = true;
 
     // Left
     if(haveLeftBoundary) {
@@ -235,6 +252,11 @@ void Tausch::startCpuTausch() {
 
     if(gpuEnabled) {
 
+        if(!gpuRecvsPosted) {
+            std::cerr << "ERROR: No GPU Recvs have been posted yet... Abort!" << std::endl;
+            exit(1);
+        }
+
         // left
         for(int i = 0; i < gpuHeight; ++ i)
             cpuToGpuSendBuffer[i] = cpuData[((localDimY-gpuHeight)/2 +i+1)*(localDimX+2) + (localDimX-gpuWidth)/2];
@@ -261,6 +283,13 @@ void Tausch::startCpuTausch() {
 }
 
 void Tausch::startGpuTausch() {
+
+    if(!gpuRecvsPosted) {
+        std::cerr << "ERROR: No GPU Recvs have been posted yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    gpuStarted = true;
 
     try {
 
@@ -297,6 +326,11 @@ void Tausch::startGpuTausch() {
 }
 
 void Tausch::completeCpuTausch() {
+
+    if(!cpuStarted) {
+        std::cerr << "ERROR: No CPU exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
 
     // wait for all the local send/recvs to complete before moving on
     MPI_Waitall(allCpuRequests.size(), &allCpuRequests[0], MPI_STATUS_IGNORE);
@@ -335,6 +369,11 @@ void Tausch::completeCpuTausch() {
 
     if(gpuEnabled) {
 
+        if(!gpuStarted) {
+            std::cerr << "ERROR: No GPU exchange has been started yet... Abort!" << std::endl;
+            exit(1);
+        }
+
         // left
         for(int i = 0; i < gpuHeight; ++ i)
             cpuData[((localDimY-gpuHeight)/2 +i+1)*(localDimX+2) + (localDimX-gpuWidth)/2 +1] = cpuToGpuRecvBuffer[i];
@@ -356,6 +395,16 @@ void Tausch::completeCpuTausch() {
 }
 
 void Tausch::completeGpuTausch() {
+
+    if(!cpuStarted) {
+        std::cerr << "ERROR: No CPU exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    if(!gpuStarted) {
+        std::cerr << "ERROR: No GPU exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
 
     MPI_Waitall(allGpuRequests.size(), &allGpuRequests[0], MPI_STATUS_IGNORE);
 

@@ -63,6 +63,10 @@ private:
     bool gpuEnabled;
     bool gpuInfoGiven;
     bool cpuInfoGiven;
+    bool cpuRecvsPosted;
+    bool gpuRecvsPosted;
+    bool cpuStarted;
+    bool gpuStarted;
 
     // This refers to the overall domain border
     bool haveLeftBorder;
