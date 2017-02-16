@@ -32,7 +32,7 @@ public:
     cl::CommandQueue cl_queue;
     cl::Program cl_programs;
 
-    void setHaloWidth(int haloWidth) { this->haloWidth = haloWidth; }
+    void setHaloWidth(int haloWidth) { this->haloWidth = 1; }
     void setCPUData(double *dat);
     void setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight);
 
