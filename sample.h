@@ -5,11 +5,12 @@
 #include <fstream>
 #include <cmath>
 #include <iomanip>
+#include <chrono>
 
 class Sample {
 
 public:
-    explicit Sample();
+    explicit Sample(int localDimX, int localDimY, double portionGPU, int mpiNumX = 0, int mpiNumY = 0);
 
 private:
     int dimX, dimY, gpuDimX, gpuDimY;

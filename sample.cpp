@@ -21,15 +21,25 @@
  *
  *******************************/
 
-Sample::Sample() {
+Sample::Sample(int localDimX, int localDimY, double portionGPU, int mpiNumX, int mpiNumY) {
 
     // obtain MPI rank
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
     // the overall x and y dimension of the local partition
-    dimX = 20, dimY = 20;
-    gpuDimX = dimX*0.5, gpuDimY = dimY*0.5;
+    dimX = localDimX, dimY = localDimY;
+    gpuDimX = dimX*portionGPU, gpuDimY = dimY*portionGPU;
+
+    if(mpiNumX == 0 || mpiNumY == 0) {
+        mpiNumX = std::sqrt(mpiSize);
+        mpiNumY = mpiNumX;
+    }
+
+    if(mpiNumX*mpiNumY != mpiSize) {
+        std::cout << "ERROR: Total number of MPI ranks requested (" << mpiNumX << "x" << mpiNumY << ") doesn't match global MPI size of " << mpiSize << "... Abort!" << std::endl;
+        exit(1);
+    }
 
     Tausch tau(dimX, dimY, std::sqrt(mpiSize), std::sqrt(mpiSize), true);
 
@@ -70,6 +80,9 @@ Sample::Sample() {
     // currently redundant, can only be 1
     tau.setHaloWidth(1);
 
+    MPI_Barrier(MPI_COMM_WORLD);
+    auto tStart = std::chrono::steady_clock::now();
+
     // pass pointers to the two data containers
     tau.setCPUData(dat);
     tau.setGPUData(bufdat, gpuDimX, gpuDimY);
@@ -90,18 +103,13 @@ Sample::Sample() {
     // copy result from device back to host
     cl::copy(tau.cl_queue, bufdat, &gpudat__host[0], (&gpudat__host[gpunum-1])+1);
 
-    // output resulting data of one of the MPI ranks
-    if(mpiRank == 0) {
+    MPI_Barrier(MPI_COMM_WORLD);
+    auto tEnd = std::chrono::steady_clock::now();
 
-        std::cout << "-----------------------" << std::endl;
-        std::cout << "-----------------------" << std::endl;
-        std::cout << "-----------------------" << std::endl;
-        printCPU(dat);
-        std::cout << "-----------------------" << std::endl;
-        printGPU(gpudat__host);
+    double totalTime = std::chrono::duration<double, std::milli>(tEnd-tStart).count();
 
-    }
-
+    if(mpiRank == 0)
+        std::cout << " Total time required: " << totalTime << " ms" << std::endl;
 
     delete[] dat;
     delete[] gpudat__host;

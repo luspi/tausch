@@ -11,7 +11,47 @@ int main(int argc, char** argv) {
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
-    Sample sample;
+    int mpiRank = 0, mpiSize = 1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
+
+    int localDimX = 20, localDimY = 20;
+    double portionGPU = std::sqrt(0.5);
+    int mpiNumX = std::sqrt(mpiSize);
+    int mpiNumY = mpiNumX;
+
+    if(argc > 1) {
+        for(int i = 1; i < argc; ++i) {
+
+            if(argv[i] == std::string("-x") && i < argc-1)
+                localDimX = atoi(argv[i++]);
+            else if(argv[i] == std::string("-y") && i < argc-1)
+                localDimY = atoi(argv[i++]);
+            else if(argv[i] == std::string("-gpu") && i < argc-1)
+                portionGPU = atof(argv[i++]);
+            else if(argv[i] == std::string("-xy") && i < argc-1) {
+                localDimX = atoi(argv[i++]);
+                localDimY = localDimX;
+            } else if(argv[i] == std::string("-mpix") && i < argc-1)
+                mpiNumX = atoi(argv[i++]);
+            else if(argv[i] == std::string("-mpiy") && i < argc-1)
+                mpiNumY = atoi(argv[i++]);
+        }
+    }
+
+    if(mpiRank == 0) {
+
+        std::cout << std::endl
+                  << "localDimX  = " << localDimX << std::endl
+                  << "localDimY  = " << localDimY << std::endl
+                  << "portionGPU = " << portionGPU << std::endl
+                  << "mpiNumX    = " << mpiNumX << std::endl
+                  << "mpiNumY    = " << mpiNumY << std::endl
+                  << std::endl;
+
+    }
+
+    Sample sample(localDimX, localDimY, portionGPU, mpiNumX, mpiNumY);
 
     MPI_Finalize();
 

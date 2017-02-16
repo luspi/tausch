@@ -473,7 +473,7 @@ void Tausch::setupOpenCL() {
         cl_defaultDevice = all_devices[device_num[mpiRank%num]];
 
         // Give some feedback of the choice.
-        std::cout << "Rank " << mpiRank << " using OpenCL platform #" << platform_num[mpiRank%num] << " with device #" << device_num[mpiRank%num] << ": " << cl_defaultDevice.getInfo<CL_DEVICE_NAME>() << std::endl;
+//        std::cout << "Rank " << mpiRank << " using OpenCL platform #" << platform_num[mpiRank%num] << " with device #" << device_num[mpiRank%num] << ": " << cl_defaultDevice.getInfo<CL_DEVICE_NAME>() << std::endl;
 
         delete[] platform_num;
         delete[] device_num;
