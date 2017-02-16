@@ -94,7 +94,7 @@ Sample::Sample() {
 
     cl::copy(tau.cl_queue, bufdat, &gpudat__host[0], (&gpudat__host[gpunum-1])+1);
 
-    if(mpiRank == 3) {
+    if(mpiRank == 0) {
 
         std::cout << "-----------------------" << std::endl;
         std::cout << "-----------------------" << std::endl;
@@ -107,6 +107,7 @@ Sample::Sample() {
 
 
     delete[] dat;
+    delete[] gpudat__host;
 
 }
 

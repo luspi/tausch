@@ -41,18 +41,18 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool with
 }
 
 Tausch::~Tausch() {
-//    if(cpuToCpuSendBuffer != nullptr)
-//        delete[] cpuToCpuSendBuffer;
-//    if(cpuToCpuRecvBuffer != nullptr)
-//        delete[] cpuToCpuRecvBuffer;
-//    if(cpuToGpuSendBuffer != nullptr)
-//        delete[] cpuToGpuSendBuffer;
-//    if(cpuToGpuRecvBuffer != nullptr)
-//        delete[] cpuToGpuRecvBuffer;
-//    if(gpuToCpuSendBuffer != nullptr)
-//        delete[] gpuToCpuSendBuffer;
-//    if(gpuToCpuRecvBuffer != nullptr)
-//        delete[] gpuToCpuRecvBuffer;
+    if(cpuToCpuSendBuffer != nullptr)
+        delete[] cpuToCpuSendBuffer;
+    if(cpuToCpuRecvBuffer != nullptr)
+        delete[] cpuToCpuRecvBuffer;
+    if(cpuToGpuSendBuffer != nullptr)
+        delete[] cpuToGpuSendBuffer;
+    if(cpuToGpuRecvBuffer != nullptr)
+        delete[] cpuToGpuRecvBuffer;
+    if(gpuToCpuSendBuffer != nullptr)
+        delete[] gpuToCpuSendBuffer;
+    if(gpuToCpuRecvBuffer != nullptr)
+        delete[] gpuToCpuRecvBuffer;
 }
 
 void Tausch::setCPUData(double *dat) {
