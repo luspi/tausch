@@ -334,6 +334,7 @@ void Tausch::completeCpuTausch() {
 
     // wait for all the local send/recvs to complete before moving on
     MPI_Waitall(allCpuRequests.size(), &allCpuRequests[0], MPI_STATUS_IGNORE);
+    allCpuRequests.resize(0);
 
     // distribute received data into halo regions
 
@@ -407,6 +408,7 @@ void Tausch::completeGpuTausch() {
     }
 
     MPI_Waitall(allGpuRequests.size(), &allGpuRequests[0], MPI_STATUS_IGNORE);
+    allGpuRequests.resize(0);
 
     try {
 
