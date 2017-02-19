@@ -41,7 +41,7 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
         exit(1);
     }
 
-    Tausch tau(dimX, dimY, std::sqrt(mpiSize), std::sqrt(mpiSize), true);
+    Tausch tau(dimX, dimY, std::sqrt(mpiSize), std::sqrt(mpiSize), true, true);
 
     // the width of the halos
     int halowidth = 1;
