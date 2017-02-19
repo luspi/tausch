@@ -13,8 +13,10 @@
 class Tausch {
 
 public:
-    explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool withOpenCL = false);
+    explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool withOpenCL = false, bool setupOpenCL = false);
     ~Tausch();
+
+    void setOpenCLInfo(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue);
 
     void postCpuReceives();
     void postGpuReceives();
@@ -26,15 +28,17 @@ public:
     void completeGpuTausch();
     void startAndCompleteGpuTausch() { startGpuTausch(); completeGpuTausch(); }
 
-    cl::Platform cl_platform;
-    cl::Device cl_defaultDevice;
+    void syncCpuWaitsForGpu(bool iAmTheCPU);
+    void syncGpuWaitsForCpu(bool iAmTheCPU);
+    void syncCpuAndGpu(bool iAmTheCPU);
+
     cl::Context cl_context;
     cl::CommandQueue cl_queue;
-    cl::Program cl_programs;
 
     void setHaloWidth(int haloWidth) { this->haloWidth = 1; }
     void setCPUData(double *dat);
     void setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight);
+    bool isGpuEnabled() { return gpuEnabled; }
 
 private:
     int localDimX, localDimY;
@@ -49,6 +53,7 @@ private:
     int mpiNumX, mpiNumY;
 
     void setupOpenCL();
+    void compileKernels();
 
     double *cpuToCpuSendBuffer;
     double *cpuToCpuRecvBuffer;
@@ -56,6 +61,10 @@ private:
     double *cpuToGpuRecvBuffer;
     double *gpuToCpuSendBuffer;
     double *gpuToCpuRecvBuffer;
+
+    cl::Platform cl_platform;
+    cl::Device cl_defaultDevice;
+    cl::Program cl_programs;
 
     cl::Buffer cl_gpuToCpuSendBuffer;
     cl::Buffer cl_gpuToCpuRecvBuffer;

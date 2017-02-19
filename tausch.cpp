@@ -1,6 +1,6 @@
 #include "tausch.h"
 
-Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool withOpenCL) {
+Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool withOpenCL, bool setupOpenCL) {
 
     // get MPI info
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -32,8 +32,11 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool with
     cpuToCpuRecvBuffer = new double[2*localDimX+2*localDimY + 4]{};
 
     gpuEnabled = false;
-    if(withOpenCL)
-        setupOpenCL();
+    if(withOpenCL) {
+        cl_kernelLocalSize = 64;
+        if(setupOpenCL)
+            this->setupOpenCL();
+    }
 
     gpuInfoGiven = false;
     cpuInfoGiven = false;
@@ -46,17 +49,11 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool with
 }
 
 Tausch::~Tausch() {
-    if(cpuToCpuSendBuffer != nullptr)
         delete[] cpuToCpuSendBuffer;
-    if(cpuToCpuRecvBuffer != nullptr)
         delete[] cpuToCpuRecvBuffer;
-    if(cpuToGpuSendBuffer != nullptr)
         delete[] cpuToGpuSendBuffer;
-    if(cpuToGpuRecvBuffer != nullptr)
         delete[] cpuToGpuRecvBuffer;
-    if(gpuToCpuSendBuffer != nullptr)
         delete[] gpuToCpuSendBuffer;
-    if(gpuToCpuRecvBuffer != nullptr)
         delete[] gpuToCpuRecvBuffer;
 }
 
@@ -334,6 +331,7 @@ void Tausch::completeCpuTausch() {
 
     // wait for all the local send/recvs to complete before moving on
     MPI_Waitall(allCpuRequests.size(), &allCpuRequests[0], MPI_STATUS_IGNORE);
+    allCpuRequests.clear();
     allCpuRequests.resize(0);
 
     // distribute received data into halo regions
@@ -397,17 +395,13 @@ void Tausch::completeCpuTausch() {
 
 void Tausch::completeGpuTausch() {
 
-    if(!cpuStarted) {
-        std::cerr << "ERROR: No CPU exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
-
     if(!gpuStarted) {
         std::cerr << "ERROR: No GPU exchange has been started yet... Abort!" << std::endl;
         exit(1);
     }
 
     MPI_Waitall(allGpuRequests.size(), &allGpuRequests[0], MPI_STATUS_IGNORE);
+    allGpuRequests.clear();
     allGpuRequests.resize(0);
 
     try {
@@ -428,11 +422,124 @@ void Tausch::completeGpuTausch() {
 
 }
 
+void Tausch::syncCpuWaitsForGpu(bool iAmTheCPU) {
+
+    if(iAmTheCPU) {
+        int sync;
+        MPI_Recv(&sync, 1, MPI_INT, mpiRank, 101, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    } else {
+        int sync = 1;
+        MPI_Isend(&sync, 1, MPI_INT, mpiRank, 101, MPI_COMM_WORLD, nullptr);
+    }
+
+}
+
+void Tausch::syncGpuWaitsForCpu(bool iAmTheCPU) {
+
+    if(iAmTheCPU) {
+        int sync = 1;
+        MPI_Isend(&sync, 1, MPI_INT, mpiRank, 102, MPI_COMM_WORLD, nullptr);
+    } else {
+        int sync;
+        MPI_Recv(&sync, 1, MPI_INT, mpiRank, 102, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+
+}
+
+void Tausch::syncCpuAndGpu(bool iAmTheCPU) {
+
+    if(iAmTheCPU) {
+        int sync;
+        MPI_Recv(&sync, 1, MPI_INT, mpiRank, 103, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    } else {
+        int sync = 1;
+        MPI_Send(&sync, 1, MPI_INT, mpiRank, 103, MPI_COMM_WORLD);
+    }
+
+}
+
+void Tausch::setOpenCLInfo(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue) {
+
+    this->cl_defaultDevice = cl_defaultDevice;
+    this->cl_context = cl_context;
+    this->cl_queue = cl_queue;
+
+    gpuEnabled = true;
+
+    try {
+        compileKernels();
+    } catch(cl::Error error) {
+        std::cout << "[kernel compile] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+        if(error.err() == -11) {
+            std::string log = cl_programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl_defaultDevice);
+            std::cout << std::endl << " ******************** " << std::endl << " ** BUILD LOG" << std::endl << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** " << std::endl << std::endl;
+        }
+    }
+
+}
+
+void Tausch::compileKernels() {
+
+    std::string oclstr = R"d(
+kernel void collectHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
+                            global const double * restrict const vec, global double * sync) {
+    unsigned int current = get_global_id(0);
+    unsigned int maxNum = 2*(*dimX) + 2*(*dimY);
+    if(current >= maxNum)
+        return;
+    // left
+    if(current < *dimY) {
+        sync[current] = vec[(1+current)*(*dimX+2) +1];
+        return;
+    }
+    // right
+    if(current < 2*(*dimY)) {
+        sync[current] = vec[(2+(current-(*dimY)))*(*dimX+2) -2];
+        return;
+    }
+    // top
+    if(current < 2*(*dimY) + *dimX) {
+        sync[current] = vec[(*dimX+2)*(*dimY)+1 + current-(2*(*dimY))];
+        return;
+    }
+    // bottom
+    sync[current] = vec[1+(*dimX+2)+(current-2*(*dimY)-(*dimX))];
+}
+kernel void distributeHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
+                               global double * vec, global const double * restrict const sync) {
+    unsigned int current = get_global_id(0);
+    unsigned int maxNum = 2*(*dimX+2) + 2*(*dimY);
+    if(current >= maxNum)
+        return;
+    // left
+    if(current < *dimY) {
+        vec[(1+current)*(*dimX+2)] = sync[current];
+        return;
+    }
+    // right
+    if(current < 2*(*dimY)) {
+        vec[(2+(current-(*dimY)))*(*dimX+2) -1] = sync[current];
+        return;
+    }
+    // top
+    if(current < 2*(*dimY)+(*dimX+2)) {
+        vec[(*dimX+2)*(*dimY+1) + current-(2*(*dimY))] = sync[current];
+        return;
+    }
+    // bottom
+    vec[current-2*(*dimY)-(*dimX+2)] = sync[current];
+}
+                         )d";
+
+    cl_programs = cl::Program(cl_context, oclstr, false);
+    cl_programs.build("");
+
+}
+
 // Create OpenCL context and choose a device (if multiple devices are available, the MPI ranks will split up evenly)
 void Tausch::setupOpenCL() {
 
     gpuEnabled = true;
-    cl_kernelLocalSize = 64;
 
     try {
 
@@ -475,7 +582,7 @@ void Tausch::setupOpenCL() {
         cl_defaultDevice = all_devices[device_num[mpiRank%num]];
 
         // Give some feedback of the choice.
-//        std::cout << "Rank " << mpiRank << " using OpenCL platform #" << platform_num[mpiRank%num] << " with device #" << device_num[mpiRank%num] << ": " << cl_defaultDevice.getInfo<CL_DEVICE_NAME>() << std::endl;
+        std::cout << "Rank " << mpiRank << " using OpenCL platform #" << platform_num[mpiRank%num] << " with device #" << device_num[mpiRank%num] << ": " << cl_defaultDevice.getInfo<CL_DEVICE_NAME>() << std::endl;
 
         delete[] platform_num;
         delete[] device_num;
@@ -485,16 +592,7 @@ void Tausch::setupOpenCL() {
         cl_queue = cl::CommandQueue(cl_context,cl_defaultDevice);
 
         // The OpenCL kernel
-        std::ifstream cl_file(std::string(SOURCEDIR) + "/kernels.cl");
-        std::string str;
-        cl_file.seekg(0, std::ios::end);
-        str.reserve(cl_file.tellg());
-        cl_file.seekg(0, std::ios::beg);
-        str.assign((std::istreambuf_iterator<char>(cl_file)), std::istreambuf_iterator<char>());
-
-        // Create program and build
-        cl_programs = cl::Program(cl_context, str, false);
-        cl_programs.build("");
+        compileKernels();
 
     } catch(cl::Error error) {
         std::cout << "[setup] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;

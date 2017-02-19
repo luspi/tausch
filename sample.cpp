@@ -87,11 +87,11 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
     tau.setCPUData(dat);
     tau.setGPUData(bufdat, gpuDimX, gpuDimY);
 
-    // post the receives
-    tau.postCpuReceives();
-    tau.postGpuReceives();
-
     for(int run = 0; run < loops; ++run) {
+
+        // post the receives
+        tau.postCpuReceives();
+        tau.postGpuReceives();
 
         // initiate sending of the data
         tau.startCpuTausch();
