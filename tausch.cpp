@@ -143,16 +143,16 @@ void Tausch::postCpuReceives() {
             exit(1);
         }
 
-        MPI_Irecv(&cpuToGpuRecvBuffer[0], gpuWidth, MPI_DOUBLE, mpiRank, 10, MPI_COMM_WORLD, &cpuToGpuLeftRecvRequest);
+        MPI_Irecv(&cpuToGpuRecvBuffer[0], gpuHeight, MPI_DOUBLE, mpiRank, 10, MPI_COMM_WORLD, &cpuToGpuLeftRecvRequest);
         allCpuRequests.push_back(cpuToGpuLeftRecvRequest);
 
-        MPI_Irecv(&cpuToGpuRecvBuffer[gpuWidth], gpuWidth, MPI_DOUBLE, mpiRank, 12, MPI_COMM_WORLD, &cpuToGpuRightRecvRequest);
+        MPI_Irecv(&cpuToGpuRecvBuffer[gpuHeight], gpuHeight, MPI_DOUBLE, mpiRank, 12, MPI_COMM_WORLD, &cpuToGpuRightRecvRequest);
         allCpuRequests.push_back(cpuToGpuRightRecvRequest);
 
-        MPI_Irecv(&cpuToGpuRecvBuffer[2*gpuWidth], gpuHeight, MPI_DOUBLE, mpiRank, 11, MPI_COMM_WORLD, &cpuToGpuTopRecvRequest);
+        MPI_Irecv(&cpuToGpuRecvBuffer[2*gpuHeight], gpuWidth, MPI_DOUBLE, mpiRank, 11, MPI_COMM_WORLD, &cpuToGpuTopRecvRequest);
         allCpuRequests.push_back(cpuToGpuTopRecvRequest);
 
-        MPI_Irecv(&cpuToGpuRecvBuffer[2*gpuWidth + gpuHeight], gpuHeight, MPI_DOUBLE, mpiRank, 13, MPI_COMM_WORLD, &cpuToGpuBottomRecvRequest);
+        MPI_Irecv(&cpuToGpuRecvBuffer[2*gpuHeight + gpuWidth], gpuWidth, MPI_DOUBLE, mpiRank, 13, MPI_COMM_WORLD, &cpuToGpuBottomRecvRequest);
         allCpuRequests.push_back(cpuToGpuBottomRecvRequest);
 
     }
@@ -167,8 +167,6 @@ void Tausch::postGpuReceives() {
     }
 
     gpuRecvsPosted = true;
-
-    MPI_Request req;
 
     MPI_Irecv(&gpuToCpuRecvBuffer[0], gpuHeight, MPI_DOUBLE, mpiRank, 14, MPI_COMM_WORLD, &gpuToCpuLeftRecvRequest);
     allGpuRequests.push_back(gpuToCpuLeftRecvRequest);
@@ -270,7 +268,7 @@ void Tausch::startCpuTausch() {
         MPI_Isend(&cpuToGpuSendBuffer[2*gpuHeight], gpuWidth+2, MPI_DOUBLE, mpiRank, 15, MPI_COMM_WORLD, &cpuToGpuTopSendRequest);
         allCpuRequests.push_back(cpuToGpuTopSendRequest);
         // bottom
-        for(int i = 0; i < gpuHeight+2; ++ i)
+        for(int i = 0; i < gpuWidth+2; ++ i)
             cpuToGpuSendBuffer[2*gpuHeight+gpuWidth+2 + i] = cpuData[((localDimY-gpuHeight)/2)*(localDimX+2) + (localDimX-gpuWidth)/2 + i];
         MPI_Isend(&cpuToGpuSendBuffer[2*gpuHeight+gpuWidth+2], gpuWidth+2, MPI_DOUBLE, mpiRank, 17, MPI_COMM_WORLD, &cpuToGpuBottomSendRequest);
         allCpuRequests.push_back(cpuToGpuBottomSendRequest);
@@ -383,13 +381,10 @@ void Tausch::completeCpuTausch() {
         for(int i = 0; i < gpuWidth; ++ i)
             cpuData[((localDimY-gpuHeight)/2 +gpuHeight)*(localDimX+2) + (localDimX-gpuWidth)/2 + i+1] = cpuToGpuRecvBuffer[2*gpuHeight + i];
         // bottom
-        for(int i = 0; i < gpuHeight; ++ i)
+        for(int i = 0; i < gpuWidth; ++ i)
             cpuData[((localDimY-gpuHeight)/2 +1)*(localDimX+2) + (localDimX-gpuWidth)/2 + i+1] = cpuToGpuRecvBuffer[2*gpuHeight+gpuWidth + i];
 
     }
-
-    // left
-//    for(int i = 0; i < gpuWidth; ++i)
 
 }
 
@@ -410,7 +405,7 @@ void Tausch::completeGpuTausch() {
 
         auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
 
-        int globalSize = ((2*gpuWidth + 2*gpuHeight)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = ((2*(gpuWidth+2) + 2*gpuHeight)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_distributeHaloData(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
                                   cl_gpuWidth, cl_gpuHeight, gpuData, cl_gpuToCpuRecvBuffer);

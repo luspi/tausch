@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-    int localDimX = 20, localDimY = 20;
+    int localDimX = 25, localDimY = 15;
     double portionGPU = std::sqrt(0.5);
     int mpiNumX = std::sqrt(mpiSize);
     int mpiNumY = mpiNumX;

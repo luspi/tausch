@@ -50,20 +50,20 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
     int num = (dimX+2)*(dimY+2);
     double *dat = new double[num]{};
 
-    for(int i = 0; i < dimY; ++i)
-        for(int j = 0; j < dimX; ++j)
+    for(int j = 0; j < dimY; ++j)
+        for(int i = 0; i < dimX; ++i)
             if(!(i >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
                && j >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY))
-                dat[(i+1)*(dimX+2) + j+1] = i*dimX+j;
+                dat[(j+1)*(dimX+2) + i+1] = j*dimX+i;
 
 
     // how many points only on the device and an OpenCL buffer for them
     int gpunum = (gpuDimX+2)*(gpuDimY+2);
     double *gpudat__host = new double[gpunum]{};
 
-    for(int i = 0; i < gpuDimY; ++i)
-        for(int j = 0; j < gpuDimX; ++j)
-            gpudat__host[(i+1)*(gpuDimX+2) + j+1] = i*gpuDimX+j;
+    for(int j = 0; j < gpuDimY; ++j)
+        for(int i = 0; i < gpuDimX; ++i)
+            gpudat__host[(j+1)*(gpuDimX+2) + i+1] = j*gpuDimX+i;
 
     cl::Buffer bufdat;
 
@@ -130,14 +130,14 @@ void Sample::printCPU(double *dat) {
 
     std::stringstream ss;
 
-    for(int i = 0; i < dimY+2; ++i) {
+    for(int j = 0; j < dimY+2; ++j) {
         std:: stringstream tmp;
-        for(int j = 0; j < dimX+2; ++j) {
+        for(int i = 0; i < dimX+2; ++i) {
             if(i-1 > (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
                && j-1 > (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY)
                 tmp << std::setw(3) << "    ";
             else
-                tmp << std::setw(3) << dat[i*(dimX+2) + j] << " ";
+                tmp << std::setw(3) << dat[j*(dimX+2) + i] << " ";
         }
         tmp << std::endl;
         std::string str = ss.str();
