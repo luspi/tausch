@@ -10,7 +10,7 @@
 class Sample {
 
 public:
-    explicit Sample(int localDimX, int localDimY, double portionGPU, int loops, int mpiNumX = 0, int mpiNumY = 0);
+    explicit Sample(int localDimX, int localDimY, double portionGPU, int loops, int mpiNumX = 0, int mpiNumY = 0, bool cpuonly = false);
 
 private:
     int dimX, dimY, gpuDimX, gpuDimY;

@@ -21,7 +21,7 @@
  *
  *******************************/
 
-Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int mpiNumX, int mpiNumY) {
+Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int mpiNumX, int mpiNumY, bool cpuonly) {
 
     // obtain MPI rank
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -41,7 +41,7 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
         exit(1);
     }
 
-    Tausch tau(dimX, dimY, std::sqrt(mpiSize), std::sqrt(mpiSize), true, true);
+    Tausch tau(dimX, dimY, std::sqrt(mpiSize), std::sqrt(mpiSize), !cpuonly, true);
 
     // the width of the halos
     int halowidth = 1;

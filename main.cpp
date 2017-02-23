@@ -20,6 +20,7 @@ int main(int argc, char** argv) {
     int mpiNumX = std::sqrt(mpiSize);
     int mpiNumY = mpiNumX;
     int loops = 1;
+    bool cpuonly = false;
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {
@@ -39,6 +40,8 @@ int main(int argc, char** argv) {
                 mpiNumY = atoi(argv[++i]);
             else if(argv[i] == std::string("-num") && i < argc-1)
                 loops = atoi(argv[++i]);
+            else if(argv[i] == std::string("-cpu") && i < argc-1)
+                cpuonly = true;
         }
     }
 
@@ -54,7 +57,7 @@ int main(int argc, char** argv) {
 
     }
 
-    Sample sample(localDimX, localDimY, portionGPU, loops, mpiNumX, mpiNumY);
+    Sample sample(localDimX, localDimY, portionGPU, loops, mpiNumX, mpiNumY, cpuonly);
 
     MPI_Finalize();
 
