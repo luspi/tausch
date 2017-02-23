@@ -65,17 +65,21 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
         for(int i = 0; i < gpuDimX; ++i)
             gpudat__host[(j+1)*(gpuDimX+2) + i+1] = j*gpuDimX+i;
 
+
     cl::Buffer bufdat;
 
-    try {
+    if(!cpuonly) {
 
-        bufdat = cl::Buffer(tau.cl_context, &gpudat__host[0], (&gpudat__host[gpunum-1])+1, false);
+        try {
 
-    } catch(cl::Error error) {
-        std::cout << "[sample] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
-        exit(1);
+            bufdat = cl::Buffer(tau.cl_context, &gpudat__host[0], (&gpudat__host[gpunum-1])+1, false);
+
+        } catch(cl::Error error) {
+            std::cout << "[sample] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+            exit(1);
+        }
+
     }
-
 
     // currently redundant, can only be 1
     tau.setHaloWidth(1);
@@ -85,21 +89,25 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
 
     // pass pointers to the two data containers
     tau.setCPUData(dat);
-    tau.setGPUData(bufdat, gpuDimX, gpuDimY);
+    if(!cpuonly)
+        tau.setGPUData(bufdat, gpuDimX, gpuDimY);
 
     for(int run = 0; run < loops; ++run) {
 
         // post the receives
         tau.postCpuReceives();
-        tau.postGpuReceives();
+        if(!cpuonly)
+            tau.postGpuReceives();
 
         // initiate sending of the data
         tau.startCpuTausch();
-        tau.startGpuTausch();
+        if(!cpuonly)
+            tau.startGpuTausch();
 
         // Wait for communication to be finished and distribute result
         tau.completeCpuTausch();
-        tau.completeGpuTausch();
+        if(!cpuonly)
+            tau.completeGpuTausch();
 
     }
 

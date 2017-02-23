@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
                 mpiNumY = atoi(argv[++i]);
             else if(argv[i] == std::string("-num") && i < argc-1)
                 loops = atoi(argv[++i]);
-            else if(argv[i] == std::string("-cpu") && i < argc-1)
+            else if(argv[i] == std::string("-cpu"))
                 cpuonly = true;
         }
     }
