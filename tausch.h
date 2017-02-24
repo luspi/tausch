@@ -12,6 +12,14 @@
 
 class Tausch {
 
+    enum {
+        Left = 0,
+        Right,
+        Top,
+        Bottom
+    };
+    typedef int Edge;
+
 public:
     explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool withOpenCL = false, bool setupOpenCL = false);
     ~Tausch();
