@@ -22,7 +22,7 @@ class Tausch {
     typedef int Edge;
 
 public:
-    explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool withOpenCL = false, bool setupOpenCL = false);
+    explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool withOpenCL = false, bool setupOpenCL = false, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
     ~Tausch();
 
     void setOpenCLInfo(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue);
@@ -61,6 +61,8 @@ public:
     void setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight);
     bool isGpuEnabled() { return gpuEnabled; }
 
+    void EveryoneOutput(const std::string &inMessage);
+
 private:
     int localDimX, localDimY;
     double *cpuData;
@@ -73,7 +75,7 @@ private:
     int mpiRank, mpiSize;
     int mpiNumX, mpiNumY;
 
-    void setupOpenCL();
+    void setupOpenCL(bool giveOpenCLDeviceName);
     void compileKernels();
 
     double *cpuToCpuSendBuffer;
@@ -92,18 +94,14 @@ private:
     bool gpuInfoGiven;
     bool cpuInfoGiven;
     bool cpuRecvsPosted;
-    bool gpuRecvsPosted;
 
     bool cpuLeftStarted;
     bool cpuRightStarted;
     bool cpuTopStarted;
     bool cpuBottomStarted;
-    bool cpuToGpuLeftStarted;
-    bool cpuToGpuRightStarted;
-    bool cpuToGpuTopStarted;
-    bool cpuToGpuBottomStarted;
 
-    bool gpuStarted;
+    bool cpuToGpuStarted;
+    bool gpuToCpuStarted;
 
     // This refers to the overall domain border
     bool haveLeftBorder;
