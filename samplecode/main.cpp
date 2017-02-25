@@ -4,11 +4,11 @@
 int main(int argc, char** argv) {
 
     int provided;
-    MPI_Init_thread(&argc,&argv,MPI_THREAD_MULTIPLE,&provided);
+    MPI_Init_thread(&argc,&argv,MPI_THREAD_SERIALIZED,&provided);
 
     // If this feature is not available -> abort
-    if(provided != MPI_THREAD_MULTIPLE){
-        std::cout << "ERROR: The MPI library does not have full thread support" << std::endl;
+    if(provided != MPI_THREAD_SERIALIZED){
+        std::cout << "ERROR: The MPI library does not have full thread support at level MPI_THREAD_SERIALIZED... Abort!" << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
