@@ -7,6 +7,7 @@
 #include <cmath>
 #include <sstream>
 #include <iostream>
+#include <thread>
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 
@@ -29,12 +30,24 @@ public:
     void postCpuReceives();
     void postGpuReceives();
 
-    void startCpuTausch();
-    void completeCpuTausch();
-    void startAndCompleteCpuTausch() { startCpuTausch(); completeCpuTausch(); }
-    void startGpuTausch();
-    void completeGpuTausch();
-    void startAndCompleteGpuTausch() { startGpuTausch(); completeGpuTausch(); }
+    void performCpuToCpuTausch() { startCpuTauschLeft(); startCpuTauschRight(); completeCpuTauschLeft(); completeCpuTauschRight();
+                              startCpuTauschTop(); startCpuTauschBottom(); completeCpuTauschTop(); completeCpuTauschBottom(); }
+
+    void startCpuToGpuTausch();
+    void startGpuToCpuTausch();
+
+    void completeCpuToGpuTausch();
+    void completeGpuToCpuTausch();
+
+    void startCpuTauschLeft();
+    void startCpuTauschRight();
+    void startCpuTauschTop();
+    void startCpuTauschBottom();
+
+    void completeCpuTauschLeft();
+    void completeCpuTauschRight();
+    void completeCpuTauschTop();
+    void completeCpuTauschBottom();
 
     void syncCpuWaitsForGpu(bool iAmTheCPU);
     void syncGpuWaitsForCpu(bool iAmTheCPU);
@@ -65,24 +78,31 @@ private:
 
     double *cpuToCpuSendBuffer;
     double *cpuToCpuRecvBuffer;
-    double *cpuToGpuSendBuffer;
-    double *cpuToGpuRecvBuffer;
-    double *gpuToCpuSendBuffer;
-    double *gpuToCpuRecvBuffer;
+
+    double *cpuToGpuBuffer;
+    double *gpuToCpuBuffer;
 
     cl::Platform cl_platform;
     cl::Device cl_defaultDevice;
     cl::Program cl_programs;
 
-    cl::Buffer cl_gpuToCpuSendBuffer;
-    cl::Buffer cl_gpuToCpuRecvBuffer;
+    cl::Buffer cl_gpuToCpuBuffer;
 
     bool gpuEnabled;
     bool gpuInfoGiven;
     bool cpuInfoGiven;
     bool cpuRecvsPosted;
     bool gpuRecvsPosted;
-    bool cpuStarted;
+
+    bool cpuLeftStarted;
+    bool cpuRightStarted;
+    bool cpuTopStarted;
+    bool cpuBottomStarted;
+    bool cpuToGpuLeftStarted;
+    bool cpuToGpuRightStarted;
+    bool cpuToGpuTopStarted;
+    bool cpuToGpuBottomStarted;
+
     bool gpuStarted;
 
     // This refers to the overall domain border
@@ -97,9 +117,6 @@ private:
     bool haveTopBoundary;
     bool haveBottomBoundary;
 
-    std::vector<MPI_Request> allCpuRequests;
-    std::vector<MPI_Request> allGpuRequests;
-
     int cl_kernelLocalSize;
 
 
@@ -113,33 +130,8 @@ private:
     MPI_Request cpuToCpuTopRecvRequest;
     MPI_Request cpuToCpuBottomRecvRequest;
 
-    MPI_Request cpuToCpuBottomLeftSendRequest;
-    MPI_Request cpuToCpuBottomRightSendRequest;
-    MPI_Request cpuToCpuTopLeftSendRequest;
-    MPI_Request cpuToCpuTopRightSendRequest;
-    MPI_Request cpuToCpuBottomLeftRecvRequest;
-    MPI_Request cpuToCpuBottomRightRecvRequest;
-    MPI_Request cpuToCpuTopLeftRecvRequest;
-    MPI_Request cpuToCpuTopRightRecvRequest;
-
-    MPI_Request cpuToGpuLeftSendRequest;
-    MPI_Request cpuToGpuRightSendRequest;
-    MPI_Request cpuToGpuTopSendRequest;
-    MPI_Request cpuToGpuBottomSendRequest;
-    MPI_Request cpuToGpuLeftRecvRequest;
-    MPI_Request cpuToGpuRightRecvRequest;
-    MPI_Request cpuToGpuTopRecvRequest;
-    MPI_Request cpuToGpuBottomRecvRequest;
-
-    MPI_Request gpuToCpuLeftSendRequest;
-    MPI_Request gpuToCpuRightSendRequest;
-    MPI_Request gpuToCpuTopSendRequest;
-    MPI_Request gpuToCpuBottomSendRequest;
-    MPI_Request gpuToCpuLeftRecvRequest;
-    MPI_Request gpuToCpuRightRecvRequest;
-    MPI_Request gpuToCpuTopRecvRequest;
-    MPI_Request gpuToCpuBottomRecvRequest;
-
+    int syncpointCpu;
+    int syncpointGpu;
 
 };
 

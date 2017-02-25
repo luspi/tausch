@@ -28,7 +28,6 @@ add_library(tausch SHARED "tausch.cpp")
 install(TARGETS ${PROJECT_NAME} DESTINATION "lib")
 
 # Install library headers
-file(GLOB HEADERS "tausch.h")
 install(FILES "tausch.h" DESTINATION "include")
 
 # link libraries

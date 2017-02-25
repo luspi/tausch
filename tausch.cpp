@@ -23,13 +23,8 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool with
     haveTopBoundary = !haveTopBorder;
     haveBottomBoundary = !haveBottomBorder;
 
-    cpuToGpuSendBuffer = nullptr;
-    cpuToGpuRecvBuffer = nullptr;
-    gpuToCpuSendBuffer = nullptr;
-    gpuToCpuRecvBuffer = nullptr;
-
-    cpuToCpuSendBuffer = new double[2*localDimX+2*localDimY + 4]{};
-    cpuToCpuRecvBuffer = new double[2*localDimX+2*localDimY + 4]{};
+    cpuToCpuSendBuffer = new double[2*(localDimX+2)+2*(localDimY+2)]{};
+    cpuToCpuRecvBuffer = new double[2*(localDimX+2)+2*(localDimY+2)]{};
 
     gpuEnabled = false;
     if(withOpenCL) {
@@ -43,18 +38,27 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool with
 
     cpuRecvsPosted = false;
     gpuRecvsPosted = false;
-    cpuStarted = false;
     gpuStarted = false;
+
+    cpuLeftStarted = false;
+    cpuRightStarted = false;
+    cpuTopStarted = false;
+    cpuBottomStarted = false;
+    cpuToGpuLeftStarted = false;
+    cpuToGpuRightStarted = false;
+    cpuToGpuTopStarted = false;
+    cpuToGpuBottomStarted = false;
+
+    syncpointCpu = 0;
+    syncpointGpu = 0;
 
 }
 
 Tausch::~Tausch() {
         delete[] cpuToCpuSendBuffer;
         delete[] cpuToCpuRecvBuffer;
-        delete[] cpuToGpuSendBuffer;
-        delete[] cpuToGpuRecvBuffer;
-        delete[] gpuToCpuSendBuffer;
-        delete[] gpuToCpuRecvBuffer;
+        delete[] cpuToGpuBuffer;
+        delete[] gpuToCpuBuffer;
 }
 
 void Tausch::setCPUData(double *dat) {
@@ -69,21 +73,16 @@ void Tausch::setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight) {
     }
 
     gpuInfoGiven = true;
-    this->haloWidth = haloWidth;
     gpuData = dat;
     this->gpuWidth = gpuWidth;
     this->gpuHeight = gpuHeight;
 
-    cpuToGpuSendBuffer = new double[2*(gpuWidth+2) + 2*gpuHeight]{};
-    cpuToGpuRecvBuffer = new double[2*gpuWidth + 2*gpuHeight]{};
-    gpuToCpuSendBuffer = new double[2*gpuWidth + 2*gpuHeight]{};
-    gpuToCpuRecvBuffer = new double[2*(gpuWidth+2) + 2*gpuHeight]{};
+    cpuToGpuBuffer = new double[2*(gpuWidth+2) + 2*gpuHeight]{};
+    gpuToCpuBuffer = new double[2*gpuWidth + 2*gpuHeight]{};
 
     try {
-        cl_gpuToCpuSendBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuWidth+2*gpuHeight)*sizeof(double));
-        cl_gpuToCpuRecvBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*(gpuWidth+2)+2*gpuHeight)*sizeof(double));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuSendBuffer, 0, 0, (2*gpuWidth + 2*gpuHeight)*sizeof(double));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuRecvBuffer, 0, 0, (2*(gpuWidth+2) + 2*gpuHeight)*sizeof(double));
+        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*(gpuWidth+2)+2*gpuHeight)*sizeof(double));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*(gpuWidth+2) + 2*gpuHeight)*sizeof(double));
         cl_gpuWidth = cl::Buffer(cl_context, &gpuWidth, (&gpuWidth)+1, true);
         cl_gpuHeight = cl::Buffer(cl_context, &gpuHeight, (&gpuHeight)+1, true);
     } catch(cl::Error error) {
@@ -102,187 +101,113 @@ void Tausch::postCpuReceives() {
 
     cpuRecvsPosted = true;
 
-    if(haveLeftBoundary) {
-        MPI_Irecv(&cpuToCpuRecvBuffer[0], localDimY, MPI_DOUBLE, mpiRank-1, 0, MPI_COMM_WORLD, &cpuToCpuLeftRecvRequest);
-        allCpuRequests.push_back(cpuToCpuLeftRecvRequest);
-    }
-    if(haveRightBoundary) {
-        MPI_Irecv(&cpuToCpuRecvBuffer[localDimY], localDimY, MPI_DOUBLE, mpiRank+1, 2, MPI_COMM_WORLD, &cpuToCpuRightRecvRequest);
-        allCpuRequests.push_back(cpuToCpuRightRecvRequest);
-    }
-    if(haveTopBoundary) {
-        MPI_Irecv(&cpuToCpuRecvBuffer[2*localDimY], localDimX, MPI_DOUBLE, mpiRank+mpiNumX, 1, MPI_COMM_WORLD, &cpuToCpuTopRecvRequest);
-        allCpuRequests.push_back(cpuToCpuTopRecvRequest);
-    }
-    if(haveBottomBoundary) {
-        MPI_Irecv(&cpuToCpuRecvBuffer[2*localDimY+localDimX], localDimX, MPI_DOUBLE, mpiRank-mpiNumX, 3, MPI_COMM_WORLD, &cpuToCpuBottomRecvRequest);
-        allCpuRequests.push_back(cpuToCpuBottomRecvRequest);
-    }
+    if(haveLeftBoundary)
+        MPI_Irecv(&cpuToCpuRecvBuffer[0], localDimY+2, MPI_DOUBLE, mpiRank-1, 0, MPI_COMM_WORLD, &cpuToCpuLeftRecvRequest);
 
-    if(haveLeftBoundary && haveBottomBoundary) {
-        MPI_Irecv(&cpuToCpuRecvBuffer[2*localDimY+2*localDimX], 1, MPI_DOUBLE, mpiRank-mpiNumX-1, 4, MPI_COMM_WORLD, &cpuToCpuBottomLeftRecvRequest);
-        allCpuRequests.push_back(cpuToCpuBottomLeftRecvRequest);
-    }
-    if(haveRightBoundary && haveBottomBoundary) {
-        MPI_Irecv(&cpuToCpuRecvBuffer[2*localDimY+2*localDimX +1], 1, MPI_DOUBLE, mpiRank-mpiNumX+1, 5, MPI_COMM_WORLD, &cpuToCpuBottomRightRecvRequest);
-        allCpuRequests.push_back(cpuToCpuBottomRightRecvRequest);
-    }
-    if(haveLeftBoundary && haveTopBoundary) {
-        MPI_Irecv(&cpuToCpuRecvBuffer[2*localDimY+2*localDimX +2], 1, MPI_DOUBLE, mpiRank+mpiNumX-1, 6, MPI_COMM_WORLD, &cpuToCpuTopLeftRecvRequest);
-        allCpuRequests.push_back(cpuToCpuTopLeftRecvRequest);
-    }
-    if(haveRightBoundary && haveTopBoundary) {
-        MPI_Irecv(&cpuToCpuRecvBuffer[2*localDimY+2*localDimX+3], 1, MPI_DOUBLE, mpiRank+mpiNumX+1, 7, MPI_COMM_WORLD, &cpuToCpuTopRightRecvRequest);
-        allCpuRequests.push_back(cpuToCpuTopRightRecvRequest);
-    }
+    if(haveRightBoundary)
+        MPI_Irecv(&cpuToCpuRecvBuffer[localDimY+2], localDimY+2, MPI_DOUBLE, mpiRank+1, 2, MPI_COMM_WORLD, &cpuToCpuRightRecvRequest);
 
-    if(gpuEnabled) {
+    if(haveTopBoundary)
+        MPI_Irecv(&cpuToCpuRecvBuffer[2*(localDimY+2)], localDimX+2, MPI_DOUBLE, mpiRank+mpiNumX, 1, MPI_COMM_WORLD, &cpuToCpuTopRecvRequest);
 
-        if(!gpuInfoGiven) {
-            std::cerr << "ERROR: GPU information not set! Did you call setGPUData()?" << std::endl;
-            exit(1);
-        }
+    if(haveBottomBoundary)
+        MPI_Irecv(&cpuToCpuRecvBuffer[2*(localDimY+2)+(localDimX+2)], localDimX+2, MPI_DOUBLE, mpiRank-mpiNumX, 3, MPI_COMM_WORLD, &cpuToCpuBottomRecvRequest);
 
-        MPI_Irecv(&cpuToGpuRecvBuffer[0], gpuHeight, MPI_DOUBLE, mpiRank, 10, MPI_COMM_WORLD, &cpuToGpuLeftRecvRequest);
-        allCpuRequests.push_back(cpuToGpuLeftRecvRequest);
-
-        MPI_Irecv(&cpuToGpuRecvBuffer[gpuHeight], gpuHeight, MPI_DOUBLE, mpiRank, 12, MPI_COMM_WORLD, &cpuToGpuRightRecvRequest);
-        allCpuRequests.push_back(cpuToGpuRightRecvRequest);
-
-        MPI_Irecv(&cpuToGpuRecvBuffer[2*gpuHeight], gpuWidth, MPI_DOUBLE, mpiRank, 11, MPI_COMM_WORLD, &cpuToGpuTopRecvRequest);
-        allCpuRequests.push_back(cpuToGpuTopRecvRequest);
-
-        MPI_Irecv(&cpuToGpuRecvBuffer[2*gpuHeight + gpuWidth], gpuWidth, MPI_DOUBLE, mpiRank, 13, MPI_COMM_WORLD, &cpuToGpuBottomRecvRequest);
-        allCpuRequests.push_back(cpuToGpuBottomRecvRequest);
-
-    }
 
 }
 
-void Tausch::postGpuReceives() {
-
-    if(!gpuInfoGiven) {
-        std::cerr << "ERROR: GPU information not set! Did you call setGPUData()? Abort!" << std::endl;
-        exit(1);
-    }
-
-    gpuRecvsPosted = true;
-
-    MPI_Irecv(&gpuToCpuRecvBuffer[0], gpuHeight, MPI_DOUBLE, mpiRank, 14, MPI_COMM_WORLD, &gpuToCpuLeftRecvRequest);
-    allGpuRequests.push_back(gpuToCpuLeftRecvRequest);
-
-    MPI_Irecv(&gpuToCpuRecvBuffer[gpuHeight], gpuHeight, MPI_DOUBLE, mpiRank, 16, MPI_COMM_WORLD, &gpuToCpuRightRecvRequest);
-    allGpuRequests.push_back(gpuToCpuRightRecvRequest);
-
-    MPI_Irecv(&gpuToCpuRecvBuffer[2*gpuHeight], gpuWidth+2, MPI_DOUBLE, mpiRank, 15, MPI_COMM_WORLD, &gpuToCpuTopRecvRequest);
-    allGpuRequests.push_back(gpuToCpuTopRecvRequest);
-
-    MPI_Irecv(&gpuToCpuRecvBuffer[2*gpuHeight + gpuWidth+2], gpuWidth+2, MPI_DOUBLE, mpiRank, 17, MPI_COMM_WORLD, &gpuToCpuBottomRecvRequest);
-    allGpuRequests.push_back(gpuToCpuBottomRecvRequest);
-
-}
-
-// Start creating sends and recvs for the halo data
-void Tausch::startCpuTausch() {
+void Tausch::startCpuTauschLeft() {
 
     if(!cpuRecvsPosted) {
         std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
         exit(1);
     }
 
-    cpuStarted = true;
+    cpuLeftStarted = true;
 
     // Left
     if(haveLeftBoundary) {
-        for(int i = 0; i < localDimY; ++i)
-            cpuToCpuSendBuffer[i] = cpuData[1+ (i+1)*(localDimX+2)];
-        MPI_Isend(&cpuToCpuSendBuffer[0], localDimY, MPI_DOUBLE, mpiRank-1, 2, MPI_COMM_WORLD, &cpuToCpuLeftSendRequest);
-        allCpuRequests.push_back(cpuToCpuLeftSendRequest);
-    }
-
-    // Right
-    if(haveRightBoundary) {
-        for(int i = 0; i < localDimY; ++i)
-            cpuToCpuSendBuffer[localDimY + i] = cpuData[(i+2)*(localDimX+2) -2];
-        MPI_Isend(&cpuToCpuSendBuffer[localDimY], localDimY, MPI_DOUBLE, mpiRank+1, 0, MPI_COMM_WORLD, &cpuToCpuRightSendRequest);
-        allCpuRequests.push_back(cpuToCpuRightSendRequest);
-    }
-
-    // Top
-    if(haveTopBoundary) {
-        for(int i = 0; i < localDimX; ++i)
-            cpuToCpuSendBuffer[2*localDimY + i] = cpuData[(localDimX+2)*localDimY+1 + i];
-        MPI_Isend(&cpuToCpuSendBuffer[2*localDimY], localDimX, MPI_DOUBLE, mpiRank+mpiNumX, 3, MPI_COMM_WORLD, &cpuToCpuTopSendRequest);
-        allCpuRequests.push_back(cpuToCpuTopSendRequest);
-    }
-
-    // Bottom
-    if(haveBottomBoundary) {
-        for(int i = 0; i < localDimX; ++i)
-            cpuToCpuSendBuffer[2*localDimY+localDimX + i] = cpuData[1+ localDimX+2 + i];
-        MPI_Isend(&cpuToCpuSendBuffer[2*localDimY+localDimX], localDimX, MPI_DOUBLE, mpiRank-mpiNumX, 1, MPI_COMM_WORLD, &cpuToCpuBottomSendRequest);
-        allCpuRequests.push_back(cpuToCpuBottomSendRequest);
-    }
-
-    if(haveLeftBoundary && haveBottomBoundary) {
-        cpuToCpuSendBuffer[2*localDimX+2*localDimY] = cpuData[1+localDimX+2];
-        MPI_Isend(&cpuToCpuSendBuffer[2*localDimX+2*localDimY], 1, MPI_DOUBLE, mpiRank-mpiNumX-1, 7, MPI_COMM_WORLD, &cpuToCpuBottomLeftSendRequest);
-        allCpuRequests.push_back(cpuToCpuBottomLeftSendRequest);
-    }
-    if(haveRightBoundary && haveBottomBoundary) {
-        cpuToCpuSendBuffer[2*localDimX+2*localDimY+1] = cpuData[localDimX+2 + localDimX];
-        MPI_Isend(&cpuToCpuSendBuffer[2*localDimX+2*localDimY+1], 1, MPI_DOUBLE, mpiRank-mpiNumX+1, 6, MPI_COMM_WORLD, &cpuToCpuBottomRightSendRequest);
-        allCpuRequests.push_back(cpuToCpuBottomRightSendRequest);
-    }
-    if(haveLeftBoundary && haveTopBoundary) {
-        cpuToCpuSendBuffer[2*localDimX+2*localDimY+2] = cpuData[(localDimX+2)*localDimY + 1];
-        MPI_Isend(&cpuToCpuSendBuffer[2*localDimX+2*localDimY+2], 1, MPI_DOUBLE, mpiRank+mpiNumX-1, 5, MPI_COMM_WORLD, &cpuToCpuTopLeftSendRequest);
-        allCpuRequests.push_back(cpuToCpuTopLeftSendRequest);
-    }
-    if(haveRightBoundary && haveTopBoundary) {
-        cpuToCpuSendBuffer[2*localDimX+2*localDimY+3] = cpuData[(localDimX+2)*localDimY + localDimX];
-        MPI_Isend(&cpuToCpuSendBuffer[2*localDimX+2*localDimY+3], 1, MPI_DOUBLE, mpiRank+mpiNumX+1, 4, MPI_COMM_WORLD, &cpuToCpuTopRightSendRequest);
-        allCpuRequests.push_back(cpuToCpuTopRightSendRequest);
-    }
-
-    if(gpuEnabled) {
-
-        if(!gpuRecvsPosted) {
-            std::cerr << "ERROR: No GPU Recvs have been posted yet... Abort!" << std::endl;
-            exit(1);
-        }
-
-        // left
-        for(int i = 0; i < gpuHeight; ++ i)
-            cpuToGpuSendBuffer[i] = cpuData[((localDimY-gpuHeight)/2 +i+1)*(localDimX+2) + (localDimX-gpuWidth)/2];
-        MPI_Isend(&cpuToGpuSendBuffer[0], gpuHeight, MPI_DOUBLE, mpiRank, 14, MPI_COMM_WORLD, &cpuToGpuLeftSendRequest);
-        allCpuRequests.push_back(cpuToGpuLeftSendRequest);
-        // right
-        for(int i = 0; i < gpuHeight; ++ i)
-            cpuToGpuSendBuffer[gpuHeight + i] = cpuData[((localDimY-gpuHeight)/2 +i+1)*(localDimX+2) + (localDimX-gpuWidth)/2 + gpuWidth+1];
-        MPI_Isend(&cpuToGpuSendBuffer[gpuHeight], gpuHeight, MPI_DOUBLE, mpiRank, 16, MPI_COMM_WORLD, &cpuToGpuRightSendRequest);
-        allCpuRequests.push_back(cpuToGpuRightSendRequest);
-        // top
-        for(int i = 0; i < gpuWidth+2; ++ i)
-            cpuToGpuSendBuffer[2*gpuHeight + i] = cpuData[((localDimY-gpuHeight)/2 +gpuHeight+1)*(localDimX+2) + (localDimX-gpuWidth)/2 + i];
-        MPI_Isend(&cpuToGpuSendBuffer[2*gpuHeight], gpuWidth+2, MPI_DOUBLE, mpiRank, 15, MPI_COMM_WORLD, &cpuToGpuTopSendRequest);
-        allCpuRequests.push_back(cpuToGpuTopSendRequest);
-        // bottom
-        for(int i = 0; i < gpuWidth+2; ++ i)
-            cpuToGpuSendBuffer[2*gpuHeight+gpuWidth+2 + i] = cpuData[((localDimY-gpuHeight)/2)*(localDimX+2) + (localDimX-gpuWidth)/2 + i];
-        MPI_Isend(&cpuToGpuSendBuffer[2*gpuHeight+gpuWidth+2], gpuWidth+2, MPI_DOUBLE, mpiRank, 17, MPI_COMM_WORLD, &cpuToGpuBottomSendRequest);
-        allCpuRequests.push_back(cpuToGpuBottomSendRequest);
-
+        for(int i = 0; i < localDimY+2; ++i)
+            cpuToCpuSendBuffer[i] = cpuData[1+ i*(localDimX+2)];
+        MPI_Isend(&cpuToCpuSendBuffer[0], localDimY+2, MPI_DOUBLE, mpiRank-1, 2, MPI_COMM_WORLD, &cpuToCpuLeftSendRequest);
     }
 
 }
 
-void Tausch::startGpuTausch() {
+void Tausch::startCpuTauschRight() {
 
-    if(!gpuRecvsPosted) {
-        std::cerr << "ERROR: No GPU Recvs have been posted yet... Abort!" << std::endl;
+    if(!cpuRecvsPosted) {
+        std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
         exit(1);
     }
+
+    cpuRightStarted = true;
+
+    // Right
+    if(haveRightBoundary) {
+        for(int i = 0; i < localDimY+2; ++i)
+            cpuToCpuSendBuffer[localDimY+2 + i] = cpuData[(i+1)*(localDimX+2) -2];
+        MPI_Isend(&cpuToCpuSendBuffer[localDimY+2], localDimY+2, MPI_DOUBLE, mpiRank+1, 0, MPI_COMM_WORLD, &cpuToCpuRightSendRequest);
+    }
+
+}
+
+void Tausch::startCpuTauschTop() {
+
+    if(!cpuRecvsPosted) {
+        std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    cpuTopStarted = true;
+
+    // Top
+    if(haveTopBoundary) {
+        for(int i = 0; i < localDimX+2; ++i)
+            cpuToCpuSendBuffer[2*(localDimY+2) + i] = cpuData[(localDimX+2)*localDimY + i];
+        MPI_Isend(&cpuToCpuSendBuffer[2*(localDimY+2)], localDimX+2, MPI_DOUBLE, mpiRank+mpiNumX, 3, MPI_COMM_WORLD, &cpuToCpuTopSendRequest);
+    }
+
+}
+
+void Tausch::startCpuTauschBottom() {
+
+    if(!cpuRecvsPosted) {
+        std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    cpuBottomStarted = true;
+
+    // Bottom
+    if(haveBottomBoundary) {
+        for(int i = 0; i < localDimX+2; ++i)
+            cpuToCpuSendBuffer[2*(localDimY+2)+(localDimX+2) + i] = cpuData[localDimX+2 + i];
+        MPI_Isend(&cpuToCpuSendBuffer[2*(localDimY+2)+(localDimX+2)], localDimX+2, MPI_DOUBLE, mpiRank-mpiNumX, 1, MPI_COMM_WORLD, &cpuToCpuBottomSendRequest);
+    }
+
+}
+
+void Tausch::startCpuToGpuTausch() {
+
+    gpuStarted = true;
+
+    // left
+    for(int i = 0; i < gpuHeight; ++ i)
+        cpuToGpuBuffer[i] = cpuData[((localDimY-gpuHeight)/2 +i+1)*(localDimX+2) + (localDimX-gpuWidth)/2];
+    // right
+    for(int i = 0; i < gpuHeight; ++ i)
+        cpuToGpuBuffer[gpuHeight + i] = cpuData[((localDimY-gpuHeight)/2 +i+1)*(localDimX+2) + (localDimX-gpuWidth)/2 + gpuWidth+1];
+    // top
+    for(int i = 0; i < gpuWidth+2; ++ i)
+        cpuToGpuBuffer[2*gpuHeight + i] = cpuData[((localDimY-gpuHeight)/2 +gpuHeight+1)*(localDimX+2) + (localDimX-gpuWidth)/2 + i];
+    // bottom
+    for(int i = 0; i < gpuWidth+2; ++ i)
+        cpuToGpuBuffer[2*gpuHeight+gpuWidth+2 + i] = cpuData[((localDimY-gpuHeight)/2)*(localDimX+2) + (localDimX-gpuWidth)/2 + i];
+
+}
+
+void Tausch::startGpuToCpuTausch() {
 
     gpuStarted = true;
 
@@ -293,122 +218,128 @@ void Tausch::startGpuTausch() {
         int globalSize = ((2*gpuWidth+2*gpuHeight)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                           cl_gpuWidth, cl_gpuHeight, gpuData, cl_gpuToCpuSendBuffer);
+                           cl_gpuWidth, cl_gpuHeight, gpuData, cl_gpuToCpuBuffer);
 
-        cl::copy(cl_queue, cl_gpuToCpuSendBuffer, &gpuToCpuSendBuffer[0], (&gpuToCpuSendBuffer[2*gpuWidth+2*gpuHeight-1])+1);
+        cl::copy(cl_queue, cl_gpuToCpuBuffer, &gpuToCpuBuffer[0], (&gpuToCpuBuffer[2*gpuWidth+2*gpuHeight-1])+1);
 
     } catch(cl::Error error) {
         std::cout << "[kernel collectHalo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
     }
 
-    // left
-    MPI_Isend(&gpuToCpuSendBuffer[0], gpuHeight, MPI_DOUBLE, mpiRank, 10, MPI_COMM_WORLD, &gpuToCpuLeftSendRequest);
-    allGpuRequests.push_back(gpuToCpuLeftSendRequest);
-
-    // right
-    MPI_Isend(&gpuToCpuSendBuffer[gpuHeight], gpuHeight, MPI_DOUBLE, mpiRank, 12, MPI_COMM_WORLD, &gpuToCpuRightSendRequest);
-    allGpuRequests.push_back(gpuToCpuRightSendRequest);
-
-    // top
-    MPI_Isend(&gpuToCpuSendBuffer[2*gpuHeight], gpuWidth, MPI_DOUBLE, mpiRank, 11, MPI_COMM_WORLD, &gpuToCpuTopSendRequest);
-    allGpuRequests.push_back(gpuToCpuTopSendRequest);
-
-    // bottom
-    MPI_Isend(&gpuToCpuSendBuffer[2*gpuHeight + gpuWidth], gpuWidth, MPI_DOUBLE, mpiRank, 13, MPI_COMM_WORLD, &gpuToCpuBottomSendRequest);
-    allGpuRequests.push_back(gpuToCpuBottomSendRequest);
-
 }
 
-void Tausch::completeCpuTausch() {
+void Tausch::completeCpuTauschLeft() {
 
-    if(!cpuStarted) {
-        std::cerr << "ERROR: No CPU exchange has been started yet... Abort!" << std::endl;
+    if(!cpuLeftStarted) {
+        std::cerr << "ERROR: No left CPU exchange has been started yet... Abort!" << std::endl;
         exit(1);
     }
 
-    // wait for all the local send/recvs to complete before moving on
-    MPI_Waitall(allCpuRequests.size(), &allCpuRequests[0], MPI_STATUS_IGNORE);
-    allCpuRequests.clear();
-    allCpuRequests.resize(0);
-
-    // distribute received data into halo regions
-
-    // left
-    if(haveLeftBoundary)
-        for(int i = 0; i < localDimY; ++i)
-            cpuData[(i+1)*(localDimX+2)] = cpuToCpuRecvBuffer[i];
-
-    // right
-    if(haveRightBoundary)
-        for(int i = 0; i < localDimY; ++i)
-            cpuData[(i+2)*(localDimX+2)-1] = cpuToCpuRecvBuffer[localDimY+i];
-
-    // top
-    if(haveTopBoundary)
-        for(int i = 0; i < localDimX; ++i)
-            cpuData[(localDimX+2)*(localDimY+1)+1 + i] = cpuToCpuRecvBuffer[2*localDimY+i];
-
-    // bottom
-    if(haveBottomBoundary)
-        for(int i = 0; i < localDimX; ++i)
-            cpuData[1+i] = cpuToCpuRecvBuffer[2*localDimY+localDimX+i];
-
-    if(haveLeftBoundary && haveBottomBoundary)
-        cpuData[0] = cpuToCpuRecvBuffer[2*localDimX+2*localDimY];
-    if(haveRightBoundary && haveBottomBoundary)
-        cpuData[localDimX+1] = cpuToCpuRecvBuffer[2*localDimX+2*localDimY + 1];
-    if(haveLeftBoundary && haveTopBoundary)
-        cpuData[(localDimX+2)*(localDimY+1)] = cpuToCpuRecvBuffer[2*localDimX+2*localDimY + 2];
-    if(haveRightBoundary && haveTopBoundary)
-        cpuData[(localDimX+2)*(localDimY+1) + localDimX+1] = cpuToCpuRecvBuffer[2*localDimX+2*localDimY + 3];
-
-
-    if(gpuEnabled) {
-
-        if(!gpuStarted) {
-            std::cerr << "ERROR: No GPU exchange has been started yet... Abort!" << std::endl;
-            exit(1);
-        }
-
-        // left
-        for(int i = 0; i < gpuHeight; ++ i)
-            cpuData[((localDimY-gpuHeight)/2 +i+1)*(localDimX+2) + (localDimX-gpuWidth)/2 +1] = cpuToGpuRecvBuffer[i];
-        // right
-        for(int i = 0; i < gpuHeight; ++ i)
-            cpuData[((localDimY-gpuHeight)/2 +i+1)*(localDimX+2) + (localDimX-gpuWidth)/2 + gpuWidth] = cpuToGpuRecvBuffer[gpuHeight + i];
-        // top
-        for(int i = 0; i < gpuWidth; ++ i)
-            cpuData[((localDimY-gpuHeight)/2 +gpuHeight)*(localDimX+2) + (localDimX-gpuWidth)/2 + i+1] = cpuToGpuRecvBuffer[2*gpuHeight + i];
-        // bottom
-        for(int i = 0; i < gpuWidth; ++ i)
-            cpuData[((localDimY-gpuHeight)/2 +1)*(localDimX+2) + (localDimX-gpuWidth)/2 + i+1] = cpuToGpuRecvBuffer[2*gpuHeight+gpuWidth + i];
-
+    if(haveLeftBoundary) {
+        MPI_Wait(&cpuToCpuLeftRecvRequest, MPI_STATUS_IGNORE);
+        for(int i = 0; i < localDimY+2; ++i)
+            cpuData[i*(localDimX+2)] = cpuToCpuRecvBuffer[i];
+        MPI_Wait(&cpuToCpuLeftSendRequest, MPI_STATUS_IGNORE);
     }
+
 
 }
 
-void Tausch::completeGpuTausch() {
+void Tausch::completeCpuTauschRight() {
+
+    if(!cpuRightStarted) {
+        std::cerr << "ERROR: No right CPU exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    if(haveRightBoundary) {
+        MPI_Wait(&cpuToCpuRightRecvRequest, MPI_STATUS_IGNORE);
+        for(int i = 0; i < localDimY+2; ++i)
+            cpuData[(i+1)*(localDimX+2)-1] = cpuToCpuRecvBuffer[localDimY+2+i];
+        MPI_Wait(&cpuToCpuRightSendRequest, MPI_STATUS_IGNORE);
+    }
+
+
+}
+
+void Tausch::completeCpuTauschTop() {
+
+    if(!cpuTopStarted) {
+        std::cerr << "ERROR: No top CPU exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    if(haveTopBoundary) {
+        MPI_Wait(&cpuToCpuTopRecvRequest, MPI_STATUS_IGNORE);
+        for(int i = 0; i < localDimX+2; ++i)
+            cpuData[(localDimX+2)*(localDimY+1) + i] = cpuToCpuRecvBuffer[2*(localDimY+2)+i];
+        MPI_Wait(&cpuToCpuTopSendRequest, MPI_STATUS_IGNORE);
+    }
+
+
+}
+
+void Tausch::completeCpuTauschBottom() {
+
+    if(!cpuBottomStarted) {
+        std::cerr << "ERROR: No bottom CPU exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    if(haveBottomBoundary) {
+        MPI_Wait(&cpuToCpuBottomRecvRequest, MPI_STATUS_IGNORE);
+        for(int i = 0; i < localDimX+2; ++i)
+            cpuData[i] = cpuToCpuRecvBuffer[2*(localDimY+2)+(localDimX+2)+i];
+        MPI_Wait(&cpuToCpuBottomSendRequest, MPI_STATUS_IGNORE);
+    }
+
+
+}
+
+void Tausch::completeCpuToGpuTausch() {
 
     if(!gpuStarted) {
         std::cerr << "ERROR: No GPU exchange has been started yet... Abort!" << std::endl;
         exit(1);
     }
 
-    MPI_Waitall(allGpuRequests.size(), &allGpuRequests[0], MPI_STATUS_IGNORE);
-    allGpuRequests.clear();
-    allGpuRequests.resize(0);
+    syncCpuAndGpu(true);
+
+    // left
+    for(int i = 0; i < gpuHeight; ++ i)
+        cpuData[((localDimY-gpuHeight)/2 +i+1)*(localDimX+2) + (localDimX-gpuWidth)/2 +1] = gpuToCpuBuffer[i];
+    // right
+    for(int i = 0; i < gpuHeight; ++ i)
+        cpuData[((localDimY-gpuHeight)/2 +i+1)*(localDimX+2) + (localDimX-gpuWidth)/2 + gpuWidth] = gpuToCpuBuffer[gpuHeight + i];
+    // top
+    for(int i = 0; i < gpuWidth; ++ i)
+        cpuData[((localDimY-gpuHeight)/2 +gpuHeight)*(localDimX+2) + (localDimX-gpuWidth)/2 + i+1] = gpuToCpuBuffer[2*gpuHeight + i];
+    // bottom
+    for(int i = 0; i < gpuWidth; ++ i)
+        cpuData[((localDimY-gpuHeight)/2 +1)*(localDimX+2) + (localDimX-gpuWidth)/2 + i+1] = gpuToCpuBuffer[2*gpuHeight+gpuWidth + i];
+
+}
+
+void Tausch::completeGpuToCpuTausch() {
+
+    if(!gpuStarted) {
+        std::cerr << "ERROR: No GPU exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    syncCpuAndGpu(false);
 
     try {
 
-        cl::copy(cl_queue, &gpuToCpuRecvBuffer[0], (&gpuToCpuRecvBuffer[2*(gpuWidth+2)+2*gpuHeight-1])+1, cl_gpuToCpuRecvBuffer);
+        cl::copy(cl_queue, &cpuToGpuBuffer[0], (&cpuToGpuBuffer[2*(gpuWidth+2)+2*gpuHeight-1])+1, cl_gpuToCpuBuffer);
 
         auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
 
         int globalSize = ((2*(gpuWidth+2) + 2*gpuHeight)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_distributeHaloData(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                                  cl_gpuWidth, cl_gpuHeight, gpuData, cl_gpuToCpuRecvBuffer);
+                                  cl_gpuWidth, cl_gpuHeight, gpuData, cl_gpuToCpuBuffer);
 
     } catch(cl::Error error) {
         std::cout << "[dist halo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -420,37 +351,71 @@ void Tausch::completeGpuTausch() {
 void Tausch::syncCpuWaitsForGpu(bool iAmTheCPU) {
 
     if(iAmTheCPU) {
-        int sync;
-        MPI_Recv(&sync, 1, MPI_INT, mpiRank, 101, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        bool wait = true;
+        while(wait) {
+            if(syncpointGpu == 11) {
+                wait = false;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
     } else {
-        int sync = 1;
-        MPI_Isend(&sync, 1, MPI_INT, mpiRank, 101, MPI_COMM_WORLD, nullptr);
+        syncpointGpu = 11;
     }
+
+    syncpointCpu = 0;
+    syncpointGpu = 0;
 
 }
 
 void Tausch::syncGpuWaitsForCpu(bool iAmTheCPU) {
 
     if(iAmTheCPU) {
-        int sync = 1;
-        MPI_Isend(&sync, 1, MPI_INT, mpiRank, 102, MPI_COMM_WORLD, nullptr);
+        syncpointCpu = 21;
     } else {
-        int sync;
-        MPI_Recv(&sync, 1, MPI_INT, mpiRank, 102, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        bool wait = true;
+        while(wait) {
+            if(syncpointCpu == 21) {
+                wait = false;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        syncpointGpu = 21;
     }
+
+    syncpointCpu = 0;
+    syncpointGpu = 0;
 
 }
 
 void Tausch::syncCpuAndGpu(bool iAmTheCPU) {
 
     if(iAmTheCPU) {
-        int sync;
-        MPI_Recv(&sync, 1, MPI_INT, mpiRank, 103, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        syncpointCpu = 31;
+        bool wait = true;
+        while(wait) {
+            if(syncpointGpu == 31) {
+                wait = false;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        // the cpu resets the gpu sync variable, to avoid deadlock
+        syncpointGpu = 0;
     } else {
-        int sync = 1;
-        MPI_Send(&sync, 1, MPI_INT, mpiRank, 103, MPI_COMM_WORLD);
+        syncpointGpu = 31;
+        bool wait = true;
+        while(wait) {
+            if(syncpointCpu == 31) {
+                wait = false;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        // the gpu resets the cpu sync variable, to avoid deadlock
+        syncpointCpu = 0;
     }
-
 }
 
 void Tausch::setOpenCLInfo(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue) {
