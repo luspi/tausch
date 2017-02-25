@@ -10,10 +10,8 @@
 class Sample {
 
 public:
-    explicit Sample(int localDimX, int localDimY, double portionGPU, int loops, int mpiNumX = 0, int mpiNumY = 0, bool cpuonly = false);
+    explicit Sample(int localDimX, int localDimY, double portionGPU, int loops, int mpiNumX = 0, int mpiNumY = 0, bool cpuonly = false, int clWorkGroupSize = 64, bool giveOpenCLDeviceName = false);
     ~Sample();
-
-    void EveryoneOutput(const std::string &inMessage);
 
     void printCPU();
     void printGPU();

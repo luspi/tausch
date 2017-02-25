@@ -21,7 +21,7 @@
  *
  *******************************/
 
-Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int mpiNumX, int mpiNumY, bool cpuonly) {
+Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int mpiNumX, int mpiNumY, bool cpuonly, int clWorkGroupSize, bool giveOpenCLDeviceName) {
 
     // obtain MPI rank
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -43,7 +43,7 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
         exit(1);
     }
 
-    tau = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY, !cpuonly, true);
+    tau = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY, !cpuonly, true, clWorkGroupSize, giveOpenCLDeviceName);
 
     // the width of the halos
     int halowidth = 1;
@@ -60,8 +60,7 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
 
 
     // how many points only on the device and an OpenCL buffer for them
-    int gpunum = (gpuDimX+2)*(gpuDimY+2);
-    datGPU = new double[gpunum]{};
+    datGPU = new double[(gpuDimX+2)*(gpuDimY+2)]{};
 
     for(int j = 0; j < gpuDimY; ++j)
         for(int i = 0; i < gpuDimX; ++i)
@@ -72,7 +71,7 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
 
         try {
 
-            cl_datGpu = cl::Buffer(tau->cl_context, &datGPU[0], (&datGPU[gpunum-1])+1, false);
+            cl_datGpu = cl::Buffer(tau->cl_context, &datGPU[0], (&datGPU[(gpuDimX+2)*(gpuDimY+2)-1])+1, false);
 
         } catch(cl::Error error) {
             std::cout << "[sample] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -135,16 +134,6 @@ void Sample::launchGPU() {
     } catch(cl::Error error) {
         std::cout << "[launchGPU] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
-    }
-
-}
-
-void Sample::EveryoneOutput(const std::string &inMessage) {
-
-    for(int iRank = 0; iRank < mpiSize; ++iRank){
-        if(mpiRank == iRank)
-            std::cout << inMessage;
-        MPI_Barrier(MPI_COMM_WORLD);
     }
 
 }

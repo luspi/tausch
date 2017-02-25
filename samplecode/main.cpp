@@ -22,6 +22,8 @@ int main(int argc, char** argv) {
     int mpiNumY = mpiNumX;
     int loops = 1;
     bool cpuonly = false;
+    int workgroupsize = 64;
+    bool giveOpenClDeviceName = false;
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {
@@ -43,28 +45,44 @@ int main(int argc, char** argv) {
                 loops = atoi(argv[++i]);
             else if(argv[i] == std::string("-cpu"))
                 cpuonly = true;
+            else if(argv[i] == std::string("-wgs") && i < argc-1)
+                workgroupsize = atof(argv[++i]);
+            else if(argv[i] == std::string("-gpuinfo"))
+                giveOpenClDeviceName = true;
         }
     }
 
     if(mpiRank == 0) {
 
         std::cout << std::endl
-                  << "localDimX  = " << localDimX << std::endl
-                  << "localDimY  = " << localDimY << std::endl
-                  << "portionGPU = " << portionGPU << std::endl
-                  << "mpiNumX    = " << mpiNumX << std::endl
-                  << "mpiNumY    = " << mpiNumY << std::endl
+                  << "localDimX     = " << localDimX << std::endl
+                  << "localDimY     = " << localDimY << std::endl
+                  << "portionGPU    = " << portionGPU << std::endl
+                  << "mpiNumX       = " << mpiNumX << std::endl
+                  << "mpiNumY       = " << mpiNumY << std::endl
+                  << "loops         = " << loops << std::endl
+                  << "version       = " << (cpuonly ? "CPU-only" : "CPU/GPU") << std::endl
+                  << "workgroupsize = " << workgroupsize << std::endl
                   << std::endl;
 
     }
 
-    Sample sample(localDimX, localDimY, portionGPU, loops, mpiNumX, mpiNumY, cpuonly);
+    Sample sample(localDimX, localDimY, portionGPU, loops, mpiNumX, mpiNumY, cpuonly, workgroupsize, giveOpenClDeviceName);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    auto t_start = std::chrono::steady_clock::now();
 
     std::future<void> thrdCPU(std::async(std::launch::async, &Sample::launchCPU, &sample));
     std::future<void> thrdGPU(std::async(std::launch::async, &Sample::launchGPU, &sample));
 
     thrdCPU.wait();
     thrdGPU.wait();
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    auto t_end = std::chrono::steady_clock::now();
+
+    if(mpiRank == 0)
+        std::cout << "Time required: " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
 
     MPI_Finalize();
 
