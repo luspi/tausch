@@ -59,15 +59,14 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
                 datCPU[(j+1)*(dimX+2) + i+1] = j*dimX+i;
 
 
-    // how many points only on the device and an OpenCL buffer for them
-    datGPU = new double[(gpuDimX+2)*(gpuDimY+2)]{};
-
-    for(int j = 0; j < gpuDimY; ++j)
-        for(int i = 0; i < gpuDimX; ++i)
-            datGPU[(j+1)*(gpuDimX+2) + i+1] = j*gpuDimX+i;
-
-
     if(!cpuonly) {
+
+        // how many points only on the device and an OpenCL buffer for them
+        datGPU = new double[(gpuDimX+2)*(gpuDimY+2)]{};
+
+        for(int j = 0; j < gpuDimY; ++j)
+            for(int i = 0; i < gpuDimX; ++i)
+                datGPU[(j+1)*(gpuDimX+2) + i+1] = j*gpuDimX+i;
 
         try {
 
@@ -78,7 +77,8 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
             exit(1);
         }
 
-    }
+    } else
+        datGPU = new double[1]{};
 
     // currently redundant, can only be 1
     tau->setHaloWidth(1);
