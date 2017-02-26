@@ -28,10 +28,15 @@ public:
     void setOpenCLInfo(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue);
 
     void postCpuReceives();
-    void postGpuReceives();
 
     void performCpuToCpuTausch() { startCpuTauschLeft(); startCpuTauschRight(); completeCpuTauschLeft(); completeCpuTauschRight();
                               startCpuTauschTop(); startCpuTauschBottom(); completeCpuTauschTop(); completeCpuTauschBottom(); }
+
+    void performCpuToCpuAndCpuToGpuTausch() { startCpuTauschLeft(); startCpuTauschRight(); startCpuToGpuTausch();
+                                         completeCpuTauschLeft(); completeCpuTauschRight(); startCpuTauschTop(); startCpuTauschBottom();
+                                         completeCpuToGpuTausch(); completeCpuTauschTop(); completeCpuTauschBottom(); }
+
+    void performGpuToCpuTausch() { startGpuToCpuTausch(); completeGpuToCpuTausch(); }
 
     void startCpuToGpuTausch();
     void startGpuToCpuTausch();
@@ -49,8 +54,6 @@ public:
     void completeCpuTauschTop();
     void completeCpuTauschBottom();
 
-    void syncCpuWaitsForGpu(bool iAmTheCPU);
-    void syncGpuWaitsForCpu(bool iAmTheCPU);
     void syncCpuAndGpu(bool iAmTheCPU);
 
     cl::Context cl_context;
