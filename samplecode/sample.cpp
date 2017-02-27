@@ -70,7 +70,7 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
 
         try {
 
-            cl_datGpu = cl::Buffer(tau->cl_context, &datGPU[0], (&datGPU[(gpuDimX+2)*(gpuDimY+2)-1])+1, false);
+            cl_datGpu = cl::Buffer(tau->getContext(), &datGPU[0], (&datGPU[(gpuDimX+2)*(gpuDimY+2)-1])+1, false);
 
         } catch(cl::Error error) {
             std::cout << "[sample] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -130,7 +130,7 @@ void Sample::launchGPU() {
     }
 
     try {
-        cl::copy(tau->cl_queue, cl_datGpu, &datGPU[0], (&datGPU[(gpuDimX+2)*(gpuDimY+2)-1])+1);
+        cl::copy(tau->getQueue(), cl_datGpu, &datGPU[0], (&datGPU[(gpuDimX+2)*(gpuDimY+2)-1])+1);
     } catch(cl::Error error) {
         std::cout << "[launchGPU] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
