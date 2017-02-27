@@ -1,7 +1,6 @@
 #ifndef _TAUSCH_H
 #define _TAUSCH_H
 
-#include <vector>
 #include <mpi.h>
 #include <fstream>
 #include <cmath>
@@ -32,6 +31,8 @@ public:
     void performCpuToCpuTausch() { startCpuTauschLeft(); startCpuTauschRight(); completeCpuTauschLeft(); completeCpuTauschRight();
                               startCpuTauschTop(); startCpuTauschBottom(); completeCpuTauschTop(); completeCpuTauschBottom(); }
 
+    void performCpuToGpuTausch() { startCpuToGpuTausch(); completeCpuToGpuTausch(); }
+
     void performCpuToCpuAndCpuToGpuTausch() { startCpuTauschLeft(); startCpuTauschRight(); startCpuToGpuTausch();
                                          completeCpuTauschLeft(); completeCpuTauschRight(); startCpuTauschTop(); startCpuTauschBottom();
                                          completeCpuToGpuTausch(); completeCpuTauschTop(); completeCpuTauschBottom(); }
@@ -56,17 +57,18 @@ public:
 
     void syncCpuAndGpu(bool iAmTheCPU);
 
-    cl::Context cl_context;
-    cl::CommandQueue cl_queue;
 
     void setHaloWidth(int haloWidth) { this->haloWidth = 1; }
     void setCPUData(double *dat);
     void setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight);
     bool isGpuEnabled() { return gpuEnabled; }
 
+private:
     void EveryoneOutput(const std::string &inMessage);
 
-private:
+    cl::Context cl_context;
+    cl::CommandQueue cl_queue;
+
     int localDimX, localDimY;
     double *cpuData;
     cl::Buffer gpuData;
