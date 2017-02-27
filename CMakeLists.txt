@@ -22,13 +22,17 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 # Create library
-add_library(tausch STATIC "tausch.cpp")
-add_library(ctausch STATIC "ctausch.c")
+add_library(tausch SHARED "tausch.cpp")
+add_library(tausch_static STATIC "tausch.cpp")
+add_library(ctausch SHARED "ctausch.c")
+add_library(ctausch_static STATIC "ctausch.c")
 set_source_files_properties("ctausch.c" PROPERTIES LANGUAGE CXX)
 
 # Install library
 install(TARGETS tausch DESTINATION "lib")
+install(TARGETS tausch_static DESTINATION "lib")
 install(TARGETS ctausch DESTINATION "lib")
+install(TARGETS ctausch_static DESTINATION "lib")
 
 # Install library headers
 install(FILES "tausch.h" DESTINATION "include")
