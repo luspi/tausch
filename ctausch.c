@@ -59,38 +59,14 @@ extern "C" {
         t->completeGpuToCpuTausch();
     }
 
-    void tausch_startCpuTauschLeft(CTausch *tC) {
+    void tausch_startCpuTauschEdge(CTausch *tC, Edge edge) {
         Tausch *t = (Tausch *)tC;
-        t->startCpuTauschLeft();
-    }
-    void tausch_startCpuTauschRight(CTausch *tC) {
-        Tausch *t = (Tausch *)tC;
-        t->startCpuTauschRight();
-    }
-    void tausch_startCpuTauschTop(CTausch *tC) {
-        Tausch *t = (Tausch *)tC;
-        t->startCpuTauschTop();
-    }
-    void tausch_startCpuTauschBottom(CTausch *tC) {
-        Tausch *t = (Tausch *)tC;
-        t->startCpuTauschBottom();
+        t->startCpuTauschEdge(edge);
     }
 
-    void tausch_completeCpuTauschLeft(CTausch *tC) {
+    void tausch_completeCpuTauschEdge(CTausch *tC, Edge edge) {
         Tausch *t = (Tausch *)tC;
-        t->completeCpuTauschLeft();
-    }
-    void tausch_completeCpuTauschRight(CTausch *tC) {
-        Tausch *t = (Tausch *)tC;
-        t->completeCpuTauschRight();
-    }
-    void tausch_completeCpuTauschTop(CTausch *tC) {
-        Tausch *t = (Tausch *)tC;
-        t->completeCpuTauschTop();
-    }
-    void tausch_completeCpuTauschBottom(CTausch *tC) {
-        Tausch *t = (Tausch *)tC;
-        t->completeCpuTauschBottom();
+        t->completeCpuTauschEdge(edge);
     }
 
     void tausch_syncCpuAndGpu(CTausch *tC, bool iAmTheCPU) {

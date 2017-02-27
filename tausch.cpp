@@ -13,21 +13,23 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool with
     this->localDimX = localDimX;
     this->localDimY = localDimY;
 
-    // Check whether this rank is along any of the domain borders
-    haveLeftBorder = (mpiRank%mpiNumX == 0);
-    haveRightBorder = ((mpiRank+1)%mpiNumX == 0);
-    haveTopBorder = (mpiRank > mpiSize-mpiNumX-1);
-    haveBottomBorder = (mpiRank < mpiNumX);
-
     // check if this rank has a boundary with another rank
-    haveLeftBoundary = !haveLeftBorder;
-    haveRightBoundary = !haveRightBorder;
-    haveTopBoundary = !haveTopBorder;
-    haveBottomBoundary = !haveBottomBorder;
+    haveBoundary[Left] = (mpiRank%mpiNumX != 0);
+    haveBoundary[Right] = ((mpiRank+1)%mpiNumX != 0);
+    haveBoundary[Top] = (mpiRank < mpiSize-mpiNumX);
+    haveBoundary[Bottom] = (mpiRank > mpiNumX-1);
 
     // a send and recv buffer for the CPU-CPU communication
-    cpuToCpuSendBuffer = new double[2*(localDimX+2)+2*(localDimY+2)]{};
-    cpuToCpuRecvBuffer = new double[2*(localDimX+2)+2*(localDimY+2)]{};
+    cpuToCpuSendBuffer = new double*[4];
+    cpuToCpuSendBuffer[Left] = new double[localDimY+2]{};
+    cpuToCpuSendBuffer[Right] = new double[localDimY+2]{};
+    cpuToCpuSendBuffer[Top] = new double[localDimX+2]{};
+    cpuToCpuSendBuffer[Bottom] = new double[localDimX+2]{};
+    cpuToCpuRecvBuffer = new double*[4];
+    cpuToCpuRecvBuffer[Left] = new double[localDimY+2]{};
+    cpuToCpuRecvBuffer[Right] = new double[localDimY+2]{};
+    cpuToCpuRecvBuffer[Top] = new double[localDimX+2]{};
+    cpuToCpuRecvBuffer[Bottom] = new double[localDimX+2]{};
 
     // gpu disabled by default, only enabled if flag is set
     gpuEnabled = false;
@@ -49,10 +51,10 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool with
     cpuToGpuStarted = false;
 
     // communication to neither edge has been started
-    cpuLeftStarted = false;
-    cpuRightStarted = false;
-    cpuTopStarted = false;
-    cpuBottomStarted = false;
+    cpuStarted[Left] = false;
+    cpuStarted[Right] = false;
+    cpuStarted[Top] = false;
+    cpuStarted[Bottom] = false;
 
     // used for syncing the CPU and GPU thread
     syncpointCpu = 0;
@@ -62,6 +64,10 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool with
 
 Tausch::~Tausch() {
     // clean up memory
+    for(int i = 0; i < 4; ++i) {
+        delete[] cpuToCpuSendBuffer[i];
+        delete[] cpuToCpuRecvBuffer[i];
+    }
     delete[] cpuToCpuSendBuffer;
     delete[] cpuToCpuRecvBuffer;
     delete[] cpuToGpuBuffer;
@@ -118,89 +124,47 @@ void Tausch::postCpuReceives() {
 
     cpuRecvsPosted = true;
 
-    if(haveLeftBoundary)
-        MPI_Irecv(&cpuToCpuRecvBuffer[0], localDimY+2, MPI_DOUBLE, mpiRank-1, 0, MPI_COMM_WORLD, &cpuToCpuLeftRecvRequest);
-
-    if(haveRightBoundary)
-        MPI_Irecv(&cpuToCpuRecvBuffer[localDimY+2], localDimY+2, MPI_DOUBLE, mpiRank+1, 2, MPI_COMM_WORLD, &cpuToCpuRightRecvRequest);
-
-    if(haveTopBoundary)
-        MPI_Irecv(&cpuToCpuRecvBuffer[2*(localDimY+2)], localDimX+2, MPI_DOUBLE, mpiRank+mpiNumX, 1, MPI_COMM_WORLD, &cpuToCpuTopRecvRequest);
-
-    if(haveBottomBoundary)
-        MPI_Irecv(&cpuToCpuRecvBuffer[2*(localDimY+2)+(localDimX+2)], localDimX+2, MPI_DOUBLE, mpiRank-mpiNumX, 3, MPI_COMM_WORLD, &cpuToCpuBottomRecvRequest);
-
+    if(haveBoundary[Left])
+        MPI_Irecv(&cpuToCpuRecvBuffer[Left][0], localDimY+2, MPI_DOUBLE, mpiRank-1, 0, MPI_COMM_WORLD, &cpuToCpuRecvRequest[Left]);
+    if(haveBoundary[Right])
+        MPI_Irecv(&cpuToCpuRecvBuffer[Right][0], localDimY+2, MPI_DOUBLE, mpiRank+1, 0, MPI_COMM_WORLD, &cpuToCpuRecvRequest[Right]);
+    if(haveBoundary[Top])
+        MPI_Irecv(&cpuToCpuRecvBuffer[Top][0], localDimX+2, MPI_DOUBLE, mpiRank+mpiNumX, 0, MPI_COMM_WORLD, &cpuToCpuRecvRequest[Top]);
+    if(haveBoundary[Bottom])
+        MPI_Irecv(&cpuToCpuRecvBuffer[Bottom][0], localDimX+2, MPI_DOUBLE, mpiRank-mpiNumX, 0, MPI_COMM_WORLD, &cpuToCpuRecvRequest[Bottom]);
 
 }
 
-// send CPU-CPU halo data across the left edge
-void Tausch::startCpuTauschLeft() {
+void Tausch::startCpuTauschEdge(Edge edge) {
 
     if(!cpuRecvsPosted) {
         std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
         exit(1);
     }
 
-    cpuLeftStarted = true;
+    if(edge != Left && edge != Right && edge != Top && edge != Bottom) {
+        std::cerr << "startCpuTauschEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
+        exit(1);
+    }
 
-    if(haveLeftBoundary) {
+    cpuStarted[edge] = true;
+
+    if(edge == Left && haveBoundary[Left]) {
         for(int i = 0; i < localDimY+2; ++i)
-            cpuToCpuSendBuffer[i] = cpuData[1+ i*(localDimX+2)];
-        MPI_Isend(&cpuToCpuSendBuffer[0], localDimY+2, MPI_DOUBLE, mpiRank-1, 2, MPI_COMM_WORLD, &cpuToCpuLeftSendRequest);
-    }
-
-}
-
-// send CPU-CPU halo data across the right edge
-void Tausch::startCpuTauschRight() {
-
-    if(!cpuRecvsPosted) {
-        std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    cpuRightStarted = true;
-
-    if(haveRightBoundary) {
+            cpuToCpuSendBuffer[Left][i] = cpuData[1+ i*(localDimX+2)];
+        MPI_Isend(&cpuToCpuSendBuffer[Left][0], localDimY+2, MPI_DOUBLE, mpiRank-1, 2, MPI_COMM_WORLD, &cpuToCpuSendRequest[Left]);
+    } else if(edge == Right && haveBoundary[Right]) {
         for(int i = 0; i < localDimY+2; ++i)
-            cpuToCpuSendBuffer[localDimY+2 + i] = cpuData[(i+1)*(localDimX+2) -2];
-        MPI_Isend(&cpuToCpuSendBuffer[localDimY+2], localDimY+2, MPI_DOUBLE, mpiRank+1, 0, MPI_COMM_WORLD, &cpuToCpuRightSendRequest);
-    }
-
-}
-
-// send CPU-CPU halo data across the top edge
-void Tausch::startCpuTauschTop() {
-
-    if(!cpuRecvsPosted) {
-        std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    cpuTopStarted = true;
-
-    if(haveTopBoundary) {
+            cpuToCpuSendBuffer[Right][i] = cpuData[(i+1)*(localDimX+2) -2];
+        MPI_Isend(&cpuToCpuSendBuffer[Right][0], localDimY+2, MPI_DOUBLE, mpiRank+1, 0, MPI_COMM_WORLD, &cpuToCpuSendRequest[Right]);
+    } else if(edge == Top && haveBoundary[Top]) {
         for(int i = 0; i < localDimX+2; ++i)
-            cpuToCpuSendBuffer[2*(localDimY+2) + i] = cpuData[(localDimX+2)*localDimY + i];
-        MPI_Isend(&cpuToCpuSendBuffer[2*(localDimY+2)], localDimX+2, MPI_DOUBLE, mpiRank+mpiNumX, 3, MPI_COMM_WORLD, &cpuToCpuTopSendRequest);
-    }
-
-}
-
-// send CPU-CPU halo data across the bottom edge
-void Tausch::startCpuTauschBottom() {
-
-    if(!cpuRecvsPosted) {
-        std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    cpuBottomStarted = true;
-
-    if(haveBottomBoundary) {
+            cpuToCpuSendBuffer[Top][i] = cpuData[(localDimX+2)*localDimY + i];
+        MPI_Isend(&cpuToCpuSendBuffer[Top][0], localDimX+2, MPI_DOUBLE, mpiRank+mpiNumX, 3, MPI_COMM_WORLD, &cpuToCpuSendRequest[Top]);
+    } else if(edge == Bottom && haveBoundary[Bottom]) {
         for(int i = 0; i < localDimX+2; ++i)
-            cpuToCpuSendBuffer[2*(localDimY+2)+(localDimX+2) + i] = cpuData[localDimX+2 + i];
-        MPI_Isend(&cpuToCpuSendBuffer[2*(localDimY+2)+(localDimX+2)], localDimX+2, MPI_DOUBLE, mpiRank-mpiNumX, 1, MPI_COMM_WORLD, &cpuToCpuBottomSendRequest);
+            cpuToCpuSendBuffer[Bottom][i] = cpuData[localDimX+2 + i];
+        MPI_Isend(&cpuToCpuSendBuffer[Bottom][0], localDimX+2, MPI_DOUBLE, mpiRank-mpiNumX, 1, MPI_COMM_WORLD, &cpuToCpuSendRequest[Bottom]);
     }
 
 }
@@ -266,72 +230,38 @@ void Tausch::startGpuToCpuTausch() {
 }
 
 // Complete CPU-CPU exchange to the left
-void Tausch::completeCpuTauschLeft() {
+void Tausch::completeCpuTauschEdge(Edge edge) {
 
-    if(!cpuLeftStarted) {
-        std::cerr << "ERROR: No left CPU exchange has been started yet... Abort!" << std::endl;
+    if(edge != Left && edge != Right && edge != Top && edge != Bottom) {
+        std::cerr << "completeCpuTauschEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
         exit(1);
     }
 
-    if(haveLeftBoundary) {
-        MPI_Wait(&cpuToCpuLeftRecvRequest, MPI_STATUS_IGNORE);
+    if(!cpuStarted[edge]) {
+        std::cerr << "ERROR: No edge #" << edge << " CPU exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    if(edge == Left && haveBoundary[Left]) {
+        MPI_Wait(&cpuToCpuRecvRequest[Left], MPI_STATUS_IGNORE);
         for(int i = 0; i < localDimY+2; ++i)
-            cpuData[i*(localDimX+2)] = cpuToCpuRecvBuffer[i];
-        MPI_Wait(&cpuToCpuLeftSendRequest, MPI_STATUS_IGNORE);
-    }
-
-
-}
-
-// Complete CPU-CPU exchange to the right
-void Tausch::completeCpuTauschRight() {
-
-    if(!cpuRightStarted) {
-        std::cerr << "ERROR: No right CPU exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    if(haveRightBoundary) {
-        MPI_Wait(&cpuToCpuRightRecvRequest, MPI_STATUS_IGNORE);
+            cpuData[i*(localDimX+2)] = cpuToCpuRecvBuffer[Left][i];
+        MPI_Wait(&cpuToCpuSendRequest[Left], MPI_STATUS_IGNORE);
+    } else if(edge == Right && haveBoundary[Right]) {
+        MPI_Wait(&cpuToCpuRecvRequest[Right], MPI_STATUS_IGNORE);
         for(int i = 0; i < localDimY+2; ++i)
-            cpuData[(i+1)*(localDimX+2)-1] = cpuToCpuRecvBuffer[localDimY+2+i];
-        MPI_Wait(&cpuToCpuRightSendRequest, MPI_STATUS_IGNORE);
-    }
-
-
-}
-
-// Complete CPU-CPU exchange to the top
-void Tausch::completeCpuTauschTop() {
-
-    if(!cpuTopStarted) {
-        std::cerr << "ERROR: No top CPU exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    if(haveTopBoundary) {
-        MPI_Wait(&cpuToCpuTopRecvRequest, MPI_STATUS_IGNORE);
+            cpuData[(i+1)*(localDimX+2)-1] = cpuToCpuRecvBuffer[Right][i];
+        MPI_Wait(&cpuToCpuSendRequest[Right], MPI_STATUS_IGNORE);
+    } else if(edge == Top && haveBoundary[Top]) {
+        MPI_Wait(&cpuToCpuRecvRequest[Top], MPI_STATUS_IGNORE);
         for(int i = 0; i < localDimX+2; ++i)
-            cpuData[(localDimX+2)*(localDimY+1) + i] = cpuToCpuRecvBuffer[2*(localDimY+2)+i];
-        MPI_Wait(&cpuToCpuTopSendRequest, MPI_STATUS_IGNORE);
-    }
-
-
-}
-
-// Complete CPU-CPU exchange to the bottom
-void Tausch::completeCpuTauschBottom() {
-
-    if(!cpuBottomStarted) {
-        std::cerr << "ERROR: No bottom CPU exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    if(haveBottomBoundary) {
-        MPI_Wait(&cpuToCpuBottomRecvRequest, MPI_STATUS_IGNORE);
+            cpuData[(localDimX+2)*(localDimY+1) + i] = cpuToCpuRecvBuffer[Top][i];
+        MPI_Wait(&cpuToCpuSendRequest[Top], MPI_STATUS_IGNORE);
+    } else if(edge == Bottom && haveBoundary[Bottom]) {
+        MPI_Wait(&cpuToCpuRecvRequest[Bottom], MPI_STATUS_IGNORE);
         for(int i = 0; i < localDimX+2; ++i)
-            cpuData[i] = cpuToCpuRecvBuffer[2*(localDimY+2)+(localDimX+2)+i];
-        MPI_Wait(&cpuToCpuBottomSendRequest, MPI_STATUS_IGNORE);
+            cpuData[i] = cpuToCpuRecvBuffer[Bottom][i];
+        MPI_Wait(&cpuToCpuSendRequest[Bottom], MPI_STATUS_IGNORE);
     }
 
 

@@ -12,12 +12,7 @@
 
 class Tausch {
 
-    enum {
-        Left = 0,
-        Right,
-        Top,
-        Bottom
-    };
+    enum { Left = 0, Right, Top, Bottom };
     typedef int Edge;
 
 public:
@@ -28,14 +23,14 @@ public:
 
     void postCpuReceives();
 
-    void performCpuToCpuTausch() { startCpuTauschLeft(); startCpuTauschRight(); completeCpuTauschLeft(); completeCpuTauschRight();
-                              startCpuTauschTop(); startCpuTauschBottom(); completeCpuTauschTop(); completeCpuTauschBottom(); }
+    void performCpuToCpuTausch() { startCpuTauschEdge(Left); startCpuTauschEdge(Right); completeCpuTauschEdge(Left); completeCpuTauschEdge(Right);
+                              startCpuTauschEdge(Top); startCpuTauschEdge(Bottom); completeCpuTauschEdge(Top); completeCpuTauschEdge(Bottom); }
 
     void performCpuToGpuTausch() { startCpuToGpuTausch(); completeCpuToGpuTausch(); }
 
-    void performCpuToCpuAndCpuToGpuTausch() { startCpuTauschLeft(); startCpuTauschRight(); startCpuToGpuTausch();
-                                         completeCpuTauschLeft(); completeCpuTauschRight(); startCpuTauschTop(); startCpuTauschBottom();
-                                         completeCpuToGpuTausch(); completeCpuTauschTop(); completeCpuTauschBottom(); }
+    void performCpuToCpuAndCpuToGpuTausch() { startCpuTauschEdge(Left); startCpuTauschEdge(Right); startCpuToGpuTausch();
+                                         completeCpuTauschEdge(Left); completeCpuTauschEdge(Right); startCpuTauschEdge(Top); startCpuTauschEdge(Bottom);
+                                         completeCpuToGpuTausch(); completeCpuTauschEdge(Top); completeCpuTauschEdge(Bottom); }
 
     void performGpuToCpuTausch() { startGpuToCpuTausch(); completeGpuToCpuTausch(); }
 
@@ -45,15 +40,9 @@ public:
     void completeCpuToGpuTausch();
     void completeGpuToCpuTausch();
 
-    void startCpuTauschLeft();
-    void startCpuTauschRight();
-    void startCpuTauschTop();
-    void startCpuTauschBottom();
+    void startCpuTauschEdge(Edge edge);
 
-    void completeCpuTauschLeft();
-    void completeCpuTauschRight();
-    void completeCpuTauschTop();
-    void completeCpuTauschBottom();
+    void completeCpuTauschEdge(Edge edge);
 
     void syncCpuAndGpu(bool iAmTheCPU);
 
@@ -86,8 +75,8 @@ private:
     void setupOpenCL(bool giveOpenCLDeviceName);
     void compileKernels();
 
-    double *cpuToCpuSendBuffer;
-    double *cpuToCpuRecvBuffer;
+    double **cpuToCpuSendBuffer;
+    double **cpuToCpuRecvBuffer;
 
     double *cpuToGpuBuffer;
     double *gpuToCpuBuffer;
@@ -103,38 +92,20 @@ private:
     bool cpuInfoGiven;
     bool cpuRecvsPosted;
 
-    bool cpuLeftStarted;
-    bool cpuRightStarted;
-    bool cpuTopStarted;
-    bool cpuBottomStarted;
+    bool cpuStarted[4];
 
     bool cpuToGpuStarted;
     bool gpuToCpuStarted;
 
-    // This refers to the overall domain border
-    bool haveLeftBorder;
-    bool haveRightBorder;
-    bool haveTopBorder;
-    bool haveBottomBorder;
-
     // this refers to inter-partition boundaries
-    bool haveLeftBoundary;
-    bool haveRightBoundary;
-    bool haveTopBoundary;
-    bool haveBottomBoundary;
+    bool haveBoundary[4];
 
     int cl_kernelLocalSize;
 
 
 
-    MPI_Request cpuToCpuLeftSendRequest;
-    MPI_Request cpuToCpuRightSendRequest;
-    MPI_Request cpuToCpuTopSendRequest;
-    MPI_Request cpuToCpuBottomSendRequest;
-    MPI_Request cpuToCpuLeftRecvRequest;
-    MPI_Request cpuToCpuRightRecvRequest;
-    MPI_Request cpuToCpuTopRecvRequest;
-    MPI_Request cpuToCpuBottomRecvRequest;
+    MPI_Request cpuToCpuSendRequest[4];
+    MPI_Request cpuToCpuRecvRequest[4];
 
     int syncpointCpu;
     int syncpointGpu;

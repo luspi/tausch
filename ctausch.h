@@ -3,6 +3,9 @@
 
 typedef void* CTausch;
 
+enum { Left = 0, Right, Top, Bottom };
+typedef int Edge;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -26,15 +29,9 @@ void tausch_startGpuToCpuTausch(CTausch *tC);
 void tausch_completeCpuToGpuTausch(CTausch *tC);
 void tausch_completeGpuToCpuTausch(CTausch *tC);
 
-void tausch_startCpuTauschLeft(CTausch *tC);
-void tausch_startCpuTauschRight(CTausch *tC);
-void tausch_startCpuTauschTop(CTausch *tC);
-void tausch_startCpuTauschBottom(CTausch *tC);
+void tausch_startCpuTauschEdge(CTausch *tC, Edge edge);
 
-void tausch_completeCpuTauschLeft(CTausch *tC);
-void tausch_completeCpuTauschRight(CTausch *tC);
-void tausch_completeCpuTauschTop(CTausch *tC);
-void tausch_completeCpuTauschBottom(CTausch *tC);
+void tausch_completeCpuTauschEdge(CTausch *tC, Edge edge);
 
 void tausch_syncCpuAndGpu(CTausch *tC, bool iAmTheCPU);
 
