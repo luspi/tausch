@@ -63,6 +63,9 @@ public:
     void setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight);
     bool isGpuEnabled() { return gpuEnabled; }
 
+    cl::Context getContext() { return cl_context; }
+    cl::CommandQueue getQueue() { return cl_queue; }
+
 private:
     void EveryoneOutput(const std::string &inMessage);
 

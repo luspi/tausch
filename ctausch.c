@@ -117,4 +117,14 @@ extern "C" {
         return t->isGpuEnabled();
     }
 
+    cl_context tausch_getContext(CTausch *tC) {
+        Tausch *t = (Tausch *)tC;
+        return (t->getContext())();
+    }
+
+    cl_command_queue tausch_getQueue(CTausch *tC) {
+        Tausch *t = (Tausch *)tC;
+        return (t->getQueue())();
+    }
+
 }

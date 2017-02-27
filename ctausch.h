@@ -44,6 +44,9 @@ void tausch_setCPUData(CTausch *tC, double *dat);
 void tausch_setGPUData(CTausch *tC, cl_mem &dat, int gpuWidth, int gpuHeight);
 bool tausch_isGpuEnabled(CTausch *tC);
 
+cl_context tausch_getContext(CTausch *tC);
+cl_command_queue tausch_getQueue(CTausch *tC);
+
 #ifdef __cplusplus
 }
 #endif
