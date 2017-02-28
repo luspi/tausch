@@ -42,7 +42,6 @@ public:
     void completeGpuToCpuTausch();
 
     void startCpuTauschEdge(Edge edge);
-
     void completeCpuTauschEdge(Edge edge);
 
     void syncCpuAndGpu(bool iAmTheCPU);
@@ -50,7 +49,7 @@ public:
 
     void setHaloWidth(int haloWidth) { this->haloWidth = 1; }
     void setCPUData(double *dat);
-    void setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight);
+    void setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY);
     bool isGpuEnabled() { return gpuEnabled; }
 
     cl::Context cl_context;
@@ -66,8 +65,8 @@ private:
     cl::Buffer gpuData;
 
     int haloWidth;
-    int gpuWidth, gpuHeight;
-    cl::Buffer cl_gpuWidth, cl_gpuHeight;
+    int gpuDimX, gpuDimY;
+    cl::Buffer cl_gpuDimX, cl_gpuDimY;
 
     int mpiRank, mpiSize;
     int mpiNumX, mpiNumY;
