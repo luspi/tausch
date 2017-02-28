@@ -7,6 +7,7 @@
 #include <sstream>
 #include <iostream>
 #include <thread>
+#include <future>
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 
@@ -16,7 +17,7 @@ class Tausch {
     typedef int Edge;
 
 public:
-    explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool withOpenCL = false, bool setupOpenCL = false, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
+    explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool blockingSyncCpuGpu = true, bool withOpenCL = false, bool setupOpenCL = false, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
     ~Tausch();
 
     void setOpenCLInfo(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue);
@@ -52,14 +53,13 @@ public:
     void setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight);
     bool isGpuEnabled() { return gpuEnabled; }
 
-    cl::Context getContext() { return cl_context; }
-    cl::CommandQueue getQueue() { return cl_queue; }
+    cl::Context cl_context;
+    cl::CommandQueue cl_queue;
+
+    void checkOpenCLError(cl_int clErr, std::string loc);
 
 private:
     void EveryoneOutput(const std::string &inMessage);
-
-    cl::Context cl_context;
-    cl::CommandQueue cl_queue;
 
     int localDimX, localDimY;
     double *cpuData;
@@ -109,6 +109,8 @@ private:
 
     int syncpointCpu;
     int syncpointGpu;
+
+    bool blockingSyncCpuGpu;
 
 };
 

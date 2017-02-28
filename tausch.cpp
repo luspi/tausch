@@ -1,6 +1,6 @@
 #include "tausch.h"
 
-Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool withOpenCL, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool blockingSyncCpuGpu, bool withOpenCL, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
 
     // get MPI info
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -12,6 +12,7 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool with
     // store configuration
     this->localDimX = localDimX;
     this->localDimY = localDimY;
+    this->blockingSyncCpuGpu = blockingSyncCpuGpu;
 
     // check if this rank has a boundary with another rank
     haveBoundary[Left] = (mpiRank%mpiNumX != 0);
@@ -39,6 +40,9 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool with
         // Tausch can either set up OpenCL itself, or if not it needs to be passed some OpenCL variables by the user
         if(setupOpenCL)
             this->setupOpenCL(giveOpenCLDeviceName);
+    } else {
+        cpuToGpuBuffer = new double[1];
+        gpuToCpuBuffer = new double[1];
     }
 
     // whether the cpu/gpu pointers have been passed
@@ -101,8 +105,8 @@ void Tausch::setGPUData(cl::Buffer &dat, int gpuWidth, int gpuHeight) {
     cpuToGpuBuffer = new double[2*(gpuWidth+2) + 2*gpuHeight]{};
     gpuToCpuBuffer = new double[2*gpuWidth + 2*gpuHeight]{};
 
+    // set up buffers on device
     try {
-        // set up buffers on device
         cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*(gpuWidth+2)+2*gpuHeight)*sizeof(double));
         cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*(gpuWidth+2) + 2*gpuHeight)*sizeof(double));
         cl_gpuWidth = cl::Buffer(cl_context, &gpuWidth, (&gpuWidth)+1, true);
@@ -127,11 +131,11 @@ void Tausch::postCpuReceives() {
     if(haveBoundary[Left])
         MPI_Irecv(&cpuToCpuRecvBuffer[Left][0], localDimY+2, MPI_DOUBLE, mpiRank-1, 0, MPI_COMM_WORLD, &cpuToCpuRecvRequest[Left]);
     if(haveBoundary[Right])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Right][0], localDimY+2, MPI_DOUBLE, mpiRank+1, 0, MPI_COMM_WORLD, &cpuToCpuRecvRequest[Right]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Right][0], localDimY+2, MPI_DOUBLE, mpiRank+1, 2, MPI_COMM_WORLD, &cpuToCpuRecvRequest[Right]);
     if(haveBoundary[Top])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Top][0], localDimX+2, MPI_DOUBLE, mpiRank+mpiNumX, 0, MPI_COMM_WORLD, &cpuToCpuRecvRequest[Top]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Top][0], localDimX+2, MPI_DOUBLE, mpiRank+mpiNumX, 1, MPI_COMM_WORLD, &cpuToCpuRecvRequest[Top]);
     if(haveBoundary[Bottom])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Bottom][0], localDimX+2, MPI_DOUBLE, mpiRank-mpiNumX, 0, MPI_COMM_WORLD, &cpuToCpuRecvRequest[Bottom]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Bottom][0], localDimX+2, MPI_DOUBLE, mpiRank-mpiNumX, 3, MPI_COMM_WORLD, &cpuToCpuRecvRequest[Bottom]);
 
 }
 
@@ -264,7 +268,6 @@ void Tausch::completeCpuTauschEdge(Edge edge) {
         MPI_Wait(&cpuToCpuSendRequest[Bottom], MPI_STATUS_IGNORE);
     }
 
-
 }
 
 // Complete CPU side of CPU/GPU halo exchange
@@ -320,10 +323,13 @@ void Tausch::completeGpuToCpuTausch() {
         exit(1);
     }
 
+
 }
 
 // both the CPU and GPU have to arrive at this point before either can continue
 void Tausch::syncCpuAndGpu(bool iAmTheCPU) {
+
+    if(!blockingSyncCpuGpu) return;
 
     if(iAmTheCPU) {
         syncpointCpu = 31;
@@ -423,10 +429,8 @@ void Tausch::compileKernels() {
                          )d";
 
     try {
-
         cl_programs = cl::Program(cl_context, oclstr, false);
         cl_programs.build("");
-
     } catch(cl::Error error) {
         std::cout << "[kernel compile] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         if(error.err() == -11) {
@@ -517,4 +521,94 @@ void Tausch::EveryoneOutput(const std::string &inMessage) {
         MPI_Barrier(MPI_COMM_WORLD);
     }
 
+}
+
+void Tausch::checkOpenCLError(cl_int clErr, std::string loc) {
+
+    if(clErr == CL_SUCCESS) return;
+
+    int err = clErr;
+
+    std::string errstr = "";
+
+    // run-time and JIT compiler errors
+    if(err == 0) errstr = "CL_SUCCESS";
+    else if(err == -1) errstr = "CL_DEVICE_NOT_FOUND";
+    else if(err == -2) errstr = "CL_DEVICE_NOT_AVAILABLE";
+    else if(err == -3) errstr = "CL_COMPILER_NOT_AVAILABLE";
+    else if(err == -4) errstr = "CL_MEM_OBJECT_ALLOCATION_FAILURE";
+    else if(err == -5) errstr = "CL_OUT_OF_RESOURCES";
+    else if(err == -6) errstr = "CL_OUT_OF_HOST_MEMORY";
+    else if(err == -7) errstr = "CL_PROFILING_INFO_NOT_AVAILABLE";
+    else if(err == -8) errstr = "CL_MEM_COPY_OVERLAP";
+    else if(err == -9) errstr = "CL_IMAGE_FORMAT_MISMATCH";
+    else if(err == -10) errstr = "CL_IMAGE_FORMAT_NOT_SUPPORTED";
+    else if(err == -11) errstr = "CL_BUILD_PROGRAM_FAILURE";
+    else if(err == -12) errstr = "CL_MAP_FAILURE";
+    else if(err == -13) errstr = "CL_MISALIGNED_SUB_BUFFER_OFFSET";
+    else if(err == -14) errstr = "CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST";
+    else if(err == -15) errstr = "CL_COMPILE_PROGRAM_FAILURE";
+    else if(err == -16) errstr = "CL_LINKER_NOT_AVAILABLE";
+    else if(err == -17) errstr = "CL_LINK_PROGRAM_FAILURE";
+    else if(err == -18) errstr = "CL_DEVICE_PARTITION_FAILED";
+    else if(err == -19) errstr = "CL_KERNEL_ARG_INFO_NOT_AVAILABLE";
+
+    // compile-time errors
+    else if(err == -30) errstr = "CL_INVALID_VALUE";
+    else if(err == -31) errstr = "CL_INVALID_DEVICE_TYPE";
+    else if(err == -32) errstr = "CL_INVALID_PLATFORM";
+    else if(err == -33) errstr = "CL_INVALID_DEVICE";
+    else if(err == -34) errstr = "CL_INVALID_CONTEXT";
+    else if(err == -35) errstr = "CL_INVALID_QUEUE_PROPERTIES";
+    else if(err == -36) errstr = "CL_INVALID_COMMAND_QUEUE";
+    else if(err == -37) errstr = "CL_INVALID_HOST_PTR";
+    else if(err == -38) errstr = "CL_INVALID_MEM_OBJECT";
+    else if(err == -39) errstr = "CL_INVALID_IMAGE_FORMAT_DESCRIPTOR";
+    else if(err == -40) errstr = "CL_INVALID_IMAGE_SIZE";
+    else if(err == -41) errstr = "CL_INVALID_SAMPLER";
+    else if(err == -42) errstr = "CL_INVALID_BINARY";
+    else if(err == -43) errstr = "CL_INVALID_BUILD_OPTIONS";
+    else if(err == -44) errstr = "CL_INVALID_PROGRAM";
+    else if(err == -45) errstr = "CL_INVALID_PROGRAM_EXECUTABLE";
+    else if(err == -46) errstr = "CL_INVALID_KERNEL_NAME";
+    else if(err == -47) errstr = "CL_INVALID_KERNEL_DEFINITION";
+    else if(err == -48) errstr = "CL_INVALID_KERNEL";
+    else if(err == -49) errstr = "CL_INVALID_ARG_INDEX";
+    else if(err == -50) errstr = "CL_INVALID_ARG_VALUE";
+    else if(err == -51) errstr = "CL_INVALID_ARG_SIZE";
+    else if(err == -52) errstr = "CL_INVALID_KERNEL_ARGS";
+    else if(err == -53) errstr = "CL_INVALID_WORK_DIMENSION";
+    else if(err == -54) errstr = "CL_INVALID_WORK_GROUP_SIZE";
+    else if(err == -55) errstr = "CL_INVALID_WORK_ITEM_SIZE";
+    else if(err == -56) errstr = "CL_INVALID_GLOBAL_OFFSET";
+    else if(err == -57) errstr = "CL_INVALID_EVENT_WAIT_LIST";
+    else if(err == -58) errstr = "CL_INVALID_EVENT";
+    else if(err == -59) errstr = "CL_INVALID_OPERATION";
+    else if(err == -60) errstr = "CL_INVALID_GL_OBJECT";
+    else if(err == -61) errstr = "CL_INVALID_BUFFER_SIZE";
+    else if(err == -62) errstr = "CL_INVALID_MIP_LEVEL";
+    else if(err == -63) errstr = "CL_INVALID_GLOBAL_WORK_SIZE";
+    else if(err == -64) errstr = "CL_INVALID_PROPERTY";
+    else if(err == -65) errstr = "CL_INVALID_IMAGE_DESCRIPTOR";
+    else if(err == -66) errstr = "CL_INVALID_COMPILER_OPTIONS";
+    else if(err == -67) errstr = "CL_INVALID_LINKER_OPTIONS";
+    else if(err == -68) errstr = "CL_INVALID_DEVICE_PARTITION_COUNT";
+
+    // extension errors
+    else if(err == -1000) errstr = "CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR";
+    else if(err == -1001) errstr = "CL_PLATFORM_NOT_FOUND_KHR";
+    else if(err == -1002) errstr = "CL_INVALID_D3D10_DEVICE_KHR";
+    else if(err == -1003) errstr = "CL_INVALID_D3D10_RESOURCE_KHR";
+    else if(err == -1004) errstr = "CL_D3D10_RESOURCE_ALREADY_ACQUIRED_KHR";
+    else if(err == -1005) errstr = "CL_D3D10_RESOURCE_NOT_ACQUIRED_KHR";
+    else errstr = "Unknown OpenCL error";
+
+    std::cout << "[" << loc << "] OpenCL exception caught: " << errstr << " (" << err << ")" << std::endl;
+
+    if(err == CL_BUILD_PROGRAM_FAILURE) {
+        std::string log = cl_programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl_defaultDevice);
+        std::cout << std::endl << " ******************** " << std::endl << " ** BUILD LOG" << std::endl << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** " << std::endl << std::endl;
+    }
+
+    exit(1);
 }
