@@ -200,6 +200,12 @@ int main(int argc, char** argv) {
 
     MPI_Finalize();
 
+    free(param.cpu);
+    if(!param.cpuonly) {
+        free(param.gpu);
+        clReleaseMemObject(param.clGpu);
+    }
+
     return 0;
 
 }
