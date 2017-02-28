@@ -18,6 +18,7 @@ struct param_struct {
     int gpuDimY;
     CTausch *tau;
     cl_mem clGpu;
+    int printMpiRank;
 };
 
 #endif

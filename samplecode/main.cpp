@@ -24,6 +24,7 @@ int main(int argc, char** argv) {
     bool cpuonly = false;
     int workgroupsize = 64;
     bool giveOpenClDeviceName = false;
+    int printMpiRank = -1;
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {
@@ -49,6 +50,8 @@ int main(int argc, char** argv) {
                 workgroupsize = atof(argv[++i]);
             else if(argv[i] == std::string("-gpuinfo"))
                 giveOpenClDeviceName = true;
+            else if(argv[i] == std::string("-print") && i < argc-1)
+                printMpiRank = atoi(argv[++i]);
         }
     }
 
@@ -69,6 +72,20 @@ int main(int argc, char** argv) {
 
     Sample sample(localDimX, localDimY, portionGPU, loops, mpiNumX, mpiNumY, cpuonly, workgroupsize, giveOpenClDeviceName);
 
+    if(mpiRank == printMpiRank) {
+        std::cout << "-------------------------------" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        std::cout << "GPU region BEFORE" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        sample.printGPU();
+        std::cout << "-------------------------------" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        std::cout << "CPU region BEFORE" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        sample.printCPU();
+        std::cout << "-------------------------------" << std::endl;
+    }
+
     MPI_Barrier(MPI_COMM_WORLD);
     auto t_start = std::chrono::steady_clock::now();
 
@@ -83,6 +100,20 @@ int main(int argc, char** argv) {
 
     if(mpiRank == 0)
         std::cout << "Time required: " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
+
+    if(mpiRank == printMpiRank) {
+        std::cout << "-------------------------------" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        std::cout << "GPU region AFTER" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        sample.printGPU();
+        std::cout << "-------------------------------" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        std::cout << "CPU region AFTER" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        sample.printCPU();
+        std::cout << "-------------------------------" << std::endl;
+    }
 
     MPI_Finalize();
 

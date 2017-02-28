@@ -41,6 +41,7 @@ int main(int argc, char** argv) {
     param.cpuonly = false;
     param.workgroupsize = 64;
     param.giveOpenClDeviceName = false;
+    param.printMpiRank = -1;
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {
@@ -64,8 +65,10 @@ int main(int argc, char** argv) {
                 param.cpuonly = true;
             else if(strcmp(argv[i], "-wgs") == 0 && i < argc-1)
                 param.workgroupsize = atof(argv[++i]);
-            else if(strcmp(argv[i], "-gpuinfo") == 0 && i < argc-1)
+            else if(strcmp(argv[i], "-gpuinfo") == 0)
                 param.giveOpenClDeviceName = true;
+            else if(strcmp(argv[i], "-print") == 0 && i < argc-1)
+                param.printMpiRank = atoi(argv[++i]);
         }
     }
 
@@ -105,7 +108,7 @@ int main(int argc, char** argv) {
                && j >= (param.localDimY-param.gpuDimY)/2 && j < (param.localDimY-param.gpuDimY)/2+param.gpuDimY))
                 param.cpu[(j+1)*(param.localDimX+2) + i+1] = (double)j*param.localDimX+i;
 
-    param.tau = tausch_newCpuAndGpu(param.localDimX, param.localDimY, param.mpiNumX, param.mpiNumY, true, !param.cpuonly, true, 64, false);
+    param.tau = tausch_newCpuAndGpu(param.localDimX, param.localDimY, param.mpiNumX, param.mpiNumY, true, !param.cpuonly, true, param.workgroupsize, param.giveOpenClDeviceName);
 
     if(!param.cpuonly) {
 
@@ -134,6 +137,20 @@ int main(int argc, char** argv) {
     tausch_setCPUData(param.tau, param.cpu);
     tausch_setGPUData(param.tau, param.clGpu, param.gpuDimX, param.gpuDimY);
 
+    if(mpiRank == param.printMpiRank) {
+        printf("-------------------------------\n");
+        printf("-------------------------------\n");
+        printf("GPU region BEFORE\n");
+        printf("-------------------------------\n");
+        printGPU(&param);
+        printf("-------------------------------\n");
+        printf("-------------------------------\n");
+        printf("CPU region BEFORE\n");
+        printf("-------------------------------\n");
+        printCPU(&param);
+        printf("-------------------------------\n");
+    }
+
     pthread_t thrdCPU, thrdGPU;
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -152,11 +169,15 @@ int main(int argc, char** argv) {
     if(mpiRank == 0)
         printf("Time required: %f ms\n", time_spent);
 
-    if(mpiRank == 6) {
+    if(mpiRank == param.printMpiRank) {
+        printf("-------------------------------\n");
+        printf("-------------------------------\n");
+        printf("GPU region AFTER\n");
         printf("-------------------------------\n");
         printGPU(&param);
         printf("-------------------------------\n");
         printf("-------------------------------\n");
+        printf("CPU region AFTER\n");
         printf("-------------------------------\n");
         printCPU(&param);
         printf("-------------------------------\n");
