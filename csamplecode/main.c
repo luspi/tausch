@@ -102,11 +102,17 @@ int main(int argc, char** argv) {
     int num = (param.localDimX+2)*(param.localDimY+2);
     param.cpu = malloc(num*sizeof(double));
 
-    for(int j = 0; j < param.localDimY; ++j)
-        for(int i = 0; i < param.localDimX; ++i)
-            if(!(i >= (param.localDimX-param.gpuDimX)/2 && i < (param.localDimX-param.gpuDimX)/2+param.gpuDimX
-               && j >= (param.localDimY-param.gpuDimY)/2 && j < (param.localDimY-param.gpuDimY)/2+param.gpuDimY))
-                param.cpu[(j+1)*(param.localDimX+2) + i+1] = (double)j*param.localDimX+i;
+    if(param.cpuonly) {
+        for(int j = 0; j < param.localDimY; ++j)
+            for(int i = 0; i < param.localDimX; ++i)
+                param.cpu[(j+1)*(param.localDimX+2) + i+1] = (double)j*param.localDimX+i+1;
+    } else {
+        for(int j = 0; j < param.localDimY; ++j)
+            for(int i = 0; i < param.localDimX; ++i)
+                if(!(i >= (param.localDimX-param.gpuDimX)/2 && i < (param.localDimX-param.gpuDimX)/2+param.gpuDimX
+                   && j >= (param.localDimY-param.gpuDimY)/2 && j < (param.localDimY-param.gpuDimY)/2+param.gpuDimY))
+                    param.cpu[(j+1)*(param.localDimX+2) + i+1] = (double)j*param.localDimX+i+1;
+    }
 
     param.tau = tausch_newCpuAndGpu(param.localDimX, param.localDimY, param.mpiNumX, param.mpiNumY, true, !param.cpuonly, true, param.workgroupsize, param.giveOpenClDeviceName);
 
@@ -117,7 +123,7 @@ int main(int argc, char** argv) {
 
         for(int j = 0; j < param.gpuDimY+2; ++j) {
             for(int i = 0; i < param.gpuDimX+2; ++i) {
-                double val = (double)((j-1)*param.gpuDimX+(i-1));
+                double val = (double)((j-1)*param.gpuDimX+i);
                 if(j == 0 || i == 0 || j == param.gpuDimY+1 || i == param.gpuDimX+1)
                     val = 0;
                 param.gpu[j*(param.gpuDimX+2) + i] = val;
@@ -135,14 +141,17 @@ int main(int argc, char** argv) {
 
 
     tausch_setCPUData(param.tau, param.cpu);
-    tausch_setGPUData(param.tau, param.clGpu, param.gpuDimX, param.gpuDimY);
+    if(!param.cpuonly)
+        tausch_setGPUData(param.tau, param.clGpu, param.gpuDimX, param.gpuDimY);
 
     if(mpiRank == param.printMpiRank) {
-        printf("-------------------------------\n");
-        printf("-------------------------------\n");
-        printf("GPU region BEFORE\n");
-        printf("-------------------------------\n");
-        printGPU(&param);
+        if(!param.cpuonly) {
+            printf("-------------------------------\n");
+            printf("-------------------------------\n");
+            printf("GPU region BEFORE\n");
+            printf("-------------------------------\n");
+            printGPU(&param);
+        }
         printf("-------------------------------\n");
         printf("-------------------------------\n");
         printf("CPU region BEFORE\n");
@@ -157,10 +166,12 @@ int main(int argc, char** argv) {
     clock_t begin = clock();
 
     pthread_create(&thrdCPU, NULL, launchCPU, &param);
-    pthread_create(&thrdGPU, NULL, launchGPU, &param);
+    if(!param.cpuonly)
+        pthread_create(&thrdGPU, NULL, launchGPU, &param);
 
     pthread_join(thrdCPU, NULL);
-    pthread_join(thrdGPU, NULL);
+    if(!param.cpuonly)
+        pthread_join(thrdGPU, NULL);
 
     MPI_Barrier(MPI_COMM_WORLD);
     clock_t end = clock();
@@ -170,11 +181,13 @@ int main(int argc, char** argv) {
         printf("Time required: %f ms\n", time_spent);
 
     if(mpiRank == param.printMpiRank) {
-        printf("-------------------------------\n");
-        printf("-------------------------------\n");
-        printf("GPU region AFTER\n");
-        printf("-------------------------------\n");
-        printGPU(&param);
+        if(!param.cpuonly) {
+            printf("-------------------------------\n");
+            printf("-------------------------------\n");
+            printf("GPU region AFTER\n");
+            printf("-------------------------------\n");
+            printGPU(&param);
+        }
         printf("-------------------------------\n");
         printf("-------------------------------\n");
         printf("CPU region AFTER\n");
@@ -193,15 +206,23 @@ int main(int argc, char** argv) {
 
 void printCPU(struct param_struct *param) {
 
-    for(int j = param->localDimY+2 -1; j >= 0; --j) {
-        for(int i = 0; i < param->localDimX+2; ++i) {
-            if(i-1 > (param->localDimX-param->gpuDimX)/2 && i < (param->localDimX-param->gpuDimX)/2+param->gpuDimX
-               && j-1 > (param->localDimY-param->gpuDimY)/2 && j < (param->localDimY-param->gpuDimY)/2+param->gpuDimY)
-                printf("    ");
-            else
+    if(param->cpuonly) {
+        for(int j = param->localDimY+2 -1; j >= 0; --j) {
+            for(int i = 0; i < param->localDimX+2; ++i)
                 printf("%3.0f ",param->cpu[j*(param->localDimX+2) + i]);
+            printf("\n");
         }
-        printf("\n");
+    } else {
+        for(int j = param->localDimY+2 -1; j >= 0; --j) {
+            for(int i = 0; i < param->localDimX+2; ++i) {
+                if(i-1 > (param->localDimX-param->gpuDimX)/2 && i < (param->localDimX-param->gpuDimX)/2+param->gpuDimX
+                   && j-1 > (param->localDimY-param->gpuDimY)/2 && j < (param->localDimY-param->gpuDimY)/2+param->gpuDimY)
+                    printf("    ");
+                else
+                    printf("%3.0f ",param->cpu[j*(param->localDimX+2) + i]);
+            }
+            printf("\n");
+        }
     }
 
 }

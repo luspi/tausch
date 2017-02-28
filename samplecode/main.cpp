@@ -73,11 +73,13 @@ int main(int argc, char** argv) {
     Sample sample(localDimX, localDimY, portionGPU, loops, mpiNumX, mpiNumY, cpuonly, workgroupsize, giveOpenClDeviceName);
 
     if(mpiRank == printMpiRank) {
-        std::cout << "-------------------------------" << std::endl;
-        std::cout << "-------------------------------" << std::endl;
-        std::cout << "GPU region BEFORE" << std::endl;
-        std::cout << "-------------------------------" << std::endl;
-        sample.printGPU();
+        if(!cpuonly) {
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "GPU region BEFORE" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            sample.printGPU();
+        }
         std::cout << "-------------------------------" << std::endl;
         std::cout << "-------------------------------" << std::endl;
         std::cout << "CPU region BEFORE" << std::endl;
@@ -89,11 +91,20 @@ int main(int argc, char** argv) {
     MPI_Barrier(MPI_COMM_WORLD);
     auto t_start = std::chrono::steady_clock::now();
 
-    std::future<void> thrdCPU(std::async(std::launch::async, &Sample::launchCPU, &sample));
-    std::future<void> thrdGPU(std::async(std::launch::async, &Sample::launchGPU, &sample));
+    if(!cpuonly) {
 
-    thrdCPU.wait();
-    thrdGPU.wait();
+        std::future<void> thrdCPU(std::async(std::launch::async, &Sample::launchCPU, &sample));
+        std::future<void> thrdGPU(std::async(std::launch::async, &Sample::launchGPU, &sample));
+
+        thrdCPU.wait();
+        thrdGPU.wait();
+
+    } else {
+
+        std::future<void> thrdCPU(std::async(std::launch::async, &Sample::launchCPU, &sample));
+        thrdCPU.wait();
+
+    }
 
     MPI_Barrier(MPI_COMM_WORLD);
     auto t_end = std::chrono::steady_clock::now();
@@ -102,11 +113,13 @@ int main(int argc, char** argv) {
         std::cout << "Time required: " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
 
     if(mpiRank == printMpiRank) {
-        std::cout << "-------------------------------" << std::endl;
-        std::cout << "-------------------------------" << std::endl;
-        std::cout << "GPU region AFTER" << std::endl;
-        std::cout << "-------------------------------" << std::endl;
-        sample.printGPU();
+        if(!cpuonly) {
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "GPU region AFTER" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            sample.printGPU();
+        }
         std::cout << "-------------------------------" << std::endl;
         std::cout << "-------------------------------" << std::endl;
         std::cout << "CPU region AFTER" << std::endl;

@@ -52,11 +52,17 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
     int num = (dimX+2)*(dimY+2);
     datCPU = new double[num]{};
 
-    for(int j = 0; j < dimY; ++j)
-        for(int i = 0; i < dimX; ++i)
-            if(!(i >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
-               && j >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY))
-                datCPU[(j+1)*(dimX+2) + i+1] = j*dimX+i;
+    if(cpuonly) {
+        for(int j = 0; j < dimY; ++j)
+            for(int i = 0; i < dimX; ++i)
+                datCPU[(j+1)*(dimX+2) + i+1] = j*dimX+i+1;
+    } else {
+        for(int j = 0; j < dimY; ++j)
+            for(int i = 0; i < dimX; ++i)
+                if(!(i >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
+                   && j >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY))
+                    datCPU[(j+1)*(dimX+2) + i+1] = j*dimX+i+1;
+    }
 
 
     if(!cpuonly) {
@@ -66,7 +72,7 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
 
         for(int j = 0; j < gpuDimY; ++j)
             for(int i = 0; i < gpuDimX; ++i)
-                datGPU[(j+1)*(gpuDimX+2) + i+1] = j*gpuDimX+i;
+                datGPU[(j+1)*(gpuDimX+2) + i+1] = j*gpuDimX+i+1;
 
         try {
 
@@ -131,25 +137,28 @@ void Sample::launchGPU() {
 
 void Sample::printCPU() {
 
-    std::stringstream ss;
+    if(cpuonly) {
 
-    for(int j = 0; j < dimY+2; ++j) {
-        std:: stringstream tmp;
-        for(int i = 0; i < dimX+2; ++i) {
-            if(i-1 > (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
-               && j-1 > (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY)
-                tmp << std::setw(3) << "    ";
-            else
-                tmp << std::setw(3) << datCPU[j*(dimX+2) + i] << " ";
+        for(int j = dimY+2 -1; j >= 0; --j) {
+            for(int i = 0; i < dimX+2; ++i)
+                std::cout << std::setw(3) << datCPU[j*(dimX+2) + i] << " ";
+            std::cout << std::endl;
         }
-        tmp << std::endl;
-        std::string str = ss.str();
-        ss.clear();
-        ss.str("");
-        ss << tmp.str() << str;
-    }
 
-    std::cout << ss.str();
+    } else {
+
+        for(int j = dimY+2 -1; j >= 0; --j) {
+            for(int i = 0; i < dimX+2; ++i) {
+                if(i-1 > (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
+                   && j-1 > (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY)
+                    std::cout << std::setw(3) << "    ";
+                else
+                    std::cout << std::setw(3) << datCPU[j*(dimX+2) + i] << " ";
+            }
+            std::cout << std::endl;
+        }
+
+    }
 
 }
 
@@ -157,18 +166,11 @@ void Sample::printGPU() {
 
     std::stringstream ss;
 
-    for(int i = 0; i < gpuDimY+2; ++i) {
-        std:: stringstream tmp;
+    for(int i = gpuDimY+2 -1; i >= 0; --i) {
         for(int j = 0; j < gpuDimX+2; ++j)
-            tmp << std::setw(3) << datGPU[i*(gpuDimX+2) + j] << " ";
-        tmp << std::endl;
-        std::string str = ss.str();
-        ss.clear();
-        ss.str("");
-        ss << tmp.str() << str;
+            std::cout << std::setw(3) << datGPU[i*(gpuDimX+2) + j] << " ";
+        std::cout << std::endl;
     }
-
-    std::cout << ss.str();
 
 }
 
