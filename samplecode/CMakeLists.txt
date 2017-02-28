@@ -19,7 +19,7 @@ add_executable(sample "sample.cpp" "main.cpp")
 
 target_link_libraries(sample ${MPI_LIBRARIES})
 target_link_libraries(sample ${OpenCL_LIBRARIES})
-target_link_libraries(sample "libtausch.a")
+target_link_libraries(sample "tausch")
 set_target_properties(sample PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
 set_target_properties(sample PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
 
