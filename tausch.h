@@ -85,6 +85,7 @@ private:
     cl::Program cl_programs;
 
     cl::Buffer cl_gpuToCpuBuffer;
+    cl::Buffer cl_cpuToGpuBuffer;
 
     bool gpuEnabled;
     bool gpuInfoGiven;
