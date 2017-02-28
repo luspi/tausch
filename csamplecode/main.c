@@ -7,7 +7,7 @@
 #include <ctausch.h>
 #include <pthread.h>
 #include <CL/cl.h>
-#include <time.h>
+#include <sys/timeb.h>
 
 #include "samplecpu.h"
 #include "samplegpu.h"
@@ -161,9 +161,10 @@ int main(int argc, char** argv) {
     }
 
     pthread_t thrdCPU, thrdGPU;
+    struct timeb t_start, t_end;
 
     MPI_Barrier(MPI_COMM_WORLD);
-    clock_t begin = clock();
+    ftime(&t_start);
 
     pthread_create(&thrdCPU, NULL, launchCPU, &param);
     if(!param.cpuonly)
@@ -174,11 +175,10 @@ int main(int argc, char** argv) {
         pthread_join(thrdGPU, NULL);
 
     MPI_Barrier(MPI_COMM_WORLD);
-    clock_t end = clock();
-    double time_spent = 1000.0 * (double)(end - begin) / CLOCKS_PER_SEC;
+    ftime(&t_end);
 
     if(mpiRank == 0)
-        printf("Time required: %f ms\n", time_spent);
+        printf("Time required: %i ms\n", t_end.millitm-t_start.millitm);
 
     if(mpiRank == param.printMpiRank) {
         if(!param.cpuonly) {
