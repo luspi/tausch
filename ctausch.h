@@ -26,6 +26,8 @@ void tausch_performCpuToCpuTausch(CTausch *tC);
 
 void tausch_performCpuToCpuAndCpuToGpuTausch(CTausch *tC);
 
+void tausch_performCpuToGpuTausch(CTausch *tC);
+
 void tausch_performGpuToCpuTausch(CTausch *tC);
 
 void tausch_startCpuToGpuTausch(CTausch *tC);

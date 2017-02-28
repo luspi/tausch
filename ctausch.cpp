@@ -49,6 +49,11 @@ extern "C" {
         t->performCpuToCpuAndCpuToGpuTausch();
     }
 
+    void tausch_performCpuToGpuTausch(CTausch *tC) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        t->performCpuToGpuTausch();
+    }
+
     void tausch_performGpuToCpuTausch(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
         t->performGpuToCpuTausch();
