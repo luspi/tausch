@@ -11,12 +11,8 @@ void launchCPU(void *args) {
 
         tausch_performCpuToCpuTausch(param->tau);
 
-        if(!param->cpuonly) {
-
-            tausch_startCpuToGpuTausch(param->tau);
-            tausch_completeCpuToGpuTausch(param->tau);
-
-        }
+        if(!param->cpuonly)
+            tausch_performCpuToGpuTausch(param->tau);
 
     }
 
