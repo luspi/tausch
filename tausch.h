@@ -17,9 +17,10 @@ class Tausch {
     typedef int Edge;
 
 public:
-    explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool blockingSyncCpuGpu = true, bool withOpenCL = false, bool setupOpenCL = false, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
+    explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY);
     ~Tausch();
 
+    void enableOpenCL(bool blockingSyncCpuGpu, bool setupOpenCL = false, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
     void setOpenCLInfo(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue);
 
     void postCpuReceives();

@@ -13,10 +13,10 @@ typedef void* CTausch;
 enum { Left = 0, Right, Top, Bottom };
 typedef int Edge;
 
-CTausch* tausch_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool blockingSyncCpuGpu, bool withOpenCL, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
-CTausch* tausch_newCpuAndGpu(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool blockingSyncCpuGpu, bool withOpenCL, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
-CTausch* tausch_newCpu(int localDimX, int localDimY, int mpiNumX, int mpiNumY);
+CTausch* tausch_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY);
 void tausch_delete(CTausch *tC);
+
+void tausch_enableOpenCL(CTausch *tC, bool blockingSyncCpuGpu, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
 
 void tausch_setOpenCLInfo(CTausch *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue);
 

@@ -6,17 +6,7 @@ extern "C" {
 
 #include "ctausch.h"
 
-    CTausch *tausch_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool blockingSyncCpuGpu, bool withOpenCL, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
-        Tausch *t = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY, blockingSyncCpuGpu, withOpenCL, setupOpenCL, clLocalWorkgroupSize, giveOpenCLDeviceName);
-        return reinterpret_cast<CTausch*>(t);
-    }
-
-    CTausch *tausch_newCpuAndGpu(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool blockingSyncCpuGpu, bool withOpenCL, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
-        Tausch *t = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY, blockingSyncCpuGpu, withOpenCL, setupOpenCL, clLocalWorkgroupSize, giveOpenCLDeviceName);
-        return reinterpret_cast<CTausch*>(t);
-    }
-
-    CTausch *tausch_newCpu(int localDimX, int localDimY, int mpiNumX, int mpiNumY) {
+    CTausch *tausch_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY) {
         Tausch *t = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY);
         return reinterpret_cast<CTausch*>(t);
     }
@@ -24,6 +14,11 @@ extern "C" {
     void tausch_delete(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
         delete t;
+    }
+
+    void tausch_enableOpenCL(CTausch *tC, bool blockingSyncCpuGpu, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        t->enableOpenCL(blockingSyncCpuGpu, setupOpenCL, clLocalWorkgroupSize, giveOpenCLDeviceName);
     }
 
     void tausch_setOpenCLInfo(CTausch *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue) {

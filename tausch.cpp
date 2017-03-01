@@ -1,6 +1,6 @@
 #include "tausch.h"
 
-Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool blockingSyncCpuGpu, bool withOpenCL, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY) {
 
     // get MPI info
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -32,19 +32,6 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool bloc
     cpuToCpuRecvBuffer[Top] = new double[localDimX+2]{};
     cpuToCpuRecvBuffer[Bottom] = new double[localDimX+2]{};
 
-    // gpu disabled by default, only enabled if flag is set
-    gpuEnabled = false;
-    if(withOpenCL) {
-        // currently fixed here, local workgroup size
-        cl_kernelLocalSize = clLocalWorkgroupSize;
-        // Tausch can either set up OpenCL itself, or if not it needs to be passed some OpenCL variables by the user
-        if(setupOpenCL)
-            this->setupOpenCL(giveOpenCLDeviceName);
-    } else {
-        cpuToGpuBuffer = new double[1];
-        gpuToCpuBuffer = new double[1];
-    }
-
     // whether the cpu/gpu pointers have been passed
     gpuInfoGiven = false;
     cpuInfoGiven = false;
@@ -66,6 +53,18 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, bool bloc
 
 }
 
+void Tausch::enableOpenCL(bool blockingSyncCpuGpu, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+
+    // gpu disabled by default, only enabled if flag is set
+    gpuEnabled = false;
+    // local workgroup size
+    cl_kernelLocalSize = clLocalWorkgroupSize;
+    // Tausch can either set up OpenCL itself, or if not it needs to be passed some OpenCL variables by the user
+    if(setupOpenCL)
+        this->setupOpenCL(giveOpenCLDeviceName);
+
+}
+
 Tausch::~Tausch() {
     // clean up memory
     for(int i = 0; i < 4; ++i) {
@@ -74,8 +73,10 @@ Tausch::~Tausch() {
     }
     delete[] cpuToCpuSendBuffer;
     delete[] cpuToCpuRecvBuffer;
-    delete[] cpuToGpuBuffer;
-    delete[] gpuToCpuBuffer;
+    if(gpuEnabled) {
+        delete[] cpuToGpuBuffer;
+        delete[] gpuToCpuBuffer;
+    }
 }
 
 // get a pointer to the CPU data
