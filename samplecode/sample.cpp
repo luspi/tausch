@@ -107,6 +107,9 @@ void Sample::launchCPU() {
 
     for(int run = 0; run < loops; ++run) {
 
+        if(mpiRank == 0 && (run+1)%10 == 0)
+            std::cout << "Loop " << run+1 << "/" << loops << std::endl;
+
         // post the receives
         tau->postCpuReceives();
 

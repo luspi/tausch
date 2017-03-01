@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
     ftime(&t_end);
 
     if(mpiRank == 0)
-        printf("Time required: %i ms\n", t_end.millitm-t_start.millitm);
+        printf("Time required: %i ms\n", 1000*(t_end.time-t_start.time) + t_end.millitm-t_start.millitm);
 
     if(mpiRank == param.printMpiRank) {
         if(!param.cpuonly) {
