@@ -431,8 +431,7 @@ void Tausch::compileKernels() {
                          )d";
 
     try {
-        cl_programs = cl::Program(cl_context, oclstr, false);
-        cl_programs.build("");
+        cl_programs = cl::Program(cl_context, oclstr, true);
     } catch(cl::Error error) {
         std::cout << "[kernel compile] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         if(error.err() == -11) {
