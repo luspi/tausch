@@ -281,7 +281,8 @@ void Tausch::completeCpuToGpuTausch() {
     }
 
     // we need to wait for the GPU thread to arrive here
-    syncCpuAndGpu(true);
+    if(blockingSyncCpuGpu)
+        syncCpuAndGpu(true);
 
     // left
     for(int i = 0; i < gpuDimY; ++ i)
@@ -307,7 +308,8 @@ void Tausch::completeGpuToCpuTausch() {
     }
 
     // we need to wait for the CPU thread to arrive here
-    syncCpuAndGpu(false);
+    if(blockingSyncCpuGpu)
+        syncCpuAndGpu(false);
 
     try {
 
@@ -331,8 +333,6 @@ void Tausch::completeGpuToCpuTausch() {
 // both the CPU and GPU have to arrive at this point before either can continue
 void Tausch::syncCpuAndGpu(bool iAmTheCPU) {
 
-    if(!blockingSyncCpuGpu) return;
-
     if(iAmTheCPU) {
         syncpointCpu = 31;
         bool wait = true;
@@ -341,7 +341,7 @@ void Tausch::syncCpuAndGpu(bool iAmTheCPU) {
                 wait = false;
                 break;
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
         // the cpu resets the gpu sync variable, to avoid deadlock
         syncpointGpu = 0;
@@ -353,14 +353,14 @@ void Tausch::syncCpuAndGpu(bool iAmTheCPU) {
                 wait = false;
                 break;
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
         // the gpu resets the cpu sync variable, to avoid deadlock
         syncpointCpu = 0;
     }
 
     // this wait ensures that the other thread has indeed caught the variable, avoids potential deadlock for when the other thread could reach the next sync too fast
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
 }
 
 // If Tausch didn't set up OpenCL, the user needs to pass some OpenCL variables
