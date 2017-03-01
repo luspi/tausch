@@ -24,25 +24,25 @@ public:
 
     void postCpuReceives();
 
-    void performCpuToCpuTausch() { startCpuTauschEdge(Left); startCpuTauschEdge(Right); completeCpuTauschEdge(Left); completeCpuTauschEdge(Right);
-                              startCpuTauschEdge(Top); startCpuTauschEdge(Bottom); completeCpuTauschEdge(Top); completeCpuTauschEdge(Bottom); }
+    void performCpuToCpu() { startCpuEdge(Left); startCpuEdge(Right); completeCpuEdge(Left); completeCpuEdge(Right);
+                             startCpuEdge(Top); startCpuEdge(Bottom); completeCpuEdge(Top); completeCpuEdge(Bottom); }
 
-    void performCpuToGpuTausch() { startCpuToGpuTausch(); completeCpuToGpuTausch(); }
+    void performCpuToGpu() { startCpuToGpu(); completeCpuToGpu(); }
 
-    void performCpuToCpuAndCpuToGpuTausch() { startCpuTauschEdge(Left); startCpuTauschEdge(Right); startCpuToGpuTausch();
-                                         completeCpuTauschEdge(Left); completeCpuTauschEdge(Right); startCpuTauschEdge(Top); startCpuTauschEdge(Bottom);
-                                         completeCpuToGpuTausch(); completeCpuTauschEdge(Top); completeCpuTauschEdge(Bottom); }
+    void performCpuToCpuAndCpuToGpu() { startCpuEdge(Left); startCpuEdge(Right); startCpuToGpu();
+                                        completeCpuEdge(Left); completeCpuEdge(Right); startCpuEdge(Top); startCpuEdge(Bottom);
+                                        completeCpuToGpu(); completeCpuEdge(Top); completeCpuEdge(Bottom); }
 
-    void performGpuToCpuTausch() { startGpuToCpuTausch(); completeGpuToCpuTausch(); }
+    void performGpuToCpu() { startGpuToCpu(); completeGpuToCpu(); }
 
-    void startCpuToGpuTausch();
-    void startGpuToCpuTausch();
+    void startCpuToGpu();
+    void startGpuToCpu();
 
-    void completeCpuToGpuTausch();
-    void completeGpuToCpuTausch();
+    void completeCpuToGpu();
+    void completeGpuToCpu();
 
-    void startCpuTauschEdge(Edge edge);
-    void completeCpuTauschEdge(Edge edge);
+    void startCpuEdge(Edge edge);
+    void completeCpuEdge(Edge edge);
 
     void syncCpuAndGpu(bool iAmTheCPU);
 

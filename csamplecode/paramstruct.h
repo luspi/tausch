@@ -16,7 +16,7 @@ struct param_struct {
     double *gpu;
     int gpuDimX;
     int gpuDimY;
-    CTausch *tau;
+    CTausch *tausch;
     cl_mem clGpu;
     int printMpiRank;
 };

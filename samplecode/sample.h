@@ -26,7 +26,7 @@ private:
     double *datGPU;
     cl::Buffer cl_datGpu;
     int loops;
-    Tausch *tau;
+    Tausch *tausch;
     bool cpuonly;
 
 };

@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
                     param.cpu[(j+1)*(param.localDimX+2) + i+1] = (double)j*param.localDimX+i+1;
     }
 
-    param.tau = tausch_newCpuAndGpu(param.localDimX, param.localDimY, param.mpiNumX, param.mpiNumY, true, !param.cpuonly, true, param.workgroupsize, param.giveOpenClDeviceName);
+    param.tausch = tausch_newCpuAndGpu(param.localDimX, param.localDimY, param.mpiNumX, param.mpiNumY, true, !param.cpuonly, true, param.workgroupsize, param.giveOpenClDeviceName);
 
     if(!param.cpuonly) {
 
@@ -131,18 +131,18 @@ int main(int argc, char** argv) {
         }
 
         cl_int err;
-        param.clGpu = clCreateBuffer(tausch_getContext(param.tau), CL_MEM_READ_WRITE, (param.gpuDimX+2)*(param.gpuDimY+2)*sizeof(double), NULL, &err);
-        tausch_checkOpenCLError(param.tau, err, "create GPU buffer");
-        err = clEnqueueWriteBuffer(tausch_getQueue(param.tau), param.clGpu, true, 0, (param.gpuDimX+2)*(param.gpuDimY+2)*sizeof(double), param.gpu, 0, NULL, NULL);
-        tausch_checkOpenCLError(param.tau, err, "fill GPU buffer");
+        param.clGpu = clCreateBuffer(tausch_getContext(param.tausch), CL_MEM_READ_WRITE, (param.gpuDimX+2)*(param.gpuDimY+2)*sizeof(double), NULL, &err);
+        tausch_checkOpenCLError(param.tausch, err, "create GPU buffer");
+        err = clEnqueueWriteBuffer(tausch_getQueue(param.tausch), param.clGpu, true, 0, (param.gpuDimX+2)*(param.gpuDimY+2)*sizeof(double), param.gpu, 0, NULL, NULL);
+        tausch_checkOpenCLError(param.tausch, err, "fill GPU buffer");
 
     }
 
 
 
-    tausch_setCPUData(param.tau, param.cpu);
+    tausch_setCPUData(param.tausch, param.cpu);
     if(!param.cpuonly)
-        tausch_setGPUData(param.tau, param.clGpu, param.gpuDimX, param.gpuDimY);
+        tausch_setGPUData(param.tausch, param.clGpu, param.gpuDimX, param.gpuDimY);
 
     if(mpiRank == param.printMpiRank) {
         if(!param.cpuonly) {
@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
         printf("-------------------------------\n");
     }
 
-    tausch_delete(param.tau);
+    tausch_delete(param.tausch);
 
     MPI_Finalize();
 

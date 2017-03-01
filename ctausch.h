@@ -22,23 +22,23 @@ void tausch_setOpenCLInfo(CTausch *tC, const cl_device_id *clDefaultDevice, cons
 
 void tausch_postCpuReceives(CTausch *tC);
 
-void tausch_performCpuToCpuTausch(CTausch *tC);
+void tausch_performCpuToCpu(CTausch *tC);
 
-void tausch_performCpuToCpuAndCpuToGpuTausch(CTausch *tC);
+void tausch_performCpuToCpuAndCpuToGpu(CTausch *tC);
 
-void tausch_performCpuToGpuTausch(CTausch *tC);
+void tausch_performCpuToGpu(CTausch *tC);
 
-void tausch_performGpuToCpuTausch(CTausch *tC);
+void tausch_performGpuToCpu(CTausch *tC);
 
-void tausch_startCpuToGpuTausch(CTausch *tC);
-void tausch_startGpuToCpuTausch(CTausch *tC);
+void tausch_startCpuToGpu(CTausch *tC);
+void tausch_startGpuToCpu(CTausch *tC);
 
-void tausch_completeCpuToGpuTausch(CTausch *tC);
-void tausch_completeGpuToCpuTausch(CTausch *tC);
+void tausch_completeCpuToGpu(CTausch *tC);
+void tausch_completeGpuToCpu(CTausch *tC);
 
-void tausch_startCpuTauschEdge(CTausch *tC, Edge edge);
+void tausch_startCpuEdge(CTausch *tC, Edge edge);
 
-void tausch_completeCpuTauschEdge(CTausch *tC, Edge edge);
+void tausch_completeCpuEdge(CTausch *tC, Edge edge);
 
 void tausch_syncCpuAndGpu(CTausch *tC, bool iAmTheCPU);
 

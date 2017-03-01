@@ -43,7 +43,7 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
         exit(1);
     }
 
-    tau = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY, true, !cpuonly, true, clWorkGroupSize, giveOpenCLDeviceName);
+    tausch = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY, true, !cpuonly, true, clWorkGroupSize, giveOpenCLDeviceName);
 
     // the width of the halos
     int halowidth = 1;
@@ -76,7 +76,7 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
 
         try {
 
-            cl_datGpu = cl::Buffer(tau->cl_context, &datGPU[0], (&datGPU[(gpuDimX+2)*(gpuDimY+2)-1])+1, false, true);
+            cl_datGpu = cl::Buffer(tausch->cl_context, &datGPU[0], (&datGPU[(gpuDimX+2)*(gpuDimY+2)-1])+1, false, true);
 
         } catch(cl::Error error) {
             std::cout << "[sample] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -87,12 +87,12 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
         datGPU = new double[1]{};
 
     // currently redundant, can only be 1
-    tau->setHaloWidth(1);
+    tausch->setHaloWidth(1);
 
     // pass pointers to the two data containers
-    tau->setCPUData(datCPU);
+    tausch->setCPUData(datCPU);
     if(!cpuonly)
-        tau->setGPUData(cl_datGpu, gpuDimX, gpuDimY);
+        tausch->setGPUData(cl_datGpu, gpuDimX, gpuDimY);
 
 }
 
@@ -111,12 +111,12 @@ void Sample::launchCPU() {
             std::cout << "Loop " << run+1 << "/" << loops << std::endl;
 
         // post the receives
-        tau->postCpuReceives();
+        tausch->postCpuReceives();
 
-        tau->performCpuToCpuTausch();
+        tausch->performCpuToCpu();
 
         if(!cpuonly)
-            tau->performCpuToGpuTausch();
+            tausch->performCpuToGpu();
 
     }
 
@@ -127,10 +127,10 @@ void Sample::launchGPU() {
     if(cpuonly) return;
 
     for(int run = 0; run < loops; ++run)
-        tau->performGpuToCpuTausch();
+        tausch->performGpuToCpu();
 
     try {
-        cl::copy(tau->cl_queue, cl_datGpu, &datGPU[0], (&datGPU[(gpuDimX+2)*(gpuDimY+2)-1])+1);
+        cl::copy(tausch->cl_queue, cl_datGpu, &datGPU[0], (&datGPU[(gpuDimX+2)*(gpuDimY+2)-1])+1);
     } catch(cl::Error error) {
         std::cout << "[launchGPU] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);

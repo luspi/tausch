@@ -39,52 +39,52 @@ extern "C" {
         t->postCpuReceives();
     }
 
-    void tausch_performCpuToCpuTausch(CTausch *tC) {
+    void tausch_performCpuToCpu(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->performCpuToCpuTausch();
+        t->performCpuToCpu();
     }
 
-    void tausch_performCpuToCpuAndCpuToGpuTausch(CTausch *tC) {
+    void tausch_performCpuToCpuAndCpuToGpu(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->performCpuToCpuAndCpuToGpuTausch();
+        t->performCpuToCpuAndCpuToGpu();
     }
 
-    void tausch_performCpuToGpuTausch(CTausch *tC) {
+    void tausch_performCpuToGpu(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->performCpuToGpuTausch();
+        t->performCpuToGpu();
     }
 
-    void tausch_performGpuToCpuTausch(CTausch *tC) {
+    void tausch_performGpuToCpu(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->performGpuToCpuTausch();
+        t->performGpuToCpu();
     }
 
-    void tausch_startCpuToGpuTausch(CTausch *tC) {
+    void tausch_startCpuToGpu(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->startCpuToGpuTausch();
+        t->startCpuToGpu();
     }
-    void tausch_startGpuToCpuTausch(CTausch *tC) {
+    void tausch_startGpuToCpu(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->startGpuToCpuTausch();
-    }
-
-    void tausch_completeCpuToGpuTausch(CTausch *tC) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->completeCpuToGpuTausch();
-    }
-    void tausch_completeGpuToCpuTausch(CTausch *tC) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->completeGpuToCpuTausch();
+        t->startGpuToCpu();
     }
 
-    void tausch_startCpuTauschEdge(CTausch *tC, Edge edge) {
+    void tausch_completeCpuToGpu(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->startCpuTauschEdge(edge);
+        t->completeCpuToGpu();
+    }
+    void tausch_completeGpuToCpu(CTausch *tC) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        t->completeGpuToCpu();
     }
 
-    void tausch_completeCpuTauschEdge(CTausch *tC, Edge edge) {
+    void tausch_startCpuEdge(CTausch *tC, Edge edge) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->completeCpuTauschEdge(edge);
+        t->startCpuEdge(edge);
+    }
+
+    void tausch_completeCpuEdge(CTausch *tC, Edge edge) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        t->completeCpuEdge(edge);
     }
 
     void tausch_syncCpuAndGpu(CTausch *tC, bool iAmTheCPU) {

@@ -141,7 +141,7 @@ void Tausch::postCpuReceives() {
 
 }
 
-void Tausch::startCpuTauschEdge(Edge edge) {
+void Tausch::startCpuEdge(Edge edge) {
 
     if(!cpuRecvsPosted) {
         std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
@@ -149,7 +149,7 @@ void Tausch::startCpuTauschEdge(Edge edge) {
     }
 
     if(edge != Left && edge != Right && edge != Top && edge != Bottom) {
-        std::cerr << "startCpuTauschEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
+        std::cerr << "startCpuEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
         exit(1);
     }
 
@@ -176,7 +176,7 @@ void Tausch::startCpuTauschEdge(Edge edge) {
 }
 
 // collect cpu side of cpu/gpu halo and store in buffer
-void Tausch::startCpuToGpuTausch() {
+void Tausch::startCpuToGpu() {
 
     // check whether GPU is enabled
     if(!gpuEnabled) {
@@ -202,7 +202,7 @@ void Tausch::startCpuToGpuTausch() {
 }
 
 // collect gpu side of cpu/gpu halo and download into buffer
-void Tausch::startGpuToCpuTausch() {
+void Tausch::startGpuToCpu() {
 
     // check whether GPU is enabled
     if(!gpuEnabled) {
@@ -236,10 +236,10 @@ void Tausch::startGpuToCpuTausch() {
 }
 
 // Complete CPU-CPU exchange to the left
-void Tausch::completeCpuTauschEdge(Edge edge) {
+void Tausch::completeCpuEdge(Edge edge) {
 
     if(edge != Left && edge != Right && edge != Top && edge != Bottom) {
-        std::cerr << "completeCpuTauschEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
+        std::cerr << "completeCpuEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
         exit(1);
     }
 
@@ -273,7 +273,7 @@ void Tausch::completeCpuTauschEdge(Edge edge) {
 }
 
 // Complete CPU side of CPU/GPU halo exchange
-void Tausch::completeCpuToGpuTausch() {
+void Tausch::completeCpuToGpu() {
 
     if(!cpuToGpuStarted) {
         std::cerr << "ERROR: No CPU->GPU exchange has been started yet... Abort!" << std::endl;
@@ -300,7 +300,7 @@ void Tausch::completeCpuToGpuTausch() {
 }
 
 // Complete GPU side of CPU/GPU halo exchange
-void Tausch::completeGpuToCpuTausch() {
+void Tausch::completeGpuToCpu() {
 
     if(!gpuToCpuStarted) {
         std::cerr << "ERROR: No GPU->CPU exchange has been started yet... Abort!" << std::endl;
