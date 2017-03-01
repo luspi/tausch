@@ -114,7 +114,8 @@ int main(int argc, char** argv) {
                     param.cpu[(j+1)*(param.localDimX+2) + i+1] = (double)j*param.localDimX+i+1;
     }
 
-    param.tausch = tausch_newCpuAndGpu(param.localDimX, param.localDimY, param.mpiNumX, param.mpiNumY, true, !param.cpuonly, true, param.workgroupsize, param.giveOpenClDeviceName);
+    param.tausch = tausch_new(param.localDimX, param.localDimY, param.mpiNumX, param.mpiNumY);
+    tausch_enableOpenCL(param.tausch, true, true, param.workgroupsize, param.giveOpenClDeviceName);
 
     if(!param.cpuonly) {
 

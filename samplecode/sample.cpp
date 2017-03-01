@@ -43,7 +43,8 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
         exit(1);
     }
 
-    tausch = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY, true, !cpuonly, true, clWorkGroupSize, giveOpenCLDeviceName);
+    tausch = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY);
+    if(!cpuonly) tausch->enableOpenCL(true, true, clWorkGroupSize, giveOpenCLDeviceName);
 
     // the width of the halos
     int halowidth = 1;
