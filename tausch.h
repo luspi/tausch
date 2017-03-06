@@ -103,6 +103,8 @@ private:
 
     int cl_kernelLocalSize;
 
+    MPI_Comm TAUSCH_COMM;
+
 
 
     MPI_Request cpuToCpuSendRequest[4];
