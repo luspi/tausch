@@ -381,19 +381,6 @@ void Tausch::syncCpuAndGpu(bool iAmTheCPU) {
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
 }
 
-// If Tausch didn't set up OpenCL, the user needs to pass some OpenCL variables
-void Tausch::setOpenCLInfo(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue) {
-
-    this->cl_defaultDevice = cl_defaultDevice;
-    this->cl_context = cl_context;
-    this->cl_queue = cl_queue;
-
-    gpuEnabled = true;
-
-    compileKernels();
-
-}
-
 void Tausch::compileKernels() {
 
     // Tausch requires two kernels: One for collecting the halo data and one for distributing that data
