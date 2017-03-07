@@ -18,7 +18,7 @@ void tausch_delete(CTausch *tC);
 
 void tausch_enableOpenCL(CTausch *tC, bool blockingSyncCpuGpu, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
 
-void tausch_setOpenCLInfo(CTausch *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue);
+void tausch_setOpenCLInfo(CTausch *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, bool blockingSyncCpuGpu);
 
 void tausch_postCpuReceives(CTausch *tC);
 

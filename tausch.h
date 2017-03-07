@@ -21,7 +21,7 @@ public:
     ~Tausch();
 
     void enableOpenCL(bool blockingSyncCpuGpu, bool setupOpenCL = false, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
-    void setOpenCLInfo(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue);
+    void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize = 64);
 
     void postCpuReceives();
 

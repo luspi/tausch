@@ -21,12 +21,12 @@ extern "C" {
         t->enableOpenCL(blockingSyncCpuGpu, setupOpenCL, clLocalWorkgroupSize, giveOpenCLDeviceName);
     }
 
-    void tausch_setOpenCLInfo(CTausch *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue) {
+    void tausch_setOpenCLInfo(CTausch *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, bool blockingSyncCpuGpu) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
         cl::Device *dev = new cl::Device(*clDefaultDevice);
         cl::Context *con = new cl::Context(*clContext);
         cl::CommandQueue *que = new cl::CommandQueue(*clQueue);
-        t->setOpenCLInfo(*dev, *con, *que);
+        t->enableOpenCL(*dev, *con, *que, blockingSyncCpuGpu);
     }
 
     void tausch_postCpuReceives(CTausch *tC) {

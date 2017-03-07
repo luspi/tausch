@@ -67,6 +67,21 @@ void Tausch::enableOpenCL(bool blockingSyncCpuGpu, bool setupOpenCL, int clLocal
 
 }
 
+// If Tausch didn't set up OpenCL, the user needs to pass some OpenCL variables
+void Tausch::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
+
+    this->cl_defaultDevice = cl_defaultDevice;
+    this->cl_context = cl_context;
+    this->cl_queue = cl_queue;
+    this->blockingSyncCpuGpu = blockingSyncCpuGpu;
+    this->cl_kernelLocalSize = clLocalWorkgroupSize;
+
+    gpuEnabled = true;
+
+    compileKernels();
+
+}
+
 Tausch::~Tausch() {
     // clean up memory
     for(int i = 0; i < 4; ++i) {
