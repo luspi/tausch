@@ -113,8 +113,8 @@ private:
     MPI_Request cpuToCpuSendRequest[4];
     MPI_Request cpuToCpuRecvRequest[4];
 
-    std::atomic<int> sync_counter;
-    std::atomic<int> sync_lock;
+    std::atomic<int> sync_counter[2];
+    std::atomic<int> sync_lock[2];
 
     bool blockingSyncCpuGpu;
 

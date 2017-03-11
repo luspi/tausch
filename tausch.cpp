@@ -50,8 +50,10 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY) {
     cpuStarted[Bottom] = false;
 
     // used for syncing the CPU and GPU thread
-    sync_counter.store(0);
-    sync_lock.store(0);
+    sync_counter[0].store(0);
+    sync_counter[1].store(0);
+    sync_lock[0].store(0);
+    sync_lock[1].store(0);
 
 }
 
@@ -367,14 +369,20 @@ void Tausch::completeGpuToCpu() {
 // both the CPU and GPU have to arrive at this point before either can continue
 void Tausch::syncCpuAndGpu() {
 
-    if(sync_lock.load() == 0)
-        sync_lock.store(1);
-    int val = sync_counter.fetch_add(1);
-    if(val == 1) {
-        sync_counter.store(0);
-        sync_lock.store(0);
+    // need to do this twice to prevent potential (though unlikely) deadlocks
+    for(int i = 0; i < 2; ++i) {
+
+        if(sync_lock[i].load() == 0)
+            sync_lock[i].store(1);
+        int val = sync_counter[i].fetch_add(1);
+        if(val == 1) {
+            sync_counter[i].store(0);
+            sync_lock[i].store(0);
+        }
+        while(sync_lock[i].load() == 1);
+
     }
-    while(sync_lock.load() == 1);
+
 }
 
 void Tausch::compileKernels() {
