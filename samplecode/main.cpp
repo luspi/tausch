@@ -93,10 +93,8 @@ int main(int argc, char** argv) {
 
     if(!cpuonly) {
 
-        std::future<void> thrdCPU(std::async(std::launch::async, &Sample::launchCPU, &sample));
         std::future<void> thrdGPU(std::async(std::launch::async, &Sample::launchGPU, &sample));
-
-        thrdCPU.wait();
+        sample.launchCPU();
         thrdGPU.wait();
 
     } else {

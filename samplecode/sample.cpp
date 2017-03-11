@@ -99,6 +99,7 @@ Sample::Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int m
 
 Sample::~Sample() {
 
+    delete tausch;
     delete[] datCPU;
     delete[] datGPU;
 
@@ -114,10 +115,10 @@ void Sample::launchCPU() {
         // post the receives
         tausch->postCpuReceives();
 
-        tausch->performCpuToCpu();
-
-        if(!cpuonly)
-            tausch->performCpuToGpu();
+        if(cpuonly)
+            tausch->performCpuToCpu();
+        else
+            tausch->performCpuToCpuAndCpuToGpu();
 
     }
 
