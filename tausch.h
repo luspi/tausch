@@ -11,6 +11,8 @@
 #define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 
+typedef double real_t;
+
 class Tausch {
 
     enum { Left = 0, Right, Top, Bottom };
