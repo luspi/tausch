@@ -40,7 +40,7 @@ void tausch_startCpuEdge(CTausch *tC, Edge edge);
 
 void tausch_completeCpuEdge(CTausch *tC, Edge edge);
 
-void tausch_syncCpuAndGpu(CTausch *tC, bool iAmTheCPU);
+void tausch_syncCpuAndGpu(CTausch *tC);
 
 
 void tausch_setHaloWidth(CTausch *tC, int haloWidth);

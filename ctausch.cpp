@@ -82,9 +82,9 @@ extern "C" {
         t->completeCpuEdge(edge);
     }
 
-    void tausch_syncCpuAndGpu(CTausch *tC, bool iAmTheCPU) {
+    void tausch_syncCpuAndGpu(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->syncCpuAndGpu(iAmTheCPU);
+        t->syncCpuAndGpu();
     }
 
 

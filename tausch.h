@@ -45,7 +45,7 @@ public:
     void startCpuEdge(Edge edge);
     void completeCpuEdge(Edge edge);
 
-    void syncCpuAndGpu(bool iAmTheCPU);
+    void syncCpuAndGpu();
 
 
     void setHaloWidth(int haloWidth) { this->haloWidth = 1; }
@@ -110,8 +110,8 @@ private:
     MPI_Request cpuToCpuSendRequest[4];
     MPI_Request cpuToCpuRecvRequest[4];
 
-    int syncpointCpu;
-    int syncpointGpu;
+    std::atomic<int> sync_counter;
+    std::atomic<int> sync_lock;
 
     bool blockingSyncCpuGpu;
 

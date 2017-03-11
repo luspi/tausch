@@ -50,8 +50,8 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY) {
     cpuStarted[Bottom] = false;
 
     // used for syncing the CPU and GPU thread
-    syncpointCpu = 0;
-    syncpointGpu = 0;
+    sync_counter.store(0);
+    sync_lock.store(0);
 
 }
 
@@ -61,6 +61,7 @@ void Tausch::enableOpenCL(bool blockingSyncCpuGpu, bool setupOpenCL, int clLocal
     gpuEnabled = false;
     // local workgroup size
     cl_kernelLocalSize = clLocalWorkgroupSize;
+    this->blockingSyncCpuGpu = blockingSyncCpuGpu;
     // Tausch can either set up OpenCL itself, or if not it needs to be passed some OpenCL variables by the user
     if(setupOpenCL)
         this->setupOpenCL(giveOpenCLDeviceName);
@@ -300,7 +301,7 @@ void Tausch::completeCpuToGpu() {
 
     // we need to wait for the GPU thread to arrive here
     if(blockingSyncCpuGpu)
-        syncCpuAndGpu(true);
+        syncCpuAndGpu();
 
     // left
     for(int i = 0; i < gpuDimY; ++ i)
@@ -327,7 +328,7 @@ void Tausch::completeGpuToCpu() {
 
     // we need to wait for the CPU thread to arrive here
     if(blockingSyncCpuGpu)
-        syncCpuAndGpu(false);
+        syncCpuAndGpu();
 
     try {
 
@@ -349,36 +350,16 @@ void Tausch::completeGpuToCpu() {
 }
 
 // both the CPU and GPU have to arrive at this point before either can continue
-void Tausch::syncCpuAndGpu(bool iAmTheCPU) {
+void Tausch::syncCpuAndGpu() {
 
-    if(iAmTheCPU) {
-        syncpointCpu = 31;
-        bool wait = true;
-        while(wait) {
-            if(syncpointGpu == 31) {
-                wait = false;
-                break;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
-        // the cpu resets the gpu sync variable, to avoid deadlock
-        syncpointGpu = 0;
-    } else {
-        syncpointGpu = 31;
-        bool wait = true;
-        while(wait) {
-            if(syncpointCpu == 31) {
-                wait = false;
-                break;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
-        // the gpu resets the cpu sync variable, to avoid deadlock
-        syncpointCpu = 0;
+    if(sync_lock.load() == 0)
+        sync_lock.store(1);
+    int val = sync_counter.fetch_add(1);
+    if(val == 1) {
+        sync_counter.store(0);
+        sync_lock.store(0);
     }
-
-    // this wait ensures that the other thread has indeed caught the variable, avoids potential deadlock for when the other thread could reach the next sync too fast
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    while(sync_lock.load() == 1);
 }
 
 void Tausch::compileKernels() {
