@@ -47,6 +47,9 @@ public:
 
     void syncCpuAndGpu();
 
+    void setMPICommunicator(MPI_Comm comm) { TAUSCH_COMM = comm; }
+    MPI_Comm getMPICommunicator() { return TAUSCH_COMM; }
+
 
     void setHaloWidth(int haloWidth) { this->haloWidth = 1; }
     void setCPUData(real_t *dat);
@@ -104,8 +107,6 @@ private:
     int cl_kernelLocalSize;
 
     MPI_Comm TAUSCH_COMM;
-
-
 
     MPI_Request cpuToCpuSendRequest[4];
     MPI_Request cpuToCpuRecvRequest[4];

@@ -29,6 +29,16 @@ extern "C" {
         t->enableOpenCL(*dev, *con, *que, blockingSyncCpuGpu);
     }
 
+    void tausch_setMPICommunicator(CTausch *tC, MPI_Comm comm) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        t->setMPICommunicator(comm);
+    }
+
+    void tausch_getMPICommunicator(CTausch *tC, MPI_Comm *comm) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        *comm = t->getMPICommunicator();
+    }
+
     void tausch_postCpuReceives(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
         t->postCpuReceives();
