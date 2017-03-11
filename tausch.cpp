@@ -23,16 +23,16 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY) {
     haveBoundary[Bottom] = (mpiRank > mpiNumX-1);
 
     // a send and recv buffer for the CPU-CPU communication
-    cpuToCpuSendBuffer = new double*[4];
-    cpuToCpuSendBuffer[Left] = new double[localDimY+2]{};
-    cpuToCpuSendBuffer[Right] = new double[localDimY+2]{};
-    cpuToCpuSendBuffer[Top] = new double[localDimX+2]{};
-    cpuToCpuSendBuffer[Bottom] = new double[localDimX+2]{};
-    cpuToCpuRecvBuffer = new double*[4];
-    cpuToCpuRecvBuffer[Left] = new double[localDimY+2]{};
-    cpuToCpuRecvBuffer[Right] = new double[localDimY+2]{};
-    cpuToCpuRecvBuffer[Top] = new double[localDimX+2]{};
-    cpuToCpuRecvBuffer[Bottom] = new double[localDimX+2]{};
+    cpuToCpuSendBuffer = new real_t*[4];
+    cpuToCpuSendBuffer[Left] = new real_t[localDimY+2]{};
+    cpuToCpuSendBuffer[Right] = new real_t[localDimY+2]{};
+    cpuToCpuSendBuffer[Top] = new real_t[localDimX+2]{};
+    cpuToCpuSendBuffer[Bottom] = new real_t[localDimX+2]{};
+    cpuToCpuRecvBuffer = new real_t*[4];
+    cpuToCpuRecvBuffer[Left] = new real_t[localDimY+2]{};
+    cpuToCpuRecvBuffer[Right] = new real_t[localDimY+2]{};
+    cpuToCpuRecvBuffer[Top] = new real_t[localDimX+2]{};
+    cpuToCpuRecvBuffer[Bottom] = new real_t[localDimX+2]{};
 
     // whether the cpu/gpu pointers have been passed
     gpuInfoGiven = false;
@@ -98,7 +98,7 @@ Tausch::~Tausch() {
 }
 
 // get a pointer to the CPU data
-void Tausch::setCPUData(double *dat) {
+void Tausch::setCPUData(real_t *dat) {
     cpuInfoGiven = true;
     cpuData = dat;
 }
@@ -121,15 +121,15 @@ void Tausch::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
 
     // store buffer to store the GPU and the CPU part of the halo.
     // We do not need two buffers each, as each thread has direct access to both arrays, no communication necessary
-    cpuToGpuBuffer = new double[2*(gpuDimX+2) + 2*gpuDimY]{};
-    gpuToCpuBuffer = new double[2*gpuDimX + 2*gpuDimY]{};
+    cpuToGpuBuffer = new real_t[2*(gpuDimX+2) + 2*gpuDimY]{};
+    gpuToCpuBuffer = new real_t[2*gpuDimX + 2*gpuDimY]{};
 
     // set up buffers on device
     try {
-        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuDimX+2*gpuDimY)*sizeof(double));
-        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*(gpuDimX+2)+2*gpuDimY)*sizeof(double));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*gpuDimX + 2*gpuDimY)*sizeof(double));
-        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*(gpuDimX+2) + 2*gpuDimY)*sizeof(double));
+        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuDimX+2*gpuDimY)*sizeof(real_t));
+        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*(gpuDimX+2)+2*gpuDimY)*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*gpuDimX + 2*gpuDimY)*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*(gpuDimX+2) + 2*gpuDimY)*sizeof(real_t));
         cl_gpuDimX = cl::Buffer(cl_context, &gpuDimX, (&gpuDimX)+1, true);
         cl_gpuDimY = cl::Buffer(cl_context, &gpuDimY, (&gpuDimY)+1, true);
     } catch(cl::Error error) {
@@ -149,14 +149,16 @@ void Tausch::postCpuReceives() {
 
     cpuRecvsPosted = true;
 
+    MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
+
     if(haveBoundary[Left])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Left][0], localDimY+2, MPI_DOUBLE, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[Left]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Left][0], localDimY+2, mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[Left]);
     if(haveBoundary[Right])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Right][0], localDimY+2, MPI_DOUBLE, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[Right]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Right][0], localDimY+2, mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[Right]);
     if(haveBoundary[Top])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Top][0], localDimX+2, MPI_DOUBLE, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[Top]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Top][0], localDimX+2, mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[Top]);
     if(haveBoundary[Bottom])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Bottom][0], localDimX+2, MPI_DOUBLE, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[Bottom]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Bottom][0], localDimX+2, mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[Bottom]);
 
 }
 
@@ -174,22 +176,24 @@ void Tausch::startCpuEdge(Edge edge) {
 
     cpuStarted[edge] = true;
 
+    MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
+
     if(edge == Left && haveBoundary[Left]) {
         for(int i = 0; i < localDimY+2; ++i)
             cpuToCpuSendBuffer[Left][i] = cpuData[1+ i*(localDimX+2)];
-        MPI_Isend(&cpuToCpuSendBuffer[Left][0], localDimY+2, MPI_DOUBLE, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[Left]);
+        MPI_Isend(&cpuToCpuSendBuffer[Left][0], localDimY+2, mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[Left]);
     } else if(edge == Right && haveBoundary[Right]) {
         for(int i = 0; i < localDimY+2; ++i)
             cpuToCpuSendBuffer[Right][i] = cpuData[(i+1)*(localDimX+2) -2];
-        MPI_Isend(&cpuToCpuSendBuffer[Right][0], localDimY+2, MPI_DOUBLE, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[Right]);
+        MPI_Isend(&cpuToCpuSendBuffer[Right][0], localDimY+2, mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[Right]);
     } else if(edge == Top && haveBoundary[Top]) {
         for(int i = 0; i < localDimX+2; ++i)
             cpuToCpuSendBuffer[Top][i] = cpuData[(localDimX+2)*localDimY + i];
-        MPI_Isend(&cpuToCpuSendBuffer[Top][0], localDimX+2, MPI_DOUBLE, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[Top]);
+        MPI_Isend(&cpuToCpuSendBuffer[Top][0], localDimX+2, mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[Top]);
     } else if(edge == Bottom && haveBoundary[Bottom]) {
         for(int i = 0; i < localDimX+2; ++i)
             cpuToCpuSendBuffer[Bottom][i] = cpuData[localDimX+2 + i];
-        MPI_Isend(&cpuToCpuSendBuffer[Bottom][0], localDimX+2, MPI_DOUBLE, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[Bottom]);
+        MPI_Isend(&cpuToCpuSendBuffer[Bottom][0], localDimX+2, mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[Bottom]);
     }
 
 }
@@ -365,9 +369,10 @@ void Tausch::syncCpuAndGpu() {
 void Tausch::compileKernels() {
 
     // Tausch requires two kernels: One for collecting the halo data and one for distributing that data
-    std::string oclstr = R"d(
+    std::string oclstr = "typedef " + std::string((sizeof(real_t)==sizeof(double)) ? "double" : "float") + " real_t;\n";
+    oclstr += R"d(
     kernel void collectHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
-                            global const double * restrict const vec, global double * sync) {
+                            global const real_t * restrict const vec, global real_t * sync) {
     unsigned int current = get_global_id(0);
     unsigned int maxNum = 2*(*dimX) + 2*(*dimY);
     if(current >= maxNum)
@@ -391,7 +396,7 @@ void Tausch::compileKernels() {
     sync[current] = vec[1+(*dimX+2)+(current-2*(*dimY)-(*dimX))];
     }
     kernel void distributeHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
-                               global double * vec, global const double * restrict const sync) {
+                               global real_t * vec, global const real_t * restrict const sync) {
     unsigned int current = get_global_id(0);
     unsigned int maxNum = 2*(*dimX+2) + 2*(*dimY);
     if(current >= maxNum)

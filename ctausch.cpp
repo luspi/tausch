@@ -92,7 +92,7 @@ extern "C" {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
         t->setHaloWidth(haloWidth);
     }
-    void tausch_setCPUData(CTausch *tC, double *dat) {
+    void tausch_setCPUData(CTausch *tC, real_t *dat) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
         t->setCPUData(dat);
     }

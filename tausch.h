@@ -49,7 +49,7 @@ public:
 
 
     void setHaloWidth(int haloWidth) { this->haloWidth = 1; }
-    void setCPUData(double *dat);
+    void setCPUData(real_t *dat);
     void setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY);
     bool isGpuEnabled() { return gpuEnabled; }
 
@@ -62,7 +62,7 @@ private:
     void EveryoneOutput(const std::string &inMessage);
 
     int localDimX, localDimY;
-    double *cpuData;
+    real_t *cpuData;
     cl::Buffer gpuData;
 
     int haloWidth;
@@ -75,11 +75,11 @@ private:
     void setupOpenCL(bool giveOpenCLDeviceName);
     void compileKernels();
 
-    double **cpuToCpuSendBuffer;
-    double **cpuToCpuRecvBuffer;
+    real_t **cpuToCpuSendBuffer;
+    real_t **cpuToCpuRecvBuffer;
 
-    double *cpuToGpuBuffer;
-    double *gpuToCpuBuffer;
+    real_t *cpuToGpuBuffer;
+    real_t *gpuToCpuBuffer;
 
     cl::Platform cl_platform;
     cl::Device cl_defaultDevice;

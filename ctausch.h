@@ -8,6 +8,8 @@ extern "C" {
 #include <stdbool.h>
 #include <CL/cl.h>
 
+typedef double real_t;
+
 typedef void* CTausch;
 
 enum { Left = 0, Right, Top, Bottom };
@@ -44,7 +46,7 @@ void tausch_syncCpuAndGpu(CTausch *tC);
 
 
 void tausch_setHaloWidth(CTausch *tC, int haloWidth);
-void tausch_setCPUData(CTausch *tC, double *dat);
+void tausch_setCPUData(CTausch *tC, real_t *dat);
 void tausch_setGPUData(CTausch *tC, cl_mem dat, int gpuDimX, int gpuDimY);
 bool tausch_isGpuEnabled(CTausch *tC);
 

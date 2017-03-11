@@ -21,7 +21,7 @@
  *
  *******************************/
 
-Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int mpiNumX, int mpiNumY, bool cpuonly, int clWorkGroupSize, bool giveOpenCLDeviceName) {
+Sample::Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int mpiNumX, int mpiNumY, bool cpuonly, int clWorkGroupSize, bool giveOpenCLDeviceName) {
 
     // obtain MPI rank
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -51,7 +51,7 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
 
     // how many points overall in the mesh and a CPU buffer for all of them
     int num = (dimX+2)*(dimY+2);
-    datCPU = new double[num]{};
+    datCPU = new real_t[num]{};
 
     if(cpuonly) {
         for(int j = 0; j < dimY; ++j)
@@ -69,7 +69,7 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
     if(!cpuonly) {
 
         // how many points only on the device and an OpenCL buffer for them
-        datGPU = new double[(gpuDimX+2)*(gpuDimY+2)]{};
+        datGPU = new real_t[(gpuDimX+2)*(gpuDimY+2)]{};
 
         for(int j = 0; j < gpuDimY; ++j)
             for(int i = 0; i < gpuDimX; ++i)
@@ -85,7 +85,7 @@ Sample::Sample(int localDimX, int localDimY, double portionGPU, int loops, int m
         }
 
     } else
-        datGPU = new double[1]{};
+        datGPU = new real_t[1]{};
 
     // currently redundant, can only be 1
     tausch->setHaloWidth(1);
