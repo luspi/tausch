@@ -121,8 +121,8 @@ void Tausch::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
 
     // store buffer to store the GPU and the CPU part of the halo.
     // We do not need two buffers each, as each thread has direct access to both arrays, no communication necessary
-    cpuToGpuBuffer = new real_t[2*(gpuDimX+2) + 2*gpuDimY]{};
-    gpuToCpuBuffer = new real_t[2*gpuDimX + 2*gpuDimY]{};
+    cpuToGpuBuffer = new std::atomic<real_t>[2*(gpuDimX+2) + 2*gpuDimY]{};
+    gpuToCpuBuffer = new std::atomic<real_t>[2*gpuDimX + 2*gpuDimY]{};
 
     // set up buffers on device
     try {
@@ -211,16 +211,16 @@ void Tausch::startCpuToGpu() {
 
     // left
     for(int i = 0; i < gpuDimY; ++ i)
-        cpuToGpuBuffer[i] = cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2];
+        cpuToGpuBuffer[i].store(cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2], std::memory_order_release);
     // right
     for(int i = 0; i < gpuDimY; ++ i)
-        cpuToGpuBuffer[gpuDimY + i] = cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + gpuDimX+1];
+        cpuToGpuBuffer[gpuDimY + i].store(cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + gpuDimX+1], std::memory_order_release);
     // top
     for(int i = 0; i < gpuDimX+2; ++ i)
-        cpuToGpuBuffer[2*gpuDimY + i] = cpuData[((localDimY-gpuDimY)/2 +gpuDimY+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + i];
+        cpuToGpuBuffer[2*gpuDimY + i].store(cpuData[((localDimY-gpuDimY)/2 +gpuDimY+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + i], std::memory_order_release);
     // bottom
     for(int i = 0; i < gpuDimX+2; ++ i)
-        cpuToGpuBuffer[2*gpuDimY+gpuDimX+2 + i] = cpuData[((localDimY-gpuDimY)/2)*(localDimX+2) + (localDimX-gpuDimX)/2 + i];
+        cpuToGpuBuffer[2*gpuDimY+gpuDimX+2 + i].store(cpuData[((localDimY-gpuDimY)/2)*(localDimX+2) + (localDimX-gpuDimX)/2 + i], std::memory_order_release);
 
 }
 
@@ -249,7 +249,12 @@ void Tausch::startGpuToCpu() {
         kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
                            cl_gpuDimX, cl_gpuDimY, gpuData, cl_gpuToCpuBuffer);
 
-        cl::copy(cl_queue, cl_gpuToCpuBuffer, &gpuToCpuBuffer[0], (&gpuToCpuBuffer[2*gpuDimX+2*gpuDimY-1])+1);
+        double *dat = new double[2*gpuDimX+2*gpuDimY];
+        cl::copy(cl_queue, cl_gpuToCpuBuffer, &dat[0], (&dat[2*gpuDimX+2*gpuDimY-1])+1);
+        for(int i = 0; i < 2*gpuDimX+2*gpuDimY; ++i)
+            gpuToCpuBuffer[i].store(dat[i], std::memory_order_release);
+
+        delete[] dat;
 
     } catch(cl::Error error) {
         std::cout << "[kernel collectHalo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -309,16 +314,16 @@ void Tausch::completeCpuToGpu() {
 
     // left
     for(int i = 0; i < gpuDimY; ++ i)
-        cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 +1] = gpuToCpuBuffer[i];
+        cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 +1] = gpuToCpuBuffer[i].load(std::memory_order_acquire);
     // right
     for(int i = 0; i < gpuDimY; ++ i)
-        cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + gpuDimX] = gpuToCpuBuffer[gpuDimY + i];
+        cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + gpuDimX] = gpuToCpuBuffer[gpuDimY + i].load(std::memory_order_acquire);
     // top
     for(int i = 0; i < gpuDimX; ++ i)
-        cpuData[((localDimY-gpuDimY)/2 +gpuDimY)*(localDimX+2) + (localDimX-gpuDimX)/2 + i+1] = gpuToCpuBuffer[2*gpuDimY + i];
+        cpuData[((localDimY-gpuDimY)/2 +gpuDimY)*(localDimX+2) + (localDimX-gpuDimX)/2 + i+1] = gpuToCpuBuffer[2*gpuDimY + i].load(std::memory_order_acquire);
     // bottom
     for(int i = 0; i < gpuDimX; ++ i)
-        cpuData[((localDimY-gpuDimY)/2 +1)*(localDimX+2) + (localDimX-gpuDimX)/2 + i+1] = gpuToCpuBuffer[2*gpuDimY+gpuDimX + i];
+        cpuData[((localDimY-gpuDimY)/2 +1)*(localDimX+2) + (localDimX-gpuDimX)/2 + i+1] = gpuToCpuBuffer[2*gpuDimY+gpuDimX + i].load(std::memory_order_acquire);
 
 }
 
@@ -336,7 +341,13 @@ void Tausch::completeGpuToCpu() {
 
     try {
 
-        cl::copy(cl_queue, &cpuToGpuBuffer[0], (&cpuToGpuBuffer[2*(gpuDimX+2)+2*gpuDimY-1])+1, cl_cpuToGpuBuffer);
+        double *dat = new double[2*(gpuDimX+2)+2*gpuDimY];
+        for(int i = 0; i < 2*(gpuDimX+2)+2*gpuDimY; ++i)
+            dat[i] = cpuToGpuBuffer[i].load(std::memory_order_acquire);
+
+        cl::copy(cl_queue, &dat[0], (&dat[2*(gpuDimX+2)+2*gpuDimY-1])+1, cl_cpuToGpuBuffer);
+
+        delete[] dat;
 
         auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
 

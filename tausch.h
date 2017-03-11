@@ -83,8 +83,8 @@ private:
     real_t **cpuToCpuSendBuffer;
     real_t **cpuToCpuRecvBuffer;
 
-    real_t *cpuToGpuBuffer;
-    real_t *gpuToCpuBuffer;
+    std::atomic<real_t> *cpuToGpuBuffer;
+    std::atomic<real_t> *gpuToCpuBuffer;
 
     cl::Platform cl_platform;
     cl::Device cl_defaultDevice;
