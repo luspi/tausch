@@ -34,13 +34,10 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, MPI_Comm 
     cpuToCpuRecvBuffer[Bottom] = new real_t[localDimX+2]{};
 
     // whether the cpu/gpu pointers have been passed
-    gpuInfoGiven = false;
     cpuInfoGiven = false;
 
     // cpu at beginning
     cpuRecvsPosted = false;
-    gpuToCpuStarted = false;
-    cpuToGpuStarted = false;
 
     // communication to neither edge has been started
     cpuStarted[Left] = false;
@@ -48,39 +45,21 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, MPI_Comm 
     cpuStarted[Top] = false;
     cpuStarted[Bottom] = false;
 
+#ifdef OPENCL
+
+    gpuInfoGiven = false;
+    gpuEnabled = false;
+
+    gpuToCpuStarted = false;
+    cpuToGpuStarted = false;
+
     // used for syncing the CPU and GPU thread
     sync_counter[0].store(0);
     sync_counter[1].store(0);
     sync_lock[0].store(0);
     sync_lock[1].store(0);
 
-}
-
-void Tausch::enableOpenCL(bool blockingSyncCpuGpu, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
-
-    // gpu disabled by default, only enabled if flag is set
-    gpuEnabled = false;
-    // local workgroup size
-    cl_kernelLocalSize = clLocalWorkgroupSize;
-    this->blockingSyncCpuGpu = blockingSyncCpuGpu;
-    // Tausch can either set up OpenCL itself, or if not it needs to be passed some OpenCL variables by the user
-    if(setupOpenCL)
-        this->setupOpenCL(giveOpenCLDeviceName);
-
-}
-
-// If Tausch didn't set up OpenCL, the user needs to pass some OpenCL variables
-void Tausch::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
-
-    this->cl_defaultDevice = cl_defaultDevice;
-    this->cl_context = cl_context;
-    this->cl_queue = cl_queue;
-    this->blockingSyncCpuGpu = blockingSyncCpuGpu;
-    this->cl_kernelLocalSize = clLocalWorkgroupSize;
-
-    gpuEnabled = true;
-
-    compileKernels();
+#endif
 
 }
 
@@ -92,52 +71,18 @@ Tausch::~Tausch() {
     }
     delete[] cpuToCpuSendBuffer;
     delete[] cpuToCpuRecvBuffer;
+#ifdef OPENCL
     if(gpuEnabled) {
         delete[] cpuToGpuBuffer;
         delete[] gpuToCpuBuffer;
     }
+#endif
 }
 
 // get a pointer to the CPU data
 void Tausch::setCPUData(real_t *dat) {
     cpuInfoGiven = true;
     cpuData = dat;
-}
-
-// get a pointer to the GPU buffer and its dimensions
-void Tausch::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
-
-    // check whether OpenCL has been set up
-    if(!gpuEnabled) {
-        std::cerr << "ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
-        exit(1);
-    }
-
-    gpuInfoGiven = true;
-
-    // store parameters
-    gpuData = dat;
-    this->gpuDimX = gpuDimX;
-    this->gpuDimY = gpuDimY;
-
-    // store buffer to store the GPU and the CPU part of the halo.
-    // We do not need two buffers each, as each thread has direct access to both arrays, no communication necessary
-    cpuToGpuBuffer = new std::atomic<real_t>[2*(gpuDimX+2) + 2*gpuDimY]{};
-    gpuToCpuBuffer = new std::atomic<real_t>[2*gpuDimX + 2*gpuDimY]{};
-
-    // set up buffers on device
-    try {
-        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuDimX+2*gpuDimY)*sizeof(real_t));
-        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*(gpuDimX+2)+2*gpuDimY)*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*gpuDimX + 2*gpuDimY)*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*(gpuDimX+2) + 2*gpuDimY)*sizeof(real_t));
-        cl_gpuDimX = cl::Buffer(cl_context, &gpuDimX, (&gpuDimX)+1, true);
-        cl_gpuDimY = cl::Buffer(cl_context, &gpuDimY, (&gpuDimY)+1, true);
-    } catch(cl::Error error) {
-        std::cout << "[setup send/recv buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
-        exit(1);
-    }
-
 }
 
 // post the MPI_Irecv's for inter-rank communication
@@ -195,6 +140,120 @@ void Tausch::startCpuEdge(Edge edge) {
         for(int i = 0; i < localDimX+2; ++i)
             cpuToCpuSendBuffer[Bottom][i] = cpuData[localDimX+2 + i];
         MPI_Isend(&cpuToCpuSendBuffer[Bottom][0], localDimX+2, mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[Bottom]);
+    }
+
+}
+
+// Complete CPU-CPU exchange to the left
+void Tausch::completeCpuEdge(Edge edge) {
+
+    if(edge != Left && edge != Right && edge != Top && edge != Bottom) {
+        std::cerr << "completeCpuEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
+        exit(1);
+    }
+
+    if(!cpuStarted[edge]) {
+        std::cerr << "ERROR: No edge #" << edge << " CPU exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    if(edge == Left && haveBoundary[Left]) {
+        MPI_Wait(&cpuToCpuRecvRequest[Left], MPI_STATUS_IGNORE);
+        for(int i = 0; i < localDimY+2; ++i)
+            cpuData[i*(localDimX+2)] = cpuToCpuRecvBuffer[Left][i];
+        MPI_Wait(&cpuToCpuSendRequest[Left], MPI_STATUS_IGNORE);
+    } else if(edge == Right && haveBoundary[Right]) {
+        MPI_Wait(&cpuToCpuRecvRequest[Right], MPI_STATUS_IGNORE);
+        for(int i = 0; i < localDimY+2; ++i)
+            cpuData[(i+1)*(localDimX+2)-1] = cpuToCpuRecvBuffer[Right][i];
+        MPI_Wait(&cpuToCpuSendRequest[Right], MPI_STATUS_IGNORE);
+    } else if(edge == Top && haveBoundary[Top]) {
+        MPI_Wait(&cpuToCpuRecvRequest[Top], MPI_STATUS_IGNORE);
+        for(int i = 0; i < localDimX+2; ++i)
+            cpuData[(localDimX+2)*(localDimY+1) + i] = cpuToCpuRecvBuffer[Top][i];
+        MPI_Wait(&cpuToCpuSendRequest[Top], MPI_STATUS_IGNORE);
+    } else if(edge == Bottom && haveBoundary[Bottom]) {
+        MPI_Wait(&cpuToCpuRecvRequest[Bottom], MPI_STATUS_IGNORE);
+        for(int i = 0; i < localDimX+2; ++i)
+            cpuData[i] = cpuToCpuRecvBuffer[Bottom][i];
+        MPI_Wait(&cpuToCpuSendRequest[Bottom], MPI_STATUS_IGNORE);
+    }
+
+}
+
+// Let every MPI rank one by one output the stuff
+void Tausch::EveryoneOutput(const std::string &inMessage) {
+
+    for(int iRank = 0; iRank < mpiSize; ++iRank){
+        if(mpiRank == iRank)
+            std::cout << inMessage;
+        MPI_Barrier(TAUSCH_COMM);
+    }
+
+}
+
+#ifdef OPENCL
+
+void Tausch::enableOpenCL(bool blockingSyncCpuGpu, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+
+    // gpu disabled by default, only enabled if flag is set
+    gpuEnabled = true;
+    // local workgroup size
+    cl_kernelLocalSize = clLocalWorkgroupSize;
+    this->blockingSyncCpuGpu = blockingSyncCpuGpu;
+    // Tausch can either set up OpenCL itself, or if not it needs to be passed some OpenCL variables by the user
+    if(setupOpenCL)
+        this->setupOpenCL(giveOpenCLDeviceName);
+
+}
+
+// If Tausch didn't set up OpenCL, the user needs to pass some OpenCL variables
+void Tausch::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
+
+    this->cl_defaultDevice = cl_defaultDevice;
+    this->cl_context = cl_context;
+    this->cl_queue = cl_queue;
+    this->blockingSyncCpuGpu = blockingSyncCpuGpu;
+    this->cl_kernelLocalSize = clLocalWorkgroupSize;
+
+    gpuEnabled = true;
+
+    compileKernels();
+
+}
+
+// get a pointer to the GPU buffer and its dimensions
+void Tausch::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
+
+    // check whether OpenCL has been set up
+    if(!gpuEnabled) {
+        std::cerr << "ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
+        exit(1);
+    }
+
+    gpuInfoGiven = true;
+
+    // store parameters
+    gpuData = dat;
+    this->gpuDimX = gpuDimX;
+    this->gpuDimY = gpuDimY;
+
+    // store buffer to store the GPU and the CPU part of the halo.
+    // We do not need two buffers each, as each thread has direct access to both arrays, no communication necessary
+    cpuToGpuBuffer = new std::atomic<real_t>[2*(gpuDimX+2) + 2*gpuDimY]{};
+    gpuToCpuBuffer = new std::atomic<real_t>[2*gpuDimX + 2*gpuDimY]{};
+
+    // set up buffers on device
+    try {
+        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuDimX+2*gpuDimY)*sizeof(real_t));
+        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*(gpuDimX+2)+2*gpuDimY)*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*gpuDimX + 2*gpuDimY)*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*(gpuDimX+2) + 2*gpuDimY)*sizeof(real_t));
+        cl_gpuDimX = cl::Buffer(cl_context, &gpuDimX, (&gpuDimX)+1, true);
+        cl_gpuDimY = cl::Buffer(cl_context, &gpuDimY, (&gpuDimY)+1, true);
+    } catch(cl::Error error) {
+        std::cout << "[setup send/recv buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
     }
 
 }
@@ -260,43 +319,6 @@ void Tausch::startGpuToCpu() {
     } catch(cl::Error error) {
         std::cout << "[kernel collectHalo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
-    }
-
-}
-
-// Complete CPU-CPU exchange to the left
-void Tausch::completeCpuEdge(Edge edge) {
-
-    if(edge != Left && edge != Right && edge != Top && edge != Bottom) {
-        std::cerr << "completeCpuEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
-        exit(1);
-    }
-
-    if(!cpuStarted[edge]) {
-        std::cerr << "ERROR: No edge #" << edge << " CPU exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    if(edge == Left && haveBoundary[Left]) {
-        MPI_Wait(&cpuToCpuRecvRequest[Left], MPI_STATUS_IGNORE);
-        for(int i = 0; i < localDimY+2; ++i)
-            cpuData[i*(localDimX+2)] = cpuToCpuRecvBuffer[Left][i];
-        MPI_Wait(&cpuToCpuSendRequest[Left], MPI_STATUS_IGNORE);
-    } else if(edge == Right && haveBoundary[Right]) {
-        MPI_Wait(&cpuToCpuRecvRequest[Right], MPI_STATUS_IGNORE);
-        for(int i = 0; i < localDimY+2; ++i)
-            cpuData[(i+1)*(localDimX+2)-1] = cpuToCpuRecvBuffer[Right][i];
-        MPI_Wait(&cpuToCpuSendRequest[Right], MPI_STATUS_IGNORE);
-    } else if(edge == Top && haveBoundary[Top]) {
-        MPI_Wait(&cpuToCpuRecvRequest[Top], MPI_STATUS_IGNORE);
-        for(int i = 0; i < localDimX+2; ++i)
-            cpuData[(localDimX+2)*(localDimY+1) + i] = cpuToCpuRecvBuffer[Top][i];
-        MPI_Wait(&cpuToCpuSendRequest[Top], MPI_STATUS_IGNORE);
-    } else if(edge == Bottom && haveBoundary[Bottom]) {
-        MPI_Wait(&cpuToCpuRecvRequest[Bottom], MPI_STATUS_IGNORE);
-        for(int i = 0; i < localDimX+2; ++i)
-            cpuData[i] = cpuToCpuRecvBuffer[Bottom][i];
-        MPI_Wait(&cpuToCpuSendRequest[Bottom], MPI_STATUS_IGNORE);
     }
 
 }
@@ -522,17 +544,6 @@ void Tausch::setupOpenCL(bool giveOpenCLDeviceName) {
 
 }
 
-// Let every MPI rank one by one output the stuff
-void Tausch::EveryoneOutput(const std::string &inMessage) {
-
-    for(int iRank = 0; iRank < mpiSize; ++iRank){
-        if(mpiRank == iRank)
-            std::cout << inMessage;
-        MPI_Barrier(TAUSCH_COMM);
-    }
-
-}
-
 void Tausch::checkOpenCLError(cl_int clErr, std::string loc) {
 
     if(clErr == CL_SUCCESS) return;
@@ -622,3 +633,4 @@ void Tausch::checkOpenCLError(cl_int clErr, std::string loc) {
 
     exit(1);
 }
+#endif

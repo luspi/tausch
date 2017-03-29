@@ -8,13 +8,19 @@ SET(CMAKE_CXX_COMPILER "mpic++")
 # Enable C++11 and optimisations
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 
+# option to toggle OpenCL support
+option(OPENCL "Enable OpenCL support" ON)
+
 # find MPI
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
 
 # find OpenCL
-find_package(OpenCL REQUIRED)
-include_directories(${OPENCL_INCLUDE_DIRS})
+if(OPENCL)
+    find_package(OpenCL REQUIRED)
+    include_directories(${OPENCL_INCLUDE_DIRS})
+    ADD_DEFINITIONS(-DOPENCL)
+endif(OPENCL)
 
 # fine OpenMP
 find_package(OpenMP)

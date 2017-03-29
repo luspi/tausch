@@ -16,24 +16,6 @@ extern "C" {
         delete t;
     }
 
-    void tausch_enableOpenCL(CTausch *tC, bool blockingSyncCpuGpu, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->enableOpenCL(blockingSyncCpuGpu, setupOpenCL, clLocalWorkgroupSize, giveOpenCLDeviceName);
-    }
-
-    void tausch_setOpenCLInfo(CTausch *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, bool blockingSyncCpuGpu) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        cl::Device *dev = new cl::Device(*clDefaultDevice);
-        cl::Context *con = new cl::Context(*clContext);
-        cl::CommandQueue *que = new cl::CommandQueue(*clQueue);
-        t->enableOpenCL(*dev, *con, *que, blockingSyncCpuGpu);
-    }
-
-    void tausch_setMPICommunicator(CTausch *tC, MPI_Comm comm) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->setMPICommunicator(comm);
-    }
-
     void tausch_getMPICommunicator(CTausch *tC, MPI_Comm *comm) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
         *comm = t->getMPICommunicator();
@@ -47,6 +29,49 @@ extern "C" {
     void tausch_performCpuToCpu(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
         t->performCpuToCpu();
+    }
+
+    void tausch_startCpuEdge(CTausch *tC, Edge edge) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        t->startCpuEdge(edge);
+    }
+
+    void tausch_completeCpuEdge(CTausch *tC, Edge edge) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        t->completeCpuEdge(edge);
+    }
+
+    void tausch_setHaloWidth(CTausch *tC, int haloWidth) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        t->setHaloWidth(haloWidth);
+    }
+    void tausch_setCPUData(CTausch *tC, real_t *dat) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        t->setCPUData(dat);
+    }
+
+#ifdef OPENCL
+    void tausch_enableOpenCL(CTausch *tC, bool blockingSyncCpuGpu, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        t->enableOpenCL(blockingSyncCpuGpu, setupOpenCL, clLocalWorkgroupSize, giveOpenCLDeviceName);
+    }
+
+    void tausch_setOpenCLInfo(CTausch *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, bool blockingSyncCpuGpu) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        cl::Device *dev = new cl::Device(*clDefaultDevice);
+        cl::Context *con = new cl::Context(*clContext);
+        cl::CommandQueue *que = new cl::CommandQueue(*clQueue);
+        t->enableOpenCL(*dev, *con, *que, blockingSyncCpuGpu);
+    }
+
+    void tausch_setGPUData(CTausch *tC, cl_mem dat, int gpuDimX, int gpuDimY) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        cl::Buffer *buf = new cl::Buffer(dat);
+        t->setGPUData(*buf, gpuDimX, gpuDimY);
+    }
+    bool tausch_isGpuEnabled(CTausch *tC) {
+        Tausch *t = reinterpret_cast<Tausch*>(tC);
+        return t->isGpuEnabled();
     }
 
     void tausch_performCpuToCpuAndCpuToGpu(CTausch *tC) {
@@ -82,38 +107,9 @@ extern "C" {
         t->completeGpuToCpu();
     }
 
-    void tausch_startCpuEdge(CTausch *tC, Edge edge) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->startCpuEdge(edge);
-    }
-
-    void tausch_completeCpuEdge(CTausch *tC, Edge edge) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->completeCpuEdge(edge);
-    }
-
     void tausch_syncCpuAndGpu(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
         t->syncCpuAndGpu();
-    }
-
-
-    void tausch_setHaloWidth(CTausch *tC, int haloWidth) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->setHaloWidth(haloWidth);
-    }
-    void tausch_setCPUData(CTausch *tC, real_t *dat) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->setCPUData(dat);
-    }
-    void tausch_setGPUData(CTausch *tC, cl_mem dat, int gpuDimX, int gpuDimY) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        cl::Buffer *buf = new cl::Buffer(dat);
-        t->setGPUData(*buf, gpuDimX, gpuDimY);
-    }
-    bool tausch_isGpuEnabled(CTausch *tC) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        return t->isGpuEnabled();
     }
 
     cl_context tausch_getContext(CTausch *tC) {
@@ -130,6 +126,7 @@ extern "C" {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
         t->checkOpenCLError(clErr, std::string(loc));
     }
+#endif
 
 #ifdef __cplusplus
 }
