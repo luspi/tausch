@@ -15,7 +15,7 @@ typedef void* CTausch;
 enum { Left = 0, Right, Top, Bottom };
 typedef int Edge;
 
-CTausch* tausch_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY);
+CTausch* tausch_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, MPI_Comm comm);
 void tausch_delete(CTausch *tC);
 
 void tausch_setMPICommunicator(CTausch *tC, MPI_Comm comm);

@@ -19,7 +19,7 @@ class Tausch {
     typedef int Edge;
 
 public:
-    explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY);
+    explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, MPI_Comm comm = MPI_COMM_WORLD);
     ~Tausch();
 
     void enableOpenCL(bool blockingSyncCpuGpu, bool setupOpenCL = false, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);

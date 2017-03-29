@@ -6,8 +6,8 @@ extern "C" {
 
 #include "ctausch.h"
 
-    CTausch *tausch_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY) {
-        Tausch *t = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY);
+    CTausch *tausch_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, MPI_Comm comm) {
+        Tausch *t = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY, comm);
         return reinterpret_cast<CTausch*>(t);
     }
 

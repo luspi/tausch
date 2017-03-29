@@ -1,8 +1,8 @@
 #include "tausch.h"
 
-Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY) {
+Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, MPI_Comm comm) {
 
-    MPI_Comm_dup(MPI_COMM_WORLD, &TAUSCH_COMM);
+    MPI_Comm_dup(comm, &TAUSCH_COMM);
 
     // get MPI info
     MPI_Comm_rank(TAUSCH_COMM, &mpiRank);
@@ -14,7 +14,6 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY) {
     // store configuration
     this->localDimX = localDimX;
     this->localDimY = localDimY;
-    this->blockingSyncCpuGpu = blockingSyncCpuGpu;
 
     // check if this rank has a boundary with another rank
     haveBoundary[Left] = (mpiRank%mpiNumX != 0);
