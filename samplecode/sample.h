@@ -6,13 +6,14 @@
 #include <cmath>
 #include <iomanip>
 #include <chrono>
+#include <CL/cl.hpp>
 
 typedef double real_t;
 
 class Sample {
 
 public:
-    explicit Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int mpiNumX = 0, int mpiNumY = 0, bool cpuonly = false, int clWorkGroupSize = 64, bool giveOpenCLDeviceName = false);
+    explicit Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int haloWidth, int mpiNumX = 0, int mpiNumY = 0, bool cpuonly = false, int clWorkGroupSize = 64, bool giveOpenCLDeviceName = false);
     ~Sample();
 
     void printCPU();
@@ -30,6 +31,7 @@ private:
     int loops;
     Tausch *tausch;
     bool cpuonly;
+    int haloWidth;
 
 };
 

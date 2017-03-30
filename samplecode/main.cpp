@@ -25,6 +25,7 @@ int main(int argc, char** argv) {
     int workgroupsize = 64;
     bool giveOpenClDeviceName = false;
     int printMpiRank = -1;
+    int haloWidth = 1;
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {
@@ -52,6 +53,8 @@ int main(int argc, char** argv) {
                 giveOpenClDeviceName = true;
             else if(argv[i] == std::string("-print") && i < argc-1)
                 printMpiRank = atoi(argv[++i]);
+            else if(argv[i] == std::string("-halo") && i < argc-1)
+                haloWidth = atoi(argv[++i]);
         }
     }
 
@@ -69,8 +72,7 @@ int main(int argc, char** argv) {
                   << std::endl;
 
     }
-
-    Sample sample(localDimX, localDimY, portionGPU, loops, mpiNumX, mpiNumY, cpuonly, workgroupsize, giveOpenClDeviceName);
+    Sample sample(localDimX, localDimY, portionGPU, loops, haloWidth, mpiNumX, mpiNumY, cpuonly, workgroupsize, giveOpenClDeviceName);
 
     if(mpiRank == printMpiRank) {
         if(!cpuonly) {
@@ -99,16 +101,12 @@ int main(int argc, char** argv) {
 
     } else {
 
-        std::future<void> thrdCPU(std::async(std::launch::async, &Sample::launchCPU, &sample));
-        thrdCPU.wait();
+        sample.launchCPU();
 
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
     auto t_end = std::chrono::steady_clock::now();
-
-    if(mpiRank == 0)
-        std::cout << "Time required: " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
 
     if(mpiRank == printMpiRank) {
         if(!cpuonly) {
@@ -125,6 +123,11 @@ int main(int argc, char** argv) {
         sample.printCPU();
         std::cout << "-------------------------------" << std::endl;
     }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    if(mpiRank == 0)
+        std::cout << "Time required: " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
 
     MPI_Finalize();
 

@@ -21,7 +21,7 @@
  *
  *******************************/
 
-Sample::Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int mpiNumX, int mpiNumY, bool cpuonly, int clWorkGroupSize, bool giveOpenCLDeviceName) {
+Sample::Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int haloWidth, int mpiNumX, int mpiNumY, bool cpuonly, int clWorkGroupSize, bool giveOpenCLDeviceName) {
 
     // obtain MPI rank
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -43,37 +43,37 @@ Sample::Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int m
         exit(1);
     }
 
-    tausch = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY);
+    // the width of the halos
+    this->haloWidth = haloWidth;
+
+    tausch = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY, haloWidth);
     if(!cpuonly) tausch->enableOpenCL(true, true, clWorkGroupSize, giveOpenCLDeviceName);
 
-    // the width of the halos
-    int halowidth = 1;
-
     // how many points overall in the mesh and a CPU buffer for all of them
-    int num = (dimX+2)*(dimY+2);
+    int num = (dimX+2*haloWidth)*(dimY+2*haloWidth);
     datCPU = new real_t[num]{};
 
     if(cpuonly) {
         for(int j = 0; j < dimY; ++j)
             for(int i = 0; i < dimX; ++i)
-                datCPU[(j+1)*(dimX+2) + i+1] = j*dimX+i+1;
+                datCPU[(j+haloWidth)*(dimX+2*haloWidth) + i+haloWidth] = j*dimX+i+1;
     } else {
         for(int j = 0; j < dimY; ++j)
             for(int i = 0; i < dimX; ++i)
                 if(!(i >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
                    && j >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY))
-                    datCPU[(j+1)*(dimX+2) + i+1] = j*dimX+i+1;
+                    datCPU[(j+haloWidth)*(dimX+2*haloWidth) + i+1] = j*dimX+i+haloWidth;
     }
 
 
     if(!cpuonly) {
 
         // how many points only on the device and an OpenCL buffer for them
-        datGPU = new real_t[(gpuDimX+2)*(gpuDimY+2)]{};
+        datGPU = new real_t[(gpuDimX+2*haloWidth)*(gpuDimY+2*haloWidth)]{};
 
         for(int j = 0; j < gpuDimY; ++j)
             for(int i = 0; i < gpuDimX; ++i)
-                datGPU[(j+1)*(gpuDimX+2) + i+1] = j*gpuDimX+i+1;
+                datGPU[(j+haloWidth)*(gpuDimX+2*haloWidth) + i+haloWidth] = j*gpuDimX+i+haloWidth;
 
         try {
 
@@ -86,9 +86,6 @@ Sample::Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int m
 
     } else
         datGPU = new real_t[1]{};
-
-    // currently redundant, can only be 1
-    tausch->setHaloWidth(1);
 
     // pass pointers to the two data containers
     tausch->setCPUData(datCPU);
@@ -144,9 +141,9 @@ void Sample::printCPU() {
 
     if(cpuonly) {
 
-        for(int j = dimY+2 -1; j >= 0; --j) {
-            for(int i = 0; i < dimX+2; ++i)
-                std::cout << std::setw(3) << datCPU[j*(dimX+2) + i] << " ";
+        for(int j = dimY+2*haloWidth-1; j >= 0; --j) {
+            for(int i = 0; i < dimX+2*haloWidth; ++i)
+                std::cout << std::setw(3) << datCPU[j*(dimX+2*haloWidth) + i] << " ";
             std::cout << std::endl;
         }
 
