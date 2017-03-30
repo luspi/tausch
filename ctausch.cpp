@@ -6,8 +6,8 @@ extern "C" {
 
 #include "ctausch.h"
 
-    CTausch *tausch_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, MPI_Comm comm) {
-        Tausch *t = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY, comm);
+    CTausch *tausch_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloWidth, MPI_Comm comm) {
+        Tausch *t = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY, haloWidth, comm);
         return reinterpret_cast<CTausch*>(t);
     }
 
@@ -41,10 +41,6 @@ extern "C" {
         t->completeCpuEdge(edge);
     }
 
-    void tausch_setHaloWidth(CTausch *tC, int haloWidth) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->setHaloWidth(haloWidth);
-    }
     void tausch_setCPUData(CTausch *tC, real_t *dat) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
         t->setCPUData(dat);

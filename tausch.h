@@ -64,7 +64,7 @@ public:
      * @param mpiNumY
      *  The number of MPI ranks lined up in the y direction. mpiNumX*mpiNumY has to be equal to the total number of MPI ranks.
      */
-    explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, MPI_Comm comm = MPI_COMM_WORLD);
+    explicit Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloWidth, MPI_Comm comm = MPI_COMM_WORLD);
     ~Tausch();
 
     void postCpuReceives();
@@ -77,7 +77,6 @@ public:
 
     MPI_Comm getMPICommunicator() { return TAUSCH_COMM; }
 
-    void setHaloWidth(int haloWidth) { this->haloWidth = 1; }
     void setCPUData(real_t *dat);
 
 #ifdef OPENCL

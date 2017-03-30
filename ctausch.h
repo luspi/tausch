@@ -17,7 +17,7 @@ typedef void* CTausch;
 enum { Left = 0, Right, Top, Bottom };
 typedef int Edge;
 
-CTausch* tausch_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, MPI_Comm comm);
+CTausch* tausch_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloWidth, MPI_Comm comm);
 void tausch_delete(CTausch *tC);
 
 void tausch_getMPICommunicator(CTausch *tC, MPI_Comm *comm);
@@ -32,7 +32,6 @@ void tausch_startCpuEdge(CTausch *tC, Edge edge);
 
 void tausch_completeCpuEdge(CTausch *tC, Edge edge);
 
-void tausch_setHaloWidth(CTausch *tC, int haloWidth);
 void tausch_setCPUData(CTausch *tC, real_t *dat);
 
 #ifdef OPENCL

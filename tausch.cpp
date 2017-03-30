@@ -1,6 +1,6 @@
 #include "tausch.h"
 
-Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, MPI_Comm comm) {
+Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloWidth, MPI_Comm comm) {
 
     MPI_Comm_dup(comm, &TAUSCH_COMM);
 
@@ -15,6 +15,8 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, MPI_Comm 
     this->localDimX = localDimX;
     this->localDimY = localDimY;
 
+    this->haloWidth = haloWidth;
+
     // check if this rank has a boundary with another rank
     haveBoundary[Left] = (mpiRank%mpiNumX != 0);
     haveBoundary[Right] = ((mpiRank+1)%mpiNumX != 0);
@@ -23,15 +25,15 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, MPI_Comm 
 
     // a send and recv buffer for the CPU-CPU communication
     cpuToCpuSendBuffer = new real_t*[4];
-    cpuToCpuSendBuffer[Left] = new real_t[localDimY+2]{};
-    cpuToCpuSendBuffer[Right] = new real_t[localDimY+2]{};
-    cpuToCpuSendBuffer[Top] = new real_t[localDimX+2]{};
-    cpuToCpuSendBuffer[Bottom] = new real_t[localDimX+2]{};
+    cpuToCpuSendBuffer[Left] = new real_t[haloWidth*(localDimY+2*haloWidth)]{};
+    cpuToCpuSendBuffer[Right] = new real_t[haloWidth*(localDimY+2*haloWidth)]{};
+    cpuToCpuSendBuffer[Top] = new real_t[haloWidth*(localDimX+2*haloWidth)]{};
+    cpuToCpuSendBuffer[Bottom] = new real_t[haloWidth*(localDimX+2*haloWidth)]{};
     cpuToCpuRecvBuffer = new real_t*[4];
-    cpuToCpuRecvBuffer[Left] = new real_t[localDimY+2]{};
-    cpuToCpuRecvBuffer[Right] = new real_t[localDimY+2]{};
-    cpuToCpuRecvBuffer[Top] = new real_t[localDimX+2]{};
-    cpuToCpuRecvBuffer[Bottom] = new real_t[localDimX+2]{};
+    cpuToCpuRecvBuffer[Left] = new real_t[haloWidth*(localDimY+2*haloWidth)]{};
+    cpuToCpuRecvBuffer[Right] = new real_t[haloWidth*(localDimY+2*haloWidth)]{};
+    cpuToCpuRecvBuffer[Top] = new real_t[haloWidth*(localDimX+2*haloWidth)]{};
+    cpuToCpuRecvBuffer[Bottom] = new real_t[haloWidth*(localDimX+2*haloWidth)]{};
 
     // whether the cpu/gpu pointers have been passed
     cpuInfoGiven = false;
@@ -98,13 +100,13 @@ void Tausch::postCpuReceives() {
     MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
     if(haveBoundary[Left])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Left][0], localDimY+2, mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[Left]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Left][0], haloWidth*(localDimY+2*haloWidth), mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[Left]);
     if(haveBoundary[Right])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Right][0], localDimY+2, mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[Right]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Right][0], haloWidth*(localDimY+2*haloWidth), mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[Right]);
     if(haveBoundary[Top])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Top][0], localDimX+2, mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[Top]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Top][0], haloWidth*(localDimX+2*haloWidth), mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[Top]);
     if(haveBoundary[Bottom])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Bottom][0], localDimX+2, mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[Bottom]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Bottom][0], haloWidth*(localDimX+2*haloWidth), mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[Bottom]);
 
 }
 
@@ -125,21 +127,21 @@ void Tausch::startCpuEdge(Edge edge) {
     MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
     if(edge == Left && haveBoundary[Left]) {
-        for(int i = 0; i < localDimY+2; ++i)
-            cpuToCpuSendBuffer[Left][i] = cpuData[1+ i*(localDimX+2)];
-        MPI_Isend(&cpuToCpuSendBuffer[Left][0], localDimY+2, mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[Left]);
+        for(int i = 0; i < haloWidth*(localDimY+2*haloWidth); ++i)
+            cpuToCpuSendBuffer[Left][i] = cpuData[haloWidth+ (i/haloWidth)*(localDimX+2*haloWidth)+i%haloWidth];
+        MPI_Isend(&cpuToCpuSendBuffer[Left][0], haloWidth*(localDimY+2*haloWidth), mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[Left]);
     } else if(edge == Right && haveBoundary[Right]) {
-        for(int i = 0; i < localDimY+2; ++i)
-            cpuToCpuSendBuffer[Right][i] = cpuData[(i+1)*(localDimX+2) -2];
-        MPI_Isend(&cpuToCpuSendBuffer[Right][0], localDimY+2, mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[Right]);
+        for(int i = 0; i < haloWidth*(localDimY+2*haloWidth); ++i)
+            cpuToCpuSendBuffer[Right][i] = cpuData[(i/haloWidth+1)*(localDimX+2*haloWidth) -(2*haloWidth)+i%haloWidth];
+        MPI_Isend(&cpuToCpuSendBuffer[Right][0], haloWidth*(localDimY+2*haloWidth), mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[Right]);
     } else if(edge == Top && haveBoundary[Top]) {
-        for(int i = 0; i < localDimX+2; ++i)
-            cpuToCpuSendBuffer[Top][i] = cpuData[(localDimX+2)*localDimY + i];
-        MPI_Isend(&cpuToCpuSendBuffer[Top][0], localDimX+2, mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[Top]);
+        for(int i = 0; i < haloWidth*(localDimX+2*haloWidth); ++i)
+            cpuToCpuSendBuffer[Top][i] = cpuData[(localDimX+2*haloWidth)*(localDimY) + i];
+        MPI_Isend(&cpuToCpuSendBuffer[Top][0], haloWidth*(localDimX+2*haloWidth), mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[Top]);
     } else if(edge == Bottom && haveBoundary[Bottom]) {
-        for(int i = 0; i < localDimX+2; ++i)
-            cpuToCpuSendBuffer[Bottom][i] = cpuData[localDimX+2 + i];
-        MPI_Isend(&cpuToCpuSendBuffer[Bottom][0], localDimX+2, mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[Bottom]);
+        for(int i = 0; i < haloWidth*(localDimX+2*haloWidth); ++i)
+            cpuToCpuSendBuffer[Bottom][i] = cpuData[haloWidth*(localDimX+2*haloWidth) + i];
+        MPI_Isend(&cpuToCpuSendBuffer[Bottom][0], haloWidth*(localDimX+2*haloWidth), mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[Bottom]);
     }
 
 }
@@ -159,22 +161,22 @@ void Tausch::completeCpuEdge(Edge edge) {
 
     if(edge == Left && haveBoundary[Left]) {
         MPI_Wait(&cpuToCpuRecvRequest[Left], MPI_STATUS_IGNORE);
-        for(int i = 0; i < localDimY+2; ++i)
-            cpuData[i*(localDimX+2)] = cpuToCpuRecvBuffer[Left][i];
+        for(int i = 0; i < haloWidth*(localDimY+2*haloWidth); ++i)
+            cpuData[(i/haloWidth)*(localDimX+2*haloWidth)+i%haloWidth] = cpuToCpuRecvBuffer[Left][i];
         MPI_Wait(&cpuToCpuSendRequest[Left], MPI_STATUS_IGNORE);
     } else if(edge == Right && haveBoundary[Right]) {
         MPI_Wait(&cpuToCpuRecvRequest[Right], MPI_STATUS_IGNORE);
-        for(int i = 0; i < localDimY+2; ++i)
-            cpuData[(i+1)*(localDimX+2)-1] = cpuToCpuRecvBuffer[Right][i];
+        for(int i = 0; i < haloWidth*(localDimY+2*haloWidth); ++i)
+            cpuData[(i/haloWidth+1)*(localDimX+2*haloWidth)-haloWidth+i%haloWidth] = cpuToCpuRecvBuffer[Right][i];
         MPI_Wait(&cpuToCpuSendRequest[Right], MPI_STATUS_IGNORE);
     } else if(edge == Top && haveBoundary[Top]) {
         MPI_Wait(&cpuToCpuRecvRequest[Top], MPI_STATUS_IGNORE);
-        for(int i = 0; i < localDimX+2; ++i)
-            cpuData[(localDimX+2)*(localDimY+1) + i] = cpuToCpuRecvBuffer[Top][i];
+        for(int i = 0; i < haloWidth*(localDimX+2*haloWidth); ++i)
+            cpuData[(localDimX+2*haloWidth)*(localDimY+haloWidth) + i] = cpuToCpuRecvBuffer[Top][i];
         MPI_Wait(&cpuToCpuSendRequest[Top], MPI_STATUS_IGNORE);
     } else if(edge == Bottom && haveBoundary[Bottom]) {
         MPI_Wait(&cpuToCpuRecvRequest[Bottom], MPI_STATUS_IGNORE);
-        for(int i = 0; i < localDimX+2; ++i)
+        for(int i = 0; i < haloWidth*(localDimX+2*haloWidth); ++i)
             cpuData[i] = cpuToCpuRecvBuffer[Bottom][i];
         MPI_Wait(&cpuToCpuSendRequest[Bottom], MPI_STATUS_IGNORE);
     }
