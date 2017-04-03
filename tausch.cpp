@@ -273,16 +273,16 @@ void Tausch::startCpuToGpu() {
 
     // left
     for(int i = 0; i < gpuDimY; ++ i)
-        cpuToGpuBuffer[i].store(cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2], std::memory_order_release);
+        cpuToGpuBuffer[i].store(cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2]);
     // right
     for(int i = 0; i < gpuDimY; ++ i)
-        cpuToGpuBuffer[gpuDimY + i].store(cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + gpuDimX+1], std::memory_order_release);
+        cpuToGpuBuffer[gpuDimY + i].store(cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + gpuDimX+1]);
     // top
     for(int i = 0; i < gpuDimX+2; ++ i)
-        cpuToGpuBuffer[2*gpuDimY + i].store(cpuData[((localDimY-gpuDimY)/2 +gpuDimY+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + i], std::memory_order_release);
+        cpuToGpuBuffer[2*gpuDimY + i].store(cpuData[((localDimY-gpuDimY)/2 +gpuDimY+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + i]);
     // bottom
     for(int i = 0; i < gpuDimX+2; ++ i)
-        cpuToGpuBuffer[2*gpuDimY+gpuDimX+2 + i].store(cpuData[((localDimY-gpuDimY)/2)*(localDimX+2) + (localDimX-gpuDimX)/2 + i], std::memory_order_release);
+        cpuToGpuBuffer[2*gpuDimY+gpuDimX+2 + i].store(cpuData[((localDimY-gpuDimY)/2)*(localDimX+2) + (localDimX-gpuDimX)/2 + i]);
 
 }
 
@@ -314,7 +314,7 @@ void Tausch::startGpuToCpu() {
         double *dat = new double[2*gpuDimX+2*gpuDimY];
         cl::copy(cl_queue, cl_gpuToCpuBuffer, &dat[0], (&dat[2*gpuDimX+2*gpuDimY-1])+1);
         for(int i = 0; i < 2*gpuDimX+2*gpuDimY; ++i)
-            gpuToCpuBuffer[i].store(dat[i], std::memory_order_release);
+            gpuToCpuBuffer[i].store(dat[i]);
 
         delete[] dat;
 
@@ -339,16 +339,16 @@ void Tausch::completeCpuToGpu() {
 
     // left
     for(int i = 0; i < gpuDimY; ++ i)
-        cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 +1] = gpuToCpuBuffer[i].load(std::memory_order_acquire);
+        cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 +1] = gpuToCpuBuffer[i].load();
     // right
     for(int i = 0; i < gpuDimY; ++ i)
-        cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + gpuDimX] = gpuToCpuBuffer[gpuDimY + i].load(std::memory_order_acquire);
+        cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + gpuDimX] = gpuToCpuBuffer[gpuDimY + i].load();
     // top
     for(int i = 0; i < gpuDimX; ++ i)
-        cpuData[((localDimY-gpuDimY)/2 +gpuDimY)*(localDimX+2) + (localDimX-gpuDimX)/2 + i+1] = gpuToCpuBuffer[2*gpuDimY + i].load(std::memory_order_acquire);
+        cpuData[((localDimY-gpuDimY)/2 +gpuDimY)*(localDimX+2) + (localDimX-gpuDimX)/2 + i+1] = gpuToCpuBuffer[2*gpuDimY + i].load();
     // bottom
     for(int i = 0; i < gpuDimX; ++ i)
-        cpuData[((localDimY-gpuDimY)/2 +1)*(localDimX+2) + (localDimX-gpuDimX)/2 + i+1] = gpuToCpuBuffer[2*gpuDimY+gpuDimX + i].load(std::memory_order_acquire);
+        cpuData[((localDimY-gpuDimY)/2 +1)*(localDimX+2) + (localDimX-gpuDimX)/2 + i+1] = gpuToCpuBuffer[2*gpuDimY+gpuDimX + i].load();
 
 }
 
@@ -368,7 +368,7 @@ void Tausch::completeGpuToCpu() {
 
         double *dat = new double[2*(gpuDimX+2)+2*gpuDimY];
         for(int i = 0; i < 2*(gpuDimX+2)+2*gpuDimY; ++i)
-            dat[i] = cpuToGpuBuffer[i].load(std::memory_order_acquire);
+            dat[i] = cpuToGpuBuffer[i].load();
 
         cl::copy(cl_queue, &dat[0], (&dat[2*(gpuDimX+2)+2*gpuDimY-1])+1, cl_cpuToGpuBuffer);
 
