@@ -207,6 +207,8 @@ void Tausch::enableOpenCL(bool blockingSyncCpuGpu, bool setupOpenCL, int clLocal
     if(setupOpenCL)
         this->setupOpenCL(giveOpenCLDeviceName);
 
+    cl_haloWidth = cl::Buffer(cl_context, &haloWidth, (&haloWidth)+1, true);
+
 }
 
 // If Tausch didn't set up OpenCL, the user needs to pass some OpenCL variables
@@ -217,6 +219,8 @@ void Tausch::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context,
     this->cl_queue = cl_queue;
     this->blockingSyncCpuGpu = blockingSyncCpuGpu;
     this->cl_kernelLocalSize = clLocalWorkgroupSize;
+
+    cl_haloWidth = cl::Buffer(cl_context, &haloWidth, (&haloWidth)+1, true);
 
     gpuEnabled = true;
 
@@ -242,15 +246,15 @@ void Tausch::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
 
     // store buffer to store the GPU and the CPU part of the halo.
     // We do not need two buffers each, as each thread has direct access to both arrays, no communication necessary
-    cpuToGpuBuffer = new std::atomic<real_t>[2*(gpuDimX+2) + 2*gpuDimY]{};
-    gpuToCpuBuffer = new std::atomic<real_t>[2*gpuDimX + 2*gpuDimY]{};
+    cpuToGpuBuffer = new std::atomic<real_t>[2*haloWidth*(gpuDimX+2*haloWidth) + 2*haloWidth*gpuDimY]{};
+    gpuToCpuBuffer = new std::atomic<real_t>[2*haloWidth*gpuDimX + 2*haloWidth*gpuDimY]{};
 
     // set up buffers on device
     try {
-        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuDimX+2*gpuDimY)*sizeof(real_t));
-        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*(gpuDimX+2)+2*gpuDimY)*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*gpuDimX + 2*gpuDimY)*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*(gpuDimX+2) + 2*gpuDimY)*sizeof(real_t));
+        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*haloWidth*gpuDimX+2*haloWidth*gpuDimY)*sizeof(real_t));
+        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*haloWidth*(gpuDimX+2*haloWidth)+2*haloWidth*gpuDimY)*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*haloWidth*gpuDimX + 2*haloWidth*gpuDimY)*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*haloWidth*(gpuDimX+2) + 2*haloWidth*gpuDimY)*sizeof(real_t));
         cl_gpuDimX = cl::Buffer(cl_context, &gpuDimX, (&gpuDimX)+1, true);
         cl_gpuDimY = cl::Buffer(cl_context, &gpuDimY, (&gpuDimY)+1, true);
     } catch(cl::Error error) {
@@ -272,17 +276,25 @@ void Tausch::startCpuToGpu() {
     cpuToGpuStarted = true;
 
     // left
-    for(int i = 0; i < gpuDimY; ++ i)
-        cpuToGpuBuffer[i].store(cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2]);
+    for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
+        int index = ((localDimY-gpuDimY)/2 +i/haloWidth+haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2+i%haloWidth;
+        cpuToGpuBuffer[i].store(cpuData[index]);
+    }
     // right
-    for(int i = 0; i < gpuDimY; ++ i)
-        cpuToGpuBuffer[gpuDimY + i].store(cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + gpuDimX+1]);
+    for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
+        int index = ((localDimY-gpuDimY)/2 +haloWidth + i/haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + haloWidth + gpuDimX + i%haloWidth;
+        cpuToGpuBuffer[haloWidth*gpuDimY + i].store(cpuData[index]);
+    }
     // top
-    for(int i = 0; i < gpuDimX+2; ++ i)
-        cpuToGpuBuffer[2*gpuDimY + i].store(cpuData[((localDimY-gpuDimY)/2 +gpuDimY+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + i]);
+    for(int i = 0; i < haloWidth*(gpuDimX+2*haloWidth); ++ i) {
+        int index = ((localDimY-gpuDimY)/2+gpuDimY+haloWidth + i/(gpuDimX+2*haloWidth))*(localDimX+2*haloWidth) + haloWidth + ((localDimX-gpuDimX)/2-haloWidth) +i%(gpuDimX+2*haloWidth);
+        cpuToGpuBuffer[2*haloWidth*gpuDimY + i].store(cpuData[index]);
+    }
     // bottom
-    for(int i = 0; i < gpuDimX+2; ++ i)
-        cpuToGpuBuffer[2*gpuDimY+gpuDimX+2 + i].store(cpuData[((localDimY-gpuDimY)/2)*(localDimX+2) + (localDimX-gpuDimX)/2 + i]);
+    for(int i = 0; i < haloWidth*(gpuDimX+2*haloWidth); ++ i) {
+        int index = ((localDimY-gpuDimY)/2 +i/(gpuDimX+2*haloWidth))*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + i%(gpuDimX+2*haloWidth);
+        cpuToGpuBuffer[2*haloWidth*gpuDimY+haloWidth*(gpuDimX+2*haloWidth) + i].store(cpuData[index]);
+    }
 
 }
 
@@ -304,16 +316,16 @@ void Tausch::startGpuToCpu() {
 
     try {
 
-        auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloData");
+        auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloData");
 
-        int globalSize = ((2*gpuDimX+2*gpuDimY)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = ((2*haloWidth*gpuDimX+2*haloWidth*gpuDimY)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                           cl_gpuDimX, cl_gpuDimY, gpuData, cl_gpuToCpuBuffer);
+                           cl_gpuDimX, cl_gpuDimY, cl_haloWidth, gpuData, cl_gpuToCpuBuffer);
 
-        double *dat = new double[2*gpuDimX+2*gpuDimY];
-        cl::copy(cl_queue, cl_gpuToCpuBuffer, &dat[0], (&dat[2*gpuDimX+2*gpuDimY-1])+1);
-        for(int i = 0; i < 2*gpuDimX+2*gpuDimY; ++i)
+        double *dat = new double[2*haloWidth*gpuDimX+2*haloWidth*gpuDimY];
+        cl::copy(cl_queue, cl_gpuToCpuBuffer, &dat[0], (&dat[2*haloWidth*gpuDimX+2*haloWidth*gpuDimY-1])+1);
+        for(int i = 0; i < 2*haloWidth*gpuDimX+2*haloWidth*gpuDimY; ++i)
             gpuToCpuBuffer[i].store(dat[i]);
 
         delete[] dat;
@@ -338,17 +350,25 @@ void Tausch::completeCpuToGpu() {
         syncCpuAndGpu();
 
     // left
-    for(int i = 0; i < gpuDimY; ++ i)
-        cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 +1] = gpuToCpuBuffer[i].load();
+    for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
+        int index = ((localDimY-gpuDimY)/2 +i/haloWidth+haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + haloWidth +i%haloWidth;
+        cpuData[index] = gpuToCpuBuffer[i].load();
+    }
     // right
-    for(int i = 0; i < gpuDimY; ++ i)
-        cpuData[((localDimY-gpuDimY)/2 +i+1)*(localDimX+2) + (localDimX-gpuDimX)/2 + gpuDimX] = gpuToCpuBuffer[gpuDimY + i].load();
+    for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
+        int index = ((localDimY-gpuDimY)/2 +haloWidth + i/haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + gpuDimX + i%haloWidth;
+        cpuData[index] = gpuToCpuBuffer[haloWidth*gpuDimY + i].load();
+    }
     // top
-    for(int i = 0; i < gpuDimX; ++ i)
-        cpuData[((localDimY-gpuDimY)/2 +gpuDimY)*(localDimX+2) + (localDimX-gpuDimX)/2 + i+1] = gpuToCpuBuffer[2*gpuDimY + i].load();
+    for(int i = 0; i < haloWidth*gpuDimX; ++ i) {
+        int index = ((localDimY-gpuDimY)/2+gpuDimY + i/(gpuDimX))*(localDimX+2*haloWidth) + 2*haloWidth + ((localDimX-gpuDimX)/2-haloWidth) +i%(gpuDimX);
+        cpuData[index] = gpuToCpuBuffer[2*haloWidth*gpuDimY + i].load();
+    }
     // bottom
-    for(int i = 0; i < gpuDimX; ++ i)
-        cpuData[((localDimY-gpuDimY)/2 +1)*(localDimX+2) + (localDimX-gpuDimX)/2 + i+1] = gpuToCpuBuffer[2*gpuDimY+gpuDimX + i].load();
+    for(int i = 0; i < haloWidth*gpuDimX; ++ i) {
+        int index = ((localDimY-gpuDimY)/2 +haloWidth +i/(gpuDimX))*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 +haloWidth +i%(gpuDimX);
+        cpuData[index] = gpuToCpuBuffer[2*haloWidth*gpuDimY+haloWidth*gpuDimX + i].load();
+    }
 
 }
 
@@ -366,20 +386,20 @@ void Tausch::completeGpuToCpu() {
 
     try {
 
-        double *dat = new double[2*(gpuDimX+2)+2*gpuDimY];
-        for(int i = 0; i < 2*(gpuDimX+2)+2*gpuDimY; ++i)
+        double *dat = new double[2*haloWidth*(gpuDimX+2*haloWidth)+2*haloWidth*gpuDimY];
+        for(int i = 0; i < 2*haloWidth*(gpuDimX+2*haloWidth)+2*haloWidth*gpuDimY; ++i)
             dat[i] = cpuToGpuBuffer[i].load();
 
-        cl::copy(cl_queue, &dat[0], (&dat[2*(gpuDimX+2)+2*gpuDimY-1])+1, cl_cpuToGpuBuffer);
+        cl::copy(cl_queue, &dat[0], (&dat[2*haloWidth*(gpuDimX+2*haloWidth)+2*haloWidth*gpuDimY-1])+1, cl_cpuToGpuBuffer);
 
         delete[] dat;
 
-        auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
+        auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
 
-        int globalSize = ((2*(gpuDimX+2) + 2*gpuDimY)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = ((2*haloWidth*(gpuDimX+2*haloWidth) + 2*haloWidth*gpuDimY)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_distributeHaloData(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                                  cl_gpuDimX, cl_gpuDimY, gpuData, cl_cpuToGpuBuffer);
+                                  cl_gpuDimX, cl_gpuDimY, cl_haloWidth, gpuData, cl_cpuToGpuBuffer);
 
     } catch(cl::Error error) {
         std::cout << "[dist halo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -413,54 +433,67 @@ void Tausch::compileKernels() {
     // Tausch requires two kernels: One for collecting the halo data and one for distributing that data
     std::string oclstr = "typedef " + std::string((sizeof(real_t)==sizeof(double)) ? "double" : "float") + " real_t;\n";
     oclstr += R"d(
-    kernel void collectHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
+kernel void collectHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
+                            global const int * restrict const haloWidth,
                             global const real_t * restrict const vec, global real_t * sync) {
     unsigned int current = get_global_id(0);
-    unsigned int maxNum = 2*(*dimX) + 2*(*dimY);
+    unsigned int maxNum = 2*(*haloWidth)*(*dimX) + 2*(*haloWidth)*(*dimY);
+
     if(current >= maxNum)
         return;
     // left
-    if(current < *dimY) {
-        sync[current] = vec[(1+current)*(*dimX+2) +1];
+    if(current < (*haloWidth)*(*dimY)) {
+        int index = (*haloWidth+current/(*haloWidth))*(*dimX+2*(*haloWidth)) +(*haloWidth) + current%(*haloWidth);
+        sync[current] = vec[index];
         return;
     }
     // right
-    if(current < 2*(*dimY)) {
-        sync[current] = vec[(2+(current-(*dimY)))*(*dimX+2) -2];
+    if(current < 2*(*haloWidth)*(*dimY)) {
+        int touse = current-(*haloWidth)*(*dimY);
+        int index = (1+(*haloWidth)+touse/(*haloWidth))*(*dimX+2*(*haloWidth)) -2*(*haloWidth)+touse%(*haloWidth);
+        sync[current] = vec[index];
         return;
     }
     // top
-    if(current < 2*(*dimY) + *dimX) {
-        sync[current] = vec[(*dimX+2)*(*dimY)+1 + current-(2*(*dimY))];
+    if(current < 2*(*haloWidth)*(*dimY) + (*haloWidth)*(*dimX)) {
+        int touse = current-2*(*haloWidth)*(*dimY);
+        int index = (*dimX+2*(*haloWidth))*(*dimY + touse/(*dimX)) + touse%(*dimX)+(*haloWidth);
+        sync[current] = vec[index];
         return;
     }
     // bottom
-    sync[current] = vec[1+(*dimX+2)+(current-2*(*dimY)-(*dimX))];
-    }
-    kernel void distributeHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
+    int touse = current - 2*(*haloWidth)*(*dimY) - (*haloWidth)*(*dimX);
+    int index = ((*haloWidth)+touse/(*dimX))*(*dimX+2*(*haloWidth))+touse%(*dimX)+(*haloWidth);
+    sync[current] = vec[index];
+}
+kernel void distributeHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
+                               global const int * restrict const haloWidth,
                                global real_t * vec, global const real_t * restrict const sync) {
     unsigned int current = get_global_id(0);
-    unsigned int maxNum = 2*(*dimX+2) + 2*(*dimY);
+    unsigned int maxNum = 2*(*haloWidth)*(*dimX+2*(*haloWidth)) + 2*(*haloWidth)*(*dimY);
     if(current >= maxNum)
         return;
     // left
-    if(current < *dimY) {
-        vec[(1+current)*(*dimX+2)] = sync[current];
+    if(current < (*haloWidth)*(*dimY)) {
+        vec[(*haloWidth+current/(*haloWidth))*(*dimX+2*(*haloWidth)) + current%(*haloWidth)] = sync[current];
         return;
     }
     // right
-    if(current < 2*(*dimY)) {
-        vec[(2+(current-(*dimY)))*(*dimX+2) -1] = sync[current];
+    if(current < 2*(*haloWidth)*(*dimY)) {
+        int touse = current-(*haloWidth)*(*dimY);
+        vec[((*haloWidth)+1+touse/(*haloWidth))*(*dimX+2*(*haloWidth)) -(*haloWidth)+touse%(*haloWidth)] = sync[current];
         return;
     }
     // top
-    if(current < 2*(*dimY)+(*dimX+2)) {
-        vec[(*dimX+2)*(*dimY+1) + current-(2*(*dimY))] = sync[current];
+    if(current < 2*(*haloWidth)*(*dimY)+(*haloWidth)*(*dimX+2*(*haloWidth))) {
+        int touse = current-2*(*haloWidth)*(*dimY);
+        vec[(*dimX+2*(*haloWidth))*(*dimY+(*haloWidth) + touse/(*dimX+2*(*haloWidth))) + touse%(*dimX+2*(*haloWidth))] = sync[current];
         return;
     }
     // bottom
-    vec[current-2*(*dimY)-(*dimX+2)] = sync[current];
-    }
+    int touse = current - 2*(*haloWidth)*(*dimY) - (*haloWidth)*(*dimX+2*(*haloWidth));
+    vec[(touse/(*dimX+2*(*haloWidth)))*(*dimX+2*(*haloWidth))+touse%(*dimX+2*(*haloWidth))] = sync[current];
+}
                          )d";
 
     try {

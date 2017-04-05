@@ -143,6 +143,7 @@ private:
 
     int gpuDimX, gpuDimY;
     cl::Buffer cl_gpuDimX, cl_gpuDimY;
+    cl::Buffer cl_haloWidth;
 
     void setupOpenCL(bool giveOpenCLDeviceName);
     void compileKernels();

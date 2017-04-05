@@ -61,8 +61,8 @@ Sample::Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int h
         for(int j = 0; j < dimY; ++j)
             for(int i = 0; i < dimX; ++i)
                 if(!(i >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
-                   && j >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY))
-                    datCPU[(j+haloWidth)*(dimX+2*haloWidth) + i+1] = j*dimX+i+haloWidth;
+                     && j >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY))
+                    datCPU[(j+haloWidth)*(dimX+2*haloWidth) + i+haloWidth] = j*dimX+i+1;
     }
 
 
@@ -73,11 +73,11 @@ Sample::Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int h
 
         for(int j = 0; j < gpuDimY; ++j)
             for(int i = 0; i < gpuDimX; ++i)
-                datGPU[(j+haloWidth)*(gpuDimX+2*haloWidth) + i+haloWidth] = j*gpuDimX+i+haloWidth;
+                datGPU[(j+haloWidth)*(gpuDimX+2*haloWidth) + i+haloWidth] = j*gpuDimX+i+1;
 
         try {
 
-            cl_datGpu = cl::Buffer(tausch->cl_context, &datGPU[0], (&datGPU[(gpuDimX+2)*(gpuDimY+2)-1])+1, false, true);
+            cl_datGpu = cl::Buffer(tausch->cl_context, &datGPU[0], (&datGPU[(gpuDimX+2*haloWidth)*(gpuDimY+2*haloWidth)-1])+1, false, true);
 
         } catch(cl::Error error) {
             std::cout << "[sample] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -149,13 +149,13 @@ void Sample::printCPU() {
 
     } else {
 
-        for(int j = dimY+2 -1; j >= 0; --j) {
-            for(int i = 0; i < dimX+2; ++i) {
-                if(i-1 > (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
-                   && j-1 > (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY)
+        for(int j = dimY+2*haloWidth-1; j >= 0; --j) {
+            for(int i = 0; i < dimX+2*haloWidth; ++i) {
+                if(i-2*haloWidth >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
+                     && j-2*haloWidth >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY)
                     std::cout << std::setw(3) << "    ";
                 else
-                    std::cout << std::setw(3) << datCPU[j*(dimX+2) + i] << " ";
+                    std::cout << std::setw(3) << datCPU[j*(dimX+2*haloWidth) + i] << " ";
             }
             std::cout << std::endl;
         }
@@ -166,11 +166,9 @@ void Sample::printCPU() {
 
 void Sample::printGPU() {
 
-    std::stringstream ss;
-
-    for(int i = gpuDimY+2 -1; i >= 0; --i) {
-        for(int j = 0; j < gpuDimX+2; ++j)
-            std::cout << std::setw(3) << datGPU[i*(gpuDimX+2) + j] << " ";
+    for(int i = gpuDimY+2*haloWidth -1; i >= 0; --i) {
+        for(int j = 0; j < gpuDimX+2*haloWidth; ++j)
+            std::cout << std::setw(3) << datGPU[i*(gpuDimX+2*haloWidth) + j] << " ";
         std::cout << std::endl;
     }
 
