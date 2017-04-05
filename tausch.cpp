@@ -318,14 +318,14 @@ void Tausch::startGpuToCpu() {
 
         auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloData");
 
-        int globalSize = ((2*haloWidth*gpuDimX+2*haloWidth*gpuDimY)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = ((2*haloWidth*gpuDimX+2*haloWidth*(gpuDimY-2*haloWidth))/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
                            cl_gpuDimX, cl_gpuDimY, cl_haloWidth, gpuData, cl_gpuToCpuBuffer);
 
-        double *dat = new double[2*haloWidth*gpuDimX+2*haloWidth*gpuDimY];
-        cl::copy(cl_queue, cl_gpuToCpuBuffer, &dat[0], (&dat[2*haloWidth*gpuDimX+2*haloWidth*gpuDimY-1])+1);
-        for(int i = 0; i < 2*haloWidth*gpuDimX+2*haloWidth*gpuDimY; ++i)
+        double *dat = new double[2*haloWidth*gpuDimX+2*haloWidth*(gpuDimY-2*haloWidth)];
+        cl::copy(cl_queue, cl_gpuToCpuBuffer, &dat[0], (&dat[2*haloWidth*gpuDimX+2*haloWidth*(gpuDimY-2*haloWidth)-1])+1);
+        for(int i = 0; i < 2*haloWidth*gpuDimX+2*haloWidth*(gpuDimY-2*haloWidth); ++i)
             gpuToCpuBuffer[i].store(dat[i]);
 
         delete[] dat;
@@ -350,24 +350,24 @@ void Tausch::completeCpuToGpu() {
         syncCpuAndGpu();
 
     // left
-    for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +i/haloWidth+haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + haloWidth +i%haloWidth;
+    for(int i = 0; i < haloWidth*(gpuDimY-2*haloWidth); ++ i) {
+        int index = ((localDimY-gpuDimY)/2 +i/haloWidth +2*haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + haloWidth +i%haloWidth;
         cpuData[index] = gpuToCpuBuffer[i].load();
     }
     // right
-    for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +haloWidth + i/haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + gpuDimX + i%haloWidth;
-        cpuData[index] = gpuToCpuBuffer[haloWidth*gpuDimY + i].load();
+    for(int i = 0; i < haloWidth*(gpuDimY-2*haloWidth); ++ i) {
+        int index = ((localDimY-gpuDimY)/2 +2*haloWidth + i/haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + gpuDimX + i%haloWidth;
+        cpuData[index] = gpuToCpuBuffer[haloWidth*(gpuDimY-2*haloWidth) + i].load();
     }
     // top
     for(int i = 0; i < haloWidth*gpuDimX; ++ i) {
         int index = ((localDimY-gpuDimY)/2+gpuDimY + i/(gpuDimX))*(localDimX+2*haloWidth) + 2*haloWidth + ((localDimX-gpuDimX)/2-haloWidth) +i%(gpuDimX);
-        cpuData[index] = gpuToCpuBuffer[2*haloWidth*gpuDimY + i].load();
+        cpuData[index] = gpuToCpuBuffer[2*haloWidth*(gpuDimY-2*haloWidth) + i].load();
     }
     // bottom
     for(int i = 0; i < haloWidth*gpuDimX; ++ i) {
         int index = ((localDimY-gpuDimY)/2 +haloWidth +i/(gpuDimX))*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 +haloWidth +i%(gpuDimX);
-        cpuData[index] = gpuToCpuBuffer[2*haloWidth*gpuDimY+haloWidth*gpuDimX + i].load();
+        cpuData[index] = gpuToCpuBuffer[2*haloWidth*(gpuDimY-2*haloWidth)+haloWidth*gpuDimX + i].load();
     }
 
 }
@@ -442,27 +442,27 @@ kernel void collectHaloData(global const int * restrict const dimX, global const
     if(current >= maxNum)
         return;
     // left
-    if(current < (*haloWidth)*(*dimY)) {
-        int index = (*haloWidth+current/(*haloWidth))*(*dimX+2*(*haloWidth)) +(*haloWidth) + current%(*haloWidth);
+    if(current < (*haloWidth)*(*dimY-2*(*haloWidth))) {
+        int index = (*haloWidth+current/(*haloWidth)+(*haloWidth))*(*dimX+2*(*haloWidth)) +(*haloWidth) + current%(*haloWidth);
         sync[current] = vec[index];
         return;
     }
     // right
-    if(current < 2*(*haloWidth)*(*dimY)) {
-        int touse = current-(*haloWidth)*(*dimY);
-        int index = (1+(*haloWidth)+touse/(*haloWidth))*(*dimX+2*(*haloWidth)) -2*(*haloWidth)+touse%(*haloWidth);
+    if(current < 2*(*haloWidth)*(*dimY-2*(*haloWidth))) {
+        int touse = current-(*haloWidth)*(*dimY-2*(*haloWidth));
+        int index = (1+(*haloWidth)+touse/(*haloWidth)+(*haloWidth))*(*dimX+2*(*haloWidth)) -2*(*haloWidth)+touse%(*haloWidth);
         sync[current] = vec[index];
         return;
     }
     // top
-    if(current < 2*(*haloWidth)*(*dimY) + (*haloWidth)*(*dimX)) {
-        int touse = current-2*(*haloWidth)*(*dimY);
+    if(current < 2*(*haloWidth)*(*dimY-2*(*haloWidth)) + (*haloWidth)*(*dimX)) {
+        int touse = current-2*(*haloWidth)*(*dimY-2*(*haloWidth));
         int index = (*dimX+2*(*haloWidth))*(*dimY + touse/(*dimX)) + touse%(*dimX)+(*haloWidth);
         sync[current] = vec[index];
         return;
     }
     // bottom
-    int touse = current - 2*(*haloWidth)*(*dimY) - (*haloWidth)*(*dimX);
+    int touse = current - 2*(*haloWidth)*(*dimY-2*(*haloWidth)) - (*haloWidth)*(*dimX);
     int index = ((*haloWidth)+touse/(*dimX))*(*dimX+2*(*haloWidth))+touse%(*dimX)+(*haloWidth);
     sync[current] = vec[index];
 }
