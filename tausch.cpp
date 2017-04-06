@@ -47,7 +47,7 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloW
     cpuStarted[Top] = false;
     cpuStarted[Bottom] = false;
 
-#ifdef OPENCL
+#ifdef TAUSCH_OPENCL
 
     gpuInfoGiven = false;
     gpuEnabled = false;
@@ -73,7 +73,7 @@ Tausch::~Tausch() {
     }
     delete[] cpuToCpuSendBuffer;
     delete[] cpuToCpuRecvBuffer;
-#ifdef OPENCL
+#ifdef TAUSCH_OPENCL
     if(gpuEnabled) {
         delete[] cpuToGpuBuffer;
         delete[] gpuToCpuBuffer;
@@ -183,29 +183,17 @@ void Tausch::completeCpuEdge(Edge edge) {
 
 }
 
-// Let every MPI rank one by one output the stuff
-void Tausch::EveryoneOutput(const std::string &inMessage) {
+#ifdef TAUSCH_OPENCL
 
-    for(int iRank = 0; iRank < mpiSize; ++iRank){
-        if(mpiRank == iRank)
-            std::cout << inMessage;
-        MPI_Barrier(TAUSCH_COMM);
-    }
-
-}
-
-#ifdef OPENCL
-
-void Tausch::enableOpenCL(bool blockingSyncCpuGpu, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+void Tausch::enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
 
     // gpu disabled by default, only enabled if flag is set
     gpuEnabled = true;
     // local workgroup size
     cl_kernelLocalSize = clLocalWorkgroupSize;
     this->blockingSyncCpuGpu = blockingSyncCpuGpu;
-    // Tausch can either set up OpenCL itself, or if not it needs to be passed some OpenCL variables by the user
-    if(setupOpenCL)
-        this->setupOpenCL(giveOpenCLDeviceName);
+    // Tausch creates its own OpenCL environment
+    this->setupOpenCL(giveOpenCLDeviceName);
 
     cl_haloWidth = cl::Buffer(cl_context, &haloWidth, (&haloWidth)+1, true);
 
@@ -430,6 +418,13 @@ void Tausch::syncCpuAndGpu() {
 
 void Tausch::compileKernels() {
 
+//    std::string oclstr;
+//    std::ifstream cl_file(std::string(SOURCEDIR) + "/kernels.cl");
+//    cl_file.seekg(0, std::ios::end);
+//    oclstr.reserve(cl_file.tellg());
+//    cl_file.seekg(0, std::ios::beg);
+//    oclstr.assign((std::istreambuf_iterator<char>(cl_file)), std::istreambuf_iterator<char>());
+
     // Tausch requires two kernels: One for collecting the halo data and one for distributing that data
     std::string oclstr = "typedef " + std::string((sizeof(real_t)==sizeof(double)) ? "double" : "float") + " real_t;\n";
     oclstr += R"d(
@@ -555,9 +550,12 @@ void Tausch::setupOpenCL(bool giveOpenCLDeviceName) {
 
         // Give some feedback of the choice.
         if(giveOpenCLDeviceName) {
-            std::stringstream ss;
-            ss << "Rank " << mpiRank << " using OpenCL platform #" << platform_num[mpiRank%num] << " with device #" << device_num[mpiRank%num] << ": " << cl_defaultDevice.getInfo<CL_DEVICE_NAME>() << std::endl;
-            EveryoneOutput(ss.str());
+            for(int iRank = 0; iRank < mpiSize; ++iRank){
+                if(mpiRank == iRank)
+                    std::cout << "Rank " << mpiRank << " using OpenCL platform #" << platform_num[mpiRank%num]
+                              << " with device #" << device_num[mpiRank%num] << ": " << cl_defaultDevice.getInfo<CL_DEVICE_NAME>() << std::endl;
+                MPI_Barrier(TAUSCH_COMM);
+            }
             if(mpiRank == 0)
                 std::cout << std::endl;
         }
@@ -577,95 +575,5 @@ void Tausch::setupOpenCL(bool giveOpenCLDeviceName) {
     // And compile kernels
     compileKernels();
 
-}
-
-void Tausch::checkOpenCLError(cl_int clErr, std::string loc) {
-
-    if(clErr == CL_SUCCESS) return;
-
-    int err = clErr;
-
-    std::string errstr = "";
-
-    // run-time and JIT compiler errors
-    if(err == 0) errstr = "CL_SUCCESS";
-    else if(err == -1) errstr = "CL_DEVICE_NOT_FOUND";
-    else if(err == -2) errstr = "CL_DEVICE_NOT_AVAILABLE";
-    else if(err == -3) errstr = "CL_COMPILER_NOT_AVAILABLE";
-    else if(err == -4) errstr = "CL_MEM_OBJECT_ALLOCATION_FAILURE";
-    else if(err == -5) errstr = "CL_OUT_OF_RESOURCES";
-    else if(err == -6) errstr = "CL_OUT_OF_HOST_MEMORY";
-    else if(err == -7) errstr = "CL_PROFILING_INFO_NOT_AVAILABLE";
-    else if(err == -8) errstr = "CL_MEM_COPY_OVERLAP";
-    else if(err == -9) errstr = "CL_IMAGE_FORMAT_MISMATCH";
-    else if(err == -10) errstr = "CL_IMAGE_FORMAT_NOT_SUPPORTED";
-    else if(err == -11) errstr = "CL_BUILD_PROGRAM_FAILURE";
-    else if(err == -12) errstr = "CL_MAP_FAILURE";
-    else if(err == -13) errstr = "CL_MISALIGNED_SUB_BUFFER_OFFSET";
-    else if(err == -14) errstr = "CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST";
-    else if(err == -15) errstr = "CL_COMPILE_PROGRAM_FAILURE";
-    else if(err == -16) errstr = "CL_LINKER_NOT_AVAILABLE";
-    else if(err == -17) errstr = "CL_LINK_PROGRAM_FAILURE";
-    else if(err == -18) errstr = "CL_DEVICE_PARTITION_FAILED";
-    else if(err == -19) errstr = "CL_KERNEL_ARG_INFO_NOT_AVAILABLE";
-
-    // compile-time errors
-    else if(err == -30) errstr = "CL_INVALID_VALUE";
-    else if(err == -31) errstr = "CL_INVALID_DEVICE_TYPE";
-    else if(err == -32) errstr = "CL_INVALID_PLATFORM";
-    else if(err == -33) errstr = "CL_INVALID_DEVICE";
-    else if(err == -34) errstr = "CL_INVALID_CONTEXT";
-    else if(err == -35) errstr = "CL_INVALID_QUEUE_PROPERTIES";
-    else if(err == -36) errstr = "CL_INVALID_COMMAND_QUEUE";
-    else if(err == -37) errstr = "CL_INVALID_HOST_PTR";
-    else if(err == -38) errstr = "CL_INVALID_MEM_OBJECT";
-    else if(err == -39) errstr = "CL_INVALID_IMAGE_FORMAT_DESCRIPTOR";
-    else if(err == -40) errstr = "CL_INVALID_IMAGE_SIZE";
-    else if(err == -41) errstr = "CL_INVALID_SAMPLER";
-    else if(err == -42) errstr = "CL_INVALID_BINARY";
-    else if(err == -43) errstr = "CL_INVALID_BUILD_OPTIONS";
-    else if(err == -44) errstr = "CL_INVALID_PROGRAM";
-    else if(err == -45) errstr = "CL_INVALID_PROGRAM_EXECUTABLE";
-    else if(err == -46) errstr = "CL_INVALID_KERNEL_NAME";
-    else if(err == -47) errstr = "CL_INVALID_KERNEL_DEFINITION";
-    else if(err == -48) errstr = "CL_INVALID_KERNEL";
-    else if(err == -49) errstr = "CL_INVALID_ARG_INDEX";
-    else if(err == -50) errstr = "CL_INVALID_ARG_VALUE";
-    else if(err == -51) errstr = "CL_INVALID_ARG_SIZE";
-    else if(err == -52) errstr = "CL_INVALID_KERNEL_ARGS";
-    else if(err == -53) errstr = "CL_INVALID_WORK_DIMENSION";
-    else if(err == -54) errstr = "CL_INVALID_WORK_GROUP_SIZE";
-    else if(err == -55) errstr = "CL_INVALID_WORK_ITEM_SIZE";
-    else if(err == -56) errstr = "CL_INVALID_GLOBAL_OFFSET";
-    else if(err == -57) errstr = "CL_INVALID_EVENT_WAIT_LIST";
-    else if(err == -58) errstr = "CL_INVALID_EVENT";
-    else if(err == -59) errstr = "CL_INVALID_OPERATION";
-    else if(err == -60) errstr = "CL_INVALID_GL_OBJECT";
-    else if(err == -61) errstr = "CL_INVALID_BUFFER_SIZE";
-    else if(err == -62) errstr = "CL_INVALID_MIP_LEVEL";
-    else if(err == -63) errstr = "CL_INVALID_GLOBAL_WORK_SIZE";
-    else if(err == -64) errstr = "CL_INVALID_PROPERTY";
-    else if(err == -65) errstr = "CL_INVALID_IMAGE_DESCRIPTOR";
-    else if(err == -66) errstr = "CL_INVALID_COMPILER_OPTIONS";
-    else if(err == -67) errstr = "CL_INVALID_LINKER_OPTIONS";
-    else if(err == -68) errstr = "CL_INVALID_DEVICE_PARTITION_COUNT";
-
-    // extension errors
-    else if(err == -1000) errstr = "CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR";
-    else if(err == -1001) errstr = "CL_PLATFORM_NOT_FOUND_KHR";
-    else if(err == -1002) errstr = "CL_INVALID_D3D10_DEVICE_KHR";
-    else if(err == -1003) errstr = "CL_INVALID_D3D10_RESOURCE_KHR";
-    else if(err == -1004) errstr = "CL_D3D10_RESOURCE_ALREADY_ACQUIRED_KHR";
-    else if(err == -1005) errstr = "CL_D3D10_RESOURCE_NOT_ACQUIRED_KHR";
-    else errstr = "Unknown OpenCL error";
-
-    std::cout << "[" << loc << "] OpenCL exception caught: " << errstr << " (" << err << ")" << std::endl;
-
-    if(err == CL_BUILD_PROGRAM_FAILURE) {
-        std::string log = cl_programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl_defaultDevice);
-        std::cout << std::endl << " ******************** " << std::endl << " ** BUILD LOG" << std::endl << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** " << std::endl << std::endl;
-    }
-
-    exit(1);
 }
 #endif

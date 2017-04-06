@@ -31,14 +31,14 @@ extern "C" {
         t->performCpuToCpu();
     }
 
-    void tausch_startCpuEdge(CTausch *tC, Edge edge) {
+    void tausch_startCpuEdge(CTausch *tC, enum Edge edge) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->startCpuEdge(edge);
+        t->startCpuEdge(edge==TauschLeft ? Tausch::Left : (edge==TauschRight ? Tausch::Right : (edge==TauschTop ? Tausch::Top : Tausch::Bottom)));
     }
 
-    void tausch_completeCpuEdge(CTausch *tC, Edge edge) {
+    void tausch_completeCpuEdge(CTausch *tC, enum Edge edge) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->completeCpuEdge(edge);
+        t->completeCpuEdge(edge==TauschLeft ? Tausch::Left : (edge==TauschRight ? Tausch::Right : (edge==TauschTop ? Tausch::Top : Tausch::Bottom)));
     }
 
     void tausch_setCPUData(CTausch *tC, real_t *dat) {
@@ -46,10 +46,10 @@ extern "C" {
         t->setCPUData(dat);
     }
 
-#ifdef OPENCL
-    void tausch_enableOpenCL(CTausch *tC, bool blockingSyncCpuGpu, bool setupOpenCL, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+#ifdef TAUSCH_OPENCL
+    void tausch_enableOpenCL(CTausch *tC, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->enableOpenCL(blockingSyncCpuGpu, setupOpenCL, clLocalWorkgroupSize, giveOpenCLDeviceName);
+        t->enableOpenCL(blockingSyncCpuGpu, clLocalWorkgroupSize, giveOpenCLDeviceName);
     }
 
     void tausch_setOpenCLInfo(CTausch *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, bool blockingSyncCpuGpu) {
@@ -64,10 +64,6 @@ extern "C" {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
         cl::Buffer *buf = new cl::Buffer(dat);
         t->setGPUData(*buf, gpuDimX, gpuDimY);
-    }
-    bool tausch_isGpuEnabled(CTausch *tC) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        return t->isGpuEnabled();
     }
 
     void tausch_performCpuToCpuAndCpuToGpu(CTausch *tC) {
@@ -103,24 +99,14 @@ extern "C" {
         t->completeGpuToCpu();
     }
 
-    void tausch_syncCpuAndGpu(CTausch *tC) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->syncCpuAndGpu();
-    }
-
     cl_context tausch_getContext(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        return t->cl_context();
+        return t->getContext()();
     }
 
     cl_command_queue tausch_getQueue(CTausch *tC) {
         Tausch *t = reinterpret_cast<Tausch*>(tC);
-        return t->cl_queue();
-    }
-
-    void tausch_checkOpenCLError(CTausch *tC, cl_int clErr, char *loc) {
-        Tausch *t = reinterpret_cast<Tausch*>(tC);
-        t->checkOpenCLError(clErr, std::string(loc));
+        return t->getQueue()();
     }
 #endif
 
