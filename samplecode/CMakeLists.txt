@@ -11,7 +11,6 @@ include_directories(${MPI_INCLUDE_PATH})
 if(OPENCL)
     find_package(OpenCL REQUIRED)
     include_directories(${OPENCL_INCLUDE_DIRS})
-    ADD_DEFINITIONS(-DOPENCL)
 endif(OPENCL)
 
 find_package(OpenMP)

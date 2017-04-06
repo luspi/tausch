@@ -1,12 +1,13 @@
 #ifndef SAMPLE_H
 #define SAMPLE_H
 
-#include <tausch.h>
 #include <fstream>
 #include <cmath>
 #include <iomanip>
 #include <chrono>
-#include <CL/cl.hpp>
+
+#define TAUSCH_OPENCL
+#include <tausch.h>
 
 typedef double real_t;
 

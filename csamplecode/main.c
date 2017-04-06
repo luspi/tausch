@@ -4,10 +4,12 @@
 #include <mpi.h>
 #include <math.h>
 #include <stdbool.h>
-#include <ctausch.h>
 #include <pthread.h>
 #include <CL/cl.h>
 #include <sys/timeb.h>
+
+#define TAUSCH_OPENCL
+#include <ctausch.h>
 
 #include "samplecpu.h"
 #include "samplegpu.h"
@@ -42,6 +44,7 @@ int main(int argc, char** argv) {
     param.workgroupsize = 64;
     param.giveOpenClDeviceName = false;
     param.printMpiRank = -1;
+    param.haloWidth = 1;
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {
@@ -69,6 +72,8 @@ int main(int argc, char** argv) {
                 param.giveOpenClDeviceName = true;
             else if(strcmp(argv[i], "-print") == 0 && i < argc-1)
                 param.printMpiRank = atoi(argv[++i]);
+            else if(strcmp(argv[i], "-halo") == 0 && i < argc-1)
+                param.haloWidth = atoi(argv[++i]);
         }
     }
 
@@ -114,8 +119,8 @@ int main(int argc, char** argv) {
                     param.cpu[(j+1)*(param.localDimX+2) + i+1] = (double)j*param.localDimX+i+1;
     }
 
-    param.tausch = tausch_new(param.localDimX, param.localDimY, param.mpiNumX, param.mpiNumY);
-    tausch_enableOpenCL(param.tausch, true, true, param.workgroupsize, param.giveOpenClDeviceName);
+    param.tausch = tausch_new(param.localDimX, param.localDimY, param.mpiNumX, param.mpiNumY, param.haloWidth, MPI_COMM_WORLD);
+    tausch_enableOpenCL(param.tausch, true, param.workgroupsize, param.giveOpenClDeviceName);
 
     if(!param.cpuonly) {
 
@@ -133,9 +138,11 @@ int main(int argc, char** argv) {
 
         cl_int err;
         param.clGpu = clCreateBuffer(tausch_getContext(param.tausch), CL_MEM_READ_WRITE, (param.gpuDimX+2)*(param.gpuDimY+2)*sizeof(double), NULL, &err);
-        tausch_checkOpenCLError(param.tausch, err, "create GPU buffer");
+        if(err != CL_SUCCESS)
+            printf("[create GPU buffer] OpenCL exception caught: %i\n", err);
         err = clEnqueueWriteBuffer(tausch_getQueue(param.tausch), param.clGpu, true, 0, (param.gpuDimX+2)*(param.gpuDimY+2)*sizeof(double), param.gpu, 0, NULL, NULL);
-        tausch_checkOpenCLError(param.tausch, err, "fill GPU buffer");
+        if(err != CL_SUCCESS)
+            printf("[fill GPU buffer] OpenCL exception caught: %i\n", err);
 
     }
 

@@ -19,6 +19,7 @@ struct param_struct {
     CTausch *tausch;
     cl_mem clGpu;
     int printMpiRank;
+    int haloWidth;
 };
 
 #endif
