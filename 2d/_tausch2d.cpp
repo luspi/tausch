@@ -1,6 +1,6 @@
-#include "tausch.h"
+#include "_tausch2d.h"
 
-Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloWidth, MPI_Comm comm) {
+Tausch2D::Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloWidth, MPI_Comm comm) {
 
     MPI_Comm_dup(comm, &TAUSCH_COMM);
 
@@ -65,7 +65,7 @@ Tausch::Tausch(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloW
 
 }
 
-Tausch::~Tausch() {
+Tausch2D::~Tausch2D() {
     // clean up memory
     for(int i = 0; i < 4; ++i) {
         delete[] cpuToCpuSendBuffer[i];
@@ -82,13 +82,13 @@ Tausch::~Tausch() {
 }
 
 // get a pointer to the CPU data
-void Tausch::setCPUData(real_t *dat) {
+void Tausch2D::setCPUData(real_t *dat) {
     cpuInfoGiven = true;
     cpuData = dat;
 }
 
 // post the MPI_Irecv's for inter-rank communication
-void Tausch::postCpuReceives() {
+void Tausch2D::postCpuReceives() {
 
     if(!cpuInfoGiven) {
         std::cerr << "ERROR: You didn't tell me yet where to find the data! Abort..." << std::endl;
@@ -110,7 +110,7 @@ void Tausch::postCpuReceives() {
 
 }
 
-void Tausch::startCpuEdge(Edge edge) {
+void Tausch2D::startCpuEdge(Edge edge) {
 
     if(!cpuRecvsPosted) {
         std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
@@ -147,7 +147,7 @@ void Tausch::startCpuEdge(Edge edge) {
 }
 
 // Complete CPU-CPU exchange to the left
-void Tausch::completeCpuEdge(Edge edge) {
+void Tausch2D::completeCpuEdge(Edge edge) {
 
     if(edge != Left && edge != Right && edge != Top && edge != Bottom) {
         std::cerr << "completeCpuEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
@@ -185,7 +185,7 @@ void Tausch::completeCpuEdge(Edge edge) {
 
 #ifdef TAUSCH_OPENCL
 
-void Tausch::enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+void Tausch2D::enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
 
     // gpu disabled by default, only enabled if flag is set
     gpuEnabled = true;
@@ -200,7 +200,7 @@ void Tausch::enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, boo
 }
 
 // If Tausch didn't set up OpenCL, the user needs to pass some OpenCL variables
-void Tausch::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
+void Tausch2D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
 
     this->cl_defaultDevice = cl_defaultDevice;
     this->cl_context = cl_context;
@@ -217,7 +217,7 @@ void Tausch::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context,
 }
 
 // get a pointer to the GPU buffer and its dimensions
-void Tausch::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
+void Tausch2D::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
 
     // check whether OpenCL has been set up
     if(!gpuEnabled) {
@@ -253,7 +253,7 @@ void Tausch::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
 }
 
 // collect cpu side of cpu/gpu halo and store in buffer
-void Tausch::startCpuToGpu() {
+void Tausch2D::startCpuToGpu() {
 
     // check whether GPU is enabled
     if(!gpuEnabled) {
@@ -287,7 +287,7 @@ void Tausch::startCpuToGpu() {
 }
 
 // collect gpu side of cpu/gpu halo and download into buffer
-void Tausch::startGpuToCpu() {
+void Tausch2D::startGpuToCpu() {
 
     // check whether GPU is enabled
     if(!gpuEnabled) {
@@ -326,7 +326,7 @@ void Tausch::startGpuToCpu() {
 }
 
 // Complete CPU side of CPU/GPU halo exchange
-void Tausch::completeCpuToGpu() {
+void Tausch2D::completeCpuToGpu() {
 
     if(!cpuToGpuStarted) {
         std::cerr << "ERROR: No CPU->GPU exchange has been started yet... Abort!" << std::endl;
@@ -361,7 +361,7 @@ void Tausch::completeCpuToGpu() {
 }
 
 // Complete GPU side of CPU/GPU halo exchange
-void Tausch::completeGpuToCpu() {
+void Tausch2D::completeGpuToCpu() {
 
     if(!gpuToCpuStarted) {
         std::cerr << "ERROR: No GPU->CPU exchange has been started yet... Abort!" << std::endl;
@@ -398,7 +398,7 @@ void Tausch::completeGpuToCpu() {
 }
 
 // both the CPU and GPU have to arrive at this point before either can continue
-void Tausch::syncCpuAndGpu() {
+void Tausch2D::syncCpuAndGpu() {
 
     // need to do this twice to prevent potential (though unlikely) deadlocks
     for(int i = 0; i < 2; ++i) {
@@ -416,7 +416,7 @@ void Tausch::syncCpuAndGpu() {
 
 }
 
-void Tausch::compileKernels() {
+void Tausch2D::compileKernels() {
 
 //    std::string oclstr;
 //    std::ifstream cl_file(std::string(SOURCEDIR) + "/kernels.cl");
@@ -504,7 +504,7 @@ kernel void distributeHaloData(global const int * restrict const dimX, global co
 }
 
 // Create OpenCL context and choose a device (if multiple devices are available, the MPI ranks will split up evenly)
-void Tausch::setupOpenCL(bool giveOpenCLDeviceName) {
+void Tausch2D::setupOpenCL(bool giveOpenCLDeviceName) {
 
     gpuEnabled = true;
 

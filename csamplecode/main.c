@@ -9,7 +9,7 @@
 #include <sys/timeb.h>
 
 #define TAUSCH_OPENCL
-#include <ctausch.h>
+#include <tausch/tausch.h>
 
 #include "samplecpu.h"
 #include "samplegpu.h"
@@ -119,8 +119,8 @@ int main(int argc, char** argv) {
                     param.cpu[(j+1)*(param.localDimX+2) + i+1] = (double)j*param.localDimX+i+1;
     }
 
-    param.tausch = tausch_new(param.localDimX, param.localDimY, param.mpiNumX, param.mpiNumY, param.haloWidth, MPI_COMM_WORLD);
-    tausch_enableOpenCL(param.tausch, true, param.workgroupsize, param.giveOpenClDeviceName);
+    param.tausch = tausch2d_new(param.localDimX, param.localDimY, param.mpiNumX, param.mpiNumY, param.haloWidth, MPI_COMM_WORLD);
+    tausch2d_enableOpenCL(param.tausch, true, param.workgroupsize, param.giveOpenClDeviceName);
 
     if(!param.cpuonly) {
 
@@ -137,10 +137,10 @@ int main(int argc, char** argv) {
         }
 
         cl_int err;
-        param.clGpu = clCreateBuffer(tausch_getContext(param.tausch), CL_MEM_READ_WRITE, (param.gpuDimX+2)*(param.gpuDimY+2)*sizeof(double), NULL, &err);
+        param.clGpu = clCreateBuffer(tausch2d_getContext(param.tausch), CL_MEM_READ_WRITE, (param.gpuDimX+2)*(param.gpuDimY+2)*sizeof(double), NULL, &err);
         if(err != CL_SUCCESS)
             printf("[create GPU buffer] OpenCL exception caught: %i\n", err);
-        err = clEnqueueWriteBuffer(tausch_getQueue(param.tausch), param.clGpu, true, 0, (param.gpuDimX+2)*(param.gpuDimY+2)*sizeof(double), param.gpu, 0, NULL, NULL);
+        err = clEnqueueWriteBuffer(tausch2d_getQueue(param.tausch), param.clGpu, true, 0, (param.gpuDimX+2)*(param.gpuDimY+2)*sizeof(double), param.gpu, 0, NULL, NULL);
         if(err != CL_SUCCESS)
             printf("[fill GPU buffer] OpenCL exception caught: %i\n", err);
 
@@ -148,9 +148,9 @@ int main(int argc, char** argv) {
 
 
 
-    tausch_setCPUData(param.tausch, param.cpu);
+    tausch2d_setCPUData(param.tausch, param.cpu);
     if(!param.cpuonly)
-        tausch_setGPUData(param.tausch, param.clGpu, param.gpuDimX, param.gpuDimY);
+        tausch2d_setGPUData(param.tausch, param.clGpu, param.gpuDimX, param.gpuDimY);
 
     if(mpiRank == param.printMpiRank) {
         if(!param.cpuonly) {
@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
         printf("-------------------------------\n");
     }
 
-    tausch_delete(param.tausch);
+    tausch2d_delete(param.tausch);
 
     MPI_Finalize();
 

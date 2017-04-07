@@ -13,12 +13,12 @@ void launchCPU(void *args) {
             printf("Loop %i/%i\n", run+1, param->loops);
 
         // post the receives
-        tausch_postCpuReceives(param->tausch);
+        tausch2d_postCpuReceives(param->tausch);
 
-        tausch_performCpuToCpu(param->tausch);
+        tausch2d_performCpuToCpu(param->tausch);
 
         if(!param->cpuonly)
-            tausch_performCpuToGpu(param->tausch);
+            tausch2d_performCpuToGpu(param->tausch);
 
     }
 

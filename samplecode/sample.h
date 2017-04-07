@@ -7,7 +7,7 @@
 #include <chrono>
 
 #define TAUSCH_OPENCL
-#include <tausch.h>
+#include <tausch/tausch.h>
 
 typedef double real_t;
 
@@ -30,7 +30,7 @@ private:
     real_t *datGPU;
     cl::Buffer cl_datGpu;
     int loops;
-    Tausch *tausch;
+    Tausch2D *tausch;
     bool cpuonly;
     int haloWidth;
 

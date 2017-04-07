@@ -1,7 +1,7 @@
 #ifndef PARAMSTRUCT
 #define PARAMSTRUCT
 
-#include "ctausch.h"
+#include <tausch/tausch.h>
 
 struct param_struct {
     int localDimX, localDimY;
@@ -16,7 +16,7 @@ struct param_struct {
     double *gpu;
     int gpuDimX;
     int gpuDimY;
-    CTausch *tausch;
+    CTausch2D *tausch;
     cl_mem clGpu;
     int printMpiRank;
     int haloWidth;

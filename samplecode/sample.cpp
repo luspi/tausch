@@ -46,7 +46,7 @@ Sample::Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int h
     // the width of the halos
     this->haloWidth = haloWidth;
 
-    tausch = new Tausch(localDimX, localDimY, mpiNumX, mpiNumY, haloWidth);
+    tausch = new Tausch2D(localDimX, localDimY, mpiNumX, mpiNumY, haloWidth);
     if(!cpuonly) tausch->enableOpenCL(true, clWorkGroupSize, giveOpenCLDeviceName);
 
     // how many points overall in the mesh and a CPU buffer for all of them
