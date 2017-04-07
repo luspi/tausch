@@ -50,7 +50,7 @@
  * #include <future>
  *
  * #define TAUSCH_OPENCL
- * #include <tausch.h>
+ * #include <tausch/tausch.h>
  *
  * // The two functions that will be executed asynchronously
  * void launchCPU();
