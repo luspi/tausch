@@ -379,68 +379,91 @@ public:
 
 private:
 
+    // The current MPI rank and size of TAUSCH_COMM world
     int mpiRank, mpiSize;
+    // The number of MPI ranks in the x/y direction of the domain
     int mpiNumX, mpiNumY;
 
+    // The x/y dimensions of the LOCAL partition
     int localDimX, localDimY;
+
+    // Pointer to the CPU data
     real_t *cpuData;
 
+    // The width of the halo
     int haloWidth;
 
+    // Double pointer holding the MPI sent/recvd data across all edges
     real_t **cpuToCpuSendBuffer;
     real_t **cpuToCpuRecvBuffer;
 
+    // Whether the necessary steps were taken before starting a halo exchange
     bool cpuInfoGiven;
     bool cpuRecvsPosted;
 
+    // Which edge of the halo exchange has been started
     bool cpuStarted[4];
 
     // this refers to inter-partition boundaries
     bool haveBoundary[4];
 
+    // The communicator in use by Tausch
     MPI_Comm TAUSCH_COMM;
 
+    // Holding the MPI requests so we can call Wait on the right ones
     MPI_Request cpuToCpuSendRequest[4];
     MPI_Request cpuToCpuRecvRequest[4];
 
 #ifdef TAUSCH_OPENCL
 
+    // The OpenCL Device, Context and CommandQueue in use by Tausch (either set up by Tausch or passed on from user)
+    cl::Device cl_defaultDevice;
     cl::Context cl_context;
     cl::CommandQueue cl_queue;
 
+    // The OpenCL buffer holding the data on the GPU
     cl::Buffer gpuData;
 
+    // Some meta information about the OpenCL region
     int gpuDimX, gpuDimY;
     cl::Buffer cl_gpuDimX, cl_gpuDimY;
     cl::Buffer cl_haloWidth;
 
+    // Methods to set up the OpenCL environment and compile the required kernels
     void setupOpenCL(bool giveOpenCLDeviceName);
     void compileKernels();
 
+    // Pointers to atomic arrays for communicating halo data between CPU and GPU thread via shared memory
     std::atomic<real_t> *cpuToGpuBuffer;
     std::atomic<real_t> *gpuToCpuBuffer;
 
+    // These are only needed/set when Tausch set up its own OpenCL environment, not needed otherwise
     cl::Platform cl_platform;
-    cl::Device cl_defaultDevice;
     cl::Program cl_programs;
 
+    // Collecting the halo data to be sent/recvd
     cl::Buffer cl_gpuToCpuBuffer;
     cl::Buffer cl_cpuToGpuBuffer;
 
+    // Whether the necessary steps were taken before starting a halo exchange
     bool gpuEnabled;
     bool gpuInfoGiven;
 
+    // Which halo exchange has been started
     bool cpuToGpuStarted;
     bool gpuToCpuStarted;
 
+    // The local OpenCL workgroup size
     int cl_kernelLocalSize;
 
+    // Function to synchronize the CPU and GPU thread. Only needed when using asynchronous computing (i.e., when blocking is enabled)
     void syncCpuAndGpu();
-
     std::atomic<int> sync_counter[2];
     std::atomic<int> sync_lock[2];
 
+    // Whether there are two threads running and thus whether there needs to be blocking synchronisation happen
     bool blockingSyncCpuGpu;
+
 #endif
 
 };
