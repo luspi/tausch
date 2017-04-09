@@ -164,6 +164,7 @@
 
 #ifdef __cplusplus
 #include "modules/tausch2d.h"
+#include "modules/tausch3d.h"
 #else
 #include "modules/ctausch2d.h"
 #endif
