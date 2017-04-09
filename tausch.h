@@ -163,9 +163,9 @@
 #define TAUSCH_H
 
 #ifdef __cplusplus
-#include "2d/_tausch2d.h"
+#include "modules/tausch2d.h"
 #else
-#include "2d/_ctausch2d.h"
+#include "modules/ctausch2d.h"
 #endif
 
 #endif // TAUSCH_H

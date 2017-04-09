@@ -1,10 +1,10 @@
-#include "_tausch2d.h"
+#include "tausch2d.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "_ctausch2d.h"
+#include "ctausch2d.h"
 
     CTausch2D *tausch2d_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloWidth, MPI_Comm comm) {
         Tausch2D *t = new Tausch2D(localDimX, localDimY, mpiNumX, mpiNumY, haloWidth, comm);

@@ -28,8 +28,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 # Create library
-add_library(tausch SHARED "tausch.h" "2d/_tausch2d.cpp" "2d/_ctausch2d.cpp")
-add_library(tausch_static STATIC "tausch.h" "2d/_tausch2d.cpp" "2d/_ctausch2d.cpp")
+add_library(tausch SHARED "tausch.h" "modules/tausch2d.cpp" "modules/ctausch2d.cpp")
+add_library(tausch_static STATIC "tausch.h" "modules/tausch2d.cpp" "modules/ctausch2d.cpp")
 
 # Install library
 install(TARGETS tausch DESTINATION "lib")
@@ -37,5 +37,6 @@ install(TARGETS tausch_static DESTINATION "lib")
 
 # Install library headers
 install(FILES "tausch.h" DESTINATION "include/tausch")
-install(FILES "2d/_tausch2d.h" "2d/_ctausch2d.h" DESTINATION "include/tausch/2d")
+install(FILES "modules/tausch2d.h" "modules/ctausch2d.h" DESTINATION "include/tausch/modules")
 
+add_definitions(-DSOURCEDIR="${CMAKE_SOURCE_DIR}")

@@ -43,7 +43,7 @@ typedef double real_t;
  * \brief
  *  A library providing a clean and efficient interface for halo exchange in two dimensions.
  *
- * %Tausch2D is a library that provides a clean and efficient C and C++ API for halo exchange for structured grids in two dimensions, split into a structured coarse mesh for MPI. It supports halo exchange across the partition boundaries, and across a CPU/GPU boundary for GPU partitions living centered inside a CPU partition.
+ * %Tausch2D is a library that provides a clean and efficient C and C++ API for halo exchange for two dimensional structured grids that are split into a structured coarse mesh for MPI. It supports halo exchange across the partition boundaries, and across a CPU/GPU boundary for GPU partitions living centered inside a CPU partition.
  */
 class Tausch2D {
 
@@ -138,7 +138,7 @@ public:
     void enableOpenCL(bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
 
     /*!
-     * Overloaded function. Enabled OpenCL for the current %Tausch2D object, making Tausch2D use the user-provided OpenCL environment.
+     * Overloaded function. Enabled OpenCL for the current %Tausch2D object, making %Tausch2D use the user-provided OpenCL environment.
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      *

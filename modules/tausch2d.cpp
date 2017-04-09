@@ -1,4 +1,4 @@
-#include "_tausch2d.h"
+#include "tausch2d.h"
 
 Tausch2D::Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloWidth, MPI_Comm comm) {
 
