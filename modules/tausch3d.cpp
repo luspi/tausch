@@ -1,7 +1,7 @@
 #include "tausch3d.h"
 
 Tausch3D::Tausch3D(int localDimX, int localDimY, int localDimZ, int mpiNumX, int mpiNumY, int mpiNumZ, int haloWidth, MPI_Comm comm) {
-/*
+
     MPI_Comm_dup(comm, &TAUSCH_COMM);
 
     // get MPI info
@@ -10,30 +10,38 @@ Tausch3D::Tausch3D(int localDimX, int localDimY, int localDimZ, int mpiNumX, int
 
     this->mpiNumX = mpiNumX;
     this->mpiNumY = mpiNumY;
+    this->mpiNumZ = mpiNumZ;
 
     // store configuration
     this->localDimX = localDimX;
     this->localDimY = localDimY;
+    this->localDimZ = localDimZ;
 
     this->haloWidth = haloWidth;
 
     // check if this rank has a boundary with another rank
     haveBoundary[Left] = (mpiRank%mpiNumX != 0);
     haveBoundary[Right] = ((mpiRank+1)%mpiNumX != 0);
-    haveBoundary[Top] = (mpiRank < mpiSize-mpiNumX);
-    haveBoundary[Bottom] = (mpiRank > mpiNumX-1);
+    haveBoundary[Top] = (mpiRank < mpiSize-mpiNumX*mpiNumZ);
+    haveBoundary[Bottom] = (mpiRank > mpiNumX*mpiNumZ-1);
+    haveBoundary[Front] = (mpiRank%(mpiNumX*mpiNumZ) < mpiNumX);
+    haveBoundary[Back] = (mpiRank%(mpiNumX*mpiNumZ) > mpiNumX*(mpiNumZ-1)-1);
 
     // a send and recv buffer for the CPU-CPU communication
-    cpuToCpuSendBuffer = new real_t*[4];
-    cpuToCpuSendBuffer[Left] = new real_t[haloWidth*(localDimY+2*haloWidth)]{};
-    cpuToCpuSendBuffer[Right] = new real_t[haloWidth*(localDimY+2*haloWidth)]{};
-    cpuToCpuSendBuffer[Top] = new real_t[haloWidth*(localDimX+2*haloWidth)]{};
-    cpuToCpuSendBuffer[Bottom] = new real_t[haloWidth*(localDimX+2*haloWidth)]{};
-    cpuToCpuRecvBuffer = new real_t*[4];
-    cpuToCpuRecvBuffer[Left] = new real_t[haloWidth*(localDimY+2*haloWidth)]{};
-    cpuToCpuRecvBuffer[Right] = new real_t[haloWidth*(localDimY+2*haloWidth)]{};
-    cpuToCpuRecvBuffer[Top] = new real_t[haloWidth*(localDimX+2*haloWidth)]{};
-    cpuToCpuRecvBuffer[Bottom] = new real_t[haloWidth*(localDimX+2*haloWidth)]{};
+    cpuToCpuSendBuffer = new real_t*[6];
+    cpuToCpuSendBuffer[Left] = new real_t[haloWidth*(localDimY+2*haloWidth)*(localDimZ+2*haloWidth)]{};
+    cpuToCpuSendBuffer[Right] = new real_t[haloWidth*(localDimY+2*haloWidth)*(localDimZ+2*haloWidth)]{};
+    cpuToCpuSendBuffer[Top] = new real_t[haloWidth*(localDimX+2*haloWidth)*(localDimZ+2*haloWidth)]{};
+    cpuToCpuSendBuffer[Bottom] = new real_t[haloWidth*(localDimX+2*haloWidth)*(localDimZ+2*haloWidth)]{};
+    cpuToCpuSendBuffer[Front] = new real_t[haloWidth*(localDimX+2*haloWidth)*(localDimY+2*haloWidth)]{};
+    cpuToCpuSendBuffer[Back] = new real_t[haloWidth*(localDimX+2*haloWidth)*(localDimY+2*haloWidth)]{};
+    cpuToCpuRecvBuffer = new real_t*[6];
+    cpuToCpuRecvBuffer[Left] = new real_t[haloWidth*(localDimY+2*haloWidth)*(localDimZ+2*haloWidth)]{};
+    cpuToCpuRecvBuffer[Right] = new real_t[haloWidth*(localDimY+2*haloWidth)*(localDimZ+2*haloWidth)]{};
+    cpuToCpuRecvBuffer[Top] = new real_t[haloWidth*(localDimX+2*haloWidth)*(localDimZ+2*haloWidth)]{};
+    cpuToCpuRecvBuffer[Bottom] = new real_t[haloWidth*(localDimX+2*haloWidth)*(localDimZ+2*haloWidth)]{};
+    cpuToCpuRecvBuffer[Front] = new real_t[haloWidth*(localDimX+2*haloWidth)*(localDimY+2*haloWidth)]{};
+    cpuToCpuRecvBuffer[Back] = new real_t[haloWidth*(localDimX+2*haloWidth)*(localDimY+2*haloWidth)]{};
 
     // whether the cpu/gpu pointers have been passed
     cpuInfoGiven = false;
@@ -46,6 +54,8 @@ Tausch3D::Tausch3D(int localDimX, int localDimY, int localDimZ, int mpiNumX, int
     cpuStarted[Right] = false;
     cpuStarted[Top] = false;
     cpuStarted[Bottom] = false;
+    cpuStarted[Front] = false;
+    cpuStarted[Back] = false;
 
 #ifdef TAUSCH_OPENCL
 
@@ -62,13 +72,13 @@ Tausch3D::Tausch3D(int localDimX, int localDimY, int localDimZ, int mpiNumX, int
     sync_lock[1].store(0);
 
 #endif
-*/
+
 }
 
 Tausch3D::~Tausch3D() {
-/*
+
     // clean up memory
-    for(int i = 0; i < 4; ++i) {
+    for(int i = 0; i < 6; ++i) {
         delete[] cpuToCpuSendBuffer[i];
         delete[] cpuToCpuRecvBuffer[i];
     }
@@ -80,18 +90,18 @@ Tausch3D::~Tausch3D() {
         delete[] gpuToCpuBuffer;
     }
 #endif
-*/
+
 }
 
 // get a pointer to the CPU data
 void Tausch3D::setCPUData(real_t *dat) {
-//    cpuInfoGiven = true;
-//    cpuData = dat;
+    cpuInfoGiven = true;
+    cpuData = dat;
 }
 
 // post the MPI_Irecv's for inter-rank communication
 void Tausch3D::postCpuReceives() {
-/*
+
     if(!cpuInfoGiven) {
         std::cerr << "ERROR: You didn't tell me yet where to find the data! Abort..." << std::endl;
         exit(1);
@@ -102,14 +112,18 @@ void Tausch3D::postCpuReceives() {
     MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
     if(haveBoundary[Left])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Left][0], haloWidth*(localDimY+2*haloWidth), mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[Left]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Left][0], haloWidth*(localDimY+2*haloWidth)*(localDimZ+2*haloWidth), mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[Left]);
     if(haveBoundary[Right])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Right][0], haloWidth*(localDimY+2*haloWidth), mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[Right]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Right][0], haloWidth*(localDimY+2*haloWidth)*(localDimZ+2*haloWidth), mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[Right]);
     if(haveBoundary[Top])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Top][0], haloWidth*(localDimX+2*haloWidth), mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[Top]);
+        MPI_Irecv(&cpuToCpuRecvBuffer[Top][0], haloWidth*(localDimX+2*haloWidth)*(localDimZ+2*haloWidth), mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[Top]);
     if(haveBoundary[Bottom])
-        MPI_Irecv(&cpuToCpuRecvBuffer[Bottom][0], haloWidth*(localDimX+2*haloWidth), mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[Bottom]);
-*/
+        MPI_Irecv(&cpuToCpuRecvBuffer[Bottom][0], haloWidth*(localDimX+2*haloWidth)*(localDimZ+2*haloWidth), mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[Bottom]);
+    if(haveBoundary[Front])
+        MPI_Irecv(&cpuToCpuRecvBuffer[Top][0], haloWidth*(localDimX+2*haloWidth)*(localDimY+2*haloWidth), mpiDataType, mpiRank+mpiNumX, 4, TAUSCH_COMM, &cpuToCpuRecvRequest[Front]);
+    if(haveBoundary[Back])
+        MPI_Irecv(&cpuToCpuRecvBuffer[Bottom][0], haloWidth*(localDimX+2*haloWidth)*(localDimY+2*haloWidth), mpiDataType, mpiRank-mpiNumX, 5, TAUSCH_COMM, &cpuToCpuRecvRequest[Back]);
+
 }
 
 void Tausch3D::startCpuEdge(Edge edge) {
@@ -188,7 +202,7 @@ void Tausch3D::completeCpuEdge(Edge edge) {
 #ifdef TAUSCH_OPENCL
 
 void Tausch3D::enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
-/*
+
     // gpu disabled by default, only enabled if flag is set
     gpuEnabled = true;
     // local workgroup size
@@ -198,12 +212,12 @@ void Tausch3D::enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, b
     this->setupOpenCL(giveOpenCLDeviceName);
 
     cl_haloWidth = cl::Buffer(cl_context, &haloWidth, (&haloWidth)+1, true);
-*/
+
 }
 
 // If Tausch didn't set up OpenCL, the user needs to pass some OpenCL variables
 void Tausch3D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
-/*
+
     this->cl_defaultDevice = cl_defaultDevice;
     this->cl_context = cl_context;
     this->cl_queue = cl_queue;
@@ -215,12 +229,12 @@ void Tausch3D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_contex
     gpuEnabled = true;
 
     compileKernels();
-*/
+
 }
 
 // get a pointer to the GPU buffer and its dimensions
 void Tausch3D::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY, int gpuDimZ) {
-/*
+
     // check whether OpenCL has been set up
     if(!gpuEnabled) {
         std::cerr << "ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
@@ -233,25 +247,27 @@ void Tausch3D::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY, int gpuDimZ
     gpuData = dat;
     this->gpuDimX = gpuDimX;
     this->gpuDimY = gpuDimY;
+    this->gpuDimZ = gpuDimZ;
 
     // store buffer to store the GPU and the CPU part of the halo.
     // We do not need two buffers each, as each thread has direct access to both arrays, no communication necessary
-    cpuToGpuBuffer = new std::atomic<real_t>[2*haloWidth*(gpuDimX+2*haloWidth) + 2*haloWidth*gpuDimY]{};
-    gpuToCpuBuffer = new std::atomic<real_t>[2*haloWidth*gpuDimX + 2*haloWidth*gpuDimY]{};
+    cpuToGpuBuffer = new std::atomic<real_t>[2*haloWidth*(gpuDimX+2*haloWidth)*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimY*(gpuDimZ+2*haloWidth) +  2*haloWidth*gpuDimX*gpuDimY]{};
+    gpuToCpuBuffer = new std::atomic<real_t>[2*haloWidth*gpuDimX*gpuDimZ + 2*haloWidth*gpuDimY*gpuDimZ + 2*haloWidth*gpuDimX*gpuDimY]{};
 
     // set up buffers on device
     try {
-        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*haloWidth*gpuDimX+2*haloWidth*gpuDimY)*sizeof(real_t));
-        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*haloWidth*(gpuDimX+2*haloWidth)+2*haloWidth*gpuDimY)*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*haloWidth*gpuDimX + 2*haloWidth*gpuDimY)*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*haloWidth*(gpuDimX+2) + 2*haloWidth*gpuDimY)*sizeof(real_t));
+        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*haloWidth*(gpuDimX+2*haloWidth)*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimY*(gpuDimZ+2*haloWidth) +  2*haloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
+        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*haloWidth*gpuDimX*gpuDimZ + 2*haloWidth*gpuDimY*gpuDimZ + 2*haloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*haloWidth*(gpuDimX+2*haloWidth)*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimY*(gpuDimZ+2*haloWidth) +  2*haloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*haloWidth*gpuDimX*gpuDimZ + 2*haloWidth*gpuDimY*gpuDimZ + 2*haloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
         cl_gpuDimX = cl::Buffer(cl_context, &gpuDimX, (&gpuDimX)+1, true);
         cl_gpuDimY = cl::Buffer(cl_context, &gpuDimY, (&gpuDimY)+1, true);
+        cl_gpuDimY = cl::Buffer(cl_context, &gpuDimZ, (&gpuDimZ)+1, true);
     } catch(cl::Error error) {
         std::cout << "[setup send/recv buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
     }
-*/
+
 }
 
 // collect cpu side of cpu/gpu halo and store in buffer
@@ -401,7 +417,7 @@ void Tausch3D::completeGpuToCpu() {
 
 // both the CPU and GPU have to arrive at this point before either can continue
 void Tausch3D::syncCpuAndGpu() {
-/*
+
     // need to do this twice to prevent potential (though unlikely) deadlocks
     for(int i = 0; i < 2; ++i) {
 
@@ -415,18 +431,19 @@ void Tausch3D::syncCpuAndGpu() {
         while(sync_lock[i].load() == 1);
 
     }
-*/
+
 }
 
 void Tausch3D::compileKernels() {
-/*
-//    std::string oclstr;
-//    std::ifstream cl_file(std::string(SOURCEDIR) + "/kernels.cl");
-//    cl_file.seekg(0, std::ios::end);
-//    oclstr.reserve(cl_file.tellg());
-//    cl_file.seekg(0, std::ios::beg);
-//    oclstr.assign((std::istreambuf_iterator<char>(cl_file)), std::istreambuf_iterator<char>());
 
+    std::string oclstr;
+    std::ifstream cl_file(std::string(SOURCEDIR) + "/kernels3d.cl");
+    cl_file.seekg(0, std::ios::end);
+    oclstr.reserve(cl_file.tellg());
+    cl_file.seekg(0, std::ios::beg);
+    oclstr.assign((std::istreambuf_iterator<char>(cl_file)), std::istreambuf_iterator<char>());
+
+/*
     // Tausch requires two kernels: One for collecting the halo data and one for distributing that data
     std::string oclstr = "typedef " + std::string((sizeof(real_t)==sizeof(double)) ? "double" : "float") + " real_t;\n";
     oclstr += R"d(
@@ -507,7 +524,7 @@ kernel void distributeHaloData(global const int * restrict const dimX, global co
 
 // Create OpenCL context and choose a device (if multiple devices are available, the MPI ranks will split up evenly)
 void Tausch3D::setupOpenCL(bool giveOpenCLDeviceName) {
-/*
+
     gpuEnabled = true;
 
     try {
@@ -576,6 +593,6 @@ void Tausch3D::setupOpenCL(bool giveOpenCLDeviceName) {
 
     // And compile kernels
     compileKernels();
-*/
+
 }
 #endif

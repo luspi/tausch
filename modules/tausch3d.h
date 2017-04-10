@@ -274,17 +274,17 @@ private:
     bool cpuRecvsPosted;
 
     // Which edge of the halo exchange has been started
-    bool cpuStarted[4];
+    bool cpuStarted[6];
 
     // this refers to inter-partition boundaries
-    bool haveBoundary[4];
+    bool haveBoundary[6];
 
     // The communicator in use by Tausch3D
     MPI_Comm TAUSCH_COMM;
 
     // Holding the MPI requests so we can call Wait on the right ones
-    MPI_Request cpuToCpuSendRequest[4];
-    MPI_Request cpuToCpuRecvRequest[4];
+    MPI_Request cpuToCpuSendRequest[6];
+    MPI_Request cpuToCpuRecvRequest[6];
 
 #ifdef TAUSCH_OPENCL
 
