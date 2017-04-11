@@ -160,14 +160,14 @@ void Tausch3D::startCpuEdge(Edge edge) {
         for(int z = 0; z < localDimZ+2*haloWidth; ++z)
             for(int y = 0; y < haloWidth; ++y)
                 for(int x = 0; x < localDimX+2*haloWidth; ++x)
-                    cpuToCpuSendBuffer[Top][z*(localDimX+2*haloWidth)*haloWidth + y*haloWidth + x]
+                    cpuToCpuSendBuffer[Top][z*(localDimX+2*haloWidth)*haloWidth + y*(localDimX+2*haloWidth) + x]
                             = cpuData[z*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) + (y+localDimY)*(localDimX+2*haloWidth)+x];
         MPI_Isend(&cpuToCpuSendBuffer[Top][0], haloWidth*(localDimX+2*haloWidth)*(localDimZ+2*haloWidth), mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[Top]);
     } else if(edge == Bottom && haveBoundary[Bottom]) {
         for(int z = 0; z < localDimZ+2*haloWidth; ++z)
             for(int y = 0; y < haloWidth; ++y)
                 for(int x = 0; x < localDimX+2*haloWidth; ++x)
-                    cpuToCpuSendBuffer[Bottom][z*(localDimX+2*haloWidth)*haloWidth + y*haloWidth + x]
+                    cpuToCpuSendBuffer[Bottom][z*(localDimX+2*haloWidth)*haloWidth + y*(localDimX+2*haloWidth) + x]
                             = cpuData[z*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) + (y+haloWidth)*(localDimX+2*haloWidth)+x];
         MPI_Isend(&cpuToCpuSendBuffer[Bottom][0], haloWidth*(localDimX+2*haloWidth)*(localDimZ+2*haloWidth), mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[Bottom]);
     } else if(edge == Front && haveBoundary[Front]) {
@@ -223,7 +223,7 @@ void Tausch3D::completeCpuEdge(Edge edge) {
             for(int y = 0; y < haloWidth; ++y)
                 for(int x = 0; x < localDimX+2*haloWidth; ++x)
                     cpuData[z*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) + (y+localDimY+haloWidth)*(localDimX+2*haloWidth)+x]
-                            = cpuToCpuRecvBuffer[Top][z*(localDimX+2*haloWidth)*haloWidth + y*haloWidth + x];
+                            = cpuToCpuRecvBuffer[Top][z*(localDimX+2*haloWidth)*haloWidth + y*(localDimX+2*haloWidth) + x];
         MPI_Wait(&cpuToCpuSendRequest[Top], MPI_STATUS_IGNORE);
     } else if(edge == Bottom && haveBoundary[Bottom]) {
         MPI_Wait(&cpuToCpuRecvRequest[Bottom], MPI_STATUS_IGNORE);
@@ -231,7 +231,7 @@ void Tausch3D::completeCpuEdge(Edge edge) {
             for(int y = 0; y < haloWidth; ++y)
                 for(int x = 0; x < localDimX+2*haloWidth; ++x)
                     cpuData[z*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) + y*(localDimX+2*haloWidth)+x]
-                            = cpuToCpuRecvBuffer[Bottom][z*(localDimX+2*haloWidth)*haloWidth + y*haloWidth + x];
+                            = cpuToCpuRecvBuffer[Bottom][z*(localDimX+2*haloWidth)*haloWidth + y*(localDimX+2*haloWidth) + x];
         MPI_Wait(&cpuToCpuSendRequest[Bottom], MPI_STATUS_IGNORE);
     } else if(edge == Front && haveBoundary[Front]) {
         MPI_Wait(&cpuToCpuRecvRequest[Front], MPI_STATUS_IGNORE);
