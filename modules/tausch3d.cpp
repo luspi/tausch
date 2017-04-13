@@ -345,18 +345,30 @@ void Tausch3D::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY, int gpuDimZ
 
     // store buffer to store the GPU and the CPU part of the halo.
     // We do not need two buffers each, as each thread has direct access to both arrays, no communication necessary
-    cpuToGpuBuffer = new std::atomic<real_t>[2*haloWidth*(gpuDimX+2*haloWidth)*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimY*(gpuDimZ+2*haloWidth) +  2*haloWidth*gpuDimX*gpuDimY]{};
-    gpuToCpuBuffer = new std::atomic<real_t>[2*haloWidth*gpuDimX*gpuDimZ + 2*haloWidth*gpuDimY*gpuDimZ + 2*haloWidth*gpuDimX*gpuDimY]{};
+    cpuToGpuBuffer = new std::atomic<real_t>[2*haloWidth*(gpuDimY+2*haloWidth)*(gpuDimZ+2*haloWidth) +
+                                             2*haloWidth*gpuDimX*(gpuDimZ+2*haloWidth) +
+                                             2*haloWidth*gpuDimX*gpuDimY]{};
+    gpuToCpuBuffer = new std::atomic<real_t>[2*haloWidth*gpuDimY*gpuDimZ +
+                                             2*haloWidth*gpuDimX*gpuDimZ +
+                                             2*haloWidth*gpuDimX*gpuDimY]{};
 
     // set up buffers on device
     try {
-        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*haloWidth*(gpuDimX+2*haloWidth)*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimY*(gpuDimZ+2*haloWidth) +  2*haloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
-        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*haloWidth*gpuDimX*gpuDimZ + 2*haloWidth*gpuDimY*gpuDimZ + 2*haloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*haloWidth*(gpuDimX+2*haloWidth)*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimY*(gpuDimZ+2*haloWidth) +  2*haloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*haloWidth*gpuDimX*gpuDimZ + 2*haloWidth*gpuDimY*gpuDimZ + 2*haloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
+        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*haloWidth*(gpuDimY+2*haloWidth)*(gpuDimZ+2*haloWidth) +
+                                                                       2*haloWidth*gpuDimX*(gpuDimZ+2*haloWidth) +
+                                                                       2*haloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
+        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*haloWidth*gpuDimY*gpuDimZ +
+                                                                       2*haloWidth*gpuDimX*gpuDimZ +
+                                                                       2*haloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*haloWidth*(gpuDimY+2*haloWidth)*(gpuDimZ+2*haloWidth) +
+                                                             2*haloWidth*gpuDimX*(gpuDimZ+2*haloWidth) +
+                                                             2*haloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*haloWidth*gpuDimY*gpuDimZ +
+                                                             2*haloWidth*gpuDimX*gpuDimZ +
+                                                             2*haloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
         cl_gpuDimX = cl::Buffer(cl_context, &gpuDimX, (&gpuDimX)+1, true);
         cl_gpuDimY = cl::Buffer(cl_context, &gpuDimY, (&gpuDimY)+1, true);
-        cl_gpuDimY = cl::Buffer(cl_context, &gpuDimZ, (&gpuDimZ)+1, true);
+        cl_gpuDimZ = cl::Buffer(cl_context, &gpuDimZ, (&gpuDimZ)+1, true);
     } catch(cl::Error error) {
         std::cout << "[setup send/recv buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
@@ -366,7 +378,7 @@ void Tausch3D::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY, int gpuDimZ
 
 // collect cpu side of cpu/gpu halo and store in buffer
 void Tausch3D::startCpuToGpu() {
-/*
+
     // check whether GPU is enabled
     if(!gpuEnabled) {
         std::cerr << "ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
@@ -375,32 +387,83 @@ void Tausch3D::startCpuToGpu() {
 
     cpuToGpuStarted = true;
 
-    // left
-    for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +i/haloWidth+haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2+i%haloWidth;
-        cpuToGpuBuffer[i].store(cpuData[index]);
+   // left
+    for(int z = 0; z < (gpuDimZ+2*haloWidth); ++z) {
+        for(int y = 0; y < (gpuDimY+2*haloWidth); ++y) {
+            for(int x = 0; x < haloWidth; ++x) {
+                int index = (z+(localDimZ-gpuDimZ)/2)*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) +
+                            (y+(localDimY-gpuDimY)/2)*(localDimX+2*haloWidth) +
+                            x+(localDimX-gpuDimX)/2;
+                cpuToGpuBuffer[z*(gpuDimY+2*haloWidth)*haloWidth + y*haloWidth + x].store(cpuData[index]);
+            }
+        }
     }
+    int offset = (gpuDimZ+2*haloWidth)*(gpuDimY+2*haloWidth)*haloWidth;
     // right
-    for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +haloWidth + i/haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + haloWidth + gpuDimX + i%haloWidth;
-        cpuToGpuBuffer[haloWidth*gpuDimY + i].store(cpuData[index]);
+    for(int z = 0; z < (gpuDimZ+2*haloWidth); ++z) {
+        for(int y = 0; y < (gpuDimY+2*haloWidth); ++y) {
+            for(int x = 0; x < haloWidth; ++x) {
+                int index = (z+(localDimZ-gpuDimZ)/2)*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) +
+                            (y+(localDimY-gpuDimY)/2)*(localDimX+2*haloWidth) +
+                            x+(localDimX-gpuDimX)/2+gpuDimX+1;
+                cpuToGpuBuffer[offset + z*(gpuDimY+2*haloWidth)*haloWidth + y*haloWidth + x].store(cpuData[index]);
+            }
+        }
     }
+    offset += (gpuDimZ+2*haloWidth)*(gpuDimY+2*haloWidth)*haloWidth;
     // top
-    for(int i = 0; i < haloWidth*(gpuDimX+2*haloWidth); ++ i) {
-        int index = ((localDimY-gpuDimY)/2+gpuDimY+haloWidth + i/(gpuDimX+2*haloWidth))*(localDimX+2*haloWidth) + haloWidth + ((localDimX-gpuDimX)/2-haloWidth) +i%(gpuDimX+2*haloWidth);
-        cpuToGpuBuffer[2*haloWidth*gpuDimY + i].store(cpuData[index]);
+    for(int z = 0; z < (gpuDimZ+2*haloWidth); ++z) {
+        for(int y = 0; y < haloWidth; ++y) {
+            for(int x = 0; x < gpuDimX; ++x) {
+                int index = (z+(localDimZ-gpuDimZ)/2)*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) +
+                            (y+(localDimY-gpuDimY)/2+gpuDimY+1)*(localDimX+2*haloWidth) +
+                            x+(localDimX-gpuDimX)/2+haloWidth;
+                cpuToGpuBuffer[offset + z*haloWidth*gpuDimX + y*gpuDimX + x].store(cpuData[index]);
+            }
+        }
     }
+    offset += (gpuDimZ+2*haloWidth)*haloWidth*gpuDimX;
     // bottom
-    for(int i = 0; i < haloWidth*(gpuDimX+2*haloWidth); ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +i/(gpuDimX+2*haloWidth))*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + i%(gpuDimX+2*haloWidth);
-        cpuToGpuBuffer[2*haloWidth*gpuDimY+haloWidth*(gpuDimX+2*haloWidth) + i].store(cpuData[index]);
+    for(int z = 0; z < (gpuDimZ+2*haloWidth); ++z) {
+        for(int y = 0; y < haloWidth; ++y) {
+            for(int x = 0; x < gpuDimX; ++x) {
+                int index = (z+(localDimZ-gpuDimZ)/2)*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) +
+                            (y+(localDimY-gpuDimY)/2)*(localDimX+2*haloWidth) +
+                            x+(localDimX-gpuDimX)/2+haloWidth;
+                cpuToGpuBuffer[offset + z*haloWidth*gpuDimX + y*gpuDimX + x].store(cpuData[index]);
+            }
+        }
     }
-*/
+    offset += (gpuDimZ+2*haloWidth)*haloWidth*gpuDimX;
+    // front
+    for(int z = 0; z < haloWidth; ++z) {
+        for(int y = 0; y < gpuDimY; ++y) {
+            for(int x = 0; x < gpuDimX; ++x) {
+                int index = (z+(localDimZ-gpuDimZ)/2)*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) +
+                            (y+(localDimY-gpuDimY)/2+haloWidth)*(localDimX+2*haloWidth) +
+                            x+(localDimX-gpuDimX)/2+haloWidth;
+                cpuToGpuBuffer[offset + z*gpuDimY*gpuDimX + y*gpuDimX + x].store(cpuData[index]);
+            }
+        }
+    }
+    offset += haloWidth*gpuDimY*gpuDimX;
+    // back
+    for(int z = 0; z < haloWidth; ++z) {
+        for(int y = 0; y < gpuDimY; ++y) {
+            for(int x = 0; x < gpuDimX; ++x) {
+                int index = (z+(localDimZ-gpuDimZ)/2+gpuDimZ+1)*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) +
+                            (y+(localDimY-gpuDimY)/2+haloWidth)*(localDimX+2*haloWidth) +
+                            x+(localDimX-gpuDimX)/2+haloWidth;
+                cpuToGpuBuffer[offset + z*gpuDimY*gpuDimX + y*gpuDimX + x].store(cpuData[index]);
+            }
+        }
+    }
+
 }
 
 // collect gpu side of cpu/gpu halo and download into buffer
 void Tausch3D::startGpuToCpu() {
-/*
+
     // check whether GPU is enabled
     if(!gpuEnabled) {
         std::cerr << "ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
@@ -413,7 +476,7 @@ void Tausch3D::startGpuToCpu() {
     }
 
     gpuToCpuStarted = true;
-
+/*
     try {
 
         auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloData");
@@ -439,7 +502,7 @@ void Tausch3D::startGpuToCpu() {
 
 // Complete CPU side of CPU/GPU halo exchange
 void Tausch3D::completeCpuToGpu() {
-/*
+
     if(!cpuToGpuStarted) {
         std::cerr << "ERROR: No CPU->GPU exchange has been started yet... Abort!" << std::endl;
         exit(1);
@@ -448,7 +511,7 @@ void Tausch3D::completeCpuToGpu() {
     // we need to wait for the GPU thread to arrive here
     if(blockingSyncCpuGpu)
         syncCpuAndGpu();
-
+/*
     // left
     for(int i = 0; i < haloWidth*(gpuDimY-2*haloWidth); ++ i) {
         int index = ((localDimY-gpuDimY)/2 +i/haloWidth +2*haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + haloWidth +i%haloWidth;
@@ -474,7 +537,7 @@ void Tausch3D::completeCpuToGpu() {
 
 // Complete GPU side of CPU/GPU halo exchange
 void Tausch3D::completeGpuToCpu() {
-/*
+
     if(!gpuToCpuStarted) {
         std::cerr << "ERROR: No GPU->CPU exchange has been started yet... Abort!" << std::endl;
         exit(1);
@@ -486,27 +549,27 @@ void Tausch3D::completeGpuToCpu() {
 
     try {
 
-        double *dat = new double[2*haloWidth*(gpuDimX+2*haloWidth)+2*haloWidth*gpuDimY];
-        for(int i = 0; i < 2*haloWidth*(gpuDimX+2*haloWidth)+2*haloWidth*gpuDimY; ++i)
+        double *dat = new double[2*haloWidth*(gpuDimY+2*haloWidth)*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimX*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimX*gpuDimY];
+        for(int i = 0; i < 2*haloWidth*(gpuDimY+2*haloWidth)*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimX*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimX*gpuDimY; ++i)
             dat[i] = cpuToGpuBuffer[i].load();
 
-        cl::copy(cl_queue, &dat[0], (&dat[2*haloWidth*(gpuDimX+2*haloWidth)+2*haloWidth*gpuDimY-1])+1, cl_cpuToGpuBuffer);
+        cl::copy(cl_queue, &dat[0], (&dat[2*haloWidth*(gpuDimY+2*haloWidth)*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimX*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimX*gpuDimY-1])+1, cl_cpuToGpuBuffer);
 
         delete[] dat;
 
-        auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
+        auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
 
-        int globalSize = ((2*haloWidth*(gpuDimX+2*haloWidth) + 2*haloWidth*gpuDimY)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = ((2*haloWidth*(gpuDimY+2*haloWidth)*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimX*(gpuDimZ+2*haloWidth) + 2*haloWidth*gpuDimX*gpuDimY)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_distributeHaloData(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                                  cl_gpuDimX, cl_gpuDimY, cl_haloWidth, gpuData, cl_cpuToGpuBuffer);
+                                  cl_gpuDimX, cl_gpuDimY, cl_gpuDimZ, cl_haloWidth, gpuData, cl_cpuToGpuBuffer);
 
     } catch(cl::Error error) {
         std::cout << "[dist halo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
     }
 
-*/
+
 }
 
 // both the CPU and GPU have to arrive at this point before either can continue
@@ -603,7 +666,7 @@ kernel void distributeHaloData(global const int * restrict const dimX, global co
     vec[(touse/(*dimX+2*(*haloWidth)))*(*dimX+2*(*haloWidth))+touse%(*dimX+2*(*haloWidth))] = sync[current];
 }
                          )d";
-
+*/
     try {
         cl_programs = cl::Program(cl_context, oclstr, true);
     } catch(cl::Error error) {
@@ -613,7 +676,7 @@ kernel void distributeHaloData(global const int * restrict const dimX, global co
             std::cout << std::endl << " ******************** " << std::endl << " ** BUILD LOG" << std::endl << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** " << std::endl << std::endl;
         }
     }
-*/
+
 }
 
 // Create OpenCL context and choose a device (if multiple devices are available, the MPI ranks will split up evenly)
