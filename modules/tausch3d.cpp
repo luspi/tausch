@@ -405,7 +405,7 @@ void Tausch3D::startCpuToGpu() {
             for(int x = 0; x < haloWidth; ++x) {
                 int index = (z+(localDimZ-gpuDimZ)/2)*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) +
                             (y+(localDimY-gpuDimY)/2)*(localDimX+2*haloWidth) +
-                            x+(localDimX-gpuDimX)/2+gpuDimX+1;
+                            x+(localDimX-gpuDimX)/2+gpuDimX+haloWidth;
                 cpuToGpuBuffer[offset + z*(gpuDimY+2*haloWidth)*haloWidth + y*haloWidth + x].store(cpuData[index]);
             }
         }
@@ -416,7 +416,7 @@ void Tausch3D::startCpuToGpu() {
         for(int y = 0; y < haloWidth; ++y) {
             for(int x = 0; x < gpuDimX; ++x) {
                 int index = (z+(localDimZ-gpuDimZ)/2)*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) +
-                            (y+(localDimY-gpuDimY)/2+gpuDimY+1)*(localDimX+2*haloWidth) +
+                            (y+(localDimY-gpuDimY)/2+gpuDimY+haloWidth)*(localDimX+2*haloWidth) +
                             x+(localDimX-gpuDimX)/2+haloWidth;
                 cpuToGpuBuffer[offset + z*haloWidth*gpuDimX + y*gpuDimX + x].store(cpuData[index]);
             }
@@ -451,7 +451,7 @@ void Tausch3D::startCpuToGpu() {
     for(int z = 0; z < haloWidth; ++z) {
         for(int y = 0; y < gpuDimY; ++y) {
             for(int x = 0; x < gpuDimX; ++x) {
-                int index = (z+(localDimZ-gpuDimZ)/2+gpuDimZ+1)*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) +
+                int index = (z+(localDimZ-gpuDimZ)/2+gpuDimZ+haloWidth)*(localDimX+2*haloWidth)*(localDimY+2*haloWidth) +
                             (y+(localDimY-gpuDimY)/2+haloWidth)*(localDimX+2*haloWidth) +
                             x+(localDimX-gpuDimX)/2+haloWidth;
                 cpuToGpuBuffer[offset + z*gpuDimY*gpuDimX + y*gpuDimX + x].store(cpuData[index]);
