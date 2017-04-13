@@ -60,26 +60,29 @@ Sample::Sample(int localDimX, int localDimY, int localDimZ, real_t portionGPU, i
                 for(int i = 0; i < dimX; ++i)
                     datCPU[(z+haloWidth)*(dimX+2*haloWidth)*(dimY+2*haloWidth) + (j+haloWidth)*(dimX+2*haloWidth) + i+haloWidth] = z*dimX*dimY+j*dimX+i+1;
     } else {
-        for(int j = 0; j < dimY; ++j)
-            for(int i = 0; i < dimX; ++i)
-                if(!(i >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
-                     && j >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY))
-                    datCPU[(j+haloWidth)*(dimX+2*haloWidth) + i+haloWidth] = j*dimX+i+1;
+        for(int z = 0; z < dimZ; ++z)
+            for(int j = 0; j < dimY; ++j)
+                for(int i = 0; i < dimX; ++i)
+                    if(!(i >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
+                         && j >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY
+                         && z >= (dimZ-gpuDimZ)/2 && z < (dimZ-gpuDimZ)/2+gpuDimZ))
+                        datCPU[(z+haloWidth)*(dimX+2*haloWidth)*(dimY+2*haloWidth) + (j+haloWidth)*(dimX+2*haloWidth) + i+haloWidth] = z*dimX*dimY+j*dimX+i+1;
     }
 
 
     if(!cpuonly) {
 
         // how many points only on the device and an OpenCL buffer for them
-        datGPU = new real_t[(gpuDimX+2*haloWidth)*(gpuDimY+2*haloWidth)]{};
+        datGPU = new real_t[(gpuDimX+2*haloWidth)*(gpuDimY+2*haloWidth)*(gpuDimZ+2*haloWidth)]{};
 
-        for(int j = 0; j < gpuDimY; ++j)
-            for(int i = 0; i < gpuDimX; ++i)
-                datGPU[(j+haloWidth)*(gpuDimX+2*haloWidth) + i+haloWidth] = j*gpuDimX+i+1;
+        for(int z = 0; z < gpuDimZ; ++z)
+            for(int j = 0; j < gpuDimY; ++j)
+                for(int i = 0; i < gpuDimX; ++i)
+                    datGPU[(z+haloWidth)*(gpuDimX+2*haloWidth)*(gpuDimY+2*haloWidth) + (j+haloWidth)*(gpuDimX+2*haloWidth) + i+haloWidth] = z*gpuDimX*gpuDimY+j*gpuDimX+i+1;
 
         try {
 
-            cl_datGpu = cl::Buffer(tausch->getContext(), &datGPU[0], (&datGPU[(gpuDimX+2*haloWidth)*(gpuDimY+2*haloWidth)-1])+1, false, true);
+            cl_datGpu = cl::Buffer(tausch->getContext(), &datGPU[0], (&datGPU[(gpuDimX+2*haloWidth)*(gpuDimY+2*haloWidth)*(gpuDimZ+2*haloWidth)-1])+1, false, true);
 
         } catch(cl::Error error) {
             std::cout << "[sample] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -157,15 +160,22 @@ void Sample::printCPU() {
 
     } else {
 
-        for(int j = dimY+2*haloWidth-1; j >= 0; --j) {
-            for(int i = 0; i < dimX+2*haloWidth; ++i) {
-                if(i-2*haloWidth >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
-                     && j-2*haloWidth >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY)
-                    std::cout << std::setw(3) << "    ";
-                else
-                    std::cout << std::setw(3) << datCPU[j*(dimX+2*haloWidth) + i] << " ";
+        for(int z = 0; z < dimZ+2*haloWidth; ++z) {
+
+            std::cout << std::endl << "z = " << z << std::endl;
+
+            for(int j = dimY+2*haloWidth-1; j >= 0; --j) {
+                for(int i = 0; i < dimX+2*haloWidth; ++i) {
+                    if(i-2*haloWidth >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
+                         && j-2*haloWidth >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY
+                         && z-2*haloWidth >= (dimZ-gpuDimZ)/2 && z < (dimZ-gpuDimZ)/2+gpuDimZ)
+                        std::cout << std::setw(3) << "    ";
+                    else
+                        std::cout << std::setw(3) << datCPU[z*(dimX+2*haloWidth)*(dimY+2*haloWidth) + j*(dimX+2*haloWidth) + i] << " ";
+                }
+                std::cout << std::endl;
             }
-            std::cout << std::endl;
+
         }
 
     }
@@ -174,10 +184,16 @@ void Sample::printCPU() {
 
 void Sample::printGPU() {
 
-    for(int i = gpuDimY+2*haloWidth -1; i >= 0; --i) {
-        for(int j = 0; j < gpuDimX+2*haloWidth; ++j)
-            std::cout << std::setw(3) << datGPU[i*(gpuDimX+2*haloWidth) + j] << " ";
-        std::cout << std::endl;
+    for(int z = 0; z < gpuDimZ+2*haloWidth; ++z) {
+
+        std::cout << std::endl << "z = " << z << std::endl;
+
+        for(int i = gpuDimY+2*haloWidth -1; i >= 0; --i) {
+            for(int j = 0; j < gpuDimX+2*haloWidth; ++j)
+                std::cout << std::setw(3) << datGPU[z*(gpuDimX+2*haloWidth)*(gpuDimY+2*haloWidth) + i*(gpuDimX+2*haloWidth) + j] << " ";
+            std::cout << std::endl;
+        }
+
     }
 
 }
