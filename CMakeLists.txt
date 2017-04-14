@@ -38,5 +38,3 @@ install(TARGETS tausch_static DESTINATION "lib")
 # Install library headers
 install(FILES "tausch.h" DESTINATION "include/tausch")
 install(FILES "modules/tausch2d.h" "modules/ctausch2d.h" "modules/tausch3d.h" DESTINATION "include/tausch/modules")
-
-add_definitions(-DSOURCEDIR="${CMAKE_SOURCE_DIR}")
