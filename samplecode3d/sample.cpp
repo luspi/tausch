@@ -1,27 +1,6 @@
 #include "sample.h"
 
-/*****************************
- *
- * This code uses the following test setup
- *
- *     |             20              |
- *   -----------------------------------
- *     |   CPU       5               |
- *     |                             |
- *     |       ---------------       |
- *  2  |   5   |    GPU      |   5   |
- *  0  |       |             |       |
- *     |       ---------------       |
- *     |                             |
- *     |             5               |
- *   -----------------------------------
- *     |                             |
- *
- *  with a halo width of 1 (for any halo).
- *
- *******************************/
-
-Sample::Sample(int localDimX, int localDimY, int localDimZ, real_t portionGPU, int loops, int haloWidth, int mpiNumX, int mpiNumY, int mpiNumZ, bool cpuonly, int clWorkGroupSize, bool giveOpenCLDeviceName) {
+Sample::Sample(int localDimX, int localDimY, int localDimZ, int gpuDimX, int gpuDimY, int gpuDimZ, int loops, int haloWidth, int mpiNumX, int mpiNumY, int mpiNumZ, bool cpuonly, int clWorkGroupSize, bool giveOpenCLDeviceName) {
 
     // obtain MPI rank
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -29,7 +8,7 @@ Sample::Sample(int localDimX, int localDimY, int localDimZ, real_t portionGPU, i
 
     // the overall x and y dimension of the local partition
     dimX = localDimX, dimY = localDimY, dimZ = localDimZ;
-    gpuDimX = dimX*std::cbrt(portionGPU), gpuDimY = dimY*std::cbrt(portionGPU), gpuDimZ = dimZ*std::cbrt(portionGPU);
+    this->gpuDimX = gpuDimX, this->gpuDimY = gpuDimY, this->gpuDimZ = gpuDimZ;
     this->loops = loops;
     this->cpuonly = cpuonly;
 
@@ -82,7 +61,7 @@ Sample::Sample(int localDimX, int localDimY, int localDimZ, real_t portionGPU, i
 
         try {
 
-            cl_datGpu = cl::Buffer(tausch->getContext(), &datGPU[0], (&datGPU[(gpuDimX+2*haloWidth)*(gpuDimY+2*haloWidth)*(gpuDimZ+2*haloWidth)-1])+1, false, true);
+            cl_datGpu = cl::Buffer(tausch->getContext(), &datGPU[0], (&datGPU[(gpuDimX+2*haloWidth)*(gpuDimY+2*haloWidth)*(gpuDimZ+2*haloWidth)-1])+1, false);
 
         } catch(cl::Error error) {
             std::cout << "[sample] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -134,7 +113,7 @@ void Sample::launchGPU() {
         tausch->performGpuToCpu();
 
     try {
-        cl::copy(tausch->getQueue(), cl_datGpu, &datGPU[0], (&datGPU[(gpuDimX+2)*(gpuDimY+2)-1])+1);
+        cl::copy(tausch->getQueue(), cl_datGpu, &datGPU[0], (&datGPU[(gpuDimX+2*haloWidth)*(gpuDimY+2*haloWidth)*(gpuDimZ+2*haloWidth)-1])+1);
     } catch(cl::Error error) {
         std::cout << "[launchGPU] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
