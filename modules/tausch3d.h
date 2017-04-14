@@ -183,7 +183,7 @@ public:
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
-    void performCpuToGpu() { startCpuToGpu(); completeCpuToGpu(); }
+    void performCpuToGpu() { startCpuToGpu(); completeGpuToCpu(); }
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange across the MPI ranks and from the CPU to GPU. It interweaves MPI communication with write to shared memory for sending data to the GPU.
@@ -192,7 +192,7 @@ public:
      */
     void performCpuToCpuAndCpuToGpu() { startCpuEdge(Left); startCpuEdge(Right); startCpuToGpu();
                                         completeCpuEdge(Left); completeCpuEdge(Right); startCpuEdge(Top); startCpuEdge(Bottom);
-                                        completeCpuToGpu(); completeCpuEdge(Top); completeCpuEdge(Bottom);
+                                        completeGpuToCpu(); completeCpuEdge(Top); completeCpuEdge(Bottom);
                                         startCpuEdge(Front); startCpuEdge(Back); completeCpuEdge(Front); completeCpuEdge(Back); }
 
     /*!
@@ -200,7 +200,7 @@ public:
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
-    void performGpuToCpu() { startGpuToCpu(); completeGpuToCpu(); }
+    void performGpuToCpu() { startGpuToCpu(); completeCpuToGpu(); }
 
     /*!
      * Start the halo exchange of the CPU looking at the GPU. This writes the required halo data to shared memory using atomic operations.
@@ -322,8 +322,8 @@ private:
     bool gpuInfoGiven;
 
     // Which halo exchange has been started
-    bool cpuToGpuStarted;
-    bool gpuToCpuStarted;
+    std::atomic<bool> cpuToGpuStarted;
+    std::atomic<bool> gpuToCpuStarted;
 
     // The local OpenCL workgroup size
     int cl_kernelLocalSize;
