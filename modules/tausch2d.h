@@ -170,49 +170,49 @@ public:
     void setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY);
 
     /*!
-     * Convenience function that calls the necessary functions performing a halo exchange from the CPU to GPU.
+     * Convenience function that calls the necessary functions performing a halo exchange from the CPU to GPU. It calls startCpuToGpu() and completeGpuToCpu().
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
-    void performCpuToGpu() { startCpuToGpu(); completeCpuToGpu(); }
+    void performCpuToGpu() { startCpuToGpu(); completeGpuToCpu(); }
 
     /*!
-     * Convenience function that calls the necessary functions performing a halo exchange across the MPI ranks and from the CPU to GPU. It interweaves MPI communication with write to shared memory for sending data to the GPU.
+     * Convenience function that calls the necessary functions performing a halo exchange across the MPI ranks and from the CPU to GPU. It interweaves MPI communication with write to shared memory for sending data to the GPU. The CPU/GPU methods called are startCpuToGpu() and completeGpuToCpu().
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
     void performCpuToCpuAndCpuToGpu() { startCpuEdge(Left); startCpuEdge(Right); startCpuToGpu();
                                         completeCpuEdge(Left); completeCpuEdge(Right); startCpuEdge(Top); startCpuEdge(Bottom);
-                                        completeCpuToGpu(); completeCpuEdge(Top); completeCpuEdge(Bottom); }
+                                        completeGpuToCpu(); completeCpuEdge(Top); completeCpuEdge(Bottom); }
 
     /*!
-     * Convenience function that calls the necessary functions performing a halo exchange from the GPU to CPU.
+     * Convenience function that calls the necessary functions performing a halo exchange from the GPU to CPU. It calls startGpuToCpu() and completeCpuToGpu().
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
-    void performGpuToCpu() { startGpuToCpu(); completeGpuToCpu(); }
+    void performGpuToCpu() { startGpuToCpu(); completeCpuToGpu(); }
 
     /*!
-     * Start the halo exchange of the CPU looking at the GPU. This writes the required halo data to shared memory using atomic operations.
+     * Start the halo exchange from the CPU to the GPU (called by the CPU thread). This writes the required halo data to shared memory using atomic operations.
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
     void startCpuToGpu();
     /*!
-     * Start the halo exchange of the GPU looking at the CPU. This downloads the required halo data from the GPU and writes it to shared memory using atomic operations.
+     * Start the halo exchange from the GPU to the CPU (called by te GPU thread). This downloads the required halo data from the GPU and writes it to shared memory using atomic operations.
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
     void startGpuToCpu();
 
     /*!
-     * Completes the halo exchange of the CPU looking at the GPU. This takes the halo data the GPU wrote to shared memory and loads it into the respective buffer positions. This has to come *after* calling startCpuToGpu().
+     * Completes the halo exchange from the CPU to the GPU (called by the GPU thread). This takes the halo data the GPU wrote to shared memory and loads it into the respective buffer positions. This has to come *after* calling startCpuToGpu().
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
     void completeCpuToGpu();
     /*!
-     * Completes the halo exchange of the GPU looking at the CPU. This takes the halo data the CPU wrote to shared memory and uploads it to the GPU. This has to come *after* calling startGpuToCpu().
+     * Completes the halo exchange from the GPU to the CPU (called by the CPU thread). This takes the halo data the CPU wrote to shared memory and uploads it to the GPU. This has to come *after* calling startGpuToCpu().
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
@@ -312,8 +312,8 @@ private:
     bool gpuInfoGiven;
 
     // Which halo exchange has been started
-    bool cpuToGpuStarted;
-    bool gpuToCpuStarted;
+    std::atomic<bool> cpuToGpuStarted;
+    std::atomic<bool> gpuToCpuStarted;
 
     // The local OpenCL workgroup size
     int cl_kernelLocalSize;

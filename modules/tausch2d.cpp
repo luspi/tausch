@@ -280,7 +280,7 @@ void Tausch2D::startCpuToGpu() {
         exit(1);
     }
 
-    cpuToGpuStarted = true;
+    cpuToGpuStarted.store(true);
 
     // left
     for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
@@ -319,7 +319,7 @@ void Tausch2D::startGpuToCpu() {
         exit(1);
     }
 
-    gpuToCpuStarted = true;
+    gpuToCpuStarted.store(true);
 
     try {
 
@@ -345,16 +345,16 @@ void Tausch2D::startGpuToCpu() {
 }
 
 // Complete CPU side of CPU/GPU halo exchange
-void Tausch2D::completeCpuToGpu() {
-
-    if(!cpuToGpuStarted) {
-        std::cerr << "ERROR: No CPU->GPU exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
+void Tausch2D::completeGpuToCpu() {
 
     // we need to wait for the GPU thread to arrive here
     if(blockingSyncCpuGpu)
         syncCpuAndGpu();
+
+    if(!gpuToCpuStarted.load()) {
+        std::cerr << "ERROR: No CPU->GPU exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
 
     // left
     for(int i = 0; i < haloWidth*(gpuDimY-2*haloWidth); ++ i) {
@@ -380,16 +380,16 @@ void Tausch2D::completeCpuToGpu() {
 }
 
 // Complete GPU side of CPU/GPU halo exchange
-void Tausch2D::completeGpuToCpu() {
-
-    if(!gpuToCpuStarted) {
-        std::cerr << "ERROR: No GPU->CPU exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
+void Tausch2D::completeCpuToGpu() {
 
     // we need to wait for the CPU thread to arrive here
     if(blockingSyncCpuGpu)
         syncCpuAndGpu();
+
+    if(!cpuToGpuStarted.load()) {
+        std::cerr << "ERROR: No GPU->CPU exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
 
     try {
 
