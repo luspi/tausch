@@ -14,7 +14,7 @@ typedef double real_t;
 
 typedef void* CTausch2D;
 
-enum Edge { TauschLeft = 0, TauschRight, TauschTop, TauschBottom };
+enum Edge { TAUSCH_LEFT, TAUSCH_RIGHT, TAUSCH_TOP, TAUSCH_BOTTOM };
 
 CTausch2D* tausch2d_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloWidth, MPI_Comm comm);
 void tausch2d_delete(CTausch2D *tC);

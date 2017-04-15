@@ -64,37 +64,37 @@ Tausch3D::Tausch3D(int localDimX, int localDimY, int localDimZ, int mpiNumX, int
         MPI_Recv_init(cpuToCpuRecvBuffer[LEFT], haloWidth*(localDimY+2*haloWidth)*(localDimZ+2*haloWidth),
                       mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[LEFT]);
         MPI_Send_init(cpuToCpuSendBuffer[LEFT], haloWidth*(localDimY+2*haloWidth)*(localDimZ+2*haloWidth),
-                mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[LEFT]);
+                      mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[LEFT]);
     }
     if(haveBoundary[RIGHT]) {
         MPI_Recv_init(cpuToCpuRecvBuffer[RIGHT], haloWidth*(localDimY+2*haloWidth)*(localDimZ+2*haloWidth),
-                mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[RIGHT]);
+                      mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[RIGHT]);
         MPI_Send_init(cpuToCpuSendBuffer[RIGHT], haloWidth*(localDimY+2*haloWidth)*(localDimZ+2*haloWidth),
-                mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[RIGHT]);
+                      mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[RIGHT]);
     }
     if(haveBoundary[TOP]) {
         MPI_Recv_init(cpuToCpuRecvBuffer[TOP], haloWidth*(localDimX+2*haloWidth)*(localDimZ+2*haloWidth),
-                mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[TOP]);
+                      mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[TOP]);
         MPI_Send_init(cpuToCpuSendBuffer[TOP], haloWidth*(localDimX+2*haloWidth)*(localDimZ+2*haloWidth),
-                mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[TOP]);
+                      mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[TOP]);
     }
     if(haveBoundary[BOTTOM]) {
         MPI_Recv_init(cpuToCpuRecvBuffer[BOTTOM], haloWidth*(localDimX+2*haloWidth)*(localDimZ+2*haloWidth),
-                mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[BOTTOM]);
+                      mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[BOTTOM]);
         MPI_Send_init(cpuToCpuSendBuffer[BOTTOM], haloWidth*(localDimX+2*haloWidth)*(localDimZ+2*haloWidth),
-                mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[BOTTOM]);
+                      mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[BOTTOM]);
     }
     if(haveBoundary[FRONT]) {
         MPI_Recv_init(cpuToCpuRecvBuffer[FRONT], haloWidth*(localDimX+2*haloWidth)*(localDimY+2*haloWidth),
-                mpiDataType, mpiRank-mpiNumX*mpiNumY, 4, TAUSCH_COMM, &cpuToCpuRecvRequest[FRONT]);
+                      mpiDataType, mpiRank-mpiNumX*mpiNumY, 4, TAUSCH_COMM, &cpuToCpuRecvRequest[FRONT]);
         MPI_Send_init(cpuToCpuSendBuffer[FRONT], haloWidth*(localDimX+2*haloWidth)*(localDimY+2*haloWidth),
-                mpiDataType, mpiRank-mpiNumX*mpiNumY, 5, TAUSCH_COMM, &cpuToCpuSendRequest[FRONT]);
+                      mpiDataType, mpiRank-mpiNumX*mpiNumY, 5, TAUSCH_COMM, &cpuToCpuSendRequest[FRONT]);
     }
     if(haveBoundary[BACK]) {
         MPI_Recv_init(cpuToCpuRecvBuffer[BACK], haloWidth*(localDimX+2*haloWidth)*(localDimY+2*haloWidth),
-                mpiDataType, mpiRank+mpiNumX*mpiNumY, 5, TAUSCH_COMM, &cpuToCpuRecvRequest[BACK]);
+                      mpiDataType, mpiRank+mpiNumX*mpiNumY, 5, TAUSCH_COMM, &cpuToCpuRecvRequest[BACK]);
         MPI_Send_init(cpuToCpuSendBuffer[BACK], haloWidth*(localDimX+2*haloWidth)*(localDimY+2*haloWidth),
-                mpiDataType, mpiRank+mpiNumX*mpiNumY, 4, TAUSCH_COMM, &cpuToCpuSendRequest[BACK]);
+                      mpiDataType, mpiRank+mpiNumX*mpiNumY, 4, TAUSCH_COMM, &cpuToCpuSendRequest[BACK]);
     }
 
 #ifdef TAUSCH_OPENCL
@@ -629,6 +629,7 @@ void Tausch3D::compileKernels() {
 
     // Tausch requires two kernels: One for collecting the halo data and one for distributing that data
     std::string oclstr = "typedef " + std::string((sizeof(real_t)==sizeof(double)) ? "double" : "float") + " real_t;\n";
+
     oclstr += R"d(
 kernel void collectHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
                             global const int * restrict const dimZ, global const int * restrict const haloWidth,

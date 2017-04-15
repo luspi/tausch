@@ -50,20 +50,28 @@ Tausch2D::Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int h
     MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
     if(haveBoundary[LEFT]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[LEFT], haloWidth*(localDimY+2*haloWidth), mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[LEFT]);
-        MPI_Send_init(cpuToCpuSendBuffer[LEFT], haloWidth*(localDimY+2*haloWidth), mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[LEFT]);
+        MPI_Recv_init(cpuToCpuRecvBuffer[LEFT], haloWidth*(localDimY+2*haloWidth),
+                      mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[LEFT]);
+        MPI_Send_init(cpuToCpuSendBuffer[LEFT], haloWidth*(localDimY+2*haloWidth),
+                      mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[LEFT]);
     }
     if(haveBoundary[RIGHT]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[RIGHT], haloWidth*(localDimY+2*haloWidth), mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[RIGHT]);
-        MPI_Send_init(cpuToCpuSendBuffer[RIGHT], haloWidth*(localDimY+2*haloWidth), mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[RIGHT]);
+        MPI_Recv_init(cpuToCpuRecvBuffer[RIGHT], haloWidth*(localDimY+2*haloWidth),
+                      mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[RIGHT]);
+        MPI_Send_init(cpuToCpuSendBuffer[RIGHT], haloWidth*(localDimY+2*haloWidth),
+                      mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[RIGHT]);
     }
     if(haveBoundary[TOP]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[TOP], haloWidth*(localDimX+2*haloWidth), mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[TOP]);
-        MPI_Send_init(cpuToCpuSendBuffer[TOP], haloWidth*(localDimX+2*haloWidth), mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[TOP]);
+        MPI_Recv_init(cpuToCpuRecvBuffer[TOP], haloWidth*(localDimX+2*haloWidth),
+                      mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[TOP]);
+        MPI_Send_init(cpuToCpuSendBuffer[TOP], haloWidth*(localDimX+2*haloWidth),
+                      mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[TOP]);
     }
     if(haveBoundary[BOTTOM]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[BOTTOM], haloWidth*(localDimX+2*haloWidth), mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[BOTTOM]);
-        MPI_Send_init(cpuToCpuSendBuffer[BOTTOM], haloWidth*(localDimX+2*haloWidth), mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[BOTTOM]);
+        MPI_Recv_init(cpuToCpuRecvBuffer[BOTTOM], haloWidth*(localDimX+2*haloWidth),
+                      mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[BOTTOM]);
+        MPI_Send_init(cpuToCpuSendBuffer[BOTTOM], haloWidth*(localDimX+2*haloWidth),
+                      mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[BOTTOM]);
     }
 
 #ifdef TAUSCH_OPENCL
@@ -284,22 +292,26 @@ void Tausch2D::startCpuToGpu() {
 
     // left
     for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +i/haloWidth+haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2+i%haloWidth;
+        int index = ((localDimY-gpuDimY)/2 +i/haloWidth+haloWidth)*(localDimX+2*haloWidth) +
+                    (localDimX-gpuDimX)/2+i%haloWidth;
         cpuToGpuBuffer[i].store(cpuData[index]);
     }
     // right
     for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +haloWidth + i/haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + haloWidth + gpuDimX + i%haloWidth;
+        int index = ((localDimY-gpuDimY)/2 +haloWidth + i/haloWidth)*(localDimX+2*haloWidth) +
+                    (localDimX-gpuDimX)/2 + haloWidth + gpuDimX + i%haloWidth;
         cpuToGpuBuffer[haloWidth*gpuDimY + i].store(cpuData[index]);
     }
     // top
     for(int i = 0; i < haloWidth*(gpuDimX+2*haloWidth); ++ i) {
-        int index = ((localDimY-gpuDimY)/2+gpuDimY+haloWidth + i/(gpuDimX+2*haloWidth))*(localDimX+2*haloWidth) + haloWidth + ((localDimX-gpuDimX)/2-haloWidth) +i%(gpuDimX+2*haloWidth);
+        int index = ((localDimY-gpuDimY)/2+gpuDimY+haloWidth + i/(gpuDimX+2*haloWidth))*(localDimX+2*haloWidth) +
+                    haloWidth + ((localDimX-gpuDimX)/2-haloWidth) +i%(gpuDimX+2*haloWidth);
         cpuToGpuBuffer[2*haloWidth*gpuDimY + i].store(cpuData[index]);
     }
     // bottom
     for(int i = 0; i < haloWidth*(gpuDimX+2*haloWidth); ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +i/(gpuDimX+2*haloWidth))*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + i%(gpuDimX+2*haloWidth);
+        int index = ((localDimY-gpuDimY)/2 +i/(gpuDimX+2*haloWidth))*(localDimX+2*haloWidth) +
+                    (localDimX-gpuDimX)/2 + i%(gpuDimX+2*haloWidth);
         cpuToGpuBuffer[2*haloWidth*gpuDimY+haloWidth*(gpuDimX+2*haloWidth) + i].store(cpuData[index]);
     }
 
@@ -358,22 +370,26 @@ void Tausch2D::completeGpuToCpu() {
 
     // left
     for(int i = 0; i < haloWidth*(gpuDimY-2*haloWidth); ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +i/haloWidth +2*haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + haloWidth +i%haloWidth;
+        int index = ((localDimY-gpuDimY)/2 +i/haloWidth +2*haloWidth)*(localDimX+2*haloWidth) +
+                    (localDimX-gpuDimX)/2 + haloWidth +i%haloWidth;
         cpuData[index] = gpuToCpuBuffer[i].load();
     }
     // right
     for(int i = 0; i < haloWidth*(gpuDimY-2*haloWidth); ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +2*haloWidth + i/haloWidth)*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 + gpuDimX + i%haloWidth;
+        int index = ((localDimY-gpuDimY)/2 +2*haloWidth + i/haloWidth)*(localDimX+2*haloWidth) +
+                    (localDimX-gpuDimX)/2 + gpuDimX + i%haloWidth;
         cpuData[index] = gpuToCpuBuffer[haloWidth*(gpuDimY-2*haloWidth) + i].load();
     }
     // top
     for(int i = 0; i < haloWidth*gpuDimX; ++ i) {
-        int index = ((localDimY-gpuDimY)/2+gpuDimY + i/(gpuDimX))*(localDimX+2*haloWidth) + 2*haloWidth + ((localDimX-gpuDimX)/2-haloWidth) +i%(gpuDimX);
+        int index = ((localDimY-gpuDimY)/2+gpuDimY + i/(gpuDimX))*(localDimX+2*haloWidth) +
+                    2*haloWidth + ((localDimX-gpuDimX)/2-haloWidth) +i%(gpuDimX);
         cpuData[index] = gpuToCpuBuffer[2*haloWidth*(gpuDimY-2*haloWidth) + i].load();
     }
     // bottom
     for(int i = 0; i < haloWidth*gpuDimX; ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +haloWidth +i/(gpuDimX))*(localDimX+2*haloWidth) + (localDimX-gpuDimX)/2 +haloWidth +i%(gpuDimX);
+        int index = ((localDimY-gpuDimY)/2 +haloWidth +i/(gpuDimX))*(localDimX+2*haloWidth) +
+                    (localDimX-gpuDimX)/2 +haloWidth +i%(gpuDimX);
         cpuData[index] = gpuToCpuBuffer[2*haloWidth*(gpuDimY-2*haloWidth)+haloWidth*gpuDimX + i].load();
     }
 
@@ -437,15 +453,9 @@ void Tausch2D::syncCpuAndGpu() {
 
 void Tausch2D::compileKernels() {
 
-//    std::string oclstr;
-//    std::ifstream cl_file(std::string(SOURCEDIR) + "/kernels.cl");
-//    cl_file.seekg(0, std::ios::end);
-//    oclstr.reserve(cl_file.tellg());
-//    cl_file.seekg(0, std::ios::beg);
-//    oclstr.assign((std::istreambuf_iterator<char>(cl_file)), std::istreambuf_iterator<char>());
-
     // Tausch requires two kernels: One for collecting the halo data and one for distributing that data
     std::string oclstr = "typedef " + std::string((sizeof(real_t)==sizeof(double)) ? "double" : "float") + " real_t;\n";
+
     oclstr += R"d(
 kernel void collectHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
                             global const int * restrict const haloWidth,
