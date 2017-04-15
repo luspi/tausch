@@ -50,9 +50,9 @@ class Tausch2D {
 public:
 
     /*!
-     * These are the edges available for inter-MPI halo exchanges: Left, Right, Top, Bottom.
+     * These are the edges available for inter-MPI halo exchanges: LEFT, RIGHT, TOP, BOTTOM.
      */
-    enum Edge { Left = 0, Right, Top, Bottom };
+    enum Edge { LEFT, RIGHT, TOP, BOTTOM };
 
     /*!
      *
@@ -94,14 +94,14 @@ public:
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange across MPI ranks. First it calls a left/right halo exchange followed by a top/bottom halo exchange.
      */
-    void performCpuToCpu() { startCpuEdge(Left); startCpuEdge(Right); completeCpuEdge(Left); completeCpuEdge(Right);
-                             startCpuEdge(Top); startCpuEdge(Bottom); completeCpuEdge(Top); completeCpuEdge(Bottom); }
+    void performCpuToCpu() { startCpuEdge(LEFT); startCpuEdge(RIGHT); completeCpuEdge(LEFT); completeCpuEdge(RIGHT);
+                             startCpuEdge(TOP); startCpuEdge(BOTTOM); completeCpuEdge(TOP); completeCpuEdge(BOTTOM); }
 
     /*!
      * Start the inter-MPI halo exchange across the given edge.
      *
      * \param edge
-     *  The edge across which the halo exchange is supposed to be started. It can be either one of the enum Tausch2D::Left, Tausch2D::Right, Tausch2D::Top, Tausch2D::Bottom.
+     *  The edge across which the halo exchange is supposed to be started. It can be either one of the enum Tausch2D::LEFT, Tausch2D::RIGHT, Tausch2D::TOP, Tausch2D::BOTTOM.
      */
     void startCpuEdge(Edge edge);
 
@@ -109,7 +109,7 @@ public:
      * Completes the inter-MPI halo exchange across the given edge. This has to come *after* calling startCpuEdge() on the same edge.
      *
      * \param edge
-     *  The edge across which the halo exchange is supposed to be completed. It can be either one of the enum Tausch2D::Left, Tausch2D::Right, Tausch2D::Top, Tausch2D::Bottom.
+     *  The edge across which the halo exchange is supposed to be completed. It can be either one of the enum Tausch2D::LEFT, Tausch2D::RIGHT, Tausch2D::TOP, Tausch2D::BOTTOM.
      */
     void completeCpuEdge(Edge edge);
 
@@ -181,9 +181,9 @@ public:
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
-    void performCpuToCpuAndCpuToGpu() { startCpuEdge(Left); startCpuEdge(Right); startCpuToGpu();
-                                        completeCpuEdge(Left); completeCpuEdge(Right); startCpuEdge(Top); startCpuEdge(Bottom);
-                                        completeGpuToCpu(); completeCpuEdge(Top); completeCpuEdge(Bottom); }
+    void performCpuToCpuAndCpuToGpu() { startCpuEdge(LEFT); startCpuEdge(RIGHT); startCpuToGpu();
+                                        completeCpuEdge(LEFT); completeCpuEdge(RIGHT); startCpuEdge(TOP); startCpuEdge(BOTTOM);
+                                        completeGpuToCpu(); completeCpuEdge(TOP); completeCpuEdge(BOTTOM); }
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange from the GPU to CPU. It calls startGpuToCpu() and completeCpuToGpu().

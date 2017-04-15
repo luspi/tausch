@@ -33,12 +33,12 @@ extern "C" {
 
     void tausch2d_startCpuEdge(CTausch2D *tC, enum Edge edge) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->startCpuEdge(edge==TauschLeft ? Tausch2D::Left : (edge==TauschRight ? Tausch2D::Right : (edge==TauschTop ? Tausch2D::Top : Tausch2D::Bottom)));
+        t->startCpuEdge(edge==TauschLeft ? Tausch2D::LEFT : (edge==TauschRight ? Tausch2D::RIGHT : (edge==TauschTop ? Tausch2D::TOP : Tausch2D::BOTTOM)));
     }
 
     void tausch2d_completeCpuEdge(CTausch2D *tC, enum Edge edge) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->completeCpuEdge(edge==TauschLeft ? Tausch2D::Left : (edge==TauschRight ? Tausch2D::Right : (edge==TauschTop ? Tausch2D::Top : Tausch2D::Bottom)));
+        t->completeCpuEdge(edge==TauschLeft ? Tausch2D::LEFT : (edge==TauschRight ? Tausch2D::RIGHT : (edge==TauschTop ? Tausch2D::TOP : Tausch2D::BOTTOM)));
     }
 
     void tausch2d_setCPUData(CTausch2D *tC, real_t *dat) {

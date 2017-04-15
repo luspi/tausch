@@ -50,9 +50,9 @@ class Tausch3D {
 public:
 
     /*!
-     * These are the edges available for inter-MPI halo exchanges: Left, Right, Top, Bottom, Front, Back.
+     * These are the edges available for inter-MPI halo exchanges: LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK.
      */
-    enum Edge { Left, Right, Top, Bottom, Front, Back };
+    enum Edge { LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK };
 
     //HERE HERE HERE
 
@@ -100,15 +100,15 @@ public:
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange across MPI ranks. First it calls a left/right halo exchange followed by a top/bottom halo exchange, finishing off by a front/back halo exchange
      */
-    void performCpuToCpu() { startCpuEdge(Left); startCpuEdge(Right); completeCpuEdge(Left); completeCpuEdge(Right);
-                             startCpuEdge(Top); startCpuEdge(Bottom); completeCpuEdge(Top); completeCpuEdge(Bottom);
-                             startCpuEdge(Front); startCpuEdge(Back); completeCpuEdge(Front); completeCpuEdge(Back); }
+    void performCpuToCpu() { startCpuEdge(LEFT); startCpuEdge(RIGHT); completeCpuEdge(LEFT); completeCpuEdge(RIGHT);
+                             startCpuEdge(TOP); startCpuEdge(BOTTOM); completeCpuEdge(TOP); completeCpuEdge(BOTTOM);
+                             startCpuEdge(FRONT); startCpuEdge(BACK); completeCpuEdge(FRONT); completeCpuEdge(BACK); }
 
     /*!
      * Start the inter-MPI halo exchange across the given edge.
      *
      * \param edge
-     *  The edge across which the halo exchange is supposed to be started. It can be either one of the enum Tausch3D::Left, Tausch3D::Right, Tausch3D::Top, Tausch3D::Bottom, Tausch3D::Front, Tausch3D::Back.
+     *  The edge across which the halo exchange is supposed to be started. It can be either one of the enum Tausch3D::LEFT, Tausch3D::RIGHT, Tausch3D::TOP, Tausch3D::BOTTOM, Tausch3D::FRONT, Tausch3D::BACK.
      */
     void startCpuEdge(Edge edge);
 
@@ -116,7 +116,7 @@ public:
      * Completes the inter-MPI halo exchange across the given edge. This has to come *after* calling startCpuEdge() on the same edge.
      *
      * \param edge
-     *  The edge across which the halo exchange is supposed to be completed. It can be either one of the enum Tausch3D::Left, Tausch3D::Right, Tausch3D::Top, Tausch3D::Bottom, Tausch3D::Front, Tausch3D::Back.
+     *  The edge across which the halo exchange is supposed to be completed. It can be either one of the enum Tausch3D::LEFT, Tausch3D::RIGHT, Tausch3D::TOP, Tausch3D::BOTTOM, Tausch3D::FRONT, Tausch3D::BACK.
      */
     void completeCpuEdge(Edge edge);
 
@@ -190,10 +190,10 @@ public:
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
-    void performCpuToCpuAndCpuToGpu() { startCpuEdge(Left); startCpuEdge(Right); startCpuToGpu();
-                                        completeCpuEdge(Left); completeCpuEdge(Right); startCpuEdge(Top); startCpuEdge(Bottom);
-                                        completeGpuToCpu(); completeCpuEdge(Top); completeCpuEdge(Bottom);
-                                        startCpuEdge(Front); startCpuEdge(Back); completeCpuEdge(Front); completeCpuEdge(Back); }
+    void performCpuToCpuAndCpuToGpu() { startCpuEdge(LEFT); startCpuEdge(RIGHT); startCpuToGpu();
+                                        completeCpuEdge(LEFT); completeCpuEdge(RIGHT); startCpuEdge(TOP); startCpuEdge(BOTTOM);
+                                        completeGpuToCpu(); completeCpuEdge(TOP); completeCpuEdge(BOTTOM);
+                                        startCpuEdge(FRONT); startCpuEdge(BACK); completeCpuEdge(FRONT); completeCpuEdge(BACK); }
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange from the GPU to CPU.
