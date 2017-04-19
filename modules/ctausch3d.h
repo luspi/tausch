@@ -10,6 +10,9 @@ extern "C" {
 #include <CL/cl.h>
 #endif
 
+/*!
+ * Use real_t in code to allow easier switch between double/float.
+ */
 typedef double real_t;
 
 typedef void* CTausch3D;

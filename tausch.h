@@ -19,7 +19,7 @@
  * \mainpage
  * \section intro Introduction
  *
- * Tausch is a library that provides a clean and efficient C/C++ API for halo exchange for structured grids, split into a structured coarse mesh for MPI. It supports halo exchange across the partition boundaries, and across a CPU/GPU boundary for GPU partitions living perfectly centered inside a CPU partition. It comes with an API for two dimensions, Tausch2D, and an API for three dimensions, Tausch3D (work in progress).
+ * Tausch is a library that provides a clean and efficient C/C++ API for halo exchange for structured grids, split into a structured coarse mesh for MPI. It supports halo exchange across the partition boundaries, and across a CPU/GPU boundary for GPU partitions living perfectly centered inside a CPU partition. It comes with an API for two dimensions, Tausch2D, and an API for three dimensions, Tausch3D (work in progress). The C API is a simple wrapper to the C++ API and also comes in two flavous, CTausch2D and CTausch3D.
  *
  * The interface is contained within a single header file \em tausch.h for both the C and C++ APIs. Nothing additional is required other than linking against the Tausch library. Both the C and C++ bindings are very similar. The underlying C++ API is documented here in detail, the C API works equivalently, with the object being called CTausch and any method having the prefix 'tausch_'.
  *

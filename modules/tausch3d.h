@@ -2,20 +2,6 @@
  * \file
  * \author  Lukas Spies <LSpies@illinois.edu>
  * \version 1.0
- *
- * \section LICENSE
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details at
- * https://www.gnu.org/copyleft/gpl.html
- *
  */
 
 #ifndef TAUSCH3D_H
@@ -34,11 +20,12 @@
     #include <CL/cl.hpp>
 #endif
 
+/*!
+ * Use real_t in code to allow easier switch between double/float.
+ */
 typedef double real_t;
 
 /*!
- *
- * \class Tausch3D _tausch3d.h tausch/tausch.h
  *
  * \brief
  *  A library providing a clean and efficient interface for halo exchange in three dimensions.
