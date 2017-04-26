@@ -1,6 +1,6 @@
 #include "tausch2d.h"
 
-Tausch2D::Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloWidth, MPI_Comm comm) {
+Tausch2D::Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth, MPI_Comm comm) {
 
     MPI_Comm_dup(comm, &TAUSCH_COMM);
 
@@ -15,7 +15,7 @@ Tausch2D::Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int h
     this->localDimX = localDimX;
     this->localDimY = localDimY;
 
-    this->haloWidth = haloWidth;
+    this->cpuHaloWidth = cpuHaloWidth;
 
     // check if this rank has a boundary with another rank
     haveBoundary[LEFT] = (mpiRank%mpiNumX != 0);
@@ -25,15 +25,15 @@ Tausch2D::Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int h
 
     // a send and recv buffer for the CPU-CPU communication
     cpuToCpuSendBuffer = new real_t*[4];
-    cpuToCpuSendBuffer[LEFT] = new real_t[haloWidth*(localDimY+2*haloWidth)]{};
-    cpuToCpuSendBuffer[RIGHT] = new real_t[haloWidth*(localDimY+2*haloWidth)]{};
-    cpuToCpuSendBuffer[TOP] = new real_t[haloWidth*(localDimX+2*haloWidth)]{};
-    cpuToCpuSendBuffer[BOTTOM] = new real_t[haloWidth*(localDimX+2*haloWidth)]{};
+    cpuToCpuSendBuffer[LEFT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
+    cpuToCpuSendBuffer[RIGHT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
+    cpuToCpuSendBuffer[TOP] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
+    cpuToCpuSendBuffer[BOTTOM] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
     cpuToCpuRecvBuffer = new real_t*[4];
-    cpuToCpuRecvBuffer[LEFT] = new real_t[haloWidth*(localDimY+2*haloWidth)]{};
-    cpuToCpuRecvBuffer[RIGHT] = new real_t[haloWidth*(localDimY+2*haloWidth)]{};
-    cpuToCpuRecvBuffer[TOP] = new real_t[haloWidth*(localDimX+2*haloWidth)]{};
-    cpuToCpuRecvBuffer[BOTTOM] = new real_t[haloWidth*(localDimX+2*haloWidth)]{};
+    cpuToCpuRecvBuffer[LEFT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
+    cpuToCpuRecvBuffer[RIGHT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
+    cpuToCpuRecvBuffer[TOP] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
+    cpuToCpuRecvBuffer[BOTTOM] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
 
     // whether the cpu/gpu pointers have been passed
     cpuInfoGiven = false;
@@ -50,27 +50,27 @@ Tausch2D::Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int h
     MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
     if(haveBoundary[LEFT]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[LEFT], haloWidth*(localDimY+2*haloWidth),
+        MPI_Recv_init(cpuToCpuRecvBuffer[LEFT], cpuHaloWidth*(localDimY+2*cpuHaloWidth),
                       mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[LEFT]);
-        MPI_Send_init(cpuToCpuSendBuffer[LEFT], haloWidth*(localDimY+2*haloWidth),
+        MPI_Send_init(cpuToCpuSendBuffer[LEFT], cpuHaloWidth*(localDimY+2*cpuHaloWidth),
                       mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[LEFT]);
     }
     if(haveBoundary[RIGHT]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[RIGHT], haloWidth*(localDimY+2*haloWidth),
+        MPI_Recv_init(cpuToCpuRecvBuffer[RIGHT], cpuHaloWidth*(localDimY+2*cpuHaloWidth),
                       mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[RIGHT]);
-        MPI_Send_init(cpuToCpuSendBuffer[RIGHT], haloWidth*(localDimY+2*haloWidth),
+        MPI_Send_init(cpuToCpuSendBuffer[RIGHT], cpuHaloWidth*(localDimY+2*cpuHaloWidth),
                       mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[RIGHT]);
     }
     if(haveBoundary[TOP]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[TOP], haloWidth*(localDimX+2*haloWidth),
+        MPI_Recv_init(cpuToCpuRecvBuffer[TOP], cpuHaloWidth*(localDimX+2*cpuHaloWidth),
                       mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[TOP]);
-        MPI_Send_init(cpuToCpuSendBuffer[TOP], haloWidth*(localDimX+2*haloWidth),
+        MPI_Send_init(cpuToCpuSendBuffer[TOP], cpuHaloWidth*(localDimX+2*cpuHaloWidth),
                       mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[TOP]);
     }
     if(haveBoundary[BOTTOM]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[BOTTOM], haloWidth*(localDimX+2*haloWidth),
+        MPI_Recv_init(cpuToCpuRecvBuffer[BOTTOM], cpuHaloWidth*(localDimX+2*cpuHaloWidth),
                       mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[BOTTOM]);
-        MPI_Send_init(cpuToCpuSendBuffer[BOTTOM], haloWidth*(localDimX+2*haloWidth),
+        MPI_Send_init(cpuToCpuSendBuffer[BOTTOM], cpuHaloWidth*(localDimX+2*cpuHaloWidth),
                       mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[BOTTOM]);
     }
 
@@ -154,20 +154,20 @@ void Tausch2D::startCpuEdge(Edge edge) {
     MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
     if(edge == LEFT && haveBoundary[LEFT]) {
-        for(int i = 0; i < haloWidth*(localDimY+2*haloWidth); ++i)
-            cpuToCpuSendBuffer[LEFT][i] = cpuData[haloWidth+ (i/haloWidth)*(localDimX+2*haloWidth)+i%haloWidth];
+        for(int i = 0; i < cpuHaloWidth*(localDimY+2*cpuHaloWidth); ++i)
+            cpuToCpuSendBuffer[LEFT][i] = cpuData[cpuHaloWidth+ (i/cpuHaloWidth)*(localDimX+2*cpuHaloWidth)+i%cpuHaloWidth];
         MPI_Start(&cpuToCpuSendRequest[LEFT]);
     } else if(edge == RIGHT && haveBoundary[RIGHT]) {
-        for(int i = 0; i < haloWidth*(localDimY+2*haloWidth); ++i)
-            cpuToCpuSendBuffer[RIGHT][i] = cpuData[(i/haloWidth+1)*(localDimX+2*haloWidth) -(2*haloWidth)+i%haloWidth];
+        for(int i = 0; i < cpuHaloWidth*(localDimY+2*cpuHaloWidth); ++i)
+            cpuToCpuSendBuffer[RIGHT][i] = cpuData[(i/cpuHaloWidth+1)*(localDimX+2*cpuHaloWidth) -(2*cpuHaloWidth)+i%cpuHaloWidth];
         MPI_Start(&cpuToCpuSendRequest[RIGHT]);
     } else if(edge == TOP && haveBoundary[TOP]) {
-        for(int i = 0; i < haloWidth*(localDimX+2*haloWidth); ++i)
-            cpuToCpuSendBuffer[TOP][i] = cpuData[(localDimX+2*haloWidth)*(localDimY) + i];
+        for(int i = 0; i < cpuHaloWidth*(localDimX+2*cpuHaloWidth); ++i)
+            cpuToCpuSendBuffer[TOP][i] = cpuData[(localDimX+2*cpuHaloWidth)*(localDimY) + i];
         MPI_Start(&cpuToCpuSendRequest[TOP]);
     } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
-        for(int i = 0; i < haloWidth*(localDimX+2*haloWidth); ++i)
-            cpuToCpuSendBuffer[BOTTOM][i] = cpuData[haloWidth*(localDimX+2*haloWidth) + i];
+        for(int i = 0; i < cpuHaloWidth*(localDimX+2*cpuHaloWidth); ++i)
+            cpuToCpuSendBuffer[BOTTOM][i] = cpuData[cpuHaloWidth*(localDimX+2*cpuHaloWidth) + i];
         MPI_Start(&cpuToCpuSendRequest[BOTTOM]);
     }
 
@@ -188,22 +188,22 @@ void Tausch2D::completeCpuEdge(Edge edge) {
 
     if(edge == LEFT && haveBoundary[LEFT]) {
         MPI_Wait(&cpuToCpuRecvRequest[LEFT], MPI_STATUS_IGNORE);
-        for(int i = 0; i < haloWidth*(localDimY+2*haloWidth); ++i)
-            cpuData[(i/haloWidth)*(localDimX+2*haloWidth)+i%haloWidth] = cpuToCpuRecvBuffer[LEFT][i];
+        for(int i = 0; i < cpuHaloWidth*(localDimY+2*cpuHaloWidth); ++i)
+            cpuData[(i/cpuHaloWidth)*(localDimX+2*cpuHaloWidth)+i%cpuHaloWidth] = cpuToCpuRecvBuffer[LEFT][i];
         MPI_Wait(&cpuToCpuSendRequest[LEFT], MPI_STATUS_IGNORE);
     } else if(edge == RIGHT && haveBoundary[RIGHT]) {
         MPI_Wait(&cpuToCpuRecvRequest[RIGHT], MPI_STATUS_IGNORE);
-        for(int i = 0; i < haloWidth*(localDimY+2*haloWidth); ++i)
-            cpuData[(i/haloWidth+1)*(localDimX+2*haloWidth)-haloWidth+i%haloWidth] = cpuToCpuRecvBuffer[RIGHT][i];
+        for(int i = 0; i < cpuHaloWidth*(localDimY+2*cpuHaloWidth); ++i)
+            cpuData[(i/cpuHaloWidth+1)*(localDimX+2*cpuHaloWidth)-cpuHaloWidth+i%cpuHaloWidth] = cpuToCpuRecvBuffer[RIGHT][i];
         MPI_Wait(&cpuToCpuSendRequest[RIGHT], MPI_STATUS_IGNORE);
     } else if(edge == TOP && haveBoundary[TOP]) {
         MPI_Wait(&cpuToCpuRecvRequest[TOP], MPI_STATUS_IGNORE);
-        for(int i = 0; i < haloWidth*(localDimX+2*haloWidth); ++i)
-            cpuData[(localDimX+2*haloWidth)*(localDimY+haloWidth) + i] = cpuToCpuRecvBuffer[TOP][i];
+        for(int i = 0; i < cpuHaloWidth*(localDimX+2*cpuHaloWidth); ++i)
+            cpuData[(localDimX+2*cpuHaloWidth)*(localDimY+cpuHaloWidth) + i] = cpuToCpuRecvBuffer[TOP][i];
         MPI_Wait(&cpuToCpuSendRequest[TOP], MPI_STATUS_IGNORE);
     } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
         MPI_Wait(&cpuToCpuRecvRequest[BOTTOM], MPI_STATUS_IGNORE);
-        for(int i = 0; i < haloWidth*(localDimX+2*haloWidth); ++i)
+        for(int i = 0; i < cpuHaloWidth*(localDimX+2*cpuHaloWidth); ++i)
             cpuData[i] = cpuToCpuRecvBuffer[BOTTOM][i];
         MPI_Wait(&cpuToCpuSendRequest[BOTTOM], MPI_STATUS_IGNORE);
     }
@@ -212,30 +212,33 @@ void Tausch2D::completeCpuEdge(Edge edge) {
 
 #ifdef TAUSCH_OPENCL
 
-void Tausch2D::enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+void Tausch2D::enableOpenCL(int gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
 
     // gpu disabled by default, only enabled if flag is set
     gpuEnabled = true;
     // local workgroup size
     cl_kernelLocalSize = clLocalWorkgroupSize;
     this->blockingSyncCpuGpu = blockingSyncCpuGpu;
+    // the GPU halo width
+    this->gpuHaloWidth = gpuHaloWidth;
     // Tausch creates its own OpenCL environment
     this->setupOpenCL(giveOpenCLDeviceName);
 
-    cl_haloWidth = cl::Buffer(cl_context, &haloWidth, (&haloWidth)+1, true);
+    cl_gpuHaloWidth = cl::Buffer(cl_context, &gpuHaloWidth, (&gpuHaloWidth)+1, true);
 
 }
 
 // If Tausch didn't set up OpenCL, the user needs to pass some OpenCL variables
-void Tausch2D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
+void Tausch2D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, int gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
 
     this->cl_defaultDevice = cl_defaultDevice;
     this->cl_context = cl_context;
     this->cl_queue = cl_queue;
     this->blockingSyncCpuGpu = blockingSyncCpuGpu;
     this->cl_kernelLocalSize = clLocalWorkgroupSize;
+    this->gpuHaloWidth = gpuHaloWidth;
 
-    cl_haloWidth = cl::Buffer(cl_context, &haloWidth, (&haloWidth)+1, true);
+    cl_gpuHaloWidth = cl::Buffer(cl_context, &gpuHaloWidth, (&gpuHaloWidth)+1, true);
 
     gpuEnabled = true;
 
@@ -260,16 +263,16 @@ void Tausch2D::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
     this->gpuDimY = gpuDimY;
 
     // store buffer to store the GPU and the CPU part of the halo.
-    // We do not need two buffers each, as each thread has direct access to both arrays, no communication necessary
-    cpuToGpuBuffer = new std::atomic<real_t>[2*haloWidth*(gpuDimX+2*haloWidth) + 2*haloWidth*gpuDimY]{};
-    gpuToCpuBuffer = new std::atomic<real_t>[2*haloWidth*gpuDimX + 2*haloWidth*gpuDimY]{};
+    // We do not need two buffers each, as each thread has direct access to both arrays, no MPI communication necessary
+    cpuToGpuBuffer = new std::atomic<real_t>[2*gpuHaloWidth*(gpuDimX+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDimY]{};
+    gpuToCpuBuffer = new std::atomic<real_t>[2*gpuHaloWidth*gpuDimX + 2*gpuHaloWidth*gpuDimY]{};
 
     // set up buffers on device
     try {
-        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*haloWidth*gpuDimX+2*haloWidth*gpuDimY)*sizeof(real_t));
-        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*haloWidth*(gpuDimX+2*haloWidth)+2*haloWidth*gpuDimY)*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*haloWidth*gpuDimX + 2*haloWidth*gpuDimY)*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*haloWidth*(gpuDimX+2) + 2*haloWidth*gpuDimY)*sizeof(real_t));
+        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuHaloWidth*gpuDimX+2*gpuHaloWidth*gpuDimY)*sizeof(real_t));
+        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuHaloWidth*(gpuDimX+2*gpuHaloWidth)+2*gpuHaloWidth*gpuDimY)*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*gpuHaloWidth*gpuDimX + 2*gpuHaloWidth*gpuDimY)*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*gpuHaloWidth*(gpuDimX+2) + 2*gpuHaloWidth*gpuDimY)*sizeof(real_t));
         cl_gpuDimX = cl::Buffer(cl_context, &gpuDimX, (&gpuDimX)+1, true);
         cl_gpuDimY = cl::Buffer(cl_context, &gpuDimY, (&gpuDimY)+1, true);
     } catch(cl::Error error) {
@@ -291,28 +294,28 @@ void Tausch2D::startCpuToGpu() {
     cpuToGpuStarted.store(true);
 
     // left
-    for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +i/haloWidth+haloWidth)*(localDimX+2*haloWidth) +
-                    (localDimX-gpuDimX)/2+i%haloWidth;
+    for(int i = 0; i < gpuHaloWidth*gpuDimY; ++ i) {
+        int index = ((localDimY-gpuDimY)/2 +i/gpuHaloWidth+cpuHaloWidth)*(localDimX+2*cpuHaloWidth) +
+                    (localDimX-gpuDimX)/2+i%gpuHaloWidth + cpuHaloWidth-gpuHaloWidth;
         cpuToGpuBuffer[i].store(cpuData[index]);
     }
     // right
-    for(int i = 0; i < haloWidth*gpuDimY; ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +haloWidth + i/haloWidth)*(localDimX+2*haloWidth) +
-                    (localDimX-gpuDimX)/2 + haloWidth + gpuDimX + i%haloWidth;
-        cpuToGpuBuffer[haloWidth*gpuDimY + i].store(cpuData[index]);
+    for(int i = 0; i < gpuHaloWidth*gpuDimY; ++ i) {
+        int index = ((localDimY-gpuDimY)/2 +cpuHaloWidth + i/gpuHaloWidth)*(localDimX+2*cpuHaloWidth) +
+                    (localDimX-gpuDimX)/2 + cpuHaloWidth + gpuDimX + i%gpuHaloWidth;
+        cpuToGpuBuffer[gpuHaloWidth*gpuDimY + i].store(cpuData[index]);
     }
     // top
-    for(int i = 0; i < haloWidth*(gpuDimX+2*haloWidth); ++ i) {
-        int index = ((localDimY-gpuDimY)/2+gpuDimY+haloWidth + i/(gpuDimX+2*haloWidth))*(localDimX+2*haloWidth) +
-                    haloWidth + ((localDimX-gpuDimX)/2-haloWidth) +i%(gpuDimX+2*haloWidth);
-        cpuToGpuBuffer[2*haloWidth*gpuDimY + i].store(cpuData[index]);
+    for(int i = 0; i < gpuHaloWidth*(gpuDimX+2*gpuHaloWidth); ++ i) {
+        int index = ((localDimY-gpuDimY)/2+gpuDimY+cpuHaloWidth + i/(gpuDimX+2*gpuHaloWidth))*(localDimX+2*cpuHaloWidth) +
+                    cpuHaloWidth + ((localDimX-gpuDimX)/2-gpuHaloWidth) +i%(gpuDimX+2*gpuHaloWidth);
+        cpuToGpuBuffer[2*gpuHaloWidth*gpuDimY + i].store(cpuData[index]);
     }
     // bottom
-    for(int i = 0; i < haloWidth*(gpuDimX+2*haloWidth); ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +i/(gpuDimX+2*haloWidth))*(localDimX+2*haloWidth) +
-                    (localDimX-gpuDimX)/2 + i%(gpuDimX+2*haloWidth);
-        cpuToGpuBuffer[2*haloWidth*gpuDimY+haloWidth*(gpuDimX+2*haloWidth) + i].store(cpuData[index]);
+    for(int i = 0; i < gpuHaloWidth*(gpuDimX+2*gpuHaloWidth); ++ i) {
+        int index = (i/(gpuDimX+2*gpuHaloWidth) + cpuHaloWidth + (localDimY-gpuDimY)/2 - gpuHaloWidth)*(localDimX+2*cpuHaloWidth) +
+                    cpuHaloWidth + (localDimX-gpuDimX)/2 - gpuHaloWidth + i%(gpuDimX+2*gpuHaloWidth);
+        cpuToGpuBuffer[2*gpuHaloWidth*gpuDimY+gpuHaloWidth*(gpuDimX+2*gpuHaloWidth) + i].store(cpuData[index]);
     }
 
 }
@@ -337,14 +340,14 @@ void Tausch2D::startGpuToCpu() {
 
         auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloData");
 
-        int globalSize = ((2*haloWidth*gpuDimX+2*haloWidth*(gpuDimY-2*haloWidth))/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = ((2*gpuHaloWidth*gpuDimX+2*gpuHaloWidth*(gpuDimY-2*gpuHaloWidth))/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                           cl_gpuDimX, cl_gpuDimY, cl_haloWidth, gpuData, cl_gpuToCpuBuffer);
+                           cl_gpuDimX, cl_gpuDimY, cl_gpuHaloWidth, gpuData, cl_gpuToCpuBuffer);
 
-        double *dat = new double[2*haloWidth*gpuDimX+2*haloWidth*(gpuDimY-2*haloWidth)];
-        cl::copy(cl_queue, cl_gpuToCpuBuffer, &dat[0], (&dat[2*haloWidth*gpuDimX+2*haloWidth*(gpuDimY-2*haloWidth)-1])+1);
-        for(int i = 0; i < 2*haloWidth*gpuDimX+2*haloWidth*(gpuDimY-2*haloWidth); ++i)
+        double *dat = new double[2*gpuHaloWidth*gpuDimX+2*gpuHaloWidth*(gpuDimY-2*gpuHaloWidth)];
+        cl::copy(cl_queue, cl_gpuToCpuBuffer, &dat[0], (&dat[2*gpuHaloWidth*gpuDimX+2*gpuHaloWidth*(gpuDimY-2*gpuHaloWidth)-1])+1);
+        for(int i = 0; i < 2*gpuHaloWidth*gpuDimX+2*gpuHaloWidth*(gpuDimY-2*gpuHaloWidth); ++i)
             gpuToCpuBuffer[i].store(dat[i]);
 
         delete[] dat;
@@ -369,28 +372,28 @@ void Tausch2D::completeGpuToCpu() {
     }
 
     // left
-    for(int i = 0; i < haloWidth*(gpuDimY-2*haloWidth); ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +i/haloWidth +2*haloWidth)*(localDimX+2*haloWidth) +
-                    (localDimX-gpuDimX)/2 + haloWidth +i%haloWidth;
+    for(int i = 0; i < gpuHaloWidth*(gpuDimY-2*gpuHaloWidth); ++ i) {
+        int index = ((localDimY-gpuDimY)/2 +i/gpuHaloWidth+cpuHaloWidth+gpuHaloWidth)*(localDimX+2*cpuHaloWidth) +
+                    (localDimX-gpuDimX)/2+i%gpuHaloWidth + cpuHaloWidth;
         cpuData[index] = gpuToCpuBuffer[i].load();
     }
     // right
-    for(int i = 0; i < haloWidth*(gpuDimY-2*haloWidth); ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +2*haloWidth + i/haloWidth)*(localDimX+2*haloWidth) +
-                    (localDimX-gpuDimX)/2 + gpuDimX + i%haloWidth;
-        cpuData[index] = gpuToCpuBuffer[haloWidth*(gpuDimY-2*haloWidth) + i].load();
+    for(int i = 0; i < gpuHaloWidth*(gpuDimY-2*gpuHaloWidth); ++ i) {
+        int index = ((localDimY-gpuDimY)/2 +cpuHaloWidth + i/gpuHaloWidth + gpuHaloWidth)*(localDimX+2*cpuHaloWidth) +
+                    (localDimX-gpuDimX)/2 + cpuHaloWidth-gpuHaloWidth + gpuDimX + i%gpuHaloWidth;
+        cpuData[index] = gpuToCpuBuffer[gpuHaloWidth*(gpuDimY-2*gpuHaloWidth) + i].load();
     }
     // top
-    for(int i = 0; i < haloWidth*gpuDimX; ++ i) {
-        int index = ((localDimY-gpuDimY)/2+gpuDimY + i/(gpuDimX))*(localDimX+2*haloWidth) +
-                    2*haloWidth + ((localDimX-gpuDimX)/2-haloWidth) +i%(gpuDimX);
-        cpuData[index] = gpuToCpuBuffer[2*haloWidth*(gpuDimY-2*haloWidth) + i].load();
+    for(int i = 0; i < gpuHaloWidth*gpuDimX; ++ i) {
+        int index = ((localDimY-gpuDimY)/2+gpuDimY+cpuHaloWidth-gpuHaloWidth + i/gpuDimX)*(localDimX+2*cpuHaloWidth) +
+                    cpuHaloWidth + ((localDimX-gpuDimX)/2-gpuHaloWidth) +i%gpuDimX + gpuHaloWidth;
+        cpuData[index] = gpuToCpuBuffer[2*gpuHaloWidth*(gpuDimY-2*gpuHaloWidth) + i].load();
     }
     // bottom
-    for(int i = 0; i < haloWidth*gpuDimX; ++ i) {
-        int index = ((localDimY-gpuDimY)/2 +haloWidth +i/(gpuDimX))*(localDimX+2*haloWidth) +
-                    (localDimX-gpuDimX)/2 +haloWidth +i%(gpuDimX);
-        cpuData[index] = gpuToCpuBuffer[2*haloWidth*(gpuDimY-2*haloWidth)+haloWidth*gpuDimX + i].load();
+    for(int i = 0; i < gpuHaloWidth*gpuDimX; ++ i) {
+        int index = (i/gpuDimX + cpuHaloWidth + (localDimY-gpuDimY)/2)*(localDimX+2*cpuHaloWidth) +
+                    cpuHaloWidth + (localDimX-gpuDimX)/2 + i%gpuDimX;
+        cpuData[index] = gpuToCpuBuffer[2*gpuHaloWidth*(gpuDimY-2*gpuHaloWidth)+gpuHaloWidth*gpuDimX + i].load();
     }
 
 }
@@ -409,20 +412,20 @@ void Tausch2D::completeCpuToGpu() {
 
     try {
 
-        double *dat = new double[2*haloWidth*(gpuDimX+2*haloWidth)+2*haloWidth*gpuDimY];
-        for(int i = 0; i < 2*haloWidth*(gpuDimX+2*haloWidth)+2*haloWidth*gpuDimY; ++i)
+        double *dat = new double[2*gpuHaloWidth*(gpuDimX+2*gpuHaloWidth)+2*gpuHaloWidth*gpuDimY];
+        for(int i = 0; i < 2*gpuHaloWidth*(gpuDimX+2*gpuHaloWidth)+2*gpuHaloWidth*gpuDimY; ++i)
             dat[i] = cpuToGpuBuffer[i].load();
 
-        cl::copy(cl_queue, &dat[0], (&dat[2*haloWidth*(gpuDimX+2*haloWidth)+2*haloWidth*gpuDimY-1])+1, cl_cpuToGpuBuffer);
+        cl::copy(cl_queue, &dat[0], (&dat[2*gpuHaloWidth*(gpuDimX+2*gpuHaloWidth)+2*gpuHaloWidth*gpuDimY-1])+1, cl_cpuToGpuBuffer);
 
         delete[] dat;
 
         auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
 
-        int globalSize = ((2*haloWidth*(gpuDimX+2*haloWidth) + 2*haloWidth*gpuDimY)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = ((2*gpuHaloWidth*(gpuDimX+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDimY)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_distributeHaloData(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                                  cl_gpuDimX, cl_gpuDimY, cl_haloWidth, gpuData, cl_cpuToGpuBuffer);
+                                  cl_gpuDimX, cl_gpuDimY, cl_gpuHaloWidth, gpuData, cl_cpuToGpuBuffer);
 
     } catch(cl::Error error) {
         std::cout << "[dist halo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;

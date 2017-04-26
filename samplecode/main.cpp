@@ -25,7 +25,8 @@ int main(int argc, char** argv) {
     int workgroupsize = 64;
     bool giveOpenClDeviceName = false;
     int printMpiRank = -1;
-    int haloWidth = 1;
+    int cpuHaloWidth = 1;
+    int gpuHaloWidth = 1;
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {
@@ -53,8 +54,10 @@ int main(int argc, char** argv) {
                 giveOpenClDeviceName = true;
             else if(argv[i] == std::string("-print") && i < argc-1)
                 printMpiRank = atoi(argv[++i]);
-            else if(argv[i] == std::string("-halo") && i < argc-1)
-                haloWidth = atoi(argv[++i]);
+            else if(argv[i] == std::string("-chalo") && i < argc-1)
+                cpuHaloWidth = atoi(argv[++i]);
+            else if(argv[i] == std::string("-ghalo") && i < argc-1)
+                gpuHaloWidth = atoi(argv[++i]);
         }
     }
 
@@ -69,10 +72,11 @@ int main(int argc, char** argv) {
                   << "loops         = " << loops << std::endl
                   << "version       = " << (cpuonly ? "CPU-only" : "CPU/GPU") << std::endl
                   << "workgroupsize = " << workgroupsize << std::endl
+                  << "CPU/GPU halo  = " << cpuHaloWidth << "/" << gpuHaloWidth << std::endl
                   << std::endl;
 
     }
-    Sample sample(localDimX, localDimY, portionGPU, loops, haloWidth, mpiNumX, mpiNumY, cpuonly, workgroupsize, giveOpenClDeviceName);
+    Sample sample(localDimX, localDimY, portionGPU, loops, cpuHaloWidth, gpuHaloWidth, mpiNumX, mpiNumY, cpuonly, workgroupsize, giveOpenClDeviceName);
 
     if(mpiRank == printMpiRank) {
         if(!cpuonly) {

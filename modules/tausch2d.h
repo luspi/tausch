@@ -55,10 +55,12 @@ public:
      *  The number of MPI ranks lined up in the y direction. mpiNumX*mpiNumY has to be equal to the total number of MPI ranks.
      * \param haloWidth
      *  The width of the halo between MPI ranks AND between the CPU/GPU (if applicable).
+     * \param cpuHaloWidth
+     *  The width of the CPU-to-CPU halo, i.e., the inter-MPI halo.
      * \param comm
      *  The MPI Communictor to be used. %Tausch2D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch2D working with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    explicit Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int haloWidth, MPI_Comm comm = MPI_COMM_WORLD);
+    explicit Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * Destructor freeing any allocated memory.
@@ -115,6 +117,8 @@ public:
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      *
+     * \param gpuHaloWidth
+     *  The width of the CPU/GPU halo.
      * \param blockingSyncCpuGpu
      *  Whether to sync the CPU and GPU. This is necessary when running both parts in asynchronous threads, but causes a deadlock when only one thread is used. Default value: true
      * \param clLocalWorkgroupSize
@@ -122,7 +126,7 @@ public:
      * \param giveOpenCLDeviceName
      *  Whether %Tausch2D should print out the OpenCL device name. This can come in handy for debugging. Default value: false
      */
-    void enableOpenCL(bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
+    void enableOpenCL(int gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
 
     /*!
      * Overloaded function. Enabled OpenCL for the current %Tausch2D object, making %Tausch2D use the user-provided OpenCL environment.
@@ -135,12 +139,14 @@ public:
      *  The OpenCL context
      * \param cl_queue
      *  The OpenCL queue
+     * \param gpuHaloWidth
+     *  The width of the CPU/GPU halo.
      * \param blockingSyncCpuGpu
      *  Whether to sync the CPU and GPU. This is necessary when running both parts in asynchronous threads, but causes a deadlock when only one thread is used. Default value: true
      * \param clLocalWorkgroupSize
      *  The local workgroup size for each kernel call. Default value: 64
      */
-    void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64);
+    void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, int gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64);
 
     /*!
      * Tells %Tausch2D where to find the buffer for the GPU data and some of its main important details.
@@ -240,7 +246,7 @@ private:
     real_t *cpuData;
 
     // The width of the halo
-    int haloWidth;
+    int cpuHaloWidth;
 
     // Double pointer holding the MPI sent/recvd data across all edges
     real_t **cpuToCpuSendBuffer;
@@ -270,13 +276,15 @@ private:
     cl::Context cl_context;
     cl::CommandQueue cl_queue;
 
+    int gpuHaloWidth;
+
     // The OpenCL buffer holding the data on the GPU
     cl::Buffer gpuData;
 
     // Some meta information about the OpenCL region
     int gpuDimX, gpuDimY;
     cl::Buffer cl_gpuDimX, cl_gpuDimY;
-    cl::Buffer cl_haloWidth;
+    cl::Buffer cl_gpuHaloWidth;
 
     // Methods to set up the OpenCL environment and compile the required kernels
     void setupOpenCL(bool giveOpenCLDeviceName);
