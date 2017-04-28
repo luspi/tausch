@@ -92,6 +92,8 @@ int main(int argc, char** argv) {
         std::cout << "-------------------------------" << std::endl;
         sample.printCPU();
         std::cout << "-------------------------------" << std::endl;
+        sample.printCPUStencil();
+        std::cout << "-------------------------------" << std::endl;
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -125,6 +127,8 @@ int main(int argc, char** argv) {
         std::cout << "CPU region AFTER" << std::endl;
         std::cout << "-------------------------------" << std::endl;
         sample.printCPU();
+        std::cout << "-------------------------------" << std::endl;
+        sample.printCPUStencil();
         std::cout << "-------------------------------" << std::endl;
     }
 

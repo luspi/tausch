@@ -73,18 +73,42 @@ public:
      * \param dat
      *  The buffer holding the CPU data. This is expected to be one contiguous buffer holding both the values owned by this MPI rank and the ghost values.
      */
-    void setCPUData(real_t *dat);
+    void setCPUData(real_t *data);
+
+    /*!
+     * Tells %Tausch2D where to find the buffer for the CPU stencil data.
+     *
+     * \param stencil
+     *  The buffer holding the CPU stencil data. This is expected to be one contiguous buffer holding both the values owned by this MPI rank and the ghost values.
+     * \param stencilNumPoints
+     *  The number of points in the stencil. If the storage makes use of symmetry, this is expected to be the effective number of stored stencil values.
+     *
+     */
+    void setCPUStencil(real_t *stencil, int stencilNumPoints);
 
     /*!
      * Post the MPI_Irecv required for the halo exchange. This has to be called before any halo exchange is started.
      */
-    void postCpuReceives();
+    void postCpuDataReceives();
 
     /*!
-     * Convenience function that calls the necessary functions performing a halo exchange across MPI ranks. First it calls a left/right halo exchange followed by a top/bottom halo exchange.
+     * Post the MPI_Irecv required for the stencil halo exchange. This has to be called before any stencil halo exchange is started.
      */
-    void performCpuToCpu() { startCpuEdge(LEFT); startCpuEdge(RIGHT); completeCpuEdge(LEFT); completeCpuEdge(RIGHT);
-                             startCpuEdge(TOP); startCpuEdge(BOTTOM); completeCpuEdge(TOP); completeCpuEdge(BOTTOM); }
+    void postCpuStencilReceives();
+
+    /*!
+     * Convenience function that calls the necessary functions performing a halo exchange across MPI ranks. After posting the MPI_Recvs, it first calls a left/right halo exchange followed by a top/bottom halo exchange.
+     */
+    void performCpuToCpuData() { postCpuDataReceives();
+                                 startCpuDataEdge(LEFT); startCpuDataEdge(RIGHT); completeCpuDataEdge(LEFT); completeCpuDataEdge(RIGHT);
+                                 startCpuDataEdge(TOP); startCpuDataEdge(BOTTOM); completeCpuDataEdge(TOP); completeCpuDataEdge(BOTTOM); }
+
+    /*!
+     * Convenience function that calls the necessary functions performing a stencil halo exchange across MPI ranks. After posting the MPI_Recvs, it first calls a left/right stencil halo exchange followed by a top/bottom halo exchange.
+     */
+   void performCpuToCpuStencil() { postCpuStencilReceives();
+                                   startCpuStencilEdge(LEFT); startCpuStencilEdge(RIGHT); completeCpuStencilEdge(LEFT); completeCpuStencilEdge(RIGHT);
+                                   startCpuStencilEdge(TOP); startCpuStencilEdge(BOTTOM); completeCpuStencilEdge(TOP); completeCpuStencilEdge(BOTTOM); }
 
     /*!
      * Start the inter-MPI halo exchange across the given edge.
@@ -92,7 +116,15 @@ public:
      * \param edge
      *  The edge across which the halo exchange is supposed to be started. It can be either one of the enum Tausch2D::LEFT, Tausch2D::RIGHT, Tausch2D::TOP, Tausch2D::BOTTOM.
      */
-    void startCpuEdge(Edge edge);
+    void startCpuDataEdge(Edge edge);
+
+    /*!
+     * Start the inter-MPI stencil halo exchange across the given edge.
+     *
+     * \param edge
+     *  The edge across which the stencil halo exchange is supposed to be started. It can be either one of the enum Tausch2D::LEFT, Tausch2D::RIGHT, Tausch2D::TOP, Tausch2D::BOTTOM.
+     */
+    void startCpuStencilEdge(Edge edge);
 
     /*!
      * Completes the inter-MPI halo exchange across the given edge. This has to come *after* calling startCpuEdge() on the same edge.
@@ -100,7 +132,15 @@ public:
      * \param edge
      *  The edge across which the halo exchange is supposed to be completed. It can be either one of the enum Tausch2D::LEFT, Tausch2D::RIGHT, Tausch2D::TOP, Tausch2D::BOTTOM.
      */
-    void completeCpuEdge(Edge edge);
+    void completeCpuDataEdge(Edge edge);
+
+    /*!
+     * Completes the inter-MPI stencil halo exchange across the given edge. This has to come *after* calling startCpuStencilEdge() on the same edge.
+     *
+     * \param edge
+     *  The edge across which the stencil halo exchange is supposed to be completed. It can be either one of the enum Tausch2D::LEFT, Tausch2D::RIGHT, Tausch2D::TOP, Tausch2D::BOTTOM.
+     */
+    void completeCpuStencilEdge(Edge edge);
 
     /*!
      * Get the MPI communicator that %Tausch2D uses for all of its communication. Be careful not to 'overwrite' MPI tags that %Tausch2D uses.
@@ -174,9 +214,10 @@ public:
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
-    void performCpuToCpuAndCpuToGpu() { startCpuEdge(LEFT); startCpuEdge(RIGHT); startCpuToGpu();
-                                        completeCpuEdge(LEFT); completeCpuEdge(RIGHT); startCpuEdge(TOP); startCpuEdge(BOTTOM);
-                                        completeGpuToCpu(); completeCpuEdge(TOP); completeCpuEdge(BOTTOM); }
+    void performCpuToCpuDataAndCpuToGpuData() {
+                                                startCpuDataEdge(LEFT); startCpuDataEdge(RIGHT); startCpuToGpu();
+                                                completeCpuDataEdge(LEFT); completeCpuDataEdge(RIGHT); startCpuDataEdge(TOP); startCpuDataEdge(BOTTOM);
+                                                completeGpuToCpu(); completeCpuDataEdge(TOP); completeCpuDataEdge(BOTTOM); }
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange from the GPU to CPU. It calls startGpuToCpu() and completeCpuToGpu().
@@ -239,11 +280,15 @@ private:
     // The number of MPI ranks in the x/y direction of the domain
     int mpiNumX, mpiNumY;
 
+    MPI_Datatype mpiDataType;
+
     // The x/y dimensions of the LOCAL partition
     int localDimX, localDimY;
 
     // Pointer to the CPU data
     real_t *cpuData;
+    real_t *stencilData;
+    int stencilNumPoints;
 
     // The width of the halo
     int cpuHaloWidth;
@@ -251,13 +296,18 @@ private:
     // Double pointer holding the MPI sent/recvd data across all edges
     real_t **cpuToCpuSendBuffer;
     real_t **cpuToCpuRecvBuffer;
+    real_t **cpuToCpuStencilSendBuffer;
+    real_t **cpuToCpuStencilRecvBuffer;
 
     // Whether the necessary steps were taken before starting a halo exchange
     bool cpuInfoGiven;
+    bool stencilInfoGiven;
     bool cpuRecvsPosted;
+    bool stencilRecvsPosted;
 
     // Which edge of the halo exchange has been started
     bool cpuStarted[4];
+    bool cpuStencilStarted[4];
 
     // this refers to inter-partition boundaries
     bool haveBoundary[4];
@@ -268,6 +318,8 @@ private:
     // Holding the MPI requests so we can call Wait on the right ones
     MPI_Request cpuToCpuSendRequest[4];
     MPI_Request cpuToCpuRecvRequest[4];
+    MPI_Request cpuToCpuStencilSendRequest[4];
+    MPI_Request cpuToCpuStencilRecvRequest[4];
 
 #ifdef TAUSCH_OPENCL
 
@@ -280,6 +332,7 @@ private:
 
     // The OpenCL buffer holding the data on the GPU
     cl::Buffer gpuData;
+    cl::Buffer gpuStencilData;
 
     // Some meta information about the OpenCL region
     int gpuDimX, gpuDimY;
@@ -293,6 +346,8 @@ private:
     // Pointers to atomic arrays for communicating halo data between CPU and GPU thread via shared memory
     std::atomic<real_t> *cpuToGpuBuffer;
     std::atomic<real_t> *gpuToCpuBuffer;
+    std::atomic<real_t> *cpuToGpuStencilBuffer;
+    std::atomic<real_t> *gpuToCpuStencilBuffer;
 
     // These are only needed/set when Tausch2D set up its own OpenCL environment, not needed otherwise
     cl::Platform cl_platform;
@@ -301,6 +356,8 @@ private:
     // Collecting the halo data to be sent/recvd
     cl::Buffer cl_gpuToCpuBuffer;
     cl::Buffer cl_cpuToGpuBuffer;
+    cl::Buffer cl_gpuToCpuStencilBuffer;
+    cl::Buffer cl_cpuToGpuStencilBuffer;
 
     // Whether the necessary steps were taken before starting a halo exchange
     bool gpuEnabled;
@@ -309,6 +366,8 @@ private:
     // Which halo exchange has been started
     std::atomic<bool> cpuToGpuStarted;
     std::atomic<bool> gpuToCpuStarted;
+    std::atomic<bool> cpuToGpuStencilStarted;
+    std::atomic<bool> gpuToCpuStencilStarted;
 
     // The local OpenCL workgroup size
     int cl_kernelLocalSize;

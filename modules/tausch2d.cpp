@@ -23,23 +23,15 @@ Tausch2D::Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int c
     haveBoundary[TOP] = (mpiRank < mpiSize-mpiNumX);
     haveBoundary[BOTTOM] = (mpiRank > mpiNumX-1);
 
-    // a send and recv buffer for the CPU-CPU communication
-    cpuToCpuSendBuffer = new real_t*[4];
-    cpuToCpuSendBuffer[LEFT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
-    cpuToCpuSendBuffer[RIGHT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
-    cpuToCpuSendBuffer[TOP] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
-    cpuToCpuSendBuffer[BOTTOM] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
-    cpuToCpuRecvBuffer = new real_t*[4];
-    cpuToCpuRecvBuffer[LEFT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
-    cpuToCpuRecvBuffer[RIGHT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
-    cpuToCpuRecvBuffer[TOP] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
-    cpuToCpuRecvBuffer[BOTTOM] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
-
     // whether the cpu/gpu pointers have been passed
     cpuInfoGiven = false;
 
+    stencilInfoGiven = false;
+
     // cpu at beginning
     cpuRecvsPosted = false;
+
+    stencilRecvsPosted = false;
 
     // communication to neither edge has been started
     cpuStarted[LEFT] = false;
@@ -47,32 +39,12 @@ Tausch2D::Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int c
     cpuStarted[TOP] = false;
     cpuStarted[BOTTOM] = false;
 
-    MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
+    cpuStencilStarted[LEFT] = false;
+    cpuStencilStarted[RIGHT] = false;
+    cpuStencilStarted[TOP] = false;
+    cpuStencilStarted[BOTTOM] = false;
 
-    if(haveBoundary[LEFT]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[LEFT], cpuHaloWidth*(localDimY+2*cpuHaloWidth),
-                      mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[LEFT]);
-        MPI_Send_init(cpuToCpuSendBuffer[LEFT], cpuHaloWidth*(localDimY+2*cpuHaloWidth),
-                      mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[LEFT]);
-    }
-    if(haveBoundary[RIGHT]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[RIGHT], cpuHaloWidth*(localDimY+2*cpuHaloWidth),
-                      mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[RIGHT]);
-        MPI_Send_init(cpuToCpuSendBuffer[RIGHT], cpuHaloWidth*(localDimY+2*cpuHaloWidth),
-                      mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[RIGHT]);
-    }
-    if(haveBoundary[TOP]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[TOP], cpuHaloWidth*(localDimX+2*cpuHaloWidth),
-                      mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[TOP]);
-        MPI_Send_init(cpuToCpuSendBuffer[TOP], cpuHaloWidth*(localDimX+2*cpuHaloWidth),
-                      mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[TOP]);
-    }
-    if(haveBoundary[BOTTOM]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[BOTTOM], cpuHaloWidth*(localDimX+2*cpuHaloWidth),
-                      mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[BOTTOM]);
-        MPI_Send_init(cpuToCpuSendBuffer[BOTTOM], cpuHaloWidth*(localDimX+2*cpuHaloWidth),
-                      mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[BOTTOM]);
-    }
+    mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
 #ifdef TAUSCH_OPENCL
 
@@ -109,13 +81,96 @@ Tausch2D::~Tausch2D() {
 }
 
 // get a pointer to the CPU data
-void Tausch2D::setCPUData(real_t *dat) {
+void Tausch2D::setCPUData(real_t *data) {
+
     cpuInfoGiven = true;
-    cpuData = dat;
+    cpuData = data;
+
+    // a send and recv buffer for the CPU-CPU communication
+    cpuToCpuSendBuffer = new real_t*[4];
+    cpuToCpuSendBuffer[LEFT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
+    cpuToCpuSendBuffer[RIGHT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
+    cpuToCpuSendBuffer[TOP] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
+    cpuToCpuSendBuffer[BOTTOM] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
+    cpuToCpuRecvBuffer = new real_t*[4];
+    cpuToCpuRecvBuffer[LEFT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
+    cpuToCpuRecvBuffer[RIGHT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
+    cpuToCpuRecvBuffer[TOP] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
+    cpuToCpuRecvBuffer[BOTTOM] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
+
+    if(haveBoundary[LEFT]) {
+        MPI_Recv_init(cpuToCpuRecvBuffer[LEFT], cpuHaloWidth*(localDimY+2*cpuHaloWidth),
+                      mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[LEFT]);
+        MPI_Send_init(cpuToCpuSendBuffer[LEFT], cpuHaloWidth*(localDimY+2*cpuHaloWidth),
+                      mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[LEFT]);
+    }
+    if(haveBoundary[RIGHT]) {
+        MPI_Recv_init(cpuToCpuRecvBuffer[RIGHT], cpuHaloWidth*(localDimY+2*cpuHaloWidth),
+                      mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[RIGHT]);
+        MPI_Send_init(cpuToCpuSendBuffer[RIGHT], cpuHaloWidth*(localDimY+2*cpuHaloWidth),
+                      mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[RIGHT]);
+    }
+    if(haveBoundary[TOP]) {
+        MPI_Recv_init(cpuToCpuRecvBuffer[TOP], cpuHaloWidth*(localDimX+2*cpuHaloWidth),
+                      mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[TOP]);
+        MPI_Send_init(cpuToCpuSendBuffer[TOP], cpuHaloWidth*(localDimX+2*cpuHaloWidth),
+                      mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[TOP]);
+    }
+    if(haveBoundary[BOTTOM]) {
+        MPI_Recv_init(cpuToCpuRecvBuffer[BOTTOM], cpuHaloWidth*(localDimX+2*cpuHaloWidth),
+                      mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[BOTTOM]);
+        MPI_Send_init(cpuToCpuSendBuffer[BOTTOM], cpuHaloWidth*(localDimX+2*cpuHaloWidth),
+                      mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[BOTTOM]);
+    }
+
+}
+
+void Tausch2D::setCPUStencil(real_t *stencil, int stencilNumPoints) {
+
+    stencilInfoGiven = true;
+    stencilData = stencil;
+    this->stencilNumPoints = stencilNumPoints;
+
+    cpuToCpuStencilSendBuffer = new real_t*[4];
+    cpuToCpuStencilSendBuffer[LEFT] = new real_t[stencilNumPoints*cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
+    cpuToCpuStencilSendBuffer[RIGHT] = new real_t[stencilNumPoints*cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
+    cpuToCpuStencilSendBuffer[TOP] = new real_t[stencilNumPoints*cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
+    cpuToCpuStencilSendBuffer[BOTTOM] = new real_t[stencilNumPoints*cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
+    cpuToCpuStencilRecvBuffer = new real_t*[4];
+    cpuToCpuStencilRecvBuffer[LEFT] = new real_t[stencilNumPoints*cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
+    cpuToCpuStencilRecvBuffer[RIGHT] = new real_t[stencilNumPoints*cpuHaloWidth*(localDimY+2*cpuHaloWidth)]{};
+    cpuToCpuStencilRecvBuffer[TOP] = new real_t[stencilNumPoints*cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
+    cpuToCpuStencilRecvBuffer[BOTTOM] = new real_t[stencilNumPoints*cpuHaloWidth*(localDimX+2*cpuHaloWidth)]{};
+
+    if(haveBoundary[LEFT]) {
+        MPI_Recv_init(cpuToCpuStencilRecvBuffer[LEFT], stencilNumPoints*cpuHaloWidth*(localDimY+2*cpuHaloWidth),
+                      mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuStencilRecvRequest[LEFT]);
+        MPI_Send_init(cpuToCpuStencilSendBuffer[LEFT], stencilNumPoints*cpuHaloWidth*(localDimY+2*cpuHaloWidth),
+                      mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuStencilSendRequest[LEFT]);
+    }
+    if(haveBoundary[RIGHT]) {
+        MPI_Recv_init(cpuToCpuStencilRecvBuffer[RIGHT], stencilNumPoints*cpuHaloWidth*(localDimY+2*cpuHaloWidth),
+                      mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuStencilRecvRequest[RIGHT]);
+        MPI_Send_init(cpuToCpuStencilSendBuffer[RIGHT], stencilNumPoints*cpuHaloWidth*(localDimY+2*cpuHaloWidth),
+                      mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuStencilSendRequest[RIGHT]);
+    }
+    if(haveBoundary[TOP]) {
+        MPI_Recv_init(cpuToCpuStencilRecvBuffer[TOP], stencilNumPoints*cpuHaloWidth*(localDimX+2*cpuHaloWidth),
+                      mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuStencilRecvRequest[TOP]);
+        MPI_Send_init(cpuToCpuStencilSendBuffer[TOP], stencilNumPoints*cpuHaloWidth*(localDimX+2*cpuHaloWidth),
+                      mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuStencilSendRequest[TOP]);
+    }
+    if(haveBoundary[BOTTOM]) {
+        MPI_Recv_init(cpuToCpuStencilRecvBuffer[BOTTOM], stencilNumPoints*cpuHaloWidth*(localDimX+2*cpuHaloWidth),
+                      mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuStencilRecvRequest[BOTTOM]);
+        MPI_Send_init(cpuToCpuStencilSendBuffer[BOTTOM], stencilNumPoints*cpuHaloWidth*(localDimX+2*cpuHaloWidth),
+                      mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuStencilSendRequest[BOTTOM]);
+    }
+
 }
 
 // post the MPI_Irecv's for inter-rank communication
-void Tausch2D::postCpuReceives() {
+void Tausch2D::postCpuDataReceives() {
 
     if(!cpuInfoGiven) {
         std::cerr << "ERROR: You didn't tell me yet where to find the data! Abort..." << std::endl;
@@ -123,8 +178,6 @@ void Tausch2D::postCpuReceives() {
     }
 
     cpuRecvsPosted = true;
-
-    MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
     if(haveBoundary[LEFT])
         MPI_Start(&cpuToCpuRecvRequest[LEFT]);
@@ -137,7 +190,28 @@ void Tausch2D::postCpuReceives() {
 
 }
 
-void Tausch2D::startCpuEdge(Edge edge) {
+// post the MPI_Irecv's for inter-rank communication
+void Tausch2D::postCpuStencilReceives() {
+
+    if(!cpuInfoGiven) {
+        std::cerr << "ERROR: You didn't tell me yet where to find the data! Abort..." << std::endl;
+        exit(1);
+    }
+
+    stencilRecvsPosted = true;
+
+    if(haveBoundary[LEFT])
+        MPI_Start(&cpuToCpuStencilRecvRequest[LEFT]);
+    if(haveBoundary[RIGHT])
+        MPI_Start(&cpuToCpuStencilRecvRequest[RIGHT]);
+    if(haveBoundary[TOP])
+        MPI_Start(&cpuToCpuStencilRecvRequest[TOP]);
+    if(haveBoundary[BOTTOM])
+        MPI_Start(&cpuToCpuStencilRecvRequest[BOTTOM]);
+
+}
+
+void Tausch2D::startCpuDataEdge(Edge edge) {
 
     if(!cpuRecvsPosted) {
         std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
@@ -173,8 +247,46 @@ void Tausch2D::startCpuEdge(Edge edge) {
 
 }
 
+void Tausch2D::startCpuStencilEdge(Edge edge) {
+
+    if(!stencilRecvsPosted) {
+        std::cerr << "ERROR: No CPU stencil recvs have been posted yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    if(edge != LEFT && edge != RIGHT && edge != TOP && edge != BOTTOM) {
+        std::cerr << "startCpuStencilEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
+        exit(1);
+    }
+
+    cpuStencilStarted[edge] = true;
+
+    if(edge == LEFT && haveBoundary[LEFT]) {
+        for(int i = 0; i < cpuHaloWidth*(localDimY+2*cpuHaloWidth); ++i)
+            for(int j = 0; j < stencilNumPoints; ++j)
+                cpuToCpuStencilSendBuffer[LEFT][stencilNumPoints*i + j] = stencilData[stencilNumPoints*(cpuHaloWidth+ (i/cpuHaloWidth)*(localDimX+2*cpuHaloWidth)+i%cpuHaloWidth) + j];
+        MPI_Start(&cpuToCpuStencilSendRequest[LEFT]);
+    } else if(edge == RIGHT && haveBoundary[RIGHT]) {
+        for(int i = 0; i < cpuHaloWidth*(localDimY+2*cpuHaloWidth); ++i)
+            for(int j = 0; j < stencilNumPoints; ++j)
+                cpuToCpuStencilSendBuffer[RIGHT][stencilNumPoints*i + j] = stencilData[stencilNumPoints*((i/cpuHaloWidth+1)*(localDimX+2*cpuHaloWidth) -(2*cpuHaloWidth)+i%cpuHaloWidth) + j];
+        MPI_Start(&cpuToCpuStencilSendRequest[RIGHT]);
+    } else if(edge == TOP && haveBoundary[TOP]) {
+        for(int i = 0; i < cpuHaloWidth*(localDimX+2*cpuHaloWidth); ++i)
+            for(int j = 0; j < stencilNumPoints; ++j)
+                cpuToCpuStencilSendBuffer[TOP][stencilNumPoints*i + j] = stencilData[stencilNumPoints*((localDimX+2*cpuHaloWidth)*(localDimY) + i) + j];
+        MPI_Start(&cpuToCpuStencilSendRequest[TOP]);
+    } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
+        for(int i = 0; i < cpuHaloWidth*(localDimX+2*cpuHaloWidth); ++i)
+            for(int j = 0; j < stencilNumPoints; ++j)
+                cpuToCpuStencilSendBuffer[BOTTOM][stencilNumPoints*i + j] = stencilData[stencilNumPoints*(cpuHaloWidth*(localDimX+2*cpuHaloWidth) + i) + j];
+        MPI_Start(&cpuToCpuStencilSendRequest[BOTTOM]);
+    }
+
+}
+
 // Complete CPU-CPU exchange to the left
-void Tausch2D::completeCpuEdge(Edge edge) {
+void Tausch2D::completeCpuDataEdge(Edge edge) {
 
     if(edge != LEFT && edge != RIGHT && edge != TOP && edge != BOTTOM) {
         std::cerr << "completeCpuEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
@@ -206,6 +318,47 @@ void Tausch2D::completeCpuEdge(Edge edge) {
         for(int i = 0; i < cpuHaloWidth*(localDimX+2*cpuHaloWidth); ++i)
             cpuData[i] = cpuToCpuRecvBuffer[BOTTOM][i];
         MPI_Wait(&cpuToCpuSendRequest[BOTTOM], MPI_STATUS_IGNORE);
+    }
+
+}
+
+// Complete CPU-CPU exchange to the left
+void Tausch2D::completeCpuStencilEdge(Edge edge) {
+
+    if(edge != LEFT && edge != RIGHT && edge != TOP && edge != BOTTOM) {
+        std::cerr << "completeCpuStencilEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
+        exit(1);
+    }
+
+    if(!cpuStencilStarted[edge]) {
+        std::cerr << "ERROR: No edge #" << edge << " CPU stencil exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    if(edge == LEFT && haveBoundary[LEFT]) {
+        MPI_Wait(&cpuToCpuStencilRecvRequest[LEFT], MPI_STATUS_IGNORE);
+        for(int i = 0; i < cpuHaloWidth*(localDimY+2*cpuHaloWidth); ++i)
+            for(int j = 0; j < stencilNumPoints; ++j)
+                stencilData[stencilNumPoints*((i/cpuHaloWidth)*(localDimX+2*cpuHaloWidth)+i%cpuHaloWidth) + j] = cpuToCpuStencilRecvBuffer[LEFT][stencilNumPoints*i + j];
+        MPI_Wait(&cpuToCpuStencilSendRequest[LEFT], MPI_STATUS_IGNORE);
+    } else if(edge == RIGHT && haveBoundary[RIGHT]) {
+        MPI_Wait(&cpuToCpuStencilRecvRequest[RIGHT], MPI_STATUS_IGNORE);
+        for(int i = 0; i < cpuHaloWidth*(localDimY+2*cpuHaloWidth); ++i)
+            for(int j = 0; j < stencilNumPoints; ++j)
+                stencilData[stencilNumPoints*((i/cpuHaloWidth+1)*(localDimX+2*cpuHaloWidth)-cpuHaloWidth+i%cpuHaloWidth) + j] = cpuToCpuStencilRecvBuffer[RIGHT][stencilNumPoints*i + j];
+        MPI_Wait(&cpuToCpuStencilSendRequest[RIGHT], MPI_STATUS_IGNORE);
+    } else if(edge == TOP && haveBoundary[TOP]) {
+        MPI_Wait(&cpuToCpuStencilRecvRequest[TOP], MPI_STATUS_IGNORE);
+        for(int i = 0; i < cpuHaloWidth*(localDimX+2*cpuHaloWidth); ++i)
+            for(int j = 0; j < stencilNumPoints; ++j)
+                stencilData[stencilNumPoints*((localDimX+2*cpuHaloWidth)*(localDimY+cpuHaloWidth) + i) + j] = cpuToCpuStencilRecvBuffer[TOP][stencilNumPoints*i + j];
+        MPI_Wait(&cpuToCpuStencilSendRequest[TOP], MPI_STATUS_IGNORE);
+    } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
+        MPI_Wait(&cpuToCpuStencilRecvRequest[BOTTOM], MPI_STATUS_IGNORE);
+        for(int i = 0; i < cpuHaloWidth*(localDimX+2*cpuHaloWidth); ++i)
+            for(int j = 0; j < stencilNumPoints; ++j)
+                stencilData[stencilNumPoints*i + j] = cpuToCpuStencilRecvBuffer[BOTTOM][stencilNumPoints*i + j];
+        MPI_Wait(&cpuToCpuStencilSendRequest[BOTTOM], MPI_STATUS_IGNORE);
     }
 
 }

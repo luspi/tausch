@@ -19,6 +19,7 @@ public:
 
     void printCPU();
     void printGPU();
+    void printCPUStencil();
 
     void launchCPU();
     void launchGPU();
@@ -28,6 +29,10 @@ private:
 
     real_t *datCPU;
     real_t *datGPU;
+
+    int stencilNumPoints;
+    real_t *stencil;
+
     cl::Buffer cl_datGpu;
     int loops;
     Tausch2D *tausch;

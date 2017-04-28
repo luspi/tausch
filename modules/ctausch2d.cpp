@@ -21,29 +21,49 @@ extern "C" {
         *comm = t->getMPICommunicator();
     }
 
-    void tausch2d_postCpuReceives(CTausch2D *tC) {
+    void tausch2d_postCpuDataReceives(CTausch2D *tC) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->postCpuReceives();
+        t->postCpuDataReceives();
+    }
+    void tausch2d_postCpuStencilReceives(CTausch2D *tC) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        t->postCpuStencilReceives();
     }
 
-    void tausch2d_performCpuToCpu(CTausch2D *tC) {
+    void tausch2d_performCpuToCpuData(CTausch2D *tC) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->performCpuToCpu();
+        t->performCpuToCpuData();
+    }
+    void tausch2d_performCpuToCpuStencil(CTausch2D *tC) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        t->performCpuToCpuStencil();
     }
 
-    void tausch2d_startCpuEdge(CTausch2D *tC, enum Edge edge) {
+    void tausch2d_startCpuDataEdge(CTausch2D *tC, enum Edge edge) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->startCpuEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT : (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT : (edge==TAUSCH_TOP ? Tausch2D::TOP : Tausch2D::BOTTOM)));
+        t->startCpuDataEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT : (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT : (edge==TAUSCH_TOP ? Tausch2D::TOP : Tausch2D::BOTTOM)));
+    }
+    void tausch2d_startCpuStencilEdge(CTausch2D *tC, enum Edge edge) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        t->startCpuStencilEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT : (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT : (edge==TAUSCH_TOP ? Tausch2D::TOP : Tausch2D::BOTTOM)));
     }
 
-    void tausch2d_completeCpuEdge(CTausch2D *tC, enum Edge edge) {
+    void tausch2d_completeCpuDataEdge(CTausch2D *tC, enum Edge edge) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->completeCpuEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT : (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT : (edge==TAUSCH_TOP ? Tausch2D::TOP : Tausch2D::BOTTOM)));
+        t->completeCpuDataEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT : (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT : (edge==TAUSCH_TOP ? Tausch2D::TOP : Tausch2D::BOTTOM)));
+    }
+    void tausch2d_completeCpuStencilEdge(CTausch2D *tC, enum Edge edge) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        t->completeCpuStencilEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT : (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT : (edge==TAUSCH_TOP ? Tausch2D::TOP : Tausch2D::BOTTOM)));
     }
 
     void tausch2d_setCPUData(CTausch2D *tC, real_t *dat) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         t->setCPUData(dat);
+    }
+    void tausch2d_setCPUStencil(CTausch2D *tC, real_t *dat, int stencilNumPoints) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        t->setCPUStencil(dat, stencilNumPoints);
     }
 
 #ifdef TAUSCH_OPENCL
@@ -66,9 +86,9 @@ extern "C" {
         t->setGPUData(*buf, gpuDimX, gpuDimY);
     }
 
-    void tausch2d_performCpuToCpuAndCpuToGpu(CTausch2D *tC) {
+    void tausch2d_performCpuToCpuDataAndCpuToGpuData(CTausch2D *tC) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->performCpuToCpuAndCpuToGpu();
+        t->performCpuToCpuDataAndCpuToGpuData();
     }
 
     void tausch2d_performCpuToGpu(CTausch2D *tC) {

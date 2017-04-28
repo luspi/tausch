@@ -66,6 +66,18 @@ Sample::Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int c
                     datCPU[(j+cpuHaloWidth)*(dimX+2*cpuHaloWidth) + i+cpuHaloWidth] = j*dimX+i+1;
     }
 
+    stencilNumPoints = 5;
+    stencil = new real_t[num*5];
+    for(int y = 0; y < dimY; ++y) {
+        for(int x = 0; x < dimX; ++x) {
+            stencil[stencilNumPoints*((y+cpuHaloWidth)*(dimX+2*cpuHaloWidth)+x+cpuHaloWidth) + 0] = 1;
+            stencil[stencilNumPoints*((y+cpuHaloWidth)*(dimX+2*cpuHaloWidth)+x+cpuHaloWidth) + 1] = 2;
+            stencil[stencilNumPoints*((y+cpuHaloWidth)*(dimX+2*cpuHaloWidth)+x+cpuHaloWidth) + 2] = 4;
+            stencil[stencilNumPoints*((y+cpuHaloWidth)*(dimX+2*cpuHaloWidth)+x+cpuHaloWidth) + 3] = 5;
+            stencil[stencilNumPoints*((y+cpuHaloWidth)*(dimX+2*cpuHaloWidth)+x+cpuHaloWidth) + 4] = 7;
+        }
+    }
+
 
     if(!cpuonly) {
 
@@ -90,6 +102,7 @@ Sample::Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int c
 
     // pass pointers to the two data containers
     tausch->setCPUData(datCPU);
+    tausch->setCPUStencil(stencil, stencilNumPoints);
     if(!cpuonly)
         tausch->setGPUData(cl_datGpu, gpuDimX, gpuDimY);
 
@@ -110,13 +123,11 @@ void Sample::launchCPU() {
         if(mpiRank == 0 && (run+1)%10 == 0)
             std::cout << "Loop " << run+1 << "/" << loops << std::endl;
 
-        // post the receives
-        tausch->postCpuReceives();
-
-        if(cpuonly)
-            tausch->performCpuToCpu();
-        else
-            tausch->performCpuToCpuAndCpuToGpu();
+        if(cpuonly) {
+            tausch->performCpuToCpuData();
+            tausch->performCpuToCpuStencil();
+        } else
+            tausch->performCpuToCpuDataAndCpuToGpuData();
 
     }
 
@@ -160,6 +171,26 @@ void Sample::printCPU() {
             }
             std::cout << std::endl;
         }
+
+    }
+
+}
+
+void Sample::printCPUStencil() {
+
+    if(cpuonly) {
+
+        for(int j = 0; j < dimY+2*cpuHaloWidth; ++j) {
+            for(int i = 0; i < dimX+2*cpuHaloWidth; ++i) {
+                std::cout << j*(dimX+2*cpuHaloWidth) + i << " :: ";
+                for(int s = 0; s < stencilNumPoints; ++s)
+                          std::cout << stencil[stencilNumPoints*(j*(dimX+2*cpuHaloWidth) + i) + s] << (s != stencilNumPoints-1 ? "/" : "");
+                std::cout << std::endl;
+            }
+            std::cout << std::endl;
+        }
+
+    } else {
 
     }
 
