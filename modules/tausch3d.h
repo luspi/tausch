@@ -59,12 +59,12 @@ public:
      *  The number of MPI ranks lined up in the y direction. mpiNumX*mpiNumY*mpiNumZ has to be equal to the total number of MPI ranks.
      * \param mpiNumZ
      *  The number of MPI ranks lined up in the y direction. mpiNumX*mpiNumY*mpiNumZ has to be equal to the total number of MPI ranks.
-     * \param haloWidth
-     *  The width of the halo between MPI ranks AND between the CPU/GPU (if applicable).
+     * \param cpuHaloWidth
+     *  The width of the CPU-to-CPU halo, i.e., the inter-MPI halo.
      * \param comm
      *  The MPI Communictor to be used. %Tausch3D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch3D working with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    explicit Tausch3D(int localDimX, int localDimY, int localDimZ, int mpiNumX, int mpiNumY, int mpiNumZ, int haloWidth, MPI_Comm comm = MPI_COMM_WORLD);
+    explicit Tausch3D(int localDimX, int localDimY, int localDimZ, int mpiNumX, int mpiNumY, int mpiNumZ, int cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * Destructor freeing any allocated memory.
@@ -129,7 +129,7 @@ public:
      * \param giveOpenCLDeviceName
      *  Whether %Tausch3D should print out the OpenCL device name. This can come in handy for debugging. Default value: false
      */
-    void enableOpenCL(bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
+    void enableOpenCL(int gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
 
     /*!
      * Overloaded function. Enabled OpenCL for the current %Tausch3D object, making %Tausch3D use the user-provided OpenCL environment.
@@ -147,7 +147,7 @@ public:
      * \param clLocalWorkgroupSize
      *  The local workgroup size for each kernel call. Default value: 64
      */
-    void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64);
+    void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, int gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64);
 
     /*!
      * Tells %Tausch3D where to find the buffer for the GPU data and some of its main important details.
@@ -250,7 +250,7 @@ private:
     real_t *cpuData;
 
     // The width of the halo
-    int haloWidth;
+    int cpuHaloWidth;
 
     // Double pointer holding the MPI sent/recvd data across all edges
     real_t **cpuToCpuSendBuffer;
@@ -283,10 +283,12 @@ private:
     // The OpenCL buffer holding the data on the GPU
     cl::Buffer gpuData;
 
+    int gpuHaloWidth;
+
     // Some meta information about the OpenCL region
     int gpuDimX, gpuDimY, gpuDimZ;
     cl::Buffer cl_gpuDimX, cl_gpuDimY, cl_gpuDimZ;
-    cl::Buffer cl_haloWidth;
+    cl::Buffer cl_gpuHaloWidth;;
 
     // Methods to set up the OpenCL environment and compile the required kernels
     void setupOpenCL(bool giveOpenCLDeviceName);
