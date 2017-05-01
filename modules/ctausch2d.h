@@ -47,17 +47,25 @@ void tausch2d_enableOpenCL(CTausch2D *tC, int gpuHaloWidth, bool blockingSyncCpu
 void tausch2d_setOpenCLInfo(CTausch2D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, int gpuHaloWidth, bool blockingSyncCpuGpu);
 
 void tausch2d_performCpuToCpuDataAndCpuToGpuData(CTausch2D *tC);
+void tausch2d_performCpuToCpuStencilAndCpuToGpuStencil(CTausch2D *tC);
 
-void tausch2d_performCpuToGpu(CTausch2D *tC);
+void tausch2d_performCpuToGpuData(CTausch2D *tC);
+void tausch2d_performCpuToGpuStencil(CTausch2D *tC);
 
-void tausch2d_performGpuToCpu(CTausch2D *tC);
+void tausch2d_performGpuToCpuData(CTausch2D *tC);
+void tausch2d_performGpuToCpuStencil(CTausch2D *tC);
 
-void tausch2d_startGpuToCpu(CTausch2D *tC);
+void tausch2d_startGpuToCpuData(CTausch2D *tC);
+void tausch2d_startGpuToCpuStencil(CTausch2D *tC);
 
-void tausch2d_completeCpuToGpu(CTausch2D *tC);
-void tausch2d_completeGpuToCpu(CTausch2D *tC);
+void tausch2d_completeCpuToGpuData(CTausch2D *tC);
+void tausch2d_completeCpuToGpuStencil(CTausch2D *tC);
+
+void tausch2d_completeGpuToCpuData(CTausch2D *tC);
+void tausch2d_completeGpuToCpuStencil(CTausch2D *tC);
 
 void tausch2d_setGPUData(CTausch2D *tC, cl_mem dat, int gpuDimX, int gpuDimY);
+void tausch2d_setGPUStencil(CTausch2D *tC, cl_mem stencil, int stencilNumPoints, int gpuDimX, int gpuDimY);
 
 cl_context tausch2d_getContext(CTausch2D *tC);
 cl_command_queue tausch2d_getQueue(CTausch2D *tC);

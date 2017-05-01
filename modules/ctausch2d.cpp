@@ -86,37 +86,73 @@ extern "C" {
         t->setGPUData(*buf, gpuDimX, gpuDimY);
     }
 
+    void tausch2d_setGPUStencil(CTausch2D *tC, cl_mem stencil, int stencilNumPoints, int gpuDimX, int gpuDimY) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        cl::Buffer *buf = new cl::Buffer(stencil);
+        t->setGPUStencil(*buf, stencilNumPoints, gpuDimX, gpuDimY);
+    }
+
     void tausch2d_performCpuToCpuDataAndCpuToGpuData(CTausch2D *tC) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         t->performCpuToCpuDataAndCpuToGpuData();
     }
-
-    void tausch2d_performCpuToGpu(CTausch2D *tC) {
+    void tausch2d_performCpuToCpuStencilAndCpuToGpuStencil(CTausch2D *tC) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->performCpuToGpu();
+        t->performCpuToCpuStencilAndCpuToGpuStencil();
     }
 
-    void tausch2d_performGpuToCpu(CTausch2D *tC) {
+    void tausch2d_performCpuToGpuData(CTausch2D *tC) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->performGpuToCpu();
+        t->performCpuToGpuData();
+    }
+    void tausch2d_performCpuToGpuStencil(CTausch2D *tC) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        t->performCpuToGpuStencil();
     }
 
-    void tausch2d_startCpuToGpu(CTausch2D *tC) {
+    void tausch2d_performGpuToCpuData(CTausch2D *tC) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->startCpuToGpu();
+        t->performGpuToCpuData();
     }
-    void tausch2d_startGpuToCpu(CTausch2D *tC) {
+    void tausch2d_performGpuToCpuStencil(CTausch2D *tC) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->startGpuToCpu();
+        t->performGpuToCpuStencil();
     }
 
-    void tausch2d_completeCpuToGpu(CTausch2D *tC) {
+    void tausch2d_startCpuToGpuData(CTausch2D *tC) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->completeCpuToGpu();
+        t->startCpuToGpuData();
     }
-    void tausch2d_completeGpuToCpu(CTausch2D *tC) {
+    void tausch2d_startCpuToGpuStencil(CTausch2D *tC) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->completeGpuToCpu();
+        t->startCpuToGpuStencil();
+    }
+
+    void tausch2d_startGpuToCpuData(CTausch2D *tC) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        t->startGpuToCpuData();
+    }
+    void tausch2d_startGpuToCpuStencil(CTausch2D *tC) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        t->startGpuToCpuStencil();
+    }
+
+    void tausch2d_completeCpuToGpuData(CTausch2D *tC) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        t->completeCpuToGpuData();
+    }
+    void tausch2d_completeCpuToGpuStencil(CTausch2D *tC) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        t->completeCpuToGpuStencil();
+    }
+
+    void tausch2d_completeGpuToCpuData(CTausch2D *tC) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        t->completeGpuToCpuData();
+    }
+    void tausch2d_completeGpuToCpuStencil(CTausch2D *tC) {
+        Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
+        t->completeGpuToCpuStencil();
     }
 
     cl_context tausch2d_getContext(CTausch2D *tC) {

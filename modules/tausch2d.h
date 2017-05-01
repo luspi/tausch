@@ -203,54 +203,124 @@ public:
     void setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY);
 
     /*!
-     * Convenience function that calls the necessary functions performing a halo exchange from the CPU to GPU. It calls startCpuToGpu() and completeGpuToCpu().
+     * Tells %Tausch2D where to find the buffer for the GPU stencil and some of its main important details.
+     *
+     * Note: This is only available if %Tausch2D was compiled with OpenCL support!
+     *
+     * \param dat
+     *  The OpenCL buffer holding the GPU data. This is expected to be one contiguous buffer holding both the values owned by this GPU and the ghost values.
+     * \param stencilNumPoints
+     *  The number of points in the stencil. If the storage makes use of symmetry, this is expected to be the effective number of stored stencil values.
+     * \param stencilDimX
+     *  The x dimension of the stencil buffer. This is typically the same as gpuDimX. If stencilDimX is set to 0, %Tausch2D will copy the value for gpuDimX.
+     * \param stencilDimY
+     *  The y dimension of the stencil buffer. This is typically the same as gpuDimY. If stencilDimY is set to 0, %Tausch2D will copy the value for gpuDimY.
+     */
+    void setGPUStencil(cl::Buffer &stencil, int stencilNumPoints, int stencilDimX = 0, int stencilDimY = 0);
+
+    /*!
+     * Convenience function that calls the necessary functions performing a halo exchange from the CPU to GPU. It calls startCpuToGpuData() and completeGpuToCpuData().
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
-    void performCpuToGpu() { startCpuToGpu(); completeGpuToCpu(); }
+    void performCpuToGpuData() { startCpuToGpuData(); completeGpuToCpuData(); }
+
+    /*!
+     * Convenience function that calls the necessary functions performing a stencil halo exchange from the CPU to GPU. It calls startCpuToGpuStencil() and completeGpuToCpuStencil().
+     *
+     * Note: This is only available if %Tausch2D was compiled with OpenCL support!
+     */
+    void performCpuToGpuStencil() { startCpuToGpuStencil(); completeGpuToCpuStencil(); }
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange across the MPI ranks and from the CPU to GPU. It interweaves MPI communication with write to shared memory for sending data to the GPU. The CPU/GPU methods called are startCpuToGpu() and completeGpuToCpu().
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
-    void performCpuToCpuDataAndCpuToGpuData() {
-                                                startCpuDataEdge(LEFT); startCpuDataEdge(RIGHT); startCpuToGpu();
+    void performCpuToCpuDataAndCpuToGpuData() { postCpuDataReceives();
+                                                startCpuDataEdge(LEFT); startCpuDataEdge(RIGHT); startCpuToGpuData();
                                                 completeCpuDataEdge(LEFT); completeCpuDataEdge(RIGHT); startCpuDataEdge(TOP); startCpuDataEdge(BOTTOM);
-                                                completeGpuToCpu(); completeCpuDataEdge(TOP); completeCpuDataEdge(BOTTOM); }
+                                                completeGpuToCpuData(); completeCpuDataEdge(TOP); completeCpuDataEdge(BOTTOM); }
+
+    /*!
+     * Convenience function that calls the necessary functions performing a stencil halo exchange across the MPI ranks and from the CPU to GPU. It interweaves MPI communication with write to shared memory for sending data to the GPU. The CPU/GPU methods called are startCpuToGpuStencil() and completeGpuToCpuStencil().
+     *
+     * Note: This is only available if %Tausch2D was compiled with OpenCL support!
+     */
+    void performCpuToCpuStencilAndCpuToGpuStencil() { postCpuStencilReceives();
+                                                startCpuStencilEdge(LEFT); startCpuStencilEdge(RIGHT); startCpuToGpuStencil();
+                                                completeCpuStencilEdge(LEFT); completeCpuStencilEdge(RIGHT); startCpuStencilEdge(TOP); startCpuStencilEdge(BOTTOM);
+                                                completeGpuToCpuStencil(); completeCpuStencilEdge(TOP); completeCpuStencilEdge(BOTTOM); }
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange from the GPU to CPU. It calls startGpuToCpu() and completeCpuToGpu().
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
-    void performGpuToCpu() { startGpuToCpu(); completeCpuToGpu(); }
+    void performGpuToCpuData() { startGpuToCpuData(); completeCpuToGpuData(); }
+
+    /*!
+     * Convenience function that calls the necessary functions performing a stencil halo exchange from the GPU to CPU. It calls startGpuToCpuStencil() and completeCpuToGpuStencil().
+     *
+     * Note: This is only available if %Tausch2D was compiled with OpenCL support!
+     */
+    void performGpuToCpuStencil() { startGpuToCpuStencil(); completeCpuToGpuStencil(); }
 
     /*!
      * Start the halo exchange from the CPU to the GPU (called by the CPU thread). This writes the required halo data to shared memory using atomic operations.
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
-    void startCpuToGpu();
+    void startCpuToGpuData();
+
+    /*!
+     * Start the stencil halo exchange from the CPU to the GPU (called by the CPU thread). This writes the required stencil halo data to shared memory using atomic operations.
+     *
+     * Note: This is only available if %Tausch2D was compiled with OpenCL support!
+     */
+    void startCpuToGpuStencil();
+
     /*!
      * Start the halo exchange from the GPU to the CPU (called by te GPU thread). This downloads the required halo data from the GPU and writes it to shared memory using atomic operations.
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
-    void startGpuToCpu();
+    void startGpuToCpuData();
 
     /*!
-     * Completes the halo exchange from the CPU to the GPU (called by the GPU thread). This takes the halo data the GPU wrote to shared memory and loads it into the respective buffer positions. This has to come *after* calling startCpuToGpu().
+     * Start the stencil halo exchange from the GPU to the CPU (called by te GPU thread). This downloads the required stencil halo data from the GPU and writes it to shared memory using atomic operations.
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
-    void completeCpuToGpu();
+    void startGpuToCpuStencil();
+
     /*!
-     * Completes the halo exchange from the GPU to the CPU (called by the CPU thread). This takes the halo data the CPU wrote to shared memory and uploads it to the GPU. This has to come *after* calling startGpuToCpu().
+     * Completes the halo exchange from the CPU to the GPU (called by the GPU thread). This takes the halo data the GPU wrote to shared memory and loads it into the respective buffer positions. This has to come *after* calling startCpuToGpuData().
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      */
-    void completeGpuToCpu();
+    void completeCpuToGpuData();
+
+    /*!
+     * Completes the stencil halo exchange from the CPU to the GPU (called by the GPU thread). This takes the stencil halo data the GPU wrote to shared memory and loads it into the respective buffer positions. This has to come *after* calling startCpuToGpuStencil().
+     *
+     * Note: This is only available if %Tausch2D was compiled with OpenCL support!
+     */
+    void completeCpuToGpuStencil();
+
+    /*!
+     * Completes the halo exchange from the GPU to the CPU (called by the CPU thread). This takes the halo data the CPU wrote to shared memory and uploads it to the GPU. This has to come *after* calling startGpuToCpuData().
+     *
+     * Note: This is only available if %Tausch2D was compiled with OpenCL support!
+     */
+    void completeGpuToCpuData();
+
+    /*!
+     * Completes the stencil halo exchange from the GPU to the CPU (called by the CPU thread). This takes the stencil halo data the CPU wrote to shared memory and uploads it to the GPU. This has to come *after* calling startGpuToCpuStencil().
+     *
+     * Note: This is only available if %Tausch2D was compiled with OpenCL support!
+     */
+    void completeGpuToCpuStencil();
 
     /*!
      * Return the OpenCL context used by %Tausch2D. This can be especially useful when %Tausch2D uses its own OpenCL environment and the user wants to piggyback on that.
@@ -287,7 +357,7 @@ private:
 
     // Pointer to the CPU data
     real_t *cpuData;
-    real_t *stencilData;
+    real_t *cpuStencil;
     int stencilNumPoints;
 
     // The width of the halo
@@ -332,20 +402,23 @@ private:
 
     // The OpenCL buffer holding the data on the GPU
     cl::Buffer gpuData;
-    cl::Buffer gpuStencilData;
+    cl::Buffer gpuStencil;
 
     // Some meta information about the OpenCL region
     int gpuDimX, gpuDimY;
+    int stencilDimX, stencilDimY;
     cl::Buffer cl_gpuDimX, cl_gpuDimY;
+    cl::Buffer cl_stencilDimX, cl_stencilDimY;
     cl::Buffer cl_gpuHaloWidth;
+    cl::Buffer cl_stencilNumPoints;
 
     // Methods to set up the OpenCL environment and compile the required kernels
     void setupOpenCL(bool giveOpenCLDeviceName);
     void compileKernels();
 
     // Pointers to atomic arrays for communicating halo data between CPU and GPU thread via shared memory
-    std::atomic<real_t> *cpuToGpuBuffer;
-    std::atomic<real_t> *gpuToCpuBuffer;
+    std::atomic<real_t> *cpuToGpuDataBuffer;
+    std::atomic<real_t> *gpuToCpuDataBuffer;
     std::atomic<real_t> *cpuToGpuStencilBuffer;
     std::atomic<real_t> *gpuToCpuStencilBuffer;
 
@@ -354,18 +427,19 @@ private:
     cl::Program cl_programs;
 
     // Collecting the halo data to be sent/recvd
-    cl::Buffer cl_gpuToCpuBuffer;
-    cl::Buffer cl_cpuToGpuBuffer;
+    cl::Buffer cl_gpuToCpuDataBuffer;
+    cl::Buffer cl_cpuToGpuDataBuffer;
     cl::Buffer cl_gpuToCpuStencilBuffer;
     cl::Buffer cl_cpuToGpuStencilBuffer;
 
     // Whether the necessary steps were taken before starting a halo exchange
     bool gpuEnabled;
-    bool gpuInfoGiven;
+    bool gpuDataInfoGiven;
+    bool gpuStencilInfoGiven;
 
     // Which halo exchange has been started
-    std::atomic<bool> cpuToGpuStarted;
-    std::atomic<bool> gpuToCpuStarted;
+    std::atomic<bool> cpuToGpuDataStarted;
+    std::atomic<bool> gpuToCpuDataStarted;
     std::atomic<bool> cpuToGpuStencilStarted;
     std::atomic<bool> gpuToCpuStencilStarted;
 
@@ -373,9 +447,9 @@ private:
     int cl_kernelLocalSize;
 
     // Function to synchronize the CPU and GPU thread. Only needed when using asynchronous computing (i.e., when blocking is enabled)
-    void syncCpuAndGpu();
-    std::atomic<int> sync_counter[2];
-    std::atomic<int> sync_lock[2];
+    void syncCpuAndGpu(bool offsetByTwo);
+    std::atomic<int> sync_counter[4];
+    std::atomic<int> sync_lock[4];
 
     // Whether there are two threads running and thus whether there needs to be blocking synchronisation happen
     bool blockingSyncCpuGpu;
