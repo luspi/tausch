@@ -40,6 +40,10 @@ public:
      * These are the edges available for inter-MPI halo exchanges: LEFT, RIGHT, TOP, BOTTOM.
      */
     enum Edge { LEFT, RIGHT, TOP, BOTTOM };
+
+    /*!
+     * These are the two dimensions in the 2D case, used for clarity as to which array entry is which dimension: X, Y.
+     */
     enum Dimensions { X, Y };
 
     /*!
@@ -55,7 +59,7 @@ public:
      * \param comm
      *  The MPI Communictor to be used. %Tausch2D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch2D working with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    Tausch2D(int localDim[2], int mpiNum[2], int cpuHaloWidth[4], MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch2D(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      *
@@ -70,7 +74,7 @@ public:
      * \param comm
      *  The MPI Communictor to be used. %Tausch2D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch2D working with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    Tausch2D(int localDim[2], int mpiNum[2], int cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch2D(int *localDim, int *mpiNum, int cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * Destructor freeing any allocated memory.
@@ -80,7 +84,7 @@ public:
     /*!
      * Tells %Tausch2D where to find the buffer for the CPU data.
      *
-     * \param dat
+     * \param data
      *  The buffer holding the CPU data. This is expected to be one contiguous buffer holding both the values owned by this MPI rank and the ghost values.
      */
     void setCPUData(real_t *data);
@@ -168,7 +172,7 @@ public:
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      *
      * \param gpuHaloWidth
-     *  The width of the CPU/GPU halo.
+     *  Array of size 4 holding the widths of the CPU/GPU halo. The values are expected in the edge order: LEFT -> RIGHT -> TOP -> BOTTOM.
      * \param blockingSyncCpuGpu
      *  Whether to sync the CPU and GPU. This is necessary when running both parts in asynchronous threads, but causes a deadlock when only one thread is used. Default value: true
      * \param clLocalWorkgroupSize
@@ -176,12 +180,26 @@ public:
      * \param giveOpenCLDeviceName
      *  Whether %Tausch2D should print out the OpenCL device name. This can come in handy for debugging. Default value: false
      */
-    void enableOpenCL(int gpuHaloWidth[4], bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
+    void enableOpenCL(int *gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
 
+    /*!
+     * Overloaded function, allowing specification of GPU halo using single integer.
+     *
+     * Note: This is only available if %Tausch2D was compiled with OpenCL support!
+     *
+     * \param gpuHaloWidth
+     *  The width of the CPU/GPU halo, taken as width for all four edges.
+     * \param blockingSyncCpuGpu
+     *  Whether to sync the CPU and GPU. This is necessary when running both parts in asynchronous threads, but causes a deadlock when only one thread is used. Default value: true
+     * \param clLocalWorkgroupSize
+     *  The local workgroup size for each kernel call. Default value: 64
+     * \param giveOpenCLDeviceName
+     *  Whether %Tausch2D should print out the OpenCL device name. This can come in handy for debugging. Default value: false
+     */
     void enableOpenCL(int gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
 
     /*!
-     * Overloaded function. Enabled OpenCL for the current %Tausch2D object, making %Tausch2D use the user-provided OpenCL environment.
+     * Overloaded function, enabling OpenCL for the current %Tausch2D object, making %Tausch2D use the user-provided OpenCL environment.
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      *
@@ -192,14 +210,32 @@ public:
      * \param cl_queue
      *  The OpenCL queue
      * \param gpuHaloWidth
-     *  The width of the CPU/GPU halo.
+     *  Array of size 4 holding the widths of the CPU/GPU halo. The values are expected in the edge order: LEFT -> RIGHT -> TOP -> BOTTOM.
      * \param blockingSyncCpuGpu
      *  Whether to sync the CPU and GPU. This is necessary when running both parts in asynchronous threads, but causes a deadlock when only one thread is used. Default value: true
      * \param clLocalWorkgroupSize
      *  The local workgroup size for each kernel call. Default value: 64
      */
-    void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, int gpuHaloWidth[4], bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64);
+    void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, int *gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64);
 
+    /*!
+     * Overloaded function, allowing specification of GPU halo using single integer.
+     *
+     * Note: This is only available if %Tausch2D was compiled with OpenCL support!
+     *
+     * \param cl_defaultDevice
+     *  The OpenCL device.
+     * \param cl_context
+     *  The OpenCL context
+     * \param cl_queue
+     *  The OpenCL queue
+     * \param gpuHaloWidth
+     *  The width of the CPU/GPU halo, taken as width for all four edges.
+     * \param blockingSyncCpuGpu
+     *  Whether to sync the CPU and GPU. This is necessary when running both parts in asynchronous threads, but causes a deadlock when only one thread is used. Default value: true
+     * \param clLocalWorkgroupSize
+     *  The local workgroup size for each kernel call. Default value: 64
+     */
     void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, int gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64);
 
     /*!
@@ -209,28 +245,24 @@ public:
      *
      * \param dat
      *  The OpenCL buffer holding the GPU data. This is expected to be one contiguous buffer holding both the values owned by this GPU and the ghost values.
-     * \param gpuDimX
-     *  The x dimension of the GPU buffer. This has to be less than localDimX-2*haloWidth.
-     * \param gpuDimY
-     *  The y dimension of the GPU buffer. This has to be less than localDimY-2*haloWidth.
+     * \param gpuDim
+     *  Array of size 2, holding the x (first value) and y (second value) dimensions of the GPU buffer.
      */
-    void setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY);
+    void setGPUData(cl::Buffer &dat, int *gpuDim);
 
     /*!
      * Tells %Tausch2D where to find the buffer for the GPU stencil and some of its main important details.
      *
      * Note: This is only available if %Tausch2D was compiled with OpenCL support!
      *
-     * \param dat
-     *  The OpenCL buffer holding the GPU data. This is expected to be one contiguous buffer holding both the values owned by this GPU and the ghost values.
+     * \param stencil
+     *  The OpenCL buffer holding the GPU stencil data. This is expected to be one contiguous buffer holding both the values owned by this GPU and the ghost values.
      * \param stencilNumPoints
      *  The number of points in the stencil. If the storage makes use of symmetry, this is expected to be the effective number of stored stencil values.
-     * \param stencilDimX
-     *  The x dimension of the stencil buffer. This is typically the same as gpuDimX. If stencilDimX is set to 0, %Tausch2D will copy the value for gpuDimX.
-     * \param stencilDimY
-     *  The y dimension of the stencil buffer. This is typically the same as gpuDimY. If stencilDimY is set to 0, %Tausch2D will copy the value for gpuDimY.
+     * \param stencilDim
+     *  Array of size 2, holding the x (first value) and y (second value) dimensions of the GPU stencil buffer. This is typically the same as gpuDim. If stencilDim is set to {0,0} or nullptr, %Tausch2D will copy the values from gpuDim.
      */
-    void setGPUStencil(cl::Buffer &stencil, int stencilNumPoints, int stencilDimX = 0, int stencilDimY = 0);
+    void setGPUStencil(cl::Buffer &stencil, int stencilNumPoints, int *stencilDim = nullptr);
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange from the CPU to GPU. It calls startCpuToGpuData() and completeGpuToCpuData().
@@ -358,7 +390,7 @@ public:
 #endif
 
 private:
-    void _constructor(int localDim[2], int mpiNum[2], int cpuHaloWidth[4], MPI_Comm comm);
+    void _constructor(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm);
 
     // The current MPI rank and size of TAUSCH_COMM world
     int mpiRank, mpiSize;
@@ -420,10 +452,10 @@ private:
     cl::Buffer gpuStencil;
 
     // Some meta information about the OpenCL region
-    int gpuDimX, gpuDimY;
-    int stencilDimX, stencilDimY;
-    cl::Buffer cl_gpuDimX, cl_gpuDimY;
-    cl::Buffer cl_stencilDimX, cl_stencilDimY;
+    int gpuDim[2];
+    int stencilDim[2];
+    cl::Buffer cl_gpuDim[2];
+    cl::Buffer cl_stencilDim[2];
     cl::Buffer cl_gpuHaloWidth;
     cl::Buffer cl_stencilNumPoints;
 

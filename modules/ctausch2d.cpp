@@ -6,7 +6,7 @@ extern "C" {
 
 #include "ctausch2d.h"
 
-    CTausch2D *tausch2d_new(int localDim[2], int mpiNum[2], int cpuHaloWidth[4], MPI_Comm comm) {
+    CTausch2D *tausch2d_new(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm) {
         Tausch2D *t = new Tausch2D(localDim, mpiNum, cpuHaloWidth, comm);
         return reinterpret_cast<CTausch2D*>(t);
     }
@@ -67,12 +67,12 @@ extern "C" {
     }
 
 #ifdef TAUSCH_OPENCL
-    void tausch2d_enableOpenCL(CTausch2D *tC, int gpuHaloWidth[4], bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+    void tausch2d_enableOpenCL(CTausch2D *tC, int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         t->enableOpenCL(gpuHaloWidth, blockingSyncCpuGpu, clLocalWorkgroupSize, giveOpenCLDeviceName);
     }
 
-    void tausch2d_setOpenCLInfo(CTausch2D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, int gpuHaloWidth[4], bool blockingSyncCpuGpu) {
+    void tausch2d_setOpenCLInfo(CTausch2D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, int *gpuHaloWidth, bool blockingSyncCpuGpu) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         cl::Device *dev = new cl::Device(*clDefaultDevice);
         cl::Context *con = new cl::Context(*clContext);
@@ -80,16 +80,16 @@ extern "C" {
         t->enableOpenCL(*dev, *con, *que, gpuHaloWidth, blockingSyncCpuGpu);
     }
 
-    void tausch2d_setGPUData(CTausch2D *tC, cl_mem dat, int gpuDimX, int gpuDimY) {
+    void tausch2d_setGPUData(CTausch2D *tC, cl_mem dat, int *gpuDim) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         cl::Buffer *buf = new cl::Buffer(dat);
-        t->setGPUData(*buf, gpuDimX, gpuDimY);
+        t->setGPUData(*buf, gpuDim);
     }
 
-    void tausch2d_setGPUStencil(CTausch2D *tC, cl_mem stencil, int stencilNumPoints, int gpuDimX, int gpuDimY) {
+    void tausch2d_setGPUStencil(CTausch2D *tC, cl_mem stencil, int stencilNumPoints, int *stencilDim) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         cl::Buffer *buf = new cl::Buffer(stencil);
-        t->setGPUStencil(*buf, stencilNumPoints, gpuDimX, gpuDimY);
+        t->setGPUStencil(*buf, stencilNumPoints, stencilDim);
     }
 
     void tausch2d_performCpuToCpuDataAndCpuToGpuData(CTausch2D *tC) {

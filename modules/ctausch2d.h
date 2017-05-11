@@ -19,7 +19,7 @@ typedef void* CTausch2D;
 
 enum Edge { TAUSCH_LEFT, TAUSCH_RIGHT, TAUSCH_TOP, TAUSCH_BOTTOM };
 
-CTausch2D* tausch2d_new(int localDim[2], int mpiNum[2], int cpuHaloWidth[4], MPI_Comm comm);
+CTausch2D* tausch2d_new(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm);
 void tausch2d_delete(CTausch2D *tC);
 
 void tausch2d_getMPICommunicator(CTausch2D *tC, MPI_Comm *comm);
@@ -42,9 +42,9 @@ void tausch2d_setCPUData(CTausch2D *tC, real_t *dat);
 void tausch2d_setCPUStencil(CTausch2D *tC, real_t *dat, int stencilNumPoints);
 
 #ifdef TAUSCH_OPENCL
-void tausch2d_enableOpenCL(CTausch2D *tC, int gpuHaloWidth[4], bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
+void tausch2d_enableOpenCL(CTausch2D *tC, int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
 
-void tausch2d_setOpenCLInfo(CTausch2D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, int gpuHaloWidth[4], bool blockingSyncCpuGpu);
+void tausch2d_setOpenCLInfo(CTausch2D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, int *gpuHaloWidth, bool blockingSyncCpuGpu);
 
 void tausch2d_performCpuToCpuDataAndCpuToGpuData(CTausch2D *tC);
 void tausch2d_performCpuToCpuStencilAndCpuToGpuStencil(CTausch2D *tC);
@@ -64,8 +64,8 @@ void tausch2d_completeCpuToGpuStencil(CTausch2D *tC);
 void tausch2d_completeGpuToCpuData(CTausch2D *tC);
 void tausch2d_completeGpuToCpuStencil(CTausch2D *tC);
 
-void tausch2d_setGPUData(CTausch2D *tC, cl_mem dat, int gpuDimX, int gpuDimY);
-void tausch2d_setGPUStencil(CTausch2D *tC, cl_mem stencil, int stencilNumPoints, int gpuDimX, int gpuDimY);
+void tausch2d_setGPUData(CTausch2D *tC, cl_mem dat, int *gpuDim);
+void tausch2d_setGPUStencil(CTausch2D *tC, cl_mem stencil, int stencilNumPoints, int *stencilDim);
 
 cl_context tausch2d_getContext(CTausch2D *tC);
 cl_command_queue tausch2d_getQueue(CTausch2D *tC);

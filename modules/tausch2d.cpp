@@ -1,15 +1,15 @@
 #include "tausch2d.h"
 
-Tausch2D::Tausch2D(int localDim[2], int mpiNum[2], int cpuHaloWidth, MPI_Comm comm) {
+Tausch2D::Tausch2D(int *localDim, int *mpiNum, int cpuHaloWidth, MPI_Comm comm) {
     int useHaloWidth[4] = {cpuHaloWidth, cpuHaloWidth, cpuHaloWidth, cpuHaloWidth};
     _constructor(localDim, mpiNum, useHaloWidth, comm);
 }
 
-Tausch2D::Tausch2D(int localDim[2], int mpiNum[2], int cpuHaloWidth[4], MPI_Comm comm) {
+Tausch2D::Tausch2D(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm) {
     _constructor(localDim, mpiNum, cpuHaloWidth, comm);
 }
 
-void Tausch2D::_constructor(int localDim[2], int mpiNum[2], int cpuHaloWidth[4], MPI_Comm comm) {
+void Tausch2D::_constructor(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm) {
 
     MPI_Comm_dup(comm, &TAUSCH_COMM);
 
@@ -391,7 +391,7 @@ void Tausch2D::completeCpuStencilEdge(Edge edge) {
 
 #ifdef TAUSCH_OPENCL
 
-void Tausch2D::enableOpenCL(int gpuHaloWidth[4], bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+void Tausch2D::enableOpenCL(int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
 
     // gpu disabled by default, only enabled if flag is set
     gpuEnabled = true;
@@ -415,7 +415,7 @@ void Tausch2D::enableOpenCL(int gpuHaloWidth, bool blockingSyncCpuGpu, int clLoc
 
 // If Tausch didn't set up OpenCL, the user needs to pass some OpenCL variables
 void Tausch2D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue,
-                            int gpuHaloWidth[4], bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
+                            int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
 
     this->cl_defaultDevice = cl_defaultDevice;
     this->cl_context = cl_context;
@@ -440,7 +440,7 @@ void Tausch2D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_contex
 }
 
 // get a pointer to the GPU buffer and its dimensions
-void Tausch2D::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
+void Tausch2D::setGPUData(cl::Buffer &dat, int *gpuDim) {
 
     // check whether OpenCL has been set up
     if(!gpuEnabled) {
@@ -452,17 +452,17 @@ void Tausch2D::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
 
     // store parameters
     gpuData = dat;
-    this->gpuDimX = gpuDimX;
-    this->gpuDimY = gpuDimY;
+    this->gpuDim[X] = gpuDim[X];
+    this->gpuDim[Y] = gpuDim[Y];
 
     // store buffer to store the GPU and the CPU part of the halo.
     // We do not need two buffers each, as each thread has direct access to both arrays, no MPI communication necessary
-    int cTg = gpuHaloWidth[TOP]*(gpuDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-              gpuHaloWidth[BOTTOM]*(gpuDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-              gpuHaloWidth[LEFT]*gpuDimY +
-              gpuHaloWidth[RIGHT]*gpuDimY;
-    int gTc = gpuHaloWidth[TOP]*gpuDimX + gpuHaloWidth[BOTTOM]*gpuDimX +
-              gpuHaloWidth[LEFT]*gpuDimY + gpuHaloWidth[RIGHT]*gpuDimY;
+    int cTg = gpuHaloWidth[TOP]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+              gpuHaloWidth[BOTTOM]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+              gpuHaloWidth[LEFT]*gpuDim[Y] +
+              gpuHaloWidth[RIGHT]*gpuDim[Y];
+    int gTc = gpuHaloWidth[TOP]*gpuDim[X] + gpuHaloWidth[BOTTOM]*gpuDim[X] +
+              gpuHaloWidth[LEFT]*gpuDim[Y] + gpuHaloWidth[RIGHT]*gpuDim[Y];
     cpuToGpuDataBuffer = new std::atomic<real_t>[cTg]{};
     gpuToCpuDataBuffer = new std::atomic<real_t>[gTc]{};
 
@@ -472,8 +472,8 @@ void Tausch2D::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
         cl_cpuToGpuDataBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, cTg*sizeof(real_t));
         cl_queue.enqueueFillBuffer(cl_gpuToCpuDataBuffer, 0, 0, gTc*sizeof(real_t));
         cl_queue.enqueueFillBuffer(cl_cpuToGpuDataBuffer, 0, 0, cTg*sizeof(real_t));
-        cl_gpuDimX = cl::Buffer(cl_context, &gpuDimX, (&gpuDimX)+1, true);
-        cl_gpuDimY = cl::Buffer(cl_context, &gpuDimY, (&gpuDimY)+1, true);
+        cl_gpuDim[X] = cl::Buffer(cl_context, &gpuDim[X], (&gpuDim[X])+1, true);
+        cl_gpuDim[Y] = cl::Buffer(cl_context, &gpuDim[Y], (&gpuDim[Y])+1, true);
     } catch(cl::Error error) {
         std::cout << "Tausch2D :: [setup send/recv buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
@@ -481,7 +481,7 @@ void Tausch2D::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY) {
 
 }
 
-void Tausch2D::setGPUStencil(cl::Buffer &stencil, int stencilNumPoints, int stencilDimX, int stencilDimY) {
+void Tausch2D::setGPUStencil(cl::Buffer &stencil, int stencilNumPoints, int *stencilDim) {
 
     // check whether OpenCL has been set up
     if(!gpuEnabled) {
@@ -494,19 +494,17 @@ void Tausch2D::setGPUStencil(cl::Buffer &stencil, int stencilNumPoints, int sten
     // store parameters
     gpuStencil = stencil;
     this->stencilNumPoints = stencilNumPoints;
-    this->stencilDimX = (stencilDimX == 0 ? gpuDimX : stencilDimX);
-    this->stencilDimY = (stencilDimY == 0 ? gpuDimY : stencilDimY);
-    stencilDimX = this->stencilDimX;
-    stencilDimY = this->stencilDimY;
+    this->stencilDim[X] = ((stencilDim==nullptr || stencilDim[X] == 0) ? gpuDim[X] : stencilDim[X]);
+    this->stencilDim[Y] = ((stencilDim==nullptr || stencilDim[Y] == 0) ? gpuDim[Y] : stencilDim[Y]);
 
     // store buffer to store the GPU and the CPU part of the halo.
     // We do not need two buffers each, as each thread has direct access to both arrays, no MPI communication necessary
-    int cTg = gpuHaloWidth[TOP]*(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-              gpuHaloWidth[BOTTOM]*(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-              gpuHaloWidth[LEFT]*stencilDimY +
-              gpuHaloWidth[RIGHT]*stencilDimY;
-    int gTc = gpuHaloWidth[TOP]*stencilDimX + gpuHaloWidth[BOTTOM]*stencilDimX +
-              gpuHaloWidth[LEFT]*stencilDimY + gpuHaloWidth[RIGHT]*stencilDimY;
+    int cTg = gpuHaloWidth[TOP]*(this->stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+              gpuHaloWidth[BOTTOM]*(this->stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+              gpuHaloWidth[LEFT]*this->stencilDim[Y] +
+              gpuHaloWidth[RIGHT]*this->stencilDim[Y];
+    int gTc = gpuHaloWidth[TOP]*this->stencilDim[X] + gpuHaloWidth[BOTTOM]*this->stencilDim[X] +
+              gpuHaloWidth[LEFT]*this->stencilDim[Y] + gpuHaloWidth[RIGHT]*this->stencilDim[Y];
     cpuToGpuStencilBuffer = new std::atomic<real_t>[stencilNumPoints*cTg]{};
     gpuToCpuStencilBuffer = new std::atomic<real_t>[stencilNumPoints*gTc]{};
 
@@ -516,8 +514,8 @@ void Tausch2D::setGPUStencil(cl::Buffer &stencil, int stencilNumPoints, int sten
         cl_cpuToGpuStencilBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, stencilNumPoints*cTg*sizeof(real_t));
         cl_queue.enqueueFillBuffer(cl_gpuToCpuStencilBuffer, 0, 0, stencilNumPoints*gTc*sizeof(real_t));
         cl_queue.enqueueFillBuffer(cl_cpuToGpuStencilBuffer, 0, 0, stencilNumPoints*cTg*sizeof(real_t));
-        cl_stencilDimX = cl::Buffer(cl_context, &stencilDimX, (&stencilDimX)+1, true);
-        cl_stencilDimY = cl::Buffer(cl_context, &stencilDimY, (&stencilDimY)+1, true);
+        cl_stencilDim[X] = cl::Buffer(cl_context, &this->stencilDim[X], (&this->stencilDim[X])+1, true);
+        cl_stencilDim[Y] = cl::Buffer(cl_context, &this->stencilDim[Y], (&this->stencilDim[Y])+1, true);
         cl_stencilNumPoints = cl::Buffer(cl_context, &stencilNumPoints, (&stencilNumPoints)+1, true);
     } catch(cl::Error error) {
         std::cout << "Tausch2D :: [setup send/recv buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -538,29 +536,29 @@ void Tausch2D::startCpuToGpuData() {
     cpuToGpuDataStarted.store(true);
 
     // left
-    for(int i = 0; i < gpuHaloWidth[LEFT]*gpuDimY; ++i) {
-        int index = ((localDim[Y]-gpuDimY)/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-gpuDimX)/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT]-gpuHaloWidth[LEFT];
+    for(int i = 0; i < gpuHaloWidth[LEFT]*gpuDim[Y]; ++i) {
+        int index = ((localDim[Y]-gpuDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    (localDim[X]-gpuDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT]-gpuHaloWidth[LEFT];
         cpuToGpuDataBuffer[i].store(cpuData[index]);
     }
     // right
-    for(int i = 0; i < gpuHaloWidth[RIGHT]*gpuDimY; ++i) {
-        int index = ((localDim[Y]-gpuDimY)/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-gpuDimX)/2 + cpuHaloWidth[LEFT] + gpuDimX + i%gpuHaloWidth[RIGHT];
-        cpuToGpuDataBuffer[gpuHaloWidth[LEFT]*gpuDimY + i].store(cpuData[index]);
+    for(int i = 0; i < gpuHaloWidth[RIGHT]*gpuDim[Y]; ++i) {
+        int index = ((localDim[Y]-gpuDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    (localDim[X]-gpuDim[X])/2 + cpuHaloWidth[LEFT] + gpuDim[X] + i%gpuHaloWidth[RIGHT];
+        cpuToGpuDataBuffer[gpuHaloWidth[LEFT]*gpuDim[Y] + i].store(cpuData[index]);
     }
     // top
-    for(int i = 0; i < gpuHaloWidth[TOP]*(gpuDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
-        int index = ((localDim[Y]-gpuDimY)/2+gpuDimY+cpuHaloWidth[BOTTOM] + i/(gpuDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]))*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + ((localDim[X]-gpuDimX)/2-gpuHaloWidth[LEFT]) +i%(gpuDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
-        cpuToGpuDataBuffer[gpuHaloWidth[LEFT]*gpuDimY + gpuHaloWidth[RIGHT]*gpuDimY + i].store(cpuData[index]);
+    for(int i = 0; i < gpuHaloWidth[TOP]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
+        int index = ((localDim[Y]-gpuDim[Y])/2+gpuDim[Y]+cpuHaloWidth[BOTTOM] + i/(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]))*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    cpuHaloWidth[LEFT] + ((localDim[X]-gpuDim[X])/2-gpuHaloWidth[LEFT]) +i%(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
+        cpuToGpuDataBuffer[gpuHaloWidth[LEFT]*gpuDim[Y] + gpuHaloWidth[RIGHT]*gpuDim[Y] + i].store(cpuData[index]);
     }
     // bottom
-    for(int i = 0; i < gpuHaloWidth[BOTTOM]*(gpuDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
-        int index = (i/(gpuDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-                     cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDimY)/2 - gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + (localDim[X]-gpuDimX)/2 - gpuHaloWidth[LEFT] + i%(gpuDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
-        cpuToGpuDataBuffer[gpuHaloWidth[LEFT]*gpuDimY + gpuHaloWidth[RIGHT]*gpuDimY+gpuHaloWidth[TOP]*(gpuDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) + i].store(cpuData[index]);
+    for(int i = 0; i < gpuHaloWidth[BOTTOM]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
+        int index = (i/(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+                     cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDim[Y])/2 - gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    cpuHaloWidth[LEFT] + (localDim[X]-gpuDim[X])/2 - gpuHaloWidth[LEFT] + i%(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
+        cpuToGpuDataBuffer[gpuHaloWidth[LEFT]*gpuDim[Y] + gpuHaloWidth[RIGHT]*gpuDim[Y]+gpuHaloWidth[TOP]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) + i].store(cpuData[index]);
     }
 
 }
@@ -577,36 +575,36 @@ void Tausch2D::startCpuToGpuStencil() {
     cpuToGpuStencilStarted.store(true);
 
     // left
-    for(int i = 0; i < gpuHaloWidth[LEFT]*stencilDimY; ++i) {
-        int index = ((localDim[Y]-stencilDimY)/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-stencilDimX)/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT]-gpuHaloWidth[LEFT];
+    for(int i = 0; i < gpuHaloWidth[LEFT]*stencilDim[Y]; ++i) {
+        int index = ((localDim[Y]-stencilDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    (localDim[X]-stencilDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT]-gpuHaloWidth[LEFT];
         for(int j = 0; j < stencilNumPoints; ++j)
             cpuToGpuStencilBuffer[stencilNumPoints*i + j].store(cpuStencil[stencilNumPoints*index + j]);
     }
     // right
-    for(int i = 0; i < gpuHaloWidth[RIGHT]*stencilDimY; ++i) {
-        int index = ((localDim[Y]-stencilDimY)/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-stencilDimX)/2 + cpuHaloWidth[LEFT] + stencilDimX + i%gpuHaloWidth[RIGHT];
+    for(int i = 0; i < gpuHaloWidth[RIGHT]*stencilDim[Y]; ++i) {
+        int index = ((localDim[Y]-stencilDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    (localDim[X]-stencilDim[X])/2 + cpuHaloWidth[LEFT] + stencilDim[X] + i%gpuHaloWidth[RIGHT];
         for(int j = 0; j < stencilNumPoints; ++j)
-            cpuToGpuStencilBuffer[stencilNumPoints*(gpuHaloWidth[LEFT]*stencilDimY + i) + j].store(cpuStencil[stencilNumPoints*index + j]);
+            cpuToGpuStencilBuffer[stencilNumPoints*(gpuHaloWidth[LEFT]*stencilDim[Y] + i) + j].store(cpuStencil[stencilNumPoints*index + j]);
     }
     // top
-    for(int i = 0; i < gpuHaloWidth[TOP]*(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
-        int index = ((localDim[Y]-stencilDimY)/2+stencilDimY+cpuHaloWidth[BOTTOM] +
-                     i/(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]))*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + ((localDim[X]-stencilDimX)/2-gpuHaloWidth[LEFT]) +
-                    i%(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
+    for(int i = 0; i < gpuHaloWidth[TOP]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
+        int index = ((localDim[Y]-stencilDim[Y])/2+stencilDim[Y]+cpuHaloWidth[BOTTOM] +
+                     i/(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]))*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    cpuHaloWidth[LEFT] + ((localDim[X]-stencilDim[X])/2-gpuHaloWidth[LEFT]) +
+                    i%(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
         for(int j = 0; j < stencilNumPoints; ++j)
-            cpuToGpuStencilBuffer[stencilNumPoints*(gpuHaloWidth[LEFT]*stencilDimY + gpuHaloWidth[RIGHT]*stencilDimY + i) + j].store(cpuStencil[stencilNumPoints*index + j]);
+            cpuToGpuStencilBuffer[stencilNumPoints*(gpuHaloWidth[LEFT]*stencilDim[Y] + gpuHaloWidth[RIGHT]*stencilDim[Y] + i) + j].store(cpuStencil[stencilNumPoints*index + j]);
     }
     // bottom
-    for(int i = 0; i < gpuHaloWidth[BOTTOM]*(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
-        int index = (i/(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) + cpuHaloWidth[BOTTOM] +
-                     (localDim[Y]-stencilDimY)/2 - gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + (localDim[X]-stencilDimX)/2 - gpuHaloWidth[LEFT] +
-                    i%(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
+    for(int i = 0; i < gpuHaloWidth[BOTTOM]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
+        int index = (i/(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) + cpuHaloWidth[BOTTOM] +
+                     (localDim[Y]-stencilDim[Y])/2 - gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    cpuHaloWidth[LEFT] + (localDim[X]-stencilDim[X])/2 - gpuHaloWidth[LEFT] +
+                    i%(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
         for(int j = 0; j < stencilNumPoints; ++j)
-            cpuToGpuStencilBuffer[stencilNumPoints*(gpuHaloWidth[LEFT]*stencilDimY + gpuHaloWidth[RIGHT]*stencilDimY+gpuHaloWidth[TOP]*(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) + i) + j].store(cpuStencil[stencilNumPoints*index + j]);
+            cpuToGpuStencilBuffer[stencilNumPoints*(gpuHaloWidth[LEFT]*stencilDim[Y] + gpuHaloWidth[RIGHT]*stencilDim[Y]+gpuHaloWidth[TOP]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) + i) + j].store(cpuStencil[stencilNumPoints*index + j]);
     }
 
 }
@@ -631,13 +629,13 @@ void Tausch2D::startGpuToCpuData() {
 
         auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloData");
 
-        int gTc = gpuHaloWidth[TOP]*gpuDimX+gpuHaloWidth[BOTTOM]*gpuDimX+
-                  gpuHaloWidth[LEFT]*(gpuDimY-(gpuHaloWidth[TOP]+gpuHaloWidth[BOTTOM]))+gpuHaloWidth[RIGHT]*(gpuDimY-(gpuHaloWidth[TOP]+gpuHaloWidth[BOTTOM]));
+        int gTc = gpuHaloWidth[TOP]*gpuDim[X]+gpuHaloWidth[BOTTOM]*gpuDim[X]+
+                  gpuHaloWidth[LEFT]*(gpuDim[Y]-(gpuHaloWidth[TOP]+gpuHaloWidth[BOTTOM]))+gpuHaloWidth[RIGHT]*(gpuDim[Y]-(gpuHaloWidth[TOP]+gpuHaloWidth[BOTTOM]));
 
         int globalSize = (gTc/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                           cl_gpuDimX, cl_gpuDimY, cl_gpuHaloWidth, gpuData, cl_gpuToCpuDataBuffer);
+                           cl_gpuDim[X], cl_gpuDim[Y], cl_gpuHaloWidth, gpuData, cl_gpuToCpuDataBuffer);
 
         double *dat = new double[gTc];
         cl::copy(cl_queue, cl_gpuToCpuDataBuffer, &dat[0], (&dat[gTc-1])+1);
@@ -673,13 +671,13 @@ void Tausch2D::startGpuToCpuStencil() {
 
         auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloStencil");
 
-        int gTc = gpuHaloWidth[TOP]*stencilDimX+gpuHaloWidth[BOTTOM]*stencilDimX+
-                  gpuHaloWidth[LEFT]*(stencilDimY-(gpuHaloWidth[TOP]+gpuHaloWidth[BOTTOM]))+gpuHaloWidth[RIGHT]*(stencilDimY-(gpuHaloWidth[TOP]+gpuHaloWidth[BOTTOM]));
+        int gTc = gpuHaloWidth[TOP]*stencilDim[X]+gpuHaloWidth[BOTTOM]*stencilDim[X]+
+                  gpuHaloWidth[LEFT]*(stencilDim[Y]-(gpuHaloWidth[TOP]+gpuHaloWidth[BOTTOM]))+gpuHaloWidth[RIGHT]*(stencilDim[Y]-(gpuHaloWidth[TOP]+gpuHaloWidth[BOTTOM]));
 
         int globalSize = ((stencilNumPoints*gTc)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                           cl_stencilDimX, cl_stencilDimY, cl_gpuHaloWidth, gpuStencil, cl_stencilNumPoints, cl_gpuToCpuStencilBuffer);
+                           cl_stencilDim[X], cl_stencilDim[Y], cl_gpuHaloWidth, gpuStencil, cl_stencilNumPoints, cl_gpuToCpuStencilBuffer);
 
         double *dat = new double[stencilNumPoints*gTc];
         cl::copy(cl_queue, cl_gpuToCpuStencilBuffer, &dat[0], (&dat[stencilNumPoints*gTc-1])+1);
@@ -708,30 +706,30 @@ void Tausch2D::completeGpuToCpuData() {
     }
 
     // left
-    for(int i = 0; i < gpuHaloWidth[LEFT]*(gpuDimY-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
-        int index = ((localDim[Y]-gpuDimY)/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM]+gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-gpuDimX)/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT];
+    for(int i = 0; i < gpuHaloWidth[LEFT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
+        int index = ((localDim[Y]-gpuDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM]+gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    (localDim[X]-gpuDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT];
         cpuData[index] = gpuToCpuDataBuffer[i].load();
     }
-    int offset = gpuHaloWidth[LEFT]*(gpuDimY-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
+    int offset = gpuHaloWidth[LEFT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
     // right
-    for(int i = 0; i < gpuHaloWidth[RIGHT]*(gpuDimY-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
-        int index = ((localDim[Y]-gpuDimY)/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT] + gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-gpuDimX)/2 + cpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT] + gpuDimX + i%gpuHaloWidth[RIGHT];
+    for(int i = 0; i < gpuHaloWidth[RIGHT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
+        int index = ((localDim[Y]-gpuDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT] + gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    (localDim[X]-gpuDim[X])/2 + cpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT] + gpuDim[X] + i%gpuHaloWidth[RIGHT];
         cpuData[index] = gpuToCpuDataBuffer[offset + i].load();
     }
-    offset += gpuHaloWidth[RIGHT]*(gpuDimY-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
+    offset += gpuHaloWidth[RIGHT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
     // top
-    for(int i = 0; i < gpuHaloWidth[TOP]*gpuDimX; ++ i) {
-        int index = ((localDim[Y]-gpuDimY)/2+gpuDimY+cpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP] + i/gpuDimX)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + (localDim[X]-gpuDimX)/2 +i%gpuDimX;
+    for(int i = 0; i < gpuHaloWidth[TOP]*gpuDim[X]; ++ i) {
+        int index = ((localDim[Y]-gpuDim[Y])/2+gpuDim[Y]+cpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP] + i/gpuDim[X])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    cpuHaloWidth[LEFT] + (localDim[X]-gpuDim[X])/2 +i%gpuDim[X];
         cpuData[index] = gpuToCpuDataBuffer[offset + i].load();
     }
-    offset += gpuHaloWidth[TOP]*gpuDimX;
+    offset += gpuHaloWidth[TOP]*gpuDim[X];
     // bottom
-    for(int i = 0; i < gpuHaloWidth[BOTTOM]*gpuDimX; ++ i) {
-        int index = (i/gpuDimX + cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDimY)/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + (localDim[X]-gpuDimX)/2 + i%gpuDimX;
+    for(int i = 0; i < gpuHaloWidth[BOTTOM]*gpuDim[X]; ++ i) {
+        int index = (i/gpuDim[X] + cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    cpuHaloWidth[LEFT] + (localDim[X]-gpuDim[X])/2 + i%gpuDim[X];
         cpuData[index] = gpuToCpuDataBuffer[offset + i].load();
     }
 
@@ -750,33 +748,33 @@ void Tausch2D::completeGpuToCpuStencil() {
     }
 
     // left
-    for(int i = 0; i < gpuHaloWidth[LEFT]*(stencilDimY-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
-        int index = ((localDim[Y]-stencilDimY)/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM]+gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-stencilDimX)/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT];
+    for(int i = 0; i < gpuHaloWidth[LEFT]*(stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
+        int index = ((localDim[Y]-stencilDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM]+gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    (localDim[X]-stencilDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT];
         for(int j = 0; j < stencilNumPoints; ++j)
             cpuStencil[stencilNumPoints*index + j] = gpuToCpuStencilBuffer[stencilNumPoints*i + j].load();
     }
-    int offset = gpuHaloWidth[LEFT]*(stencilDimY-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
+    int offset = gpuHaloWidth[LEFT]*(stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
     // right
-    for(int i = 0; i < gpuHaloWidth[RIGHT]*(stencilDimY-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
-        int index = ((localDim[Y]-stencilDimY)/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT] + gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-stencilDimX)/2 + cpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT] + stencilDimX + i%gpuHaloWidth[RIGHT];
+    for(int i = 0; i < gpuHaloWidth[RIGHT]*(stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
+        int index = ((localDim[Y]-stencilDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT] + gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    (localDim[X]-stencilDim[X])/2 + cpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT] + stencilDim[X] + i%gpuHaloWidth[RIGHT];
         for(int j = 0; j < stencilNumPoints; ++j)
             cpuStencil[stencilNumPoints*index + j] = gpuToCpuStencilBuffer[stencilNumPoints*(offset+i) + j].load();
     }
-    offset += gpuHaloWidth[RIGHT]*(stencilDimY-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
+    offset += gpuHaloWidth[RIGHT]*(stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
     // top
-    for(int i = 0; i < gpuHaloWidth[TOP]*stencilDimX; ++ i) {
-        int index = ((localDim[Y]-stencilDimY)/2+stencilDimY+cpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP] + i/stencilDimX)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + (localDim[X]-stencilDimX)/2 +i%stencilDimX;
+    for(int i = 0; i < gpuHaloWidth[TOP]*stencilDim[X]; ++ i) {
+        int index = ((localDim[Y]-stencilDim[Y])/2+stencilDim[Y]+cpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP] + i/stencilDim[X])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    cpuHaloWidth[LEFT] + (localDim[X]-stencilDim[X])/2 +i%stencilDim[X];
         for(int j = 0; j < stencilNumPoints; ++j)
             cpuStencil[stencilNumPoints*index + j] = gpuToCpuStencilBuffer[stencilNumPoints*(offset + i) + j].load();
     }
-    offset += gpuHaloWidth[TOP]*stencilDimX;
+    offset += gpuHaloWidth[TOP]*stencilDim[X];
     // bottom
-    for(int i = 0; i < gpuHaloWidth[BOTTOM]*stencilDimX; ++ i) {
-        int index = (i/stencilDimX + cpuHaloWidth[BOTTOM] + (localDim[Y]-stencilDimY)/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + (localDim[X]-stencilDimX)/2 + i%stencilDimX;
+    for(int i = 0; i < gpuHaloWidth[BOTTOM]*stencilDim[X]; ++ i) {
+        int index = (i/stencilDim[X] + cpuHaloWidth[BOTTOM] + (localDim[Y]-stencilDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                    cpuHaloWidth[LEFT] + (localDim[X]-stencilDim[X])/2 + i%stencilDim[X];
         for(int j = 0; j < stencilNumPoints; ++j)
             cpuStencil[stencilNumPoints*index + j] = gpuToCpuStencilBuffer[stencilNumPoints*(offset + i) + j].load();
     }
@@ -797,9 +795,9 @@ void Tausch2D::completeCpuToGpuData() {
 
     try {
 
-        int cTg = gpuHaloWidth[TOP]*(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-                  gpuHaloWidth[BOTTOM]*(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-                  gpuHaloWidth[LEFT]*stencilDimY + gpuHaloWidth[RIGHT]*stencilDimY;
+        int cTg = gpuHaloWidth[TOP]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+                  gpuHaloWidth[BOTTOM]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+                  gpuHaloWidth[LEFT]*stencilDim[Y] + gpuHaloWidth[RIGHT]*stencilDim[Y];
 
         double *dat = new double[cTg];
         for(int i = 0; i < cTg; ++i)
@@ -814,7 +812,7 @@ void Tausch2D::completeCpuToGpuData() {
         int globalSize = (cTg/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_distributeHaloData(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                                  cl_stencilDimX, cl_stencilDimY, cl_gpuHaloWidth, gpuData, cl_cpuToGpuDataBuffer);
+                                  cl_stencilDim[X], cl_stencilDim[Y], cl_gpuHaloWidth, gpuData, cl_cpuToGpuDataBuffer);
 
     } catch(cl::Error error) {
         std::cout << "Tausch2D :: [dist halo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -837,9 +835,9 @@ void Tausch2D::completeCpuToGpuStencil() {
 
     try {
 
-        int cTg = gpuHaloWidth[TOP]*(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-                  gpuHaloWidth[BOTTOM]*(stencilDimX+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-                  gpuHaloWidth[LEFT]*stencilDimY + gpuHaloWidth[RIGHT]*stencilDimY;
+        int cTg = gpuHaloWidth[TOP]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+                  gpuHaloWidth[BOTTOM]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+                  gpuHaloWidth[LEFT]*stencilDim[Y] + gpuHaloWidth[RIGHT]*stencilDim[Y];
 
         double *dat = new double[stencilNumPoints*cTg];
         for(int i = 0; i < stencilNumPoints*cTg; ++i)
@@ -854,7 +852,7 @@ void Tausch2D::completeCpuToGpuStencil() {
         int globalSize = ((stencilNumPoints*cTg)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_distributeHaloData(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                                  cl_stencilDimX, cl_stencilDimY, cl_gpuHaloWidth, gpuStencil, cl_stencilNumPoints, cl_cpuToGpuStencilBuffer);
+                                  cl_stencilDim[X], cl_stencilDim[Y], cl_gpuHaloWidth, gpuStencil, cl_stencilNumPoints, cl_cpuToGpuStencilBuffer);
 
     } catch(cl::Error error) {
         std::cout << "Tausch2D :: [dist halo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
