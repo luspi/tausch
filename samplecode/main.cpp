@@ -16,11 +16,10 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-    int localDimX = 10, localDimY = 10;
-    int gpuDimX = 5, gpuDimY = 5;
+    int localDim[2] = {10, 10};
+    int gpuDim[2] = {5, 5};
     double portionGPU = 0;
-    int mpiNumX = std::sqrt(mpiSize);
-    int mpiNumY = mpiNumX;
+    int mpiNum[2] = {(int)std::sqrt(mpiSize), (int)std::sqrt(mpiSize)};
     int loops = 1;
     bool cpuonly = false;
     int workgroupsize = 64;
@@ -33,25 +32,25 @@ int main(int argc, char** argv) {
         for(int i = 1; i < argc; ++i) {
 
             if(argv[i] == std::string("-x") && i < argc-1)
-                localDimX = atoi(argv[++i]);
+                localDim[0] = atoi(argv[++i]);
             else if(argv[i] == std::string("-y") && i < argc-1)
-                localDimY = atoi(argv[++i]);
+                localDim[1] = atoi(argv[++i]);
             else if(argv[i] == std::string("-gx") && i < argc-1)
-                gpuDimX = atoi(argv[++i]);
+                gpuDim[0] = atoi(argv[++i]);
             else if(argv[i] == std::string("-gy") && i < argc-1)
-                gpuDimY = atoi(argv[++i]);
+                gpuDim[1] = atoi(argv[++i]);
             else if(argv[i] == std::string("-gpu") && i < argc-1)
                 portionGPU = atof(argv[++i]);
             else if(argv[i] == std::string("-xy") && i < argc-1) {
-                localDimX = atoi(argv[++i]);
-                localDimY = localDimX;
+                localDim[0] = atoi(argv[++i]);
+                localDim[1] = localDim[0];
             } else if(argv[i] == std::string("-gxy") && i < argc-1) {
-                gpuDimX = atoi(argv[++i]);
-                gpuDimY = gpuDimX;
+                gpuDim[0] = atoi(argv[++i]);
+                gpuDim[1] = gpuDim[0];
             } else if(argv[i] == std::string("-mpix") && i < argc-1)
-                mpiNumX = atoi(argv[++i]);
+                mpiNum[0] = atoi(argv[++i]);
             else if(argv[i] == std::string("-mpiy") && i < argc-1)
-                mpiNumY = atoi(argv[++i]);
+                mpiNum[1] = atoi(argv[++i]);
             else if(argv[i] == std::string("-num") && i < argc-1)
                 loops = atoi(argv[++i]);
             else if(argv[i] == std::string("-cpu"))
@@ -115,16 +114,16 @@ int main(int argc, char** argv) {
     }
 
     if(portionGPU != 0) {
-        gpuDimX = std::sqrt(portionGPU)*localDimX;
-        gpuDimY = std::sqrt(portionGPU)*localDimY;
+        gpuDim[0] = std::sqrt(portionGPU)*localDim[0];
+        gpuDim[1] = std::sqrt(portionGPU)*localDim[1];
     }
 
     if(mpiRank == 0) {
 
         std::cout << std::endl
-                  << "localDim      = " << localDimX << "/" << localDimY << std::endl
-                  << "gpuDim        = " << gpuDimX << "/" << gpuDimY << std::endl
-                  << "mpiNum        = " << mpiNumX << "/" << mpiNumY << std::endl
+                  << "localDim      = " << localDim[0] << "/" << localDim[1] << std::endl
+                  << "gpuDim        = " << gpuDim[0] << "/" << gpuDim[1] << std::endl
+                  << "mpiNum        = " << mpiNum[0] << "/" << mpiNum[1] << std::endl
                   << "loops         = " << loops << std::endl
                   << "version       = " << (cpuonly ? "CPU-only" : "CPU/GPU") << std::endl
                   << "workgroupsize = " << workgroupsize << std::endl
@@ -133,7 +132,7 @@ int main(int argc, char** argv) {
                   << std::endl;
 
     }
-    Sample sample(localDimX, localDimY, gpuDimX, gpuDimY, loops, cpuHaloWidth, gpuHaloWidth, mpiNumX, mpiNumY, cpuonly, workgroupsize, giveOpenClDeviceName);
+    Sample sample(localDim, gpuDim, loops, cpuHaloWidth, gpuHaloWidth, mpiNum, cpuonly, workgroupsize, giveOpenClDeviceName);
 
     if(mpiRank == printMpiRank) {
         if(!cpuonly) {

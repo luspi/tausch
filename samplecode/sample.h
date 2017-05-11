@@ -14,7 +14,7 @@ typedef double real_t;
 class Sample {
 
 public:
-    explicit Sample(int localDimX, int localDimY, int gpuDimX, int gpuDimY, int loops, int cpuHaloWidth[4], int gpuHaloWidth[4], int mpiNumX = 0, int mpiNumY = 0, bool cpuonly = false, int clWorkGroupSize = 64, bool giveOpenCLDeviceName = false);
+    explicit Sample(int localDim[2], int gpuDim[2], int loops, int cpuHaloWidth[4], int gpuHaloWidth[4], int mpiNum[2], bool cpuonly, int clWorkGroupSize, bool giveOpenCLDeviceName);
     ~Sample();
 
     void printCPU();
@@ -25,7 +25,7 @@ public:
     void launchCPU();
     void launchGPU();
 private:
-    int dimX, dimY, gpuDimX, gpuDimY;
+    int dimX, dimY, gpuDim[2];
     int mpiRank, mpiSize;
 
     real_t *datCPU;
