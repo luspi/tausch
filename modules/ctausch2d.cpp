@@ -6,8 +6,8 @@ extern "C" {
 
 #include "ctausch2d.h"
 
-    CTausch2D *tausch2d_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth[4], MPI_Comm comm) {
-        Tausch2D *t = new Tausch2D(localDimX, localDimY, mpiNumX, mpiNumY, cpuHaloWidth, comm);
+    CTausch2D *tausch2d_new(int localDim[2], int mpiNum[2], int cpuHaloWidth[4], MPI_Comm comm) {
+        Tausch2D *t = new Tausch2D(localDim, mpiNum, cpuHaloWidth, comm);
         return reinterpret_cast<CTausch2D*>(t);
     }
 

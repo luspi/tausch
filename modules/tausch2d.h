@@ -40,44 +40,37 @@ public:
      * These are the edges available for inter-MPI halo exchanges: LEFT, RIGHT, TOP, BOTTOM.
      */
     enum Edge { LEFT, RIGHT, TOP, BOTTOM };
+    enum Dimensions { X, Y };
 
     /*!
      *
      * The default class constructor, expecting some basic yet important details about the data.
      *
-     * \param localDimX
-     *  The x dimension of the local partition (not the global x dimension).
-     * \param localDimY
-     *  The y dimension of the local partition (not the global y dimension).
-     * \param mpiNumX
-     *  The number of MPI ranks lined up in the x direction. mpiNumX*mpiNumY has to be equal to the total number of MPI ranks.
-     * \param mpiNumY
-     *  The number of MPI ranks lined up in the y direction. mpiNumX*mpiNumY has to be equal to the total number of MPI ranks.
+     * \param localDim
+     *  Array of size 2 holding the dimensions of the local partition (not the global dimensions), with the x dimension being the first value and the y dimension being the second one.
+     * \param mpiNum
+     *  Array of size 2 holding the number of MPI ranks lined up in the x (first value) and y (second value) direction. mpiNumX*mpiNumY has to be equal to the total number of MPI ranks.
      * \param cpuHaloWidth
-     *  An array of size 4 containing the widths of the CPU-to-CPU halos, i.e., the inter-MPI halo. The order in which the halo widths are expected to be stored is: LEFT -> RIGHT -> TOP -> BOTTOM
+     *  Array of size 4 containing the widths of the CPU-to-CPU halos, i.e., the inter-MPI halo. The order in which the halo widths are expected to be stored is: LEFT -> RIGHT -> TOP -> BOTTOM
      * \param comm
      *  The MPI Communictor to be used. %Tausch2D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch2D working with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth[4], MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch2D(int localDim[2], int mpiNum[2], int cpuHaloWidth[4], MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      *
      * Overloaded constructor, allowing specification of CPU halo using single integer.
      *
-     * \param localDimX
-     *  The x dimension of the local partition (not the global x dimension).
-     * \param localDimY
-     *  The y dimension of the local partition (not the global y dimension).
-     * \param mpiNumX
-     *  The number of MPI ranks lined up in the x direction. mpiNumX*mpiNumY has to be equal to the total number of MPI ranks.
-     * \param mpiNumY
-     *  The number of MPI ranks lined up in the y direction. mpiNumX*mpiNumY has to be equal to the total number of MPI ranks.
+     * \param localDim
+     *  Array of size 2 holding the dimensions of the local partition (not the global dimensions), with the x dimension being the first value and the y dimension being the second one.
+     * \param mpiNum
+     *  Array of size 2 holding the number of MPI ranks lined up in the x (first value) and y (second value) direction. mpiNumX*mpiNumY has to be equal to the total number of MPI ranks.
      * \param cpuHaloWidth
      *  Width of the CPU-to-CPU halos, i.e., the inter-MPI halo. Will be used for all four halo widths.
      * \param comm
      *  The MPI Communictor to be used. %Tausch2D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch2D working with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch2D(int localDim[2], int mpiNum[2], int cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * Destructor freeing any allocated memory.
@@ -365,17 +358,17 @@ public:
 #endif
 
 private:
-    void _constructor(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth[4], MPI_Comm comm);
+    void _constructor(int localDim[2], int mpiNum[2], int cpuHaloWidth[4], MPI_Comm comm);
 
     // The current MPI rank and size of TAUSCH_COMM world
     int mpiRank, mpiSize;
     // The number of MPI ranks in the x/y direction of the domain
-    int mpiNumX, mpiNumY;
+    int mpiNum[2];
 
     MPI_Datatype mpiDataType;
 
     // The x/y dimensions of the LOCAL partition
-    int localDimX, localDimY;
+    int localDim[2];
 
     // Pointer to the CPU data
     real_t *cpuData;

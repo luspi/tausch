@@ -19,7 +19,7 @@ typedef void* CTausch2D;
 
 enum Edge { TAUSCH_LEFT, TAUSCH_RIGHT, TAUSCH_TOP, TAUSCH_BOTTOM };
 
-CTausch2D* tausch2d_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth[4], MPI_Comm comm);
+CTausch2D* tausch2d_new(int localDim[2], int mpiNum[2], int cpuHaloWidth[4], MPI_Comm comm);
 void tausch2d_delete(CTausch2D *tC);
 
 void tausch2d_getMPICommunicator(CTausch2D *tC, MPI_Comm *comm);
