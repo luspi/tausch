@@ -16,8 +16,9 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-    int localDimX = 25, localDimY = 15;
-    double portionGPU = 0.5;
+    int localDimX = 10, localDimY = 10;
+    int gpuDimX = 5, gpuDimY = 5;
+    double portionGPU = 0;
     int mpiNumX = std::sqrt(mpiSize);
     int mpiNumY = mpiNumX;
     int loops = 1;
@@ -25,8 +26,8 @@ int main(int argc, char** argv) {
     int workgroupsize = 64;
     bool giveOpenClDeviceName = false;
     int printMpiRank = -1;
-    int cpuHaloWidth = 1;
-    int gpuHaloWidth = 1;
+    int cpuHaloWidth[4] = {1,1,1,1};
+    int gpuHaloWidth[4] = {1,1,1,1};
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {
@@ -35,11 +36,18 @@ int main(int argc, char** argv) {
                 localDimX = atoi(argv[++i]);
             else if(argv[i] == std::string("-y") && i < argc-1)
                 localDimY = atoi(argv[++i]);
+            else if(argv[i] == std::string("-gx") && i < argc-1)
+                gpuDimX = atoi(argv[++i]);
+            else if(argv[i] == std::string("-gy") && i < argc-1)
+                gpuDimY = atoi(argv[++i]);
             else if(argv[i] == std::string("-gpu") && i < argc-1)
                 portionGPU = atof(argv[++i]);
             else if(argv[i] == std::string("-xy") && i < argc-1) {
                 localDimX = atoi(argv[++i]);
                 localDimY = localDimX;
+            } else if(argv[i] == std::string("-gxy") && i < argc-1) {
+                gpuDimX = atoi(argv[++i]);
+                gpuDimY = gpuDimX;
             } else if(argv[i] == std::string("-mpix") && i < argc-1)
                 mpiNumX = atoi(argv[++i]);
             else if(argv[i] == std::string("-mpiy") && i < argc-1)
@@ -54,29 +62,78 @@ int main(int argc, char** argv) {
                 giveOpenClDeviceName = true;
             else if(argv[i] == std::string("-print") && i < argc-1)
                 printMpiRank = atoi(argv[++i]);
-            else if(argv[i] == std::string("-chalo") && i < argc-1)
-                cpuHaloWidth = atoi(argv[++i]);
-            else if(argv[i] == std::string("-ghalo") && i < argc-1)
-                gpuHaloWidth = atoi(argv[++i]);
+            else if(argv[i] == std::string("-chalo") && i < argc-1) {
+                std::string arg(argv[++i]);
+                size_t last = 0;
+                size_t next = 0;
+                int count = 0;
+                while((next = arg.find(",", last)) != std::string::npos && count < 3) {
+                    std::stringstream str;
+                    str << arg.substr(last, next-last);
+                    str >> cpuHaloWidth[count];
+                    last = next + 1;
+                    ++count;
+                }
+                if(count != 3) {
+                    int tmpHalo = 0;
+                    std::stringstream str;
+                    str << arg;
+                    str >> tmpHalo;
+                    for(int i = 0; i < 4; ++i)
+                        cpuHaloWidth[i] = tmpHalo;
+                } else {
+                    std::stringstream str;
+                    str << arg.substr(last);
+                    str >> cpuHaloWidth[3];
+                }
+            } else if(argv[i] == std::string("-ghalo") && i < argc-1) {
+                std::string arg(argv[++i]);
+                size_t last = 0;
+                size_t next = 0;
+                int count = 0;
+                while((next = arg.find(",", last)) != std::string::npos && count < 3) {
+                    std::stringstream str;
+                    str << arg.substr(last, next-last);
+                    str >> gpuHaloWidth[count];
+                    last = next + 1;
+                    ++count;
+                }
+                if(count != 3) {
+                    int tmpHalo = 0;
+                    std::stringstream str;
+                    str << arg;
+                    str >> tmpHalo;
+                    for(int i = 0; i < 4; ++i)
+                        gpuHaloWidth[i] = tmpHalo;
+                } else {
+                    std::stringstream str;
+                    str << arg.substr(last);
+                    str >> gpuHaloWidth[3];
+                }
+            }
         }
+    }
+
+    if(portionGPU != 0) {
+        gpuDimX = std::sqrt(portionGPU)*localDimX;
+        gpuDimY = std::sqrt(portionGPU)*localDimY;
     }
 
     if(mpiRank == 0) {
 
         std::cout << std::endl
-                  << "localDimX     = " << localDimX << std::endl
-                  << "localDimY     = " << localDimY << std::endl
-                  << "portionGPU    = " << portionGPU << std::endl
-                  << "mpiNumX       = " << mpiNumX << std::endl
-                  << "mpiNumY       = " << mpiNumY << std::endl
+                  << "localDim      = " << localDimX << "/" << localDimY << std::endl
+                  << "gpuDim        = " << gpuDimX << "/" << gpuDimY << std::endl
+                  << "mpiNum        = " << mpiNumX << "/" << mpiNumY << std::endl
                   << "loops         = " << loops << std::endl
                   << "version       = " << (cpuonly ? "CPU-only" : "CPU/GPU") << std::endl
                   << "workgroupsize = " << workgroupsize << std::endl
-                  << "CPU/GPU halo  = " << cpuHaloWidth << "/" << gpuHaloWidth << std::endl
+                  << "CPU halo      = " << cpuHaloWidth[0] << "/" << cpuHaloWidth[1] << "/" << cpuHaloWidth[2] << "/" << cpuHaloWidth[3] << std::endl
+                  << "GPU halo      = " << gpuHaloWidth[0] << "/" << gpuHaloWidth[1] << "/" << gpuHaloWidth[2] << "/" << gpuHaloWidth[3] << std::endl
                   << std::endl;
 
     }
-    Sample sample(localDimX, localDimY, portionGPU, loops, cpuHaloWidth, gpuHaloWidth, mpiNumX, mpiNumY, cpuonly, workgroupsize, giveOpenClDeviceName);
+    Sample sample(localDimX, localDimY, gpuDimX, gpuDimY, loops, cpuHaloWidth, gpuHaloWidth, mpiNumX, mpiNumY, cpuonly, workgroupsize, giveOpenClDeviceName);
 
     if(mpiRank == printMpiRank) {
         if(!cpuonly) {

@@ -53,14 +53,31 @@ public:
      *  The number of MPI ranks lined up in the x direction. mpiNumX*mpiNumY has to be equal to the total number of MPI ranks.
      * \param mpiNumY
      *  The number of MPI ranks lined up in the y direction. mpiNumX*mpiNumY has to be equal to the total number of MPI ranks.
-     * \param haloWidth
-     *  The width of the halo between MPI ranks AND between the CPU/GPU (if applicable).
      * \param cpuHaloWidth
-     *  The width of the CPU-to-CPU halo, i.e., the inter-MPI halo.
+     *  An array of size 4 containing the widths of the CPU-to-CPU halos, i.e., the inter-MPI halo. The order in which the halo widths are expected to be stored is: LEFT -> RIGHT -> TOP -> BOTTOM
      * \param comm
      *  The MPI Communictor to be used. %Tausch2D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch2D working with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    explicit Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth[4], MPI_Comm comm = MPI_COMM_WORLD);
+
+    /*!
+     *
+     * Overloaded constructor, allowing specification of CPU halo using single integer.
+     *
+     * \param localDimX
+     *  The x dimension of the local partition (not the global x dimension).
+     * \param localDimY
+     *  The y dimension of the local partition (not the global y dimension).
+     * \param mpiNumX
+     *  The number of MPI ranks lined up in the x direction. mpiNumX*mpiNumY has to be equal to the total number of MPI ranks.
+     * \param mpiNumY
+     *  The number of MPI ranks lined up in the y direction. mpiNumX*mpiNumY has to be equal to the total number of MPI ranks.
+     * \param cpuHaloWidth
+     *  Width of the CPU-to-CPU halos, i.e., the inter-MPI halo. Will be used for all four halo widths.
+     * \param comm
+     *  The MPI Communictor to be used. %Tausch2D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch2D working with the same communicator. By default, MPI_COMM_WORLD will be used.
+     */
+    Tausch2D(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * Destructor freeing any allocated memory.
@@ -166,6 +183,8 @@ public:
      * \param giveOpenCLDeviceName
      *  Whether %Tausch2D should print out the OpenCL device name. This can come in handy for debugging. Default value: false
      */
+    void enableOpenCL(int gpuHaloWidth[4], bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
+
     void enableOpenCL(int gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
 
     /*!
@@ -186,6 +205,8 @@ public:
      * \param clLocalWorkgroupSize
      *  The local workgroup size for each kernel call. Default value: 64
      */
+    void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, int gpuHaloWidth[4], bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64);
+
     void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, int gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64);
 
     /*!
@@ -344,6 +365,7 @@ public:
 #endif
 
 private:
+    void _constructor(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth[4], MPI_Comm comm);
 
     // The current MPI rank and size of TAUSCH_COMM world
     int mpiRank, mpiSize;
@@ -361,7 +383,7 @@ private:
     int stencilNumPoints;
 
     // The width of the halo
-    int cpuHaloWidth;
+    int cpuHaloWidth[4];
 
     // Double pointer holding the MPI sent/recvd data across all edges
     real_t **cpuToCpuSendBuffer;
@@ -398,7 +420,7 @@ private:
     cl::Context cl_context;
     cl::CommandQueue cl_queue;
 
-    int gpuHaloWidth;
+    int gpuHaloWidth[4];
 
     // The OpenCL buffer holding the data on the GPU
     cl::Buffer gpuData;

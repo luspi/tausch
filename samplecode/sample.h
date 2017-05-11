@@ -14,12 +14,13 @@ typedef double real_t;
 class Sample {
 
 public:
-    explicit Sample(int localDimX, int localDimY, real_t portionGPU, int loops, int cpuHaloWidth, int gpuHaloWidth, int mpiNumX = 0, int mpiNumY = 0, bool cpuonly = false, int clWorkGroupSize = 64, bool giveOpenCLDeviceName = false);
+    explicit Sample(int localDimX, int localDimY, int gpuDimX, int gpuDimY, int loops, int cpuHaloWidth[4], int gpuHaloWidth[4], int mpiNumX = 0, int mpiNumY = 0, bool cpuonly = false, int clWorkGroupSize = 64, bool giveOpenCLDeviceName = false);
     ~Sample();
 
     void printCPU();
     void printGPU();
     void printCPUStencil();
+    void printGPUStencil();
 
     void launchCPU();
     void launchGPU();
@@ -32,13 +33,15 @@ private:
 
     int stencilNumPoints;
     real_t *stencil;
+    real_t *stencilGPU;
 
     cl::Buffer cl_datGpu;
+    cl::Buffer cl_stencilGPU;
     int loops;
     Tausch2D *tausch;
     bool cpuonly;
-    int cpuHaloWidth;
-    int gpuHaloWidth;
+    int cpuHaloWidth[4];
+    int gpuHaloWidth[4];
 
 };
 

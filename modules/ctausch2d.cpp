@@ -6,7 +6,7 @@ extern "C" {
 
 #include "ctausch2d.h"
 
-    CTausch2D *tausch2d_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth, MPI_Comm comm) {
+    CTausch2D *tausch2d_new(int localDimX, int localDimY, int mpiNumX, int mpiNumY, int cpuHaloWidth[4], MPI_Comm comm) {
         Tausch2D *t = new Tausch2D(localDimX, localDimY, mpiNumX, mpiNumY, cpuHaloWidth, comm);
         return reinterpret_cast<CTausch2D*>(t);
     }
@@ -67,12 +67,12 @@ extern "C" {
     }
 
 #ifdef TAUSCH_OPENCL
-    void tausch2d_enableOpenCL(CTausch2D *tC, int gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+    void tausch2d_enableOpenCL(CTausch2D *tC, int gpuHaloWidth[4], bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         t->enableOpenCL(gpuHaloWidth, blockingSyncCpuGpu, clLocalWorkgroupSize, giveOpenCLDeviceName);
     }
 
-    void tausch2d_setOpenCLInfo(CTausch2D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, int gpuHaloWidth, bool blockingSyncCpuGpu) {
+    void tausch2d_setOpenCLInfo(CTausch2D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, int gpuHaloWidth[4], bool blockingSyncCpuGpu) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         cl::Device *dev = new cl::Device(*clDefaultDevice);
         cl::Context *con = new cl::Context(*clContext);
