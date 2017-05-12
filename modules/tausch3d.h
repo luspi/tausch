@@ -41,30 +41,25 @@ public:
      */
     enum Edge { LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK };
 
-    //HERE HERE HERE
+    /*!
+     * These are the three dimensions used, used for clarity as to which array entry is which dimension: X, Y, Z.
+     */
+    enum Dimensions { X, Y, Z };
 
     /*!
      *
      * The default class constructor, expecting some basic yet important details about the data.
      *
-     * \param localDimX
-     *  The x dimension of the local partition (not the global x dimension).
-     * \param localDimY
-     *  The y dimension of the local partition (not the global y dimension).
-     * \param localDimZ
-     *  The z dimension of the local partition (not the global y dimension).
-     * \param mpiNumX
-     *  The number of MPI ranks lined up in the x direction. mpiNumX*mpiNumY*mpiNumZ has to be equal to the total number of MPI ranks.
-     * \param mpiNumY
-     *  The number of MPI ranks lined up in the y direction. mpiNumX*mpiNumY*mpiNumZ has to be equal to the total number of MPI ranks.
-     * \param mpiNumZ
-     *  The number of MPI ranks lined up in the y direction. mpiNumX*mpiNumY*mpiNumZ has to be equal to the total number of MPI ranks.
+     * \param localDim
+     *  Array of size 3 holding the x (first entry), y (second entry) and z (third entry) dimensions of the local partition (not the global dimensions).
+     * \param mpiNum
+     *  Array of size 3 holding the number of MPI ranks lined up in the x (first entry), y (second entry) and z (third entry) direction. mpiNumX*mpiNumY*mpiNumZ has to be equal to the total number of MPI ranks.
      * \param cpuHaloWidth
      *  The width of the CPU-to-CPU halo, i.e., the inter-MPI halo.
      * \param comm
      *  The MPI Communictor to be used. %Tausch3D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch3D working with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    explicit Tausch3D(int localDimX, int localDimY, int localDimZ, int mpiNumX, int mpiNumY, int mpiNumZ, int cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
+    explicit Tausch3D(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * Destructor freeing any allocated memory.
@@ -163,7 +158,7 @@ public:
      * \param gpuDimZ
      *  The z dimension of the GPU buffer. This has to be less than localDimZ-2*haloWidth.
      */
-    void setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY, int gpuDimZ);
+    void setGPUData(cl::Buffer &dat, int *gpuDim);
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange from the CPU to GPU.
@@ -238,19 +233,21 @@ public:
 
 private:
 
+    MPI_Datatype mpiDataType;
+
     // The current MPI rank and size of TAUSCH_COMM world
     int mpiRank, mpiSize;
     // The number of MPI ranks in the x/y direction of the domain
-    int mpiNumX, mpiNumY, mpiNumZ;
+    int mpiNum[3];
 
     // The x/y dimensions of the LOCAL partition
-    int localDimX, localDimY, localDimZ;
+    int localDim[3];
 
     // Pointer to the CPU data
     real_t *cpuData;
 
     // The width of the halo
-    int cpuHaloWidth;
+    int cpuHaloWidth[6];
 
     // Double pointer holding the MPI sent/recvd data across all edges
     real_t **cpuToCpuSendBuffer;
@@ -286,8 +283,8 @@ private:
     int gpuHaloWidth;
 
     // Some meta information about the OpenCL region
-    int gpuDimX, gpuDimY, gpuDimZ;
-    cl::Buffer cl_gpuDimX, cl_gpuDimY, cl_gpuDimZ;
+    int gpuDim[3];
+    cl::Buffer cl_gpuDim[3];
     cl::Buffer cl_gpuHaloWidth;;
 
     // Methods to set up the OpenCL environment and compile the required kernels

@@ -19,7 +19,7 @@ typedef void* CTausch3D;
 
 enum Edge { TAUSCH_LEFT, TAUSCH_RIGHT, TAUSCH_TOP, TAUSCH_BOTTOM, TAUSCH_FRONT, TAUSCH_BACK };
 
-CTausch3D* tausch3d_new(int localDimX, int localDimY, int localDimZ, int mpiNumX, int mpiNumY, int mpiNumZ, int haloWidth, MPI_Comm comm);
+CTausch3D* tausch3d_new(int *localDim, int *mpiNum, int *haloWidth, MPI_Comm comm);
 void tausch3d_delete(CTausch3D *tC);
 
 void tausch3d_getMPICommunicator(CTausch3D *tC, MPI_Comm *comm);
@@ -52,7 +52,7 @@ void tausch3d_startGpuToCpu(CTausch3D *tC);
 void tausch3d_completeCpuToGpu(CTausch3D *tC);
 void tausch3d_completeGpuToCpu(CTausch3D *tC);
 
-void tausch3d_setGPUData(CTausch3D *tC, cl_mem dat, int gpuDimX, int gpuDimY, int gpuDimZ);
+void tausch3d_setGPUData(CTausch3D *tC, cl_mem dat, int *gpuDim);
 
 cl_context tausch3d_getContext(CTausch3D *tC);
 cl_command_queue tausch3d_getQueue(CTausch3D *tC);

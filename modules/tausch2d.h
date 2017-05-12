@@ -42,7 +42,7 @@ public:
     enum Edge { LEFT, RIGHT, TOP, BOTTOM };
 
     /*!
-     * These are the two dimensions in the 2D case, used for clarity as to which array entry is which dimension: X, Y.
+     * These are the two dimensions used, used for clarity as to which array entry is which dimension: X, Y.
      */
     enum Dimensions { X, Y };
 

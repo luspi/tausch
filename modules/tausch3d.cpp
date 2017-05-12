@@ -1,6 +1,6 @@
 #include "tausch3d.h"
 
-Tausch3D::Tausch3D(int localDimX, int localDimY, int localDimZ, int mpiNumX, int mpiNumY, int mpiNumZ, int cpuHaloWidth, MPI_Comm comm) {
+Tausch3D::Tausch3D(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm) {
 
     MPI_Comm_dup(comm, &TAUSCH_COMM);
 
@@ -8,40 +8,25 @@ Tausch3D::Tausch3D(int localDimX, int localDimY, int localDimZ, int mpiNumX, int
     MPI_Comm_rank(TAUSCH_COMM, &mpiRank);
     MPI_Comm_size(TAUSCH_COMM, &mpiSize);
 
-    this->mpiNumX = mpiNumX;
-    this->mpiNumY = mpiNumY;
-    this->mpiNumZ = mpiNumZ;
+    this->mpiNum[X] = mpiNum[X];
+    this->mpiNum[Y] = mpiNum[Y];
+    this->mpiNum[Z] = mpiNum[Z];
 
     // store configuration
-    this->localDimX = localDimX;
-    this->localDimY = localDimY;
-    this->localDimZ = localDimZ;
+    this->localDim[X] = localDim[X];
+    this->localDim[Y] = localDim[Y];
+    this->localDim[Z] = localDim[Z];
 
-    this->cpuHaloWidth = cpuHaloWidth;
+    for(int i = 0; i < 6; ++i)
+        this->cpuHaloWidth[i] = cpuHaloWidth[i];
 
     // check if this rank has a boundary with another rank
-    haveBoundary[LEFT] = (mpiRank%mpiNumX != 0);
-    haveBoundary[RIGHT] = ((mpiRank+1)%mpiNumX != 0);
-    haveBoundary[TOP] = (mpiRank%(mpiNumX*mpiNumY) < (mpiNumX*mpiNumY-mpiNumX));
-    haveBoundary[BOTTOM] = (mpiRank%(mpiNumX*mpiNumY) > (mpiNumX-1));
-    haveBoundary[FRONT] = (mpiRank > mpiNumX*mpiNumY-1);
-    haveBoundary[BACK] = mpiRank < mpiSize-mpiNumX*mpiNumY;
-
-    // a send and recv buffer for the CPU-CPU communication
-    cpuToCpuSendBuffer = new real_t*[6];
-    cpuToCpuSendBuffer[LEFT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth)]{};
-    cpuToCpuSendBuffer[RIGHT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth)]{};
-    cpuToCpuSendBuffer[TOP] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth)]{};
-    cpuToCpuSendBuffer[BOTTOM] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth)]{};
-    cpuToCpuSendBuffer[FRONT] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth)]{};
-    cpuToCpuSendBuffer[BACK] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth)]{};
-    cpuToCpuRecvBuffer = new real_t*[6];
-    cpuToCpuRecvBuffer[LEFT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth)]{};
-    cpuToCpuRecvBuffer[RIGHT] = new real_t[cpuHaloWidth*(localDimY+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth)]{};
-    cpuToCpuRecvBuffer[TOP] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth)]{};
-    cpuToCpuRecvBuffer[BOTTOM] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth)]{};
-    cpuToCpuRecvBuffer[FRONT] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth)]{};
-    cpuToCpuRecvBuffer[BACK] = new real_t[cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth)]{};
+    haveBoundary[LEFT] = (mpiRank%mpiNum[X] != 0);
+    haveBoundary[RIGHT] = ((mpiRank+1)%mpiNum[X] != 0);
+    haveBoundary[TOP] = (mpiRank%(mpiNum[X]*mpiNum[Y]) < (mpiNum[X]*mpiNum[Y]-mpiNum[X]));
+    haveBoundary[BOTTOM] = (mpiRank%(mpiNum[X]*mpiNum[Y]) > (mpiNum[X]-1));
+    haveBoundary[FRONT] = (mpiRank > mpiNum[X]*mpiNum[Y]-1);
+    haveBoundary[BACK] = mpiRank < mpiSize-mpiNum[X]*mpiNum[Y];
 
     // whether the cpu/gpu pointers have been passed
     cpuInfoGiven = false;
@@ -57,45 +42,7 @@ Tausch3D::Tausch3D(int localDimX, int localDimY, int localDimZ, int mpiNumX, int
     cpuStarted[FRONT] = false;
     cpuStarted[BACK] = false;
 
-    MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
-
-    // Initialise the Recv/Send operations
-    if(haveBoundary[LEFT]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[LEFT], cpuHaloWidth*(localDimY+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth),
-                      mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[LEFT]);
-        MPI_Send_init(cpuToCpuSendBuffer[LEFT], cpuHaloWidth*(localDimY+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth),
-                      mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[LEFT]);
-    }
-    if(haveBoundary[RIGHT]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[RIGHT], cpuHaloWidth*(localDimY+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth),
-                      mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[RIGHT]);
-        MPI_Send_init(cpuToCpuSendBuffer[RIGHT], cpuHaloWidth*(localDimY+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth),
-                      mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[RIGHT]);
-    }
-    if(haveBoundary[TOP]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[TOP], cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth),
-                      mpiDataType, mpiRank+mpiNumX, 1, TAUSCH_COMM, &cpuToCpuRecvRequest[TOP]);
-        MPI_Send_init(cpuToCpuSendBuffer[TOP], cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth),
-                      mpiDataType, mpiRank+mpiNumX, 3, TAUSCH_COMM, &cpuToCpuSendRequest[TOP]);
-    }
-    if(haveBoundary[BOTTOM]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[BOTTOM], cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth),
-                      mpiDataType, mpiRank-mpiNumX, 3, TAUSCH_COMM, &cpuToCpuRecvRequest[BOTTOM]);
-        MPI_Send_init(cpuToCpuSendBuffer[BOTTOM], cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimZ+2*cpuHaloWidth),
-                      mpiDataType, mpiRank-mpiNumX, 1, TAUSCH_COMM, &cpuToCpuSendRequest[BOTTOM]);
-    }
-    if(haveBoundary[FRONT]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[FRONT], cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth),
-                      mpiDataType, mpiRank-mpiNumX*mpiNumY, 4, TAUSCH_COMM, &cpuToCpuRecvRequest[FRONT]);
-        MPI_Send_init(cpuToCpuSendBuffer[FRONT], cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth),
-                      mpiDataType, mpiRank-mpiNumX*mpiNumY, 5, TAUSCH_COMM, &cpuToCpuSendRequest[FRONT]);
-    }
-    if(haveBoundary[BACK]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[BACK], cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth),
-                      mpiDataType, mpiRank+mpiNumX*mpiNumY, 5, TAUSCH_COMM, &cpuToCpuRecvRequest[BACK]);
-        MPI_Send_init(cpuToCpuSendBuffer[BACK], cpuHaloWidth*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth),
-                      mpiDataType, mpiRank+mpiNumX*mpiNumY, 4, TAUSCH_COMM, &cpuToCpuSendRequest[BACK]);
-    }
+    mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
 #ifdef TAUSCH_OPENCL
 
@@ -135,8 +82,64 @@ Tausch3D::~Tausch3D() {
 
 // get a pointer to the CPU data
 void Tausch3D::setCPUData(real_t *dat) {
+
     cpuInfoGiven = true;
     cpuData = dat;
+
+    // a send and recv buffer for the CPU-CPU communication
+    cpuToCpuSendBuffer = new real_t*[6];
+    cpuToCpuSendBuffer[LEFT] = new real_t[cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
+    cpuToCpuSendBuffer[RIGHT] = new real_t[cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
+    cpuToCpuSendBuffer[TOP] = new real_t[cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
+    cpuToCpuSendBuffer[BOTTOM] = new real_t[cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
+    cpuToCpuSendBuffer[FRONT] = new real_t[cpuHaloWidth[BACK]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])]{};
+    cpuToCpuSendBuffer[BACK] = new real_t[cpuHaloWidth[FRONT]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])]{};
+    cpuToCpuRecvBuffer = new real_t*[6];
+    cpuToCpuRecvBuffer[LEFT] = new real_t[cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
+    cpuToCpuRecvBuffer[RIGHT] = new real_t[cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
+    cpuToCpuRecvBuffer[TOP] = new real_t[cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
+    cpuToCpuRecvBuffer[BOTTOM] = new real_t[cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
+    cpuToCpuRecvBuffer[FRONT] = new real_t[cpuHaloWidth[FRONT]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])]{};
+    cpuToCpuRecvBuffer[BACK] = new real_t[cpuHaloWidth[BACK]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])]{};
+
+    // Initialise the Recv/Send operations
+    if(haveBoundary[LEFT]) {
+        MPI_Recv_init(cpuToCpuRecvBuffer[LEFT], cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+                      mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[LEFT]);
+        MPI_Send_init(cpuToCpuSendBuffer[LEFT], cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+                      mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[LEFT]);
+    }
+    if(haveBoundary[RIGHT]) {
+        MPI_Recv_init(cpuToCpuRecvBuffer[RIGHT], cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+                      mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[RIGHT]);
+        MPI_Send_init(cpuToCpuSendBuffer[RIGHT], cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+                      mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[RIGHT]);
+    }
+    if(haveBoundary[TOP]) {
+        MPI_Recv_init(cpuToCpuRecvBuffer[TOP], cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+                      mpiDataType, mpiRank+mpiNum[X], 1, TAUSCH_COMM, &cpuToCpuRecvRequest[TOP]);
+        MPI_Send_init(cpuToCpuSendBuffer[TOP], cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+                      mpiDataType, mpiRank+mpiNum[X], 3, TAUSCH_COMM, &cpuToCpuSendRequest[TOP]);
+    }
+    if(haveBoundary[BOTTOM]) {
+        MPI_Recv_init(cpuToCpuRecvBuffer[BOTTOM], cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+                      mpiDataType, mpiRank-mpiNum[X], 3, TAUSCH_COMM, &cpuToCpuRecvRequest[BOTTOM]);
+        MPI_Send_init(cpuToCpuSendBuffer[BOTTOM], cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+                      mpiDataType, mpiRank-mpiNum[X], 1, TAUSCH_COMM, &cpuToCpuSendRequest[BOTTOM]);
+    }
+    if(haveBoundary[FRONT]) {
+        MPI_Recv_init(cpuToCpuRecvBuffer[FRONT], cpuHaloWidth[FRONT]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
+                      mpiDataType, mpiRank-mpiNum[X]*mpiNum[Y], 4, TAUSCH_COMM, &cpuToCpuRecvRequest[FRONT]);
+        MPI_Send_init(cpuToCpuSendBuffer[FRONT], cpuHaloWidth[BACK]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
+                      mpiDataType, mpiRank-mpiNum[X]*mpiNum[Y], 5, TAUSCH_COMM, &cpuToCpuSendRequest[FRONT]);
+    }
+    if(haveBoundary[BACK]) {
+        MPI_Recv_init(cpuToCpuRecvBuffer[BACK], cpuHaloWidth[BACK]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
+                      mpiDataType, mpiRank+mpiNum[X]*mpiNum[Y], 5, TAUSCH_COMM, &cpuToCpuRecvRequest[BACK]);
+        MPI_Send_init(cpuToCpuSendBuffer[BACK], cpuHaloWidth[FRONT]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
+                      mpiDataType, mpiRank+mpiNum[X]*mpiNum[Y], 4, TAUSCH_COMM, &cpuToCpuSendRequest[BACK]);
+    }
+
 }
 
 // post the MPI_Irecv's for inter-rank communication
@@ -149,7 +152,7 @@ void Tausch3D::postCpuReceives() {
 
     cpuRecvsPosted = true;
 
-    MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
+    mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
     if(haveBoundary[LEFT])
         MPI_Start(&cpuToCpuRecvRequest[LEFT]);
@@ -180,49 +183,49 @@ void Tausch3D::startCpuEdge(Edge edge) {
 
     cpuStarted[edge] = true;
 
-    MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
+    mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
     if(edge == LEFT && haveBoundary[LEFT]) {
-        for(int z = 0; z < localDimZ+2*cpuHaloWidth; ++z)
-            for(int y = 0; y < localDimY+2*cpuHaloWidth; ++y)
-                for(int x = 0; x < cpuHaloWidth; ++x)
-                    cpuToCpuSendBuffer[LEFT][z*(localDimY+2*cpuHaloWidth)*cpuHaloWidth + y*cpuHaloWidth + x]
-                            = cpuData[cpuHaloWidth + z*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth)+x];
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < cpuHaloWidth[RIGHT]; ++x)
+                    cpuToCpuSendBuffer[LEFT][z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*cpuHaloWidth[RIGHT] + y*cpuHaloWidth[RIGHT] + x]
+                            = cpuData[z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x+cpuHaloWidth[LEFT]];
         MPI_Start(&cpuToCpuSendRequest[LEFT]);
     } else if(edge == RIGHT && haveBoundary[RIGHT]) {
-        for(int z = 0; z < localDimZ+2*cpuHaloWidth; ++z)
-            for(int y = 0; y < localDimY+2*cpuHaloWidth; ++y)
-                for(int x = 0; x < cpuHaloWidth; ++x)
-                    cpuToCpuSendBuffer[RIGHT][z*(localDimY+2*cpuHaloWidth)*cpuHaloWidth + y*cpuHaloWidth + x]
-                            = cpuData[localDimX + z*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth)+x];
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < cpuHaloWidth[LEFT]; ++x)
+                    cpuToCpuSendBuffer[RIGHT][z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*cpuHaloWidth[LEFT] + y*cpuHaloWidth[LEFT] + x]
+                            = cpuData[localDim[X] + z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x];
         MPI_Start(&cpuToCpuSendRequest[RIGHT]);
     } else if(edge == TOP && haveBoundary[TOP]) {
-        for(int z = 0; z < localDimZ+2*cpuHaloWidth; ++z)
-            for(int y = 0; y < cpuHaloWidth; ++y)
-                for(int x = 0; x < localDimX+2*cpuHaloWidth; ++x)
-                    cpuToCpuSendBuffer[TOP][z*(localDimX+2*cpuHaloWidth)*cpuHaloWidth + y*(localDimX+2*cpuHaloWidth) + x]
-                            = cpuData[z*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + (y+localDimY)*(localDimX+2*cpuHaloWidth)+x];
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < cpuHaloWidth[BOTTOM]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    cpuToCpuSendBuffer[TOP][z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*cpuHaloWidth[BOTTOM] + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x]
+                            = cpuData[z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + (y+localDim[Y])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x];
         MPI_Start(&cpuToCpuSendRequest[TOP]);
     } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
-        for(int z = 0; z < localDimZ+2*cpuHaloWidth; ++z)
-            for(int y = 0; y < cpuHaloWidth; ++y)
-                for(int x = 0; x < localDimX+2*cpuHaloWidth; ++x)
-                    cpuToCpuSendBuffer[BOTTOM][z*(localDimX+2*cpuHaloWidth)*cpuHaloWidth + y*(localDimX+2*cpuHaloWidth) + x]
-                            = cpuData[z*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + (y+cpuHaloWidth)*(localDimX+2*cpuHaloWidth)+x];
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    cpuToCpuSendBuffer[BOTTOM][z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*cpuHaloWidth[TOP] + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x]
+                            = cpuData[z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + (y+cpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x];
         MPI_Start(&cpuToCpuSendRequest[BOTTOM]);
     } else if(edge == FRONT && haveBoundary[FRONT]) {
-        for(int z = 0; z < cpuHaloWidth; ++z)
-            for(int y = 0; y < localDimY+2*cpuHaloWidth; ++y)
-                for(int x = 0; x < localDimX+2*cpuHaloWidth; ++x)
-                    cpuToCpuSendBuffer[FRONT][z*(localDimY+2*cpuHaloWidth)*(localDimX+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth) + x]
-                            = cpuData[(z+cpuHaloWidth)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth)+x];
+        for(int z = 0; z < cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    cpuToCpuSendBuffer[FRONT][z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x]
+                            = cpuData[(z+cpuHaloWidth[FRONT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x];
         MPI_Start(&cpuToCpuSendRequest[FRONT]);
     } else if(edge == BACK && haveBoundary[BACK]) {
-        for(int z = 0; z < cpuHaloWidth; ++z)
-            for(int y = 0; y < localDimY+2*cpuHaloWidth; ++y)
-                for(int x = 0; x < localDimX+2*cpuHaloWidth; ++x)
-                    cpuToCpuSendBuffer[BACK][z*(localDimY+2*cpuHaloWidth)*(localDimX+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth) + x]
-                            = cpuData[(z+localDimZ)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth)+x];
+        for(int z = 0; z < cpuHaloWidth[FRONT]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    cpuToCpuSendBuffer[BACK][z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x]
+                            = cpuData[(z+localDim[Z])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x];
         MPI_Start(&cpuToCpuSendRequest[BACK]);
     }
 
@@ -243,51 +246,51 @@ void Tausch3D::completeCpuEdge(Edge edge) {
 
     if(edge == LEFT && haveBoundary[LEFT]) {
         MPI_Wait(&cpuToCpuRecvRequest[LEFT], MPI_STATUS_IGNORE);
-        for(int z = 0; z < localDimZ+2*cpuHaloWidth; ++z)
-            for(int y = 0; y < localDimY+2*cpuHaloWidth; ++y)
-                for(int hw = 0; hw < cpuHaloWidth; ++hw)
-                    cpuData[z*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth)+hw]
-                            = cpuToCpuRecvBuffer[LEFT][z*(localDimY+2*cpuHaloWidth)*cpuHaloWidth + y*cpuHaloWidth + hw];
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int hw = 0; hw < cpuHaloWidth[LEFT]; ++hw)
+                    cpuData[z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+hw]
+                            = cpuToCpuRecvBuffer[LEFT][z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*cpuHaloWidth[LEFT] + y*cpuHaloWidth[LEFT] + hw];
         MPI_Wait(&cpuToCpuSendRequest[LEFT], MPI_STATUS_IGNORE);
     } else if(edge == RIGHT && haveBoundary[RIGHT]) {
         MPI_Wait(&cpuToCpuRecvRequest[RIGHT], MPI_STATUS_IGNORE);
-        for(int z = 0; z < localDimZ+2*cpuHaloWidth; ++z)
-            for(int y = 0; y < localDimY+2*cpuHaloWidth; ++y)
-                for(int hw = 0; hw < cpuHaloWidth; ++hw)
-                    cpuData[localDimX+cpuHaloWidth + z*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth)+hw]
-                            = cpuToCpuRecvBuffer[RIGHT][z*(localDimY+2*cpuHaloWidth)*cpuHaloWidth + y*cpuHaloWidth + hw];
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int hw = 0; hw < cpuHaloWidth[RIGHT]; ++hw)
+                    cpuData[localDim[X]+cpuHaloWidth[LEFT] + z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+hw]
+                            = cpuToCpuRecvBuffer[RIGHT][z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*cpuHaloWidth[RIGHT] + y*cpuHaloWidth[RIGHT] + hw];
         MPI_Wait(&cpuToCpuSendRequest[RIGHT], MPI_STATUS_IGNORE);
     } else if(edge == TOP && haveBoundary[TOP]) {
         MPI_Wait(&cpuToCpuRecvRequest[TOP], MPI_STATUS_IGNORE);
-        for(int z = 0; z < localDimZ+2*cpuHaloWidth; ++z)
-            for(int y = 0; y < cpuHaloWidth; ++y)
-                for(int x = 0; x < localDimX+2*cpuHaloWidth; ++x)
-                    cpuData[z*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + (y+localDimY+cpuHaloWidth)*(localDimX+2*cpuHaloWidth)+x]
-                            = cpuToCpuRecvBuffer[TOP][z*(localDimX+2*cpuHaloWidth)*cpuHaloWidth + y*(localDimX+2*cpuHaloWidth) + x];
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    cpuData[z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + (y+localDim[Y]+cpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x]
+                            = cpuToCpuRecvBuffer[TOP][z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*cpuHaloWidth[TOP] + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x];
         MPI_Wait(&cpuToCpuSendRequest[TOP], MPI_STATUS_IGNORE);
     } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
         MPI_Wait(&cpuToCpuRecvRequest[BOTTOM], MPI_STATUS_IGNORE);
-        for(int z = 0; z < localDimZ+2*cpuHaloWidth; ++z)
-            for(int y = 0; y < cpuHaloWidth; ++y)
-                for(int x = 0; x < localDimX+2*cpuHaloWidth; ++x)
-                    cpuData[z*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth)+x]
-                            = cpuToCpuRecvBuffer[BOTTOM][z*(localDimX+2*cpuHaloWidth)*cpuHaloWidth + y*(localDimX+2*cpuHaloWidth) + x];
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < cpuHaloWidth[BOTTOM]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    cpuData[z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x]
+                            = cpuToCpuRecvBuffer[BOTTOM][z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*cpuHaloWidth[BOTTOM] + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x];
         MPI_Wait(&cpuToCpuSendRequest[BOTTOM], MPI_STATUS_IGNORE);
     } else if(edge == FRONT && haveBoundary[FRONT]) {
         MPI_Wait(&cpuToCpuRecvRequest[FRONT], MPI_STATUS_IGNORE);
-        for(int z = 0; z < cpuHaloWidth; ++z)
-            for(int y = 0; y < localDimY+2*cpuHaloWidth; ++y)
-                for(int x = 0; x < localDimX+2*cpuHaloWidth; ++x)
-                    cpuData[z*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth)+x]
-                            = cpuToCpuRecvBuffer[FRONT][z*(localDimY+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth) + x];
+        for(int z = 0; z < cpuHaloWidth[FRONT]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    cpuData[z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x]
+                            = cpuToCpuRecvBuffer[FRONT][z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x];
         MPI_Wait(&cpuToCpuSendRequest[FRONT], MPI_STATUS_IGNORE);
     } else if(edge == BACK && haveBoundary[BACK]) {
         MPI_Wait(&cpuToCpuRecvRequest[BACK], MPI_STATUS_IGNORE);
-        for(int z = 0; z < cpuHaloWidth; ++z)
-            for(int y = 0; y < localDimY+2*cpuHaloWidth; ++y)
-                for(int x = 0; x < localDimX+2*cpuHaloWidth; ++x)
-                    cpuData[(z+cpuHaloWidth+localDimZ)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth)+x]
-                            = cpuToCpuRecvBuffer[BACK][z*(localDimY+2*cpuHaloWidth)*(localDimX+2*cpuHaloWidth) + y*(localDimX+2*cpuHaloWidth) + x];
+        for(int z = 0; z < cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    cpuData[(z+cpuHaloWidth[FRONT]+localDim[Z])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x]
+                            = cpuToCpuRecvBuffer[BACK][z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x];
         MPI_Wait(&cpuToCpuSendRequest[BACK], MPI_STATUS_IGNORE);
     }
 
@@ -330,7 +333,7 @@ void Tausch3D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_contex
 }
 
 // get a pointer to the GPU buffer and its dimensions
-void Tausch3D::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY, int gpuDimZ) {
+void Tausch3D::setGPUData(cl::Buffer &dat, int *gpuDim) {
 
     // check whether OpenCL has been set up
     if(!gpuEnabled) {
@@ -342,36 +345,36 @@ void Tausch3D::setGPUData(cl::Buffer &dat, int gpuDimX, int gpuDimY, int gpuDimZ
 
     // store parameters
     gpuData = dat;
-    this->gpuDimX = gpuDimX;
-    this->gpuDimY = gpuDimY;
-    this->gpuDimZ = gpuDimZ;
+    this->gpuDim[X] = gpuDim[X];
+    this->gpuDim[Y] = gpuDim[Y];
+    this->gpuDim[Z] = gpuDim[Z];
 
     // store buffer to store the GPU and the CPU part of the halo.
     // We do not need two buffers each, as each thread has direct access to both arrays, no communication necessary
-    cpuToGpuBuffer = new std::atomic<real_t>[2*gpuHaloWidth*(gpuDimY+2*gpuHaloWidth)*(gpuDimZ+2*gpuHaloWidth) +
-                                             2*gpuHaloWidth*gpuDimX*(gpuDimZ+2*gpuHaloWidth) +
-                                             2*gpuHaloWidth*gpuDimX*gpuDimY]{};
-    gpuToCpuBuffer = new std::atomic<real_t>[2*gpuHaloWidth*gpuDimY*gpuDimZ +
-                                             2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*gpuDimZ +
-                                             2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth)]{};
+    cpuToGpuBuffer = new std::atomic<real_t>[2*gpuHaloWidth*(gpuDim[Y]+2*gpuHaloWidth)*(gpuDim[Z]+2*gpuHaloWidth) +
+                                             2*gpuHaloWidth*gpuDim[X]*(gpuDim[Z]+2*gpuHaloWidth) +
+                                             2*gpuHaloWidth*gpuDim[X]*gpuDim[Y]]{};
+    gpuToCpuBuffer = new std::atomic<real_t>[2*gpuHaloWidth*gpuDim[Y]*gpuDim[Z] +
+                                             2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*gpuDim[Z] +
+                                             2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth)]{};
 
     // set up buffers on device
     try {
-        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuHaloWidth*(gpuDimY+2*gpuHaloWidth)*(gpuDimZ+2*gpuHaloWidth) +
-                                                                       2*gpuHaloWidth*gpuDimX*(gpuDimZ+2*gpuHaloWidth) +
-                                                                       2*gpuHaloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
-        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuHaloWidth*gpuDimY*gpuDimZ +
-                                                                       2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*gpuDimZ +
-                                                                       2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth))*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*gpuHaloWidth*(gpuDimY+2*gpuHaloWidth)*(gpuDimZ+2*gpuHaloWidth) +
-                                                             2*gpuHaloWidth*gpuDimX*(gpuDimZ+2*gpuHaloWidth) +
-                                                             2*gpuHaloWidth*gpuDimX*gpuDimY)*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*gpuHaloWidth*gpuDimY*gpuDimZ +
-                                                             2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*gpuDimZ +
-                                                             2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth))*sizeof(real_t));
-        cl_gpuDimX = cl::Buffer(cl_context, &gpuDimX, (&gpuDimX)+1, true);
-        cl_gpuDimY = cl::Buffer(cl_context, &gpuDimY, (&gpuDimY)+1, true);
-        cl_gpuDimZ = cl::Buffer(cl_context, &gpuDimZ, (&gpuDimZ)+1, true);
+        cl_cpuToGpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuHaloWidth*(gpuDim[Y]+2*gpuHaloWidth)*(gpuDim[Z]+2*gpuHaloWidth) +
+                                                                       2*gpuHaloWidth*gpuDim[X]*(gpuDim[Z]+2*gpuHaloWidth) +
+                                                                       2*gpuHaloWidth*gpuDim[X]*gpuDim[Y])*sizeof(real_t));
+        cl_gpuToCpuBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, (2*gpuHaloWidth*gpuDim[Y]*gpuDim[Z] +
+                                                                       2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*gpuDim[Z] +
+                                                                       2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth))*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_cpuToGpuBuffer, 0, 0, (2*gpuHaloWidth*(gpuDim[Y]+2*gpuHaloWidth)*(gpuDim[Z]+2*gpuHaloWidth) +
+                                                             2*gpuHaloWidth*gpuDim[X]*(gpuDim[Z]+2*gpuHaloWidth) +
+                                                             2*gpuHaloWidth*gpuDim[X]*gpuDim[Y])*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuBuffer, 0, 0, (2*gpuHaloWidth*gpuDim[Y]*gpuDim[Z] +
+                                                             2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*gpuDim[Z] +
+                                                             2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth))*sizeof(real_t));
+        cl_gpuDim[X] = cl::Buffer(cl_context, &gpuDim[X], (&gpuDim[X])+1, true);
+        cl_gpuDim[Y] = cl::Buffer(cl_context, &gpuDim[Y], (&gpuDim[Y])+1, true);
+        cl_gpuDim[Z] = cl::Buffer(cl_context, &gpuDim[Z], (&gpuDim[Z])+1, true);
     } catch(cl::Error error) {
         std::cout << "[setup send/recv buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
@@ -391,74 +394,73 @@ void Tausch3D::startCpuToGpu() {
     cpuToGpuStarted.store(true);
 
    // left
-    for(int z = 0; z < (gpuDimZ+2*gpuHaloWidth); ++z) {
-        for(int y = 0; y < (gpuDimY+2*gpuHaloWidth); ++y) {
+    for(int z = 0; z < (gpuDim[Z]+2*gpuHaloWidth); ++z) {
+        for(int y = 0; y < (gpuDim[Y]+2*gpuHaloWidth); ++y) {
             for(int x = 0; x < gpuHaloWidth; ++x) {
-                int index = (z+(localDimZ-gpuDimZ)/2)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) +
-                            (y+(localDimY-gpuDimY)/2)*(localDimX+2*cpuHaloWidth) +
-                            x+(localDimX-gpuDimX)/2;
-                std::cout << x << "/" << y << "/" << z << " :: " << index << " - " << cpuData[index] << std::endl;
-                cpuToGpuBuffer[z*(gpuDimY+2*gpuHaloWidth)*gpuHaloWidth + y*gpuHaloWidth + x].store(cpuData[index]);
+                int index = (z+cpuHaloWidth[FRONT]+(localDim[Z]-gpuDim[Z])/2-gpuHaloWidth)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                            (y+cpuHaloWidth[BOTTOM]+(localDim[Y]-gpuDim[Y])/2-gpuHaloWidth)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                            x+cpuHaloWidth[LEFT]+(localDim[X]-gpuDim[X])/2 - gpuHaloWidth;
+                cpuToGpuBuffer[z*(gpuDim[Y]+2*gpuHaloWidth)*gpuHaloWidth + y*gpuHaloWidth + x].store(cpuData[index]);
             }
         }
     }
-    int offset = (gpuDimZ+2*gpuHaloWidth)*(gpuDimY+2*gpuHaloWidth)*gpuHaloWidth;
+    int offset = (gpuDim[Z]+2*gpuHaloWidth)*(gpuDim[Y]+2*gpuHaloWidth)*gpuHaloWidth;
     // right
-    for(int z = 0; z < (gpuDimZ+2*gpuHaloWidth); ++z) {
-        for(int y = 0; y < (gpuDimY+2*gpuHaloWidth); ++y) {
+    for(int z = 0; z < (gpuDim[Z]+2*gpuHaloWidth); ++z) {
+        for(int y = 0; y < (gpuDim[Y]+2*gpuHaloWidth); ++y) {
             for(int x = 0; x < gpuHaloWidth; ++x) {
-                int index = (z+(localDimZ-gpuDimZ)/2)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) +
-                            (y+(localDimY-gpuDimY)/2)*(localDimX+2*cpuHaloWidth) +
-                            x+(localDimX-gpuDimX)/2+gpuDimX+gpuHaloWidth;
-                cpuToGpuBuffer[offset + z*(gpuDimY+2*gpuHaloWidth)*gpuHaloWidth + y*gpuHaloWidth + x].store(cpuData[index]);
+                int index = (z+cpuHaloWidth[FRONT]+(localDim[Z]-gpuDim[Z])/2-gpuHaloWidth)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                            (y+cpuHaloWidth[BOTTOM]+(localDim[Y]-gpuDim[Y])/2-gpuHaloWidth)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                            x+cpuHaloWidth[LEFT]+(localDim[X]-gpuDim[X])/2+gpuDim[X];
+                cpuToGpuBuffer[offset + z*(gpuDim[Y]+2*gpuHaloWidth)*gpuHaloWidth + y*gpuHaloWidth + x].store(cpuData[index]);
             }
         }
     }
-    offset += (gpuDimZ+2*gpuHaloWidth)*(gpuDimY+2*gpuHaloWidth)*gpuHaloWidth;
+    offset += (gpuDim[Z]+2*gpuHaloWidth)*(gpuDim[Y]+2*gpuHaloWidth)*gpuHaloWidth;
     // top
-    for(int z = 0; z < (gpuDimZ+2*gpuHaloWidth); ++z) {
+    for(int z = 0; z < (gpuDim[Z]+2*gpuHaloWidth); ++z) {
         for(int y = 0; y < gpuHaloWidth; ++y) {
-            for(int x = 0; x < gpuDimX; ++x) {
-                int index = (z+(localDimZ-gpuDimZ)/2)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) +
-                            (y+(localDimY-gpuDimY)/2+gpuDimY+gpuHaloWidth)*(localDimX+2*cpuHaloWidth) +
-                            x+(localDimX-gpuDimX)/2+gpuHaloWidth;
-                cpuToGpuBuffer[offset + z*gpuHaloWidth*gpuDimX + y*gpuDimX + x].store(cpuData[index]);
+            for(int x = 0; x < gpuDim[X]; ++x) {
+                int index = (z+cpuHaloWidth[FRONT]+(localDim[Z]-gpuDim[Z])/2-gpuHaloWidth)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                            (y+cpuHaloWidth[BOTTOM]+(localDim[Y]-gpuDim[Y])/2+gpuDim[Y])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                            x+cpuHaloWidth[LEFT]+(localDim[X]-gpuDim[X])/2;
+                cpuToGpuBuffer[offset + z*gpuHaloWidth*gpuDim[X] + y*gpuDim[X] + x].store(cpuData[index]);
             }
         }
     }
-    offset += (gpuDimZ+2*gpuHaloWidth)*gpuHaloWidth*gpuDimX;
+    offset += (gpuDim[Z]+2*gpuHaloWidth)*gpuHaloWidth*gpuDim[X];
     // bottom
-    for(int z = 0; z < (gpuDimZ+2*gpuHaloWidth); ++z) {
+    for(int z = 0; z < (gpuDim[Z]+2*gpuHaloWidth); ++z) {
         for(int y = 0; y < gpuHaloWidth; ++y) {
-            for(int x = 0; x < gpuDimX; ++x) {
-                int index = (z+(localDimZ-gpuDimZ)/2)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) +
-                            (y+(localDimY-gpuDimY)/2)*(localDimX+2*cpuHaloWidth) +
-                            x+(localDimX-gpuDimX)/2+gpuHaloWidth;
-                cpuToGpuBuffer[offset + z*gpuHaloWidth*gpuDimX + y*gpuDimX + x].store(cpuData[index]);
+            for(int x = 0; x < gpuDim[X]; ++x) {
+                int index = (z+cpuHaloWidth[FRONT]+(localDim[Z]-gpuDim[Z])/2-gpuHaloWidth)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                            (y+cpuHaloWidth[BOTTOM]+(localDim[Y]-gpuDim[Y])/2-gpuHaloWidth)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                            x+cpuHaloWidth[LEFT]+(localDim[X]-gpuDim[X])/2;
+                cpuToGpuBuffer[offset + z*gpuHaloWidth*gpuDim[X] + y*gpuDim[X] + x].store(cpuData[index]);
             }
         }
     }
-    offset += (gpuDimZ+2*gpuHaloWidth)*gpuHaloWidth*gpuDimX;
+    offset += (gpuDim[Z]+2*gpuHaloWidth)*gpuHaloWidth*gpuDim[X];
     // front
     for(int z = 0; z < gpuHaloWidth; ++z) {
-        for(int y = 0; y < gpuDimY; ++y) {
-            for(int x = 0; x < gpuDimX; ++x) {
-                int index = (z+(localDimZ-gpuDimZ)/2)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) +
-                            (y+(localDimY-gpuDimY)/2+gpuHaloWidth)*(localDimX+2*cpuHaloWidth) +
-                            x+(localDimX-gpuDimX)/2+gpuHaloWidth;
-                cpuToGpuBuffer[offset + z*gpuDimY*gpuDimX + y*gpuDimX + x].store(cpuData[index]);
+        for(int y = 0; y < gpuDim[Y]; ++y) {
+            for(int x = 0; x < gpuDim[X]; ++x) {
+                int index = (z+cpuHaloWidth[FRONT]+(localDim[Z]-gpuDim[Z])/2-gpuHaloWidth)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                            (y+cpuHaloWidth[BOTTOM]+(localDim[Y]-gpuDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                            x+cpuHaloWidth[LEFT]+(localDim[X]-gpuDim[X])/2;
+                cpuToGpuBuffer[offset + z*gpuDim[Y]*gpuDim[X] + y*gpuDim[X] + x].store(cpuData[index]);
             }
         }
     }
-    offset += gpuHaloWidth*gpuDimY*gpuDimX;
+    offset += gpuHaloWidth*gpuDim[Y]*gpuDim[X];
     // back
     for(int z = 0; z < gpuHaloWidth; ++z) {
-        for(int y = 0; y < gpuDimY; ++y) {
-            for(int x = 0; x < gpuDimX; ++x) {
-                int index = (z+(localDimZ-gpuDimZ)/2+gpuDimZ+gpuHaloWidth)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) +
-                            (y+(localDimY-gpuDimY)/2+gpuHaloWidth)*(localDimX+2*cpuHaloWidth) +
-                            x+(localDimX-gpuDimX)/2+gpuHaloWidth;
-                cpuToGpuBuffer[offset + z*gpuDimY*gpuDimX + y*gpuDimX + x].store(cpuData[index]);
+        for(int y = 0; y < gpuDim[Y]; ++y) {
+            for(int x = 0; x < gpuDim[X]; ++x) {
+                int index = (z+cpuHaloWidth[FRONT]+(localDim[Z]-gpuDim[Z])/2+gpuDim[Z])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                            (y+cpuHaloWidth[BOTTOM]+(localDim[Y]-gpuDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                            x+cpuHaloWidth[LEFT]+(localDim[X]-gpuDim[X])/2;
+                cpuToGpuBuffer[offset + z*gpuDim[Y]*gpuDim[X] + y*gpuDim[X] + x].store(cpuData[index]);
             }
         }
     }
@@ -485,21 +487,21 @@ void Tausch3D::startGpuToCpu() {
 
         auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloData");
 
-        int globalSize = ((2*gpuHaloWidth*gpuDimY*gpuDimZ
-                           + 2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*gpuDimZ
-                           + 2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth))/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = ((2*gpuHaloWidth*gpuDim[Y]*gpuDim[Z]
+                           + 2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*gpuDim[Z]
+                           + 2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth))/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                           cl_gpuDimX, cl_gpuDimY, cl_gpuDimZ, cl_gpuHaloWidth, gpuData, cl_gpuToCpuBuffer);
+                           cl_gpuDim[X], cl_gpuDim[Y], cl_gpuDim[Z], cl_gpuHaloWidth, gpuData, cl_gpuToCpuBuffer);
 
-        double *dat = new double[2*gpuHaloWidth*gpuDimY*gpuDimZ +
-                                 2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*gpuDimZ +
-                                 2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth)];
-        cl::copy(cl_queue, cl_gpuToCpuBuffer, &dat[0], (&dat[2*gpuHaloWidth*gpuDimY*gpuDimZ +
-                                                             2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*gpuDimZ +
-                                                             2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth)-1])+1);
+        double *dat = new double[2*gpuHaloWidth*gpuDim[Y]*gpuDim[Z] +
+                                 2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*gpuDim[Z] +
+                                 2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth)];
+        cl::copy(cl_queue, cl_gpuToCpuBuffer, &dat[0], (&dat[2*gpuHaloWidth*gpuDim[Y]*gpuDim[Z] +
+                                                             2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*gpuDim[Z] +
+                                                             2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth)-1])+1);
 
-        for(int i = 0; i < 2*gpuHaloWidth*gpuDimY*gpuDimZ + 2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*gpuDimZ + 2*gpuHaloWidth*(gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth); ++i)
+        for(int i = 0; i < 2*gpuHaloWidth*gpuDim[Y]*gpuDim[Z] + 2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*gpuDim[Z] + 2*gpuHaloWidth*(gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth); ++i)
             gpuToCpuBuffer[i].store(dat[i]);
 
         delete[] dat;
@@ -524,50 +526,50 @@ void Tausch3D::completeGpuToCpu() {
     }
 
     // left
-    for(int i = 0; i < gpuHaloWidth*gpuDimY*gpuDimZ; ++i) {
-        int index = ((i/(gpuHaloWidth*gpuDimY)) + gpuHaloWidth + (localDimZ-gpuDimZ)/2)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) +
-                    ((i%(gpuHaloWidth*gpuDimY))/gpuHaloWidth + cpuHaloWidth + (localDimY-gpuDimY)/2)*(localDimX+2*cpuHaloWidth) + (localDimX-gpuDimX)/2 +
-                    (i%(gpuHaloWidth*gpuDimY))%gpuHaloWidth + cpuHaloWidth;
+    for(int i = 0; i < gpuHaloWidth*gpuDim[Y]*gpuDim[Z]; ++i) {
+        int index = ((i/(gpuHaloWidth*gpuDim[Y])) + cpuHaloWidth[FRONT] + (localDim[Z]-gpuDim[Z])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                    ((i%(gpuHaloWidth*gpuDim[Y]))/gpuHaloWidth + cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-gpuDim[X])/2 +
+                    (i%(gpuHaloWidth*gpuDim[Y]))%gpuHaloWidth + cpuHaloWidth[LEFT];
         cpuData[index] = gpuToCpuBuffer[i].load();
     }
-    int offset = gpuHaloWidth*gpuDimY*gpuDimZ;
+    int offset = gpuHaloWidth*gpuDim[Y]*gpuDim[Z];
     // right
-    for(int i = 0; i < gpuHaloWidth*gpuDimY*gpuDimZ; ++i) {
-        int index = ((i/(gpuHaloWidth*gpuDimY)) + cpuHaloWidth + (localDimZ-gpuDimZ)/2)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) +
-                    ((i%(gpuHaloWidth*gpuDimY))/gpuHaloWidth + cpuHaloWidth + (localDimY-gpuDimY)/2)*(localDimX+2*cpuHaloWidth) + (localDimX-gpuDimX)/2 +
-                    (i%(gpuHaloWidth*gpuDimY))%gpuHaloWidth + gpuDimX;
+    for(int i = 0; i < gpuHaloWidth*gpuDim[Y]*gpuDim[Z]; ++i) {
+        int index = ((i/(gpuHaloWidth*gpuDim[Y])) + cpuHaloWidth[FRONT] + (localDim[Z]-gpuDim[Z])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                    ((i%(gpuHaloWidth*gpuDim[Y]))/gpuHaloWidth + cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-gpuDim[X])/2 +
+                    (i%(gpuHaloWidth*gpuDim[Y]))%gpuHaloWidth + gpuDim[X] + cpuHaloWidth[LEFT]-gpuHaloWidth;
         cpuData[index] = gpuToCpuBuffer[offset+i].load();
     }
-    offset += gpuHaloWidth*gpuDimY*gpuDimZ;
+    offset += gpuHaloWidth*gpuDim[Y]*gpuDim[Z];
     // top
-    for(int i = 0; i < (gpuDimX-2*gpuHaloWidth)*gpuHaloWidth*gpuDimZ; ++i) {
-        int index = ((i/((gpuDimX-2*gpuHaloWidth)*gpuHaloWidth)) + cpuHaloWidth + (localDimZ-gpuDimZ)/2)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) +
-                    ((i%((gpuDimX-2*gpuHaloWidth)*gpuHaloWidth))/(gpuDimX-2*gpuHaloWidth) + gpuDimY + (localDimY-gpuDimY)/2)*(localDimX+2*cpuHaloWidth) + (localDimX-gpuDimX)/2 +
-                    (i%((gpuDimX-2*gpuHaloWidth)*gpuHaloWidth))%(gpuDimX-2*gpuHaloWidth) + gpuHaloWidth+cpuHaloWidth;
+    for(int i = 0; i < (gpuDim[X]-2*gpuHaloWidth)*gpuHaloWidth*gpuDim[Z]; ++i) {
+        int index = ((i/((gpuDim[X]-2*gpuHaloWidth)*gpuHaloWidth)) + cpuHaloWidth[FRONT] + (localDim[Z]-gpuDim[Z])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                    ((i%((gpuDim[X]-2*gpuHaloWidth)*gpuHaloWidth))/(gpuDim[X]-2*gpuHaloWidth) + gpuDim[Y] + cpuHaloWidth[BOTTOM]-gpuHaloWidth + (localDim[Y]-gpuDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-gpuDim[X])/2 +
+                    (i%((gpuDim[X]-2*gpuHaloWidth)*gpuHaloWidth))%(gpuDim[X]-2*gpuHaloWidth) + gpuHaloWidth+cpuHaloWidth[LEFT];
         cpuData[index] = gpuToCpuBuffer[offset+i].load();
     }
-    offset += (gpuDimX-2*gpuHaloWidth)*gpuHaloWidth*gpuDimZ;
+    offset += (gpuDim[X]-2*gpuHaloWidth)*gpuHaloWidth*gpuDim[Z];
     // bottom
-    for(int i = 0; i < (gpuDimX-2*gpuHaloWidth)*gpuHaloWidth*gpuDimZ; ++i) {
-        int index = ((i/((gpuDimX-2*gpuHaloWidth)*gpuHaloWidth)) + cpuHaloWidth + (localDimZ-gpuDimZ)/2)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) +
-                    ((i%((gpuDimX-2*gpuHaloWidth)*gpuHaloWidth))/(gpuDimX-2*gpuHaloWidth) + cpuHaloWidth + (localDimY-gpuDimY)/2)*(localDimX+2*cpuHaloWidth) + (localDimX-gpuDimX)/2 +
-                    (i%((gpuDimX-2*gpuHaloWidth)*gpuHaloWidth))%(gpuDimX-2*gpuHaloWidth) + gpuHaloWidth+cpuHaloWidth;
+    for(int i = 0; i < (gpuDim[X]-2*gpuHaloWidth)*gpuHaloWidth*gpuDim[Z]; ++i) {
+        int index = ((i/((gpuDim[X]-2*gpuHaloWidth)*gpuHaloWidth)) + cpuHaloWidth[FRONT] + (localDim[Z]-gpuDim[Z])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                    ((i%((gpuDim[X]-2*gpuHaloWidth)*gpuHaloWidth))/(gpuDim[X]-2*gpuHaloWidth) + cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-gpuDim[X])/2 +
+                    (i%((gpuDim[X]-2*gpuHaloWidth)*gpuHaloWidth))%(gpuDim[X]-2*gpuHaloWidth) + gpuHaloWidth+cpuHaloWidth[LEFT];
         cpuData[index] = gpuToCpuBuffer[offset+i].load();
     }
-    offset += (gpuDimX-2*gpuHaloWidth)*gpuHaloWidth*gpuDimZ;
+    offset += (gpuDim[X]-2*gpuHaloWidth)*gpuHaloWidth*gpuDim[Z];
     // front
-    for(int i = 0; i < (gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth)*gpuHaloWidth; ++i) {
-        int index = ((i/((gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth))) + cpuHaloWidth + (localDimZ-gpuDimZ)/2)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) +
-                    ((i%((gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth)))/(gpuDimX-2*gpuHaloWidth) + gpuHaloWidth+cpuHaloWidth + (localDimY-gpuDimY)/2)*(localDimX+2*cpuHaloWidth) + (localDimX-gpuDimX)/2 +
-                    (i%((gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth)))%(gpuDimX-2*gpuHaloWidth) + gpuHaloWidth+cpuHaloWidth;
+    for(int i = 0; i < (gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth)*gpuHaloWidth; ++i) {
+        int index = ((i/((gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth))) + cpuHaloWidth[FRONT] + (localDim[Z]-gpuDim[Z])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                    ((i%((gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth)))/(gpuDim[X]-2*gpuHaloWidth) + gpuHaloWidth+cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-gpuDim[X])/2 +
+                    (i%((gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth)))%(gpuDim[X]-2*gpuHaloWidth) + gpuHaloWidth+cpuHaloWidth[LEFT];
         cpuData[index] = gpuToCpuBuffer[offset+i].load();
     }
-    offset += (gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth)*gpuHaloWidth;
+    offset += (gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth)*gpuHaloWidth;
     // back
-    for(int i = 0; i < (gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth)*gpuHaloWidth; ++i) {
-        int index = ((i/((gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth))) + gpuDimZ + (localDimZ-gpuDimZ)/2)*(localDimX+2*cpuHaloWidth)*(localDimY+2*cpuHaloWidth) +
-                    ((i%((gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth)))/(gpuDimX-2*gpuHaloWidth) + gpuHaloWidth+cpuHaloWidth + (localDimY-gpuDimY)/2)*(localDimX+2*cpuHaloWidth) + (localDimX-gpuDimX)/2 +
-                    (i%((gpuDimX-2*gpuHaloWidth)*(gpuDimY-2*gpuHaloWidth)))%(gpuDimX-2*gpuHaloWidth) + gpuHaloWidth+cpuHaloWidth;
+    for(int i = 0; i < (gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth)*gpuHaloWidth; ++i) {
+        int index = ((i/((gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth))) + gpuDim[Z] + cpuHaloWidth[FRONT]-gpuHaloWidth + (localDim[Z]-gpuDim[Z])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                    ((i%((gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth)))/(gpuDim[X]-2*gpuHaloWidth) + gpuHaloWidth+cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-gpuDim[X])/2 +
+                    (i%((gpuDim[X]-2*gpuHaloWidth)*(gpuDim[Y]-2*gpuHaloWidth)))%(gpuDim[X]-2*gpuHaloWidth) + gpuHaloWidth+cpuHaloWidth[LEFT];
         cpuData[index] = gpuToCpuBuffer[offset+i].load();
     }
 
@@ -587,20 +589,20 @@ void Tausch3D::completeCpuToGpu() {
 
     try {
 
-        double *dat = new double[2*gpuHaloWidth*(gpuDimY+2*gpuHaloWidth)*(gpuDimZ+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDimX*(gpuDimZ+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDimX*gpuDimY];
-        for(int i = 0; i < 2*gpuHaloWidth*(gpuDimY+2*gpuHaloWidth)*(gpuDimZ+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDimX*(gpuDimZ+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDimX*gpuDimY; ++i)
+        double *dat = new double[2*gpuHaloWidth*(gpuDim[Y]+2*gpuHaloWidth)*(gpuDim[Z]+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDim[X]*(gpuDim[Z]+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDim[X]*gpuDim[Y]];
+        for(int i = 0; i < 2*gpuHaloWidth*(gpuDim[Y]+2*gpuHaloWidth)*(gpuDim[Z]+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDim[X]*(gpuDim[Z]+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDim[X]*gpuDim[Y]; ++i)
             dat[i] = cpuToGpuBuffer[i].load();
 
-        cl::copy(cl_queue, &dat[0], (&dat[2*gpuHaloWidth*(gpuDimY+2*gpuHaloWidth)*(gpuDimZ+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDimX*(gpuDimZ+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDimX*gpuDimY-1])+1, cl_cpuToGpuBuffer);
+        cl::copy(cl_queue, &dat[0], (&dat[2*gpuHaloWidth*(gpuDim[Y]+2*gpuHaloWidth)*(gpuDim[Z]+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDim[X]*(gpuDim[Z]+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDim[X]*gpuDim[Y]-1])+1, cl_cpuToGpuBuffer);
 
         delete[] dat;
 
         auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
 
-        int globalSize = ((2*gpuHaloWidth*(gpuDimY+2*gpuHaloWidth)*(gpuDimZ+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDimX*(gpuDimZ+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDimX*gpuDimY)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = ((2*gpuHaloWidth*(gpuDim[Y]+2*gpuHaloWidth)*(gpuDim[Z]+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDim[X]*(gpuDim[Z]+2*gpuHaloWidth) + 2*gpuHaloWidth*gpuDim[X]*gpuDim[Y])/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_distributeHaloData(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                                  cl_gpuDimX, cl_gpuDimY, cl_gpuDimZ, cl_gpuHaloWidth, gpuData, cl_cpuToGpuBuffer);
+                                  cl_gpuDim[X], cl_gpuDim[Y], cl_gpuDim[Z], cl_gpuHaloWidth, gpuData, cl_cpuToGpuBuffer);
 
     } catch(cl::Error error) {
         std::cout << "[dist halo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
