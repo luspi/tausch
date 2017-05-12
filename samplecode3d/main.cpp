@@ -16,51 +16,50 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-    int localDimX = 6, localDimY = 6, localDimZ = 5;
+    int localDim[3] = {6, 6, 5};
     double portionGPU = 0;
-    int gpuDimX = 4, gpuDimY = 4, gpuDimZ = 3;
-    int mpiNumX = std::sqrt(mpiSize);
-    int mpiNumY = mpiNumX;
-    int mpiNumZ = 1;
+    int gpuDim[3] = {4, 4, 3};
+    int mpiNum[3] = {(int)std::cbrt(mpiSize), (int)std::cbrt(mpiSize), (int)std::cbrt(mpiSize)};
 
     int loops = 1;
     bool cpuonly = false;
     int workgroupsize = 64;
     bool giveOpenClDeviceName = false;
     int printMpiRank = -1;
-    int haloWidth = 1;
+    int cpuHaloWidth[6] = {1,1,1,1,1,1};
+    int gpuHaloWidth = 1;
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {
 
             if(argv[i] == std::string("-x") && i < argc-1)
-                localDimX = atoi(argv[++i]);
+                localDim[0] = atoi(argv[++i]);
             else if(argv[i] == std::string("-y") && i < argc-1)
-                localDimY = atoi(argv[++i]);
+                localDim[1] = atoi(argv[++i]);
             else if(argv[i] == std::string("-z") && i < argc-1)
-                localDimZ = atoi(argv[++i]);
+                localDim[2] = atoi(argv[++i]);
             else if(argv[i] == std::string("-gx") && i < argc-1)
-                gpuDimX = atoi(argv[++i]);
+                gpuDim[0] = atoi(argv[++i]);
             else if(argv[i] == std::string("-gy") && i < argc-1)
-                gpuDimY = atoi(argv[++i]);
+                gpuDim[1] = atoi(argv[++i]);
             else if(argv[i] == std::string("-gz") && i < argc-1)
-                gpuDimZ = atoi(argv[++i]);
+                gpuDim[2] = atoi(argv[++i]);
             else if(argv[i] == std::string("-gpu") && i < argc-1)
                 portionGPU = atof(argv[++i]);
             else if(argv[i] == std::string("-xyz") && i < argc-1) {
-                localDimX = atoi(argv[++i]);
-                localDimY = localDimX;
-                localDimZ = localDimX;
+                localDim[0] = atoi(argv[++i]);
+                localDim[1] = localDim[0];
+                localDim[2] = localDim[0];
             } else if(argv[i] == std::string("-gxyz") && i < argc-1) {
-                gpuDimX = atoi(argv[++i]);
-                gpuDimY = gpuDimX;
-                gpuDimZ = gpuDimX;
+                gpuDim[0] = atoi(argv[++i]);
+                gpuDim[1] = gpuDim[0];
+                gpuDim[2] = gpuDim[0];
             } else if(argv[i] == std::string("-mpix") && i < argc-1)
-                mpiNumX = atoi(argv[++i]);
+                mpiNum[0] = atoi(argv[++i]);
             else if(argv[i] == std::string("-mpiy") && i < argc-1)
-                mpiNumY = atoi(argv[++i]);
+                mpiNum[1] = atoi(argv[++i]);
             else if(argv[i] == std::string("-mpiz") && i < argc-1)
-                mpiNumZ = atoi(argv[++i]);
+                mpiNum[2] = atoi(argv[++i]);
             else if(argv[i] == std::string("-num") && i < argc-1)
                 loops = atoi(argv[++i]);
             else if(argv[i] == std::string("-cpu"))
@@ -71,30 +70,58 @@ int main(int argc, char** argv) {
                 giveOpenClDeviceName = true;
             else if(argv[i] == std::string("-print") && i < argc-1)
                 printMpiRank = atoi(argv[++i]);
-            else if(argv[i] == std::string("-halo") && i < argc-1)
-                haloWidth = atoi(argv[++i]);
+            else if(argv[i] == std::string("-chalo") && i < argc-1) {
+                std::string arg(argv[++i]);
+                size_t last = 0;
+                size_t next = 0;
+                int count = 0;
+                while((next = arg.find(",", last)) != std::string::npos && count < 5) {
+                    std::stringstream str;
+                    str << arg.substr(last, next-last);
+                    str >> cpuHaloWidth[count];
+                    last = next + 1;
+                    ++count;
+                }
+                if(count != 5) {
+                    int tmpHalo = 0;
+                    std::stringstream str;
+                    str << arg;
+                    str >> tmpHalo;
+                    for(int i = 0; i < 6; ++i)
+                        cpuHaloWidth[i] = tmpHalo;
+                } else {
+                    std::stringstream str;
+                    str << arg.substr(last);
+                    str >> cpuHaloWidth[5];
+                }
+            } else if(argv[i] == std::string("-ghalo") && i < argc-1)
+                gpuHaloWidth = atoi(argv[++i]);
         }
     }
 
     if(portionGPU != 0) {
-        gpuDimX = localDimX*std::cbrt(portionGPU);
-        gpuDimY = localDimY*std::cbrt(portionGPU);
-        gpuDimZ = localDimZ*std::cbrt(portionGPU);
+        gpuDim[0] = localDim[0]*std::cbrt(portionGPU);
+        gpuDim[1] = localDim[1]*std::cbrt(portionGPU);
+        gpuDim[2] = localDim[2]*std::cbrt(portionGPU);
     }
 
     if(mpiRank == 0) {
 
         std::cout << std::endl
-                  << "localDim      = " << localDimX << "x" << localDimY << "x" << localDimZ << std::endl
-                  << "gpuDim        = " << gpuDimX << "x" << gpuDimY << "x" << gpuDimZ << std::endl
-                  << "mpiNum        = " << mpiNumX << "x" << mpiNumY << "x" << mpiNumZ << std::endl
+                  << "localDim      = " << localDim[0] << "x" << localDim[1] << "x" << localDim[2] << std::endl
+                  << "gpuDim        = " << gpuDim[0] << "x" << gpuDim[1] << "x" << gpuDim[2] << std::endl
+                  << "mpiNum        = " << mpiNum[0] << "x" << mpiNum[1] << "x" << mpiNum[2] << std::endl
                   << "loops         = " << loops << std::endl
                   << "version       = " << (cpuonly ? "CPU-only" : "CPU/GPU") << std::endl
                   << "workgroupsize = " << workgroupsize << std::endl
+                  << "CPU halo      = " << cpuHaloWidth[0];
+        for(int i = 1; i < 6; ++i) std::cout << "/" << cpuHaloWidth[i];
+        std::cout << std::endl
+                  << "GPU halo      = " << gpuHaloWidth << std::endl
                   << std::endl;
 
     }
-    Sample sample(localDimX, localDimY, localDimZ, gpuDimX, gpuDimY, gpuDimZ, loops, haloWidth, mpiNumX, mpiNumY, mpiNumZ, cpuonly, workgroupsize, giveOpenClDeviceName);
+    Sample sample(localDim, gpuDim, loops, cpuHaloWidth, gpuHaloWidth, mpiNum, cpuonly, workgroupsize, giveOpenClDeviceName);
 
     if(mpiRank == printMpiRank) {
         if(!cpuonly) {
