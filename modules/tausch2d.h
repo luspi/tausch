@@ -459,6 +459,9 @@ private:
     cl::Buffer cl_gpuHaloWidth;
     cl::Buffer cl_stencilNumPoints;
 
+    // the size of the buffers for the cpu/gpu halo exchange. The stencil values are these variables multiplier by stencilNumPoints
+    int cTg, gTc;
+
     // Methods to set up the OpenCL environment and compile the required kernels
     void setupOpenCL(bool giveOpenCLDeviceName);
     void compileKernels();

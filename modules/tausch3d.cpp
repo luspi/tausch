@@ -30,17 +30,17 @@ Tausch3D::Tausch3D(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm)
 
     // whether the cpu/gpu pointers have been passed
     cpuInfoGiven = false;
+    stencilInfoGiven = false;
 
     // cpu at beginning
     cpuRecvsPosted = false;
+    stencilRecvsPosted = false;
 
     // communication to neither edge has been started
-    cpuStarted[LEFT] = false;
-    cpuStarted[RIGHT] = false;
-    cpuStarted[TOP] = false;
-    cpuStarted[BOTTOM] = false;
-    cpuStarted[FRONT] = false;
-    cpuStarted[BACK] = false;
+    for(int i = 0; i < 6; ++i)
+        cpuStarted[i] = false;
+    for(int i = 0; i < 6; ++i)
+        cpuStencilStarted[i] = false;
 
     mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
@@ -65,16 +65,32 @@ Tausch3D::Tausch3D(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm)
 Tausch3D::~Tausch3D() {
 
     // clean up memory
-    for(int i = 0; i < 6; ++i) {
-        delete[] cpuToCpuSendBuffer[i];
-        delete[] cpuToCpuRecvBuffer[i];
+    if(cpuInfoGiven) {
+        for(int i = 0; i < 6; ++i) {
+            if(haveBoundary[i]) {
+                delete[] cpuToCpuSendBuffer[i];
+                delete[] cpuToCpuRecvBuffer[i];
+            }
+        }
+        delete[] cpuToCpuSendBuffer;
+        delete[] cpuToCpuRecvBuffer;
     }
-    delete[] cpuToCpuSendBuffer;
-    delete[] cpuToCpuRecvBuffer;
+    if(stencilInfoGiven) {
+        for(int i = 0; i < 6; ++i) {
+            if(haveBoundary[i]) {
+                delete[] cpuToCpuStencilSendBuffer[i];
+                delete[] cpuToCpuStencilRecvBuffer[i];
+            }
+        }
+        delete[] cpuToCpuStencilSendBuffer;
+        delete[] cpuToCpuStencilRecvBuffer;
+    }
 #ifdef TAUSCH_OPENCL
     if(gpuEnabled) {
-        delete[] cpuToGpuBuffer;
-        delete[] gpuToCpuBuffer;
+        if(gpuInfoGiven) {
+            delete[] cpuToGpuBuffer;
+            delete[] gpuToCpuBuffer;
+        }
     }
 #endif
 
@@ -83,6 +99,97 @@ Tausch3D::~Tausch3D() {
 // get a pointer to the CPU data
 void Tausch3D::setCpuData(real_t *dat) {
 
+    cpuInfoGiven = true;
+    cpuData = dat;
+
+    int sendBufferSizes[6] = {
+
+        // left
+        cpuHaloWidth[RIGHT]*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+
+        // right
+        cpuHaloWidth[LEFT]*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+
+        // top
+        cpuHaloWidth[BOTTOM]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+
+        // bottom
+        cpuHaloWidth[TOP]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+
+        // front
+        cpuHaloWidth[BACK]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
+
+        // back
+        cpuHaloWidth[FRONT]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])
+
+    };
+
+    int recvBufferSizes[6] = {
+
+        // left
+        cpuHaloWidth[LEFT]*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+
+        // right
+        cpuHaloWidth[RIGHT]*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+
+        // top
+        cpuHaloWidth[TOP]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+
+        // bottom
+        cpuHaloWidth[BOTTOM]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+
+        // front
+        cpuHaloWidth[FRONT]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
+
+        // back
+        cpuHaloWidth[BACK]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])
+
+    };
+
+    int ranks[6] = {mpiRank-1, mpiRank+1, mpiRank+mpiNum[X], mpiRank-mpiNum[X], mpiRank-mpiNum[X]*mpiNum[Y], mpiRank+mpiNum[X]*mpiNum[Y]};
+    int recvTags[6] = {0, 2, 1, 3, 4, 5};
+    int sendTags[6] = {2, 0, 3, 1, 5, 4};
+
+    cpuToCpuSendBuffer = new real_t*[6];
+    cpuToCpuRecvBuffer = new real_t*[6];
+    for(int i = 0; i < 6; ++i) {
+        if(haveBoundary[i]) {
+            cpuToCpuSendBuffer[i] = new real_t[sendBufferSizes[i]]{};
+            cpuToCpuRecvBuffer[i] = new real_t[recvBufferSizes[i]]{};
+            MPI_Recv_init(cpuToCpuRecvBuffer[i], recvBufferSizes[i], mpiDataType, ranks[i], recvTags[i], TAUSCH_COMM, &cpuToCpuRecvRequest[i]);
+            MPI_Send_init(cpuToCpuSendBuffer[i], sendBufferSizes[i], mpiDataType, ranks[i], sendTags[i], TAUSCH_COMM, &cpuToCpuSendRequest[i]);
+        }
+    }
+
+}
+
+// get a pointer to the CPU data
+void Tausch3D::setCpuStencil(real_t *stencil, int stencilNumPoints) {
+/*
     cpuInfoGiven = true;
     cpuData = dat;
 
@@ -187,7 +294,7 @@ void Tausch3D::setCpuData(real_t *dat) {
                                                (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
                       mpiDataType, mpiRank+mpiNum[X]*mpiNum[Y], 4, TAUSCH_COMM, &cpuToCpuSendRequest[BACK]);
     }
-
+*/
 }
 
 // post the MPI_Irecv's for inter-rank communication
@@ -451,22 +558,22 @@ void Tausch3D::setGpuData(cl::Buffer &dat, int *gpuDim) {
 
     // store buffer to store the GPU and the CPU part of the halo.
     // We do not need two buffers each, as each thread has direct access to both arrays, no communication necessary
-    int cTg = gpuHaloWidth[LEFT]*(gpuDim[Y]+gpuHaloWidth[BOTTOM]+gpuHaloWidth[TOP])*
-                                 (gpuDim[Z]+gpuHaloWidth[FRONT]+gpuHaloWidth[BACK]) +
-              gpuHaloWidth[RIGHT]*(gpuDim[Y]+gpuHaloWidth[BOTTOM]+gpuHaloWidth[TOP])*
-                                  (gpuDim[Z]+gpuHaloWidth[FRONT]+gpuHaloWidth[BACK]) +
-              gpuHaloWidth[TOP]*gpuDim[X]*(gpuDim[Z]+gpuHaloWidth[FRONT]+gpuHaloWidth[BACK]) +
-              gpuHaloWidth[BOTTOM]*gpuDim[X]*(gpuDim[Z]+gpuHaloWidth[FRONT]+gpuHaloWidth[BACK]) +
-              gpuHaloWidth[FRONT]*gpuDim[X]*gpuDim[Y] +
-              gpuHaloWidth[BACK]*gpuDim[X]*gpuDim[Y];
-    int gTc = gpuHaloWidth[LEFT]*gpuDim[Y]*gpuDim[Z] +
-              gpuHaloWidth[RIGHT]*gpuDim[Y]*gpuDim[Z] +
-              gpuHaloWidth[TOP]*(gpuDim[X]-gpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT])*gpuDim[Z] +
-              gpuHaloWidth[BOTTOM]*(gpuDim[X]-gpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT])*gpuDim[Z] +
-              gpuHaloWidth[FRONT]*(gpuDim[X]-gpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT])*
-                                  (gpuDim[Y]-gpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP]) +
-              gpuHaloWidth[BACK]*(gpuDim[X]-gpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT])*
-                                 (gpuDim[Y]-gpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP]);
+    cTg = gpuHaloWidth[LEFT]*(gpuDim[Y]+gpuHaloWidth[BOTTOM]+gpuHaloWidth[TOP])*
+                             (gpuDim[Z]+gpuHaloWidth[FRONT]+gpuHaloWidth[BACK]) +
+          gpuHaloWidth[RIGHT]*(gpuDim[Y]+gpuHaloWidth[BOTTOM]+gpuHaloWidth[TOP])*
+                              (gpuDim[Z]+gpuHaloWidth[FRONT]+gpuHaloWidth[BACK]) +
+          gpuHaloWidth[TOP]*gpuDim[X]*(gpuDim[Z]+gpuHaloWidth[FRONT]+gpuHaloWidth[BACK]) +
+          gpuHaloWidth[BOTTOM]*gpuDim[X]*(gpuDim[Z]+gpuHaloWidth[FRONT]+gpuHaloWidth[BACK]) +
+          gpuHaloWidth[FRONT]*gpuDim[X]*gpuDim[Y] +
+          gpuHaloWidth[BACK]*gpuDim[X]*gpuDim[Y];
+    gTc = gpuHaloWidth[LEFT]*gpuDim[Y]*gpuDim[Z] +
+          gpuHaloWidth[RIGHT]*gpuDim[Y]*gpuDim[Z] +
+          gpuHaloWidth[TOP]*(gpuDim[X]-gpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT])*gpuDim[Z] +
+          gpuHaloWidth[BOTTOM]*(gpuDim[X]-gpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT])*gpuDim[Z] +
+          gpuHaloWidth[FRONT]*(gpuDim[X]-gpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT])*
+                              (gpuDim[Y]-gpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP]) +
+          gpuHaloWidth[BACK]*(gpuDim[X]-gpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT])*
+                             (gpuDim[Y]-gpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP]);
 
     cpuToGpuBuffer = new std::atomic<real_t>[cTg]{};
     gpuToCpuBuffer = new std::atomic<real_t>[gTc]{};
@@ -613,15 +720,6 @@ void Tausch3D::startGpuToCpuData() {
     gpuToCpuStarted.store(true);
 
     try {
-
-        int gTc = gpuHaloWidth[LEFT]*gpuDim[Y]*gpuDim[Z] +
-                  gpuHaloWidth[RIGHT]*gpuDim[Y]*gpuDim[Z] +
-                  gpuHaloWidth[TOP]*(gpuDim[X]-gpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT])*gpuDim[Z] +
-                  gpuHaloWidth[BOTTOM]*(gpuDim[X]-gpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT])*gpuDim[Z] +
-                  gpuHaloWidth[FRONT]*(gpuDim[X]-gpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT])*
-                                      (gpuDim[Y]-gpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP]) +
-                  gpuHaloWidth[BACK]*(gpuDim[X]-gpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT])*
-                                     (gpuDim[Y]-gpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP]);
 
         auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&,
                                                   cl::Buffer&>(cl_programs, "collectHaloData");
@@ -775,15 +873,6 @@ void Tausch3D::completeCpuToGpuData() {
     }
 
     try {
-
-        int cTg = gpuHaloWidth[LEFT]*(gpuDim[Y]+gpuHaloWidth[BOTTOM]+gpuHaloWidth[TOP])*
-                                     (gpuDim[Z]+gpuHaloWidth[FRONT]+gpuHaloWidth[BACK]) +
-                  gpuHaloWidth[RIGHT]*(gpuDim[Y]+gpuHaloWidth[BOTTOM]+gpuHaloWidth[TOP])*
-                                      (gpuDim[Z]+gpuHaloWidth[FRONT]+gpuHaloWidth[BACK]) +
-                  gpuHaloWidth[TOP]*gpuDim[X]*(gpuDim[Z]+gpuHaloWidth[FRONT]+gpuHaloWidth[BACK]) +
-                  gpuHaloWidth[BOTTOM]*gpuDim[X]*(gpuDim[Z]+gpuHaloWidth[FRONT]+gpuHaloWidth[BACK]) +
-                  gpuHaloWidth[FRONT]*gpuDim[X]*gpuDim[Y] +
-                  gpuHaloWidth[BACK]*gpuDim[X]*gpuDim[Y];
 
         double *dat = new double[cTg];
         for(int i = 0; i < cTg; ++i)

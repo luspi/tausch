@@ -75,24 +75,57 @@ public:
     void setCpuData(real_t *dat);
 
     /*!
+     * Tells %Tausch3D where to find the buffer for the CPU stencil data.
+     *
+     * \param stencil
+     *  The buffer holding the CPU stencil data. This is expected to be one contiguous buffer holding both the values owned by this MPI rank and the ghost values.
+     * \param stencilNumPoints
+     *  The number of points in the stencil. If the storage makes use of symmetry, this is expected to be the effective number of stored stencil values.
+     *
+     */
+    void setCpuStencil(real_t *stencil, int stencilNumPoints);
+
+    /*!
+     * Post the MPI_Irecv required for the stencil halo exchange. This has to be called before any stencil halo exchange is started.
+     */
+    void postCpuStencilReceives();
+
+    /*!
      * Post the MPI_Irecv required for the halo exchange. This has to be called before any halo exchange is started.
      */
     void postCpuDataReceives();
 
     /*!
-     * Convenience function that calls the necessary functions performing a halo exchange across MPI ranks. First it calls a left/right halo exchange followed by a top/bottom halo exchange, finishing off by a front/back halo exchange
+     * Convenience function that calls the necessary functions performing a halo exchange across MPI ranks. After posting the MPI_Recvs, it first performs a left/right halo exchange followed by a top/bottom halo exchange, finishing off by a front/back halo exchange
      */
-    void performCpuToCpuData() { startCpuDataEdge(LEFT); startCpuDataEdge(RIGHT); completeCpuDataEdge(LEFT); completeCpuDataEdge(RIGHT);
+    void performCpuToCpuData() { postCpuDataReceives();
+                                 startCpuDataEdge(LEFT); startCpuDataEdge(RIGHT); completeCpuDataEdge(LEFT); completeCpuDataEdge(RIGHT);
                                  startCpuDataEdge(TOP); startCpuDataEdge(BOTTOM); completeCpuDataEdge(TOP); completeCpuDataEdge(BOTTOM);
                                  startCpuDataEdge(FRONT); startCpuDataEdge(BACK); completeCpuDataEdge(FRONT); completeCpuDataEdge(BACK); }
+
+    /*!
+     * Convenience function that calls the necessary functions performing a stencil halo exchange across MPI ranks. After posting the MPI_Recvs, it first performs a left/right stencil halo exchange followed by a top/bottom stencil halo exchange, finishing off by a front/back stencil halo exchange
+     */
+   void performCpuToCpuStencil() { postCpuStencilReceives();
+                                   startCpuStencilEdge(LEFT); startCpuStencilEdge(RIGHT); completeCpuStencilEdge(LEFT); completeCpuStencilEdge(RIGHT);
+                                   startCpuStencilEdge(TOP); startCpuStencilEdge(BOTTOM); completeCpuStencilEdge(TOP); completeCpuStencilEdge(BOTTOM);
+                                   startCpuStencilEdge(FRONT); startCpuStencilEdge(BACK); completeCpuStencilEdge(FRONT); completeCpuStencilEdge(BACK); }
 
     /*!
      * Start the inter-MPI halo exchange across the given edge.
      *
      * \param edge
-     *  The edge across which the halo exchange is supposed to be started. It can be either one of the enum Tausch3D::LEFT, Tausch3D::RIGHT, Tausch3D::TOP, Tausch3D::BOTTOM, Tausch3D::FRONT, Tausch3D::BACK.
+     *  The edge across which the halo exchange is supposed to be started. It can be either one of the enum LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK.
      */
     void startCpuDataEdge(Edge edge);
+
+    /*!
+     * Start the inter-MPI stencil halo exchange across the given edge.
+     *
+     * \param edge
+     *  The edge across which the stencil halo exchange is supposed to be started. It can be either one of the enum LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK.
+     */
+    void startCpuStencilEdge(Edge edge);
 
     /*!
      * Completes the inter-MPI halo exchange across the given edge. This has to come *after* calling startCpuEdge() on the same edge.
@@ -101,6 +134,14 @@ public:
      *  The edge across which the halo exchange is supposed to be completed. It can be either one of the enum Tausch3D::LEFT, Tausch3D::RIGHT, Tausch3D::TOP, Tausch3D::BOTTOM, Tausch3D::FRONT, Tausch3D::BACK.
      */
     void completeCpuDataEdge(Edge edge);
+
+    /*!
+     * Completes the inter-MPI stencil halo exchange across the given edge. This has to come *after* calling startCpuStencilEdge() on the same edge.
+     *
+     * \param edge
+     *  The edge across which the stencil halo exchange is supposed to be completed. It can be either one of the enum LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK.
+     */
+    void completeCpuStencilEdge(Edge edge);
 
     /*!
      * Get the MPI communicator that %Tausch3D uses for all of its communication. Be careful not to 'overwrite' MPI tags that %Tausch3D uses.
@@ -161,6 +202,20 @@ public:
     void setGpuData(cl::Buffer &dat, int *gpuDim);
 
     /*!
+     * Tells %Tausch3D where to find the buffer for the GPU stencil and some of its main important details.
+     *
+     * Note: This is only available if %Tausch3D was compiled with OpenCL support!
+     *
+     * \param stencil
+     *  The OpenCL buffer holding the GPU stencil data. This is expected to be one contiguous buffer holding both the values owned by this GPU and the ghost values.
+     * \param stencilNumPoints
+     *  The number of points in the stencil. If the storage makes use of symmetry, this is expected to be the effective number of stored stencil values.
+     * \param stencilDim
+     *  Array of size 3, holding the x (first value), y (second value), and z (third value) dimensions of the GPU stencil buffer. This is typically the same as gpuDim. If stencilDim is set to {0,0,0} or nullptr, %Tausch3D will copy the values from gpuDim.
+     */
+    void setGpuStencil(cl::Buffer &stencil, int stencilNumPoints, int *stencilDim = nullptr);
+
+    /*!
      * Convenience function that calls the necessary functions performing a halo exchange from the CPU to GPU.
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
@@ -168,14 +223,33 @@ public:
     void performCpuToGpuData() { startCpuToGpuData(); completeGpuToCpuData(); }
 
     /*!
+     * Convenience function that calls the necessary functions performing a stencil halo exchange from the CPU to GPU. It calls startCpuToGpuStencil() and completeGpuToCpuStencil().
+     *
+     * Note: This is only available if %Tausch3D was compiled with OpenCL support!
+     */
+    void performCpuToGpuStencil() { startCpuToGpuStencil(); completeGpuToCpuStencil(); }
+
+    /*!
      * Convenience function that calls the necessary functions performing a halo exchange across the MPI ranks and from the CPU to GPU. It interweaves MPI communication with write to shared memory for sending data to the GPU.
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
-    void performCpuToCpuDataAndCpuToGpuData() { startCpuDataEdge(LEFT); startCpuDataEdge(RIGHT); startCpuToGpuData();
+    void performCpuToCpuDataAndCpuToGpuData() { postCpuDataReceives();
+                                                startCpuDataEdge(LEFT); startCpuDataEdge(RIGHT); startCpuToGpuData();
                                                 completeCpuDataEdge(LEFT); completeCpuDataEdge(RIGHT); startCpuDataEdge(TOP); startCpuDataEdge(BOTTOM);
                                                 completeGpuToCpuData(); completeCpuDataEdge(TOP); completeCpuDataEdge(BOTTOM);
                                                 startCpuDataEdge(FRONT); startCpuDataEdge(BACK); completeCpuDataEdge(FRONT); completeCpuDataEdge(BACK); }
+
+    /*!
+     * Convenience function that calls the necessary functions performing a stencil halo exchange across the MPI ranks and from the CPU to GPU. It interweaves MPI communication with write to shared memory for sending data to the GPU. The CPU/GPU methods called are startCpuToGpuStencil() and completeGpuToCpuStencil().
+     *
+     * Note: This is only available if %Tausch3D was compiled with OpenCL support!
+     */
+    void performCpuToCpuStencilAndCpuToGpuStencil() { postCpuStencilReceives();
+                                                      startCpuStencilEdge(LEFT); startCpuStencilEdge(RIGHT); startCpuToGpuStencil();
+                                                      completeCpuStencilEdge(LEFT); completeCpuStencilEdge(RIGHT); startCpuStencilEdge(TOP); startCpuStencilEdge(BOTTOM);
+                                                      completeGpuToCpuStencil(); completeCpuStencilEdge(TOP); completeCpuStencilEdge(BOTTOM);
+                                                      startCpuStencilEdge(FRONT); startCpuStencilEdge(BACK); completeCpuStencilEdge(FRONT); completeCpuStencilEdge(BACK); }
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange from the GPU to CPU.
@@ -185,11 +259,26 @@ public:
     void performGpuToCpuData() { startGpuToCpuData(); completeCpuToGpuData(); }
 
     /*!
+     * Convenience function that calls the necessary functions performing a stencil halo exchange from the GPU to CPU. It calls startGpuToCpuStencil() and completeCpuToGpuStencil().
+     *
+     * Note: This is only available if %Tausch3D was compiled with OpenCL support!
+     */
+    void performGpuToCpuStencil() { startGpuToCpuStencil(); completeCpuToGpuStencil(); }
+
+    /*!
      * Start the halo exchange of the CPU looking at the GPU. This writes the required halo data to shared memory using atomic operations.
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
     void startCpuToGpuData();
+
+    /*!
+     * Start the stencil halo exchange from the CPU to the GPU (called by the CPU thread). This writes the required stencil halo data to shared memory using atomic operations.
+     *
+     * Note: This is only available if %Tausch3D was compiled with OpenCL support!
+     */
+    void startCpuToGpuStencil();
+
     /*!
      * Start the halo exchange of the GPU looking at the CPU. This downloads the required halo data from the GPU and writes it to shared memory using atomic operations.
      *
@@ -198,17 +287,39 @@ public:
     void startGpuToCpuData();
 
     /*!
+     * Start the stencil halo exchange from the GPU to the CPU (called by te GPU thread). This downloads the required stencil halo data from the GPU and writes it to shared memory using atomic operations.
+     *
+     * Note: This is only available if %Tausch3D was compiled with OpenCL support!
+     */
+    void startGpuToCpuStencil();
+
+    /*!
      * Completes the halo exchange of the CPU looking at the GPU. This takes the halo data the GPU wrote to shared memory and loads it into the respective buffer positions. This has to come *after* calling startCpuToGpu().
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
     void completeCpuToGpuData();
+
+    /*!
+     * Completes the stencil halo exchange from the CPU to the GPU (called by the GPU thread). This takes the stencil halo data the GPU wrote to shared memory and loads it into the respective buffer positions. This has to come *after* calling startCpuToGpuStencil().
+     *
+     * Note: This is only available if %Tausch3D was compiled with OpenCL support!
+     */
+    void completeCpuToGpuStencil();
+
     /*!
      * Completes the halo exchange of the GPU looking at the CPU. This takes the halo data the CPU wrote to shared memory and uploads it to the GPU. This has to come *after* calling startGpuToCpu().
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
     void completeGpuToCpuData();
+
+    /*!
+     * Completes the stencil halo exchange from the GPU to the CPU (called by the CPU thread). This takes the stencil halo data the CPU wrote to shared memory and uploads it to the GPU. This has to come *after* calling startGpuToCpuStencil().
+     *
+     * Note: This is only available if %Tausch23D was compiled with OpenCL support!
+     */
+    void completeGpuToCpuStencil();
 
     /*!
      * Return the OpenCL context used by %Tausch3D. This can be especially useful when %Tausch3D uses its own OpenCL environment and the user wants to piggyback on that.
@@ -245,6 +356,8 @@ private:
 
     // Pointer to the CPU data
     real_t *cpuData;
+    real_t *cpuStencil;
+    int stencilNumPoints;
 
     // The width of the halo
     int cpuHaloWidth[6];
@@ -252,13 +365,18 @@ private:
     // Double pointer holding the MPI sent/recvd data across all edges
     real_t **cpuToCpuSendBuffer;
     real_t **cpuToCpuRecvBuffer;
+    real_t **cpuToCpuStencilSendBuffer;
+    real_t **cpuToCpuStencilRecvBuffer;
 
     // Whether the necessary steps were taken before starting a halo exchange
     bool cpuInfoGiven;
+    bool stencilInfoGiven;
     bool cpuRecvsPosted;
+    bool stencilRecvsPosted;
 
     // Which edge of the halo exchange has been started
     bool cpuStarted[6];
+    bool cpuStencilStarted[6];
 
     // this refers to inter-partition boundaries
     bool haveBoundary[6];
@@ -269,6 +387,8 @@ private:
     // Holding the MPI requests so we can call Wait on the right ones
     MPI_Request cpuToCpuSendRequest[6];
     MPI_Request cpuToCpuRecvRequest[6];
+    MPI_Request cpuToCpuStencilSendRequest[6];
+    MPI_Request cpuToCpuStencilRecvRequest[6];
 
 #ifdef TAUSCH_OPENCL
 
@@ -286,6 +406,9 @@ private:
     int gpuDim[3];
     cl::Buffer cl_gpuDim[3];
     cl::Buffer cl_gpuHaloWidth;
+
+    // the size of the buffers for the cpu/gpu halo exchange. The stencil values are these variables multiplier by stencilNumPoints
+    int cTg, gTc;
 
     // Methods to set up the OpenCL environment and compile the required kernels
     void setupOpenCL(bool giveOpenCLDeviceName);
