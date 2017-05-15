@@ -55,7 +55,7 @@ public:
      * \param mpiNum
      *  Array of size 3 holding the number of MPI ranks lined up in the x (first entry), y (second entry) and z (third entry) direction. mpiNumX*mpiNumY*mpiNumZ has to be equal to the total number of MPI ranks.
      * \param cpuHaloWidth
-     *  The width of the CPU-to-CPU halo, i.e., the inter-MPI halo.
+     *  Array of size 6 holding the widths of the CPU-CPU halo, i.e., the inter-MPI halo. The values are expected in the edge order: LEFT -> RIGHT -> TOP -> BOTTOM -> FRONT -> BACK.
      * \param comm
      *  The MPI Communictor to be used. %Tausch3D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch3D working with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
@@ -117,6 +117,8 @@ public:
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      *
+     * \param gpuHaloWidth
+     *  Array of size 6 holding the widths of the CPU/GPU halo. The values are expected in the edge order: LEFT -> RIGHT -> TOP -> BOTTOM -> FRONT -> BACK.
      * \param blockingSyncCpuGpu
      *  Whether to sync the CPU and GPU. This is necessary when running both parts in asynchronous threads, but causes a deadlock when only one thread is used. Default value: true
      * \param clLocalWorkgroupSize
@@ -124,7 +126,7 @@ public:
      * \param giveOpenCLDeviceName
      *  Whether %Tausch3D should print out the OpenCL device name. This can come in handy for debugging. Default value: false
      */
-    void enableOpenCL(int gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
+    void enableOpenCL(int *gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64, bool giveOpenCLDeviceName = false);
 
     /*!
      * Overloaded function. Enabled OpenCL for the current %Tausch3D object, making %Tausch3D use the user-provided OpenCL environment.
@@ -137,12 +139,14 @@ public:
      *  The OpenCL context
      * \param cl_queue
      *  The OpenCL queue
+     * \param gpuHaloWidth
+     *  Array of size 6 holding the widths of the CPU/GPU halo. The values are expected in the edge order: LEFT -> RIGHT -> TOP -> BOTTOM -> FRONT -> BACK.
      * \param blockingSyncCpuGpu
      *  Whether to sync the CPU and GPU. This is necessary when running both parts in asynchronous threads, but causes a deadlock when only one thread is used. Default value: true
      * \param clLocalWorkgroupSize
      *  The local workgroup size for each kernel call. Default value: 64
      */
-    void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, int gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64);
+    void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue, int *gpuHaloWidth, bool blockingSyncCpuGpu = true, int clLocalWorkgroupSize = 64);
 
     /*!
      * Tells %Tausch3D where to find the buffer for the GPU data and some of its main important details.
@@ -151,12 +155,8 @@ public:
      *
      * \param dat
      *  The OpenCL buffer holding the GPU data. This is expected to be one contiguous buffer holding both the values owned by this GPU and the ghost values.
-     * \param gpuDimX
-     *  The x dimension of the GPU buffer. This has to be less than localDimX-2*haloWidth.
-     * \param gpuDimY
-     *  The y dimension of the GPU buffer. This has to be less than localDimY-2*haloWidth.
-     * \param gpuDimZ
-     *  The z dimension of the GPU buffer. This has to be less than localDimZ-2*haloWidth.
+     * \param gpuDim
+     *  Array of size 3, holding the x (first value), y (second value), and z (third value) dimensions of the GPU buffer.
      */
     void setGPUData(cl::Buffer &dat, int *gpuDim);
 
@@ -280,12 +280,12 @@ private:
     // The OpenCL buffer holding the data on the GPU
     cl::Buffer gpuData;
 
-    int gpuHaloWidth;
+    int gpuHaloWidth[6];
 
     // Some meta information about the OpenCL region
     int gpuDim[3];
     cl::Buffer cl_gpuDim[3];
-    cl::Buffer cl_gpuHaloWidth;;
+    cl::Buffer cl_gpuHaloWidth;
 
     // Methods to set up the OpenCL environment and compile the required kernels
     void setupOpenCL(bool giveOpenCLDeviceName);
