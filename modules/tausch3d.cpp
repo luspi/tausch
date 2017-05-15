@@ -191,7 +191,7 @@ void Tausch3D::setCpuData(real_t *dat) {
 }
 
 // post the MPI_Irecv's for inter-rank communication
-void Tausch3D::postCpuReceives() {
+void Tausch3D::postCpuDataReceives() {
 
     if(!cpuInfoGiven) {
         std::cerr << "ERROR: You didn't tell me yet where to find the data! Abort..." << std::endl;
@@ -217,7 +217,7 @@ void Tausch3D::postCpuReceives() {
 
 }
 
-void Tausch3D::startCpuEdge(Edge edge) {
+void Tausch3D::startCpuDataEdge(Edge edge) {
 
     if(!cpuRecvsPosted) {
         std::cerr << "ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
@@ -302,7 +302,7 @@ void Tausch3D::startCpuEdge(Edge edge) {
 }
 
 // Complete CPU-CPU exchange to the left
-void Tausch3D::completeCpuEdge(Edge edge) {
+void Tausch3D::completeCpuDataEdge(Edge edge) {
 
     if(edge != LEFT && edge != RIGHT && edge != TOP && edge != BOTTOM && edge != FRONT && edge != BACK) {
         std::cerr << "completeCpuEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
@@ -492,7 +492,7 @@ void Tausch3D::setGpuData(cl::Buffer &dat, int *gpuDim) {
 }
 
 // collect cpu side of cpu/gpu halo and store in buffer
-void Tausch3D::startCpuToGpu() {
+void Tausch3D::startCpuToGpuData() {
 
     // check whether GPU is enabled
     if(!gpuEnabled) {
@@ -601,7 +601,7 @@ void Tausch3D::startCpuToGpu() {
 }
 
 // collect gpu side of cpu/gpu halo and download into buffer
-void Tausch3D::startGpuToCpu() {
+void Tausch3D::startGpuToCpuData() {
 
     // check whether GPU is enabled
     if(!gpuEnabled) {
@@ -651,7 +651,7 @@ void Tausch3D::startGpuToCpu() {
 }
 
 // Complete CPU side of CPU/GPU halo exchange
-void Tausch3D::completeGpuToCpu() {
+void Tausch3D::completeGpuToCpuData() {
 
     // we need to wait for the GPU thread to arrive here
     if(blockingSyncCpuGpu)
@@ -767,7 +767,7 @@ void Tausch3D::completeGpuToCpu() {
 }
 
 // Complete GPU side of CPU/GPU halo exchange
-void Tausch3D::completeCpuToGpu() {
+void Tausch3D::completeCpuToGpuData() {
 
     // we need to wait for the CPU thread to arrive here
     if(blockingSyncCpuGpu)

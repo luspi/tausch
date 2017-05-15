@@ -77,14 +77,14 @@ public:
     /*!
      * Post the MPI_Irecv required for the halo exchange. This has to be called before any halo exchange is started.
      */
-    void postCpuReceives();
+    void postCpuDataReceives();
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange across MPI ranks. First it calls a left/right halo exchange followed by a top/bottom halo exchange, finishing off by a front/back halo exchange
      */
-    void performCpuToCpu() { startCpuEdge(LEFT); startCpuEdge(RIGHT); completeCpuEdge(LEFT); completeCpuEdge(RIGHT);
-                             startCpuEdge(TOP); startCpuEdge(BOTTOM); completeCpuEdge(TOP); completeCpuEdge(BOTTOM);
-                             startCpuEdge(FRONT); startCpuEdge(BACK); completeCpuEdge(FRONT); completeCpuEdge(BACK); }
+    void performCpuToCpuData() { startCpuDataEdge(LEFT); startCpuDataEdge(RIGHT); completeCpuDataEdge(LEFT); completeCpuDataEdge(RIGHT);
+                                 startCpuDataEdge(TOP); startCpuDataEdge(BOTTOM); completeCpuDataEdge(TOP); completeCpuDataEdge(BOTTOM);
+                                 startCpuDataEdge(FRONT); startCpuDataEdge(BACK); completeCpuDataEdge(FRONT); completeCpuDataEdge(BACK); }
 
     /*!
      * Start the inter-MPI halo exchange across the given edge.
@@ -92,7 +92,7 @@ public:
      * \param edge
      *  The edge across which the halo exchange is supposed to be started. It can be either one of the enum Tausch3D::LEFT, Tausch3D::RIGHT, Tausch3D::TOP, Tausch3D::BOTTOM, Tausch3D::FRONT, Tausch3D::BACK.
      */
-    void startCpuEdge(Edge edge);
+    void startCpuDataEdge(Edge edge);
 
     /*!
      * Completes the inter-MPI halo exchange across the given edge. This has to come *after* calling startCpuEdge() on the same edge.
@@ -100,7 +100,7 @@ public:
      * \param edge
      *  The edge across which the halo exchange is supposed to be completed. It can be either one of the enum Tausch3D::LEFT, Tausch3D::RIGHT, Tausch3D::TOP, Tausch3D::BOTTOM, Tausch3D::FRONT, Tausch3D::BACK.
      */
-    void completeCpuEdge(Edge edge);
+    void completeCpuDataEdge(Edge edge);
 
     /*!
      * Get the MPI communicator that %Tausch3D uses for all of its communication. Be careful not to 'overwrite' MPI tags that %Tausch3D uses.
@@ -165,50 +165,50 @@ public:
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
-    void performCpuToGpu() { startCpuToGpu(); completeGpuToCpu(); }
+    void performCpuToGpuData() { startCpuToGpuData(); completeGpuToCpuData(); }
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange across the MPI ranks and from the CPU to GPU. It interweaves MPI communication with write to shared memory for sending data to the GPU.
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
-    void performCpuToCpuAndCpuToGpu() { startCpuEdge(LEFT); startCpuEdge(RIGHT); startCpuToGpu();
-                                        completeCpuEdge(LEFT); completeCpuEdge(RIGHT); startCpuEdge(TOP); startCpuEdge(BOTTOM);
-                                        completeGpuToCpu(); completeCpuEdge(TOP); completeCpuEdge(BOTTOM);
-                                        startCpuEdge(FRONT); startCpuEdge(BACK); completeCpuEdge(FRONT); completeCpuEdge(BACK); }
+    void performCpuToCpuDataAndCpuToGpuData() { startCpuDataEdge(LEFT); startCpuDataEdge(RIGHT); startCpuToGpuData();
+                                                completeCpuDataEdge(LEFT); completeCpuDataEdge(RIGHT); startCpuDataEdge(TOP); startCpuDataEdge(BOTTOM);
+                                                completeGpuToCpuData(); completeCpuDataEdge(TOP); completeCpuDataEdge(BOTTOM);
+                                                startCpuDataEdge(FRONT); startCpuDataEdge(BACK); completeCpuDataEdge(FRONT); completeCpuDataEdge(BACK); }
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange from the GPU to CPU.
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
-    void performGpuToCpu() { startGpuToCpu(); completeCpuToGpu(); }
+    void performGpuToCpuData() { startGpuToCpuData(); completeCpuToGpuData(); }
 
     /*!
      * Start the halo exchange of the CPU looking at the GPU. This writes the required halo data to shared memory using atomic operations.
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
-    void startCpuToGpu();
+    void startCpuToGpuData();
     /*!
      * Start the halo exchange of the GPU looking at the CPU. This downloads the required halo data from the GPU and writes it to shared memory using atomic operations.
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
-    void startGpuToCpu();
+    void startGpuToCpuData();
 
     /*!
      * Completes the halo exchange of the CPU looking at the GPU. This takes the halo data the GPU wrote to shared memory and loads it into the respective buffer positions. This has to come *after* calling startCpuToGpu().
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
-    void completeCpuToGpu();
+    void completeCpuToGpuData();
     /*!
      * Completes the halo exchange of the GPU looking at the CPU. This takes the halo data the CPU wrote to shared memory and uploads it to the GPU. This has to come *after* calling startGpuToCpu().
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
      */
-    void completeGpuToCpu();
+    void completeGpuToCpuData();
 
     /*!
      * Return the OpenCL context used by %Tausch3D. This can be especially useful when %Tausch3D uses its own OpenCL environment and the user wants to piggyback on that.

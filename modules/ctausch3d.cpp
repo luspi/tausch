@@ -21,19 +21,19 @@ extern "C" {
         *comm = t->getMPICommunicator();
     }
 
-    void tausch3d_postCpuReceives(CTausch3D *tC) {
+    void tausch3d_postCpuDataReceives(CTausch3D *tC) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
-        t->postCpuReceives();
+        t->postCpuDataReceives();
     }
 
-    void tausch3d_performCpuToCpu(CTausch3D *tC) {
+    void tausch3d_performCpuToCpuData(CTausch3D *tC) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
-        t->performCpuToCpu();
+        t->performCpuToCpuData();
     }
 
-    void tausch3d_startCpuEdge(CTausch3D *tC, enum Edge edge) {
+    void tausch3d_startCpuDataEdge(CTausch3D *tC, enum Edge edge) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
-        t->startCpuEdge(edge==TAUSCH_LEFT ? Tausch3D::LEFT :
+        t->startCpuDataEdge(edge==TAUSCH_LEFT ? Tausch3D::LEFT :
                                             (edge==TAUSCH_RIGHT ? Tausch3D::RIGHT :
                                                                   (edge==TAUSCH_TOP ? Tausch3D::TOP :
                                                                                       (edge==TAUSCH_BOTTOM ? Tausch3D::BOTTOM :
@@ -41,9 +41,9 @@ extern "C" {
                                                                                                                                   Tausch3D::BACK))));
     }
 
-    void tausch3d_completeCpuEdge(CTausch3D *tC, enum Edge edge) {
+    void tausch3d_completeCpuDataEdge(CTausch3D *tC, enum Edge edge) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
-        t->completeCpuEdge(edge==TAUSCH_LEFT ? Tausch3D::LEFT :
+        t->completeCpuDataEdge(edge==TAUSCH_LEFT ? Tausch3D::LEFT :
                                                (edge==TAUSCH_RIGHT ? Tausch3D::RIGHT :
                                                                      (edge==TAUSCH_TOP ? Tausch3D::TOP :
                                                                                          (edge==TAUSCH_BOTTOM ? Tausch3D::BOTTOM :
@@ -76,37 +76,37 @@ extern "C" {
         t->setGpuData(*buf, gpuDim);
     }
 
-    void tausch3d_performCpuToCpuAndCpuToGpu(CTausch3D *tC) {
+    void tausch3d_performCpuToCpuDataAndCpuToGpuData(CTausch3D *tC) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
-        t->performCpuToCpuAndCpuToGpu();
+        t->performCpuToCpuDataAndCpuToGpuData();
     }
 
-    void tausch3d_performCpuToGpu(CTausch3D *tC) {
+    void tausch3d_performCpuToGpuData(CTausch3D *tC) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
-        t->performCpuToGpu();
+        t->performCpuToGpuData();
     }
 
-    void tausch3d_performGpuToCpu(CTausch3D *tC) {
+    void tausch3d_performGpuToCpuData(CTausch3D *tC) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
-        t->performGpuToCpu();
+        t->performGpuToCpuData();
     }
 
-    void tausch3d_startCpuToGpu(CTausch3D *tC) {
+    void tausch3d_startCpuToGpuData(CTausch3D *tC) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
-        t->startCpuToGpu();
+        t->startCpuToGpuData();
     }
-    void tausch3d_startGpuToCpu(CTausch3D *tC) {
+    void tausch3d_startGpuToCpuData(CTausch3D *tC) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
-        t->startGpuToCpu();
+        t->startGpuToCpuData();
     }
 
-    void tausch3d_completeCpuToGpu(CTausch3D *tC) {
+    void tausch3d_completeCpuToGpuData(CTausch3D *tC) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
-        t->completeCpuToGpu();
+        t->completeCpuToGpuData();
     }
-    void tausch3d_completeGpuToCpu(CTausch3D *tC) {
+    void tausch3d_completeGpuToCpuData(CTausch3D *tC) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
-        t->completeGpuToCpu();
+        t->completeGpuToCpuData();
     }
 
     cl_context tausch3d_getContext(CTausch3D *tC) {

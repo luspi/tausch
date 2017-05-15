@@ -24,15 +24,15 @@ void tausch3d_delete(CTausch3D *tC);
 
 void tausch3d_getMPICommunicator(CTausch3D *tC, MPI_Comm *comm);
 
-void tausch3d_postCpuReceives(CTausch3D *tC);
+void tausch3d_postCpuDataReceives(CTausch3D *tC);
 
-void tausch3d_performCpuToCpu(CTausch3D *tC);
+void tausch3d_performCpuToCpuData(CTausch3D *tC);
 
-void tausch3d_startCpuToGpu(CTausch3D *tC);
+void tausch3d_startCpuToGpuData(CTausch3D *tC);
 
-void tausch3d_startCpuEdge(CTausch3D *tC, enum Edge edge);
+void tausch3d_startCpuDataEdge(CTausch3D *tC, enum Edge edge);
 
-void tausch3d_completeCpuEdge(CTausch3D *tC, enum Edge edge);
+void tausch3d_completeCpuDataEdge(CTausch3D *tC, enum Edge edge);
 
 void tausch3d_setCpuData(CTausch3D *tC, real_t *dat);
 
@@ -41,16 +41,16 @@ void tausch3d_enableOpenCL(CTausch3D *tC, int *gpuHaloWidth, bool blockingSyncCp
 
 void tausch3d_setOpenCLInfo(CTausch3D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize);
 
-void tausch3d_performCpuToCpuAndCpuToGpu(CTausch3D *tC);
+void tausch3d_performCpuToCpuDataAndCpuToGpuData(CTausch3D *tC);
 
-void tausch3d_performCpuToGpu(CTausch3D *tC);
+void tausch3d_performCpuToGpuData(CTausch3D *tC);
 
-void tausch3d_performGpuToCpu(CTausch3D *tC);
+void tausch3d_performGpuToCpuData(CTausch3D *tC);
 
-void tausch3d_startGpuToCpu(CTausch3D *tC);
+void tausch3d_startGpuToCpuData(CTausch3D *tC);
 
-void tausch3d_completeCpuToGpu(CTausch3D *tC);
-void tausch3d_completeGpuToCpu(CTausch3D *tC);
+void tausch3d_completeCpuToGpuData(CTausch3D *tC);
+void tausch3d_completeGpuToCpuData(CTausch3D *tC);
 
 void tausch3d_setGpuData(CTausch3D *tC, cl_mem dat, int *gpuDim);
 
