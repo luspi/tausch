@@ -194,14 +194,9 @@ void Tausch2D::postCpuDataReceives() {
 
     cpuRecvsPosted = true;
 
-    if(haveBoundary[LEFT])
-        MPI_Start(&cpuToCpuRecvRequest[LEFT]);
-    if(haveBoundary[RIGHT])
-        MPI_Start(&cpuToCpuRecvRequest[RIGHT]);
-    if(haveBoundary[TOP])
-        MPI_Start(&cpuToCpuRecvRequest[TOP]);
-    if(haveBoundary[BOTTOM])
-        MPI_Start(&cpuToCpuRecvRequest[BOTTOM]);
+    for(int i  0; i < 4; ++i)
+        if(haveBoundary[i])
+            MPI_Start(&cpuToCpuRecvRequest[LEFT]);
 
 }
 
@@ -215,14 +210,9 @@ void Tausch2D::postCpuStencilReceives() {
 
     stencilRecvsPosted = true;
 
-    if(haveBoundary[LEFT])
-        MPI_Start(&cpuToCpuStencilRecvRequest[LEFT]);
-    if(haveBoundary[RIGHT])
-        MPI_Start(&cpuToCpuStencilRecvRequest[RIGHT]);
-    if(haveBoundary[TOP])
-        MPI_Start(&cpuToCpuStencilRecvRequest[TOP]);
-    if(haveBoundary[BOTTOM])
-        MPI_Start(&cpuToCpuStencilRecvRequest[BOTTOM]);
+    for(int i  0; i < 4; ++i)
+        if(haveBoundary[i])
+            MPI_Start(&cpuToCpuStencilRecvRequest[LEFT]);
 
 }
 

@@ -202,18 +202,9 @@ void Tausch3D::postCpuDataReceives() {
 
     mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
 
-    if(haveBoundary[LEFT])
-        MPI_Start(&cpuToCpuRecvRequest[LEFT]);
-    if(haveBoundary[RIGHT])
-        MPI_Start(&cpuToCpuRecvRequest[RIGHT]);
-    if(haveBoundary[TOP])
-        MPI_Start(&cpuToCpuRecvRequest[TOP]);
-    if(haveBoundary[BOTTOM])
-        MPI_Start(&cpuToCpuRecvRequest[BOTTOM]);
-    if(haveBoundary[FRONT])
-        MPI_Start(&cpuToCpuRecvRequest[FRONT]);
-    if(haveBoundary[BACK])
-        MPI_Start(&cpuToCpuRecvRequest[BACK]);
+    for(int i = 0; i < 6; ++i)
+        if(haveBoundary[i])
+            MPI_Start(&cpuToCpuRecvRequest[i]);
 
 }
 
