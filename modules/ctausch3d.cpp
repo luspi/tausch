@@ -51,9 +51,9 @@ extern "C" {
                                                                                                                                      Tausch3D::BACK))));
     }
 
-    void tausch3d_setCPUData(CTausch3D *tC, real_t *dat) {
+    void tausch3d_setCpuData(CTausch3D *tC, real_t *dat) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
-        t->setCPUData(dat);
+        t->setCpuData(dat);
     }
 
 #ifdef TAUSCH_OPENCL
@@ -70,10 +70,10 @@ extern "C" {
         t->enableOpenCL(*dev, *con, *que, gpuHaloWidth, blockingSyncCpuGpu, clLocalWorkgroupSize);
     }
 
-    void tausch3d_setGPUData(CTausch3D *tC, cl_mem dat, int *gpuDim) {
+    void tausch3d_setGpuData(CTausch3D *tC, cl_mem dat, int *gpuDim) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
         cl::Buffer *buf = new cl::Buffer(dat);
-        t->setGPUData(*buf, gpuDim);
+        t->setGpuData(*buf, gpuDim);
     }
 
     void tausch3d_performCpuToCpuAndCpuToGpu(CTausch3D *tC) {

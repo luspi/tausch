@@ -96,7 +96,7 @@ Tausch2D::~Tausch2D() {
 }
 
 // get a pointer to the CPU data
-void Tausch2D::setCPUData(real_t *data) {
+void Tausch2D::setCpuData(real_t *data) {
 
     cpuInfoGiven = true;
     cpuData = data;
@@ -140,7 +140,7 @@ void Tausch2D::setCPUData(real_t *data) {
 
 }
 
-void Tausch2D::setCPUStencil(real_t *stencil, int stencilNumPoints) {
+void Tausch2D::setCpuStencil(real_t *stencil, int stencilNumPoints) {
 
     stencilInfoGiven = true;
     cpuStencil = stencil;
@@ -440,7 +440,7 @@ void Tausch2D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_contex
 }
 
 // get a pointer to the GPU buffer and its dimensions
-void Tausch2D::setGPUData(cl::Buffer &dat, int *gpuDim) {
+void Tausch2D::setGpuData(cl::Buffer &dat, int *gpuDim) {
 
     // check whether OpenCL has been set up
     if(!gpuEnabled) {
@@ -481,7 +481,7 @@ void Tausch2D::setGPUData(cl::Buffer &dat, int *gpuDim) {
 
 }
 
-void Tausch2D::setGPUStencil(cl::Buffer &stencil, int stencilNumPoints, int *stencilDim) {
+void Tausch2D::setGpuStencil(cl::Buffer &stencil, int stencilNumPoints, int *stencilDim) {
 
     // check whether OpenCL has been set up
     if(!gpuEnabled) {

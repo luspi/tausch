@@ -57,13 +57,13 @@ extern "C" {
         t->completeCpuStencilEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT : (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT : (edge==TAUSCH_TOP ? Tausch2D::TOP : Tausch2D::BOTTOM)));
     }
 
-    void tausch2d_setCPUData(CTausch2D *tC, real_t *dat) {
+    void tausch2d_setCpuData(CTausch2D *tC, real_t *dat) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->setCPUData(dat);
+        t->setCpuData(dat);
     }
-    void tausch2d_setCPUStencil(CTausch2D *tC, real_t *dat, int stencilNumPoints) {
+    void tausch2d_setCpuStencil(CTausch2D *tC, real_t *dat, int stencilNumPoints) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->setCPUStencil(dat, stencilNumPoints);
+        t->setCpuStencil(dat, stencilNumPoints);
     }
 
 #ifdef TAUSCH_OPENCL
@@ -80,16 +80,16 @@ extern "C" {
         t->enableOpenCL(*dev, *con, *que, gpuHaloWidth, blockingSyncCpuGpu);
     }
 
-    void tausch2d_setGPUData(CTausch2D *tC, cl_mem dat, int *gpuDim) {
+    void tausch2d_setGpuData(CTausch2D *tC, cl_mem dat, int *gpuDim) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         cl::Buffer *buf = new cl::Buffer(dat);
-        t->setGPUData(*buf, gpuDim);
+        t->setGpuData(*buf, gpuDim);
     }
 
-    void tausch2d_setGPUStencil(CTausch2D *tC, cl_mem stencil, int stencilNumPoints, int *stencilDim) {
+    void tausch2d_setGpuStencil(CTausch2D *tC, cl_mem stencil, int stencilNumPoints, int *stencilDim) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         cl::Buffer *buf = new cl::Buffer(stencil);
-        t->setGPUStencil(*buf, stencilNumPoints, stencilDim);
+        t->setGpuStencil(*buf, stencilNumPoints, stencilDim);
     }
 
     void tausch2d_performCpuToCpuDataAndCpuToGpuData(CTausch2D *tC) {

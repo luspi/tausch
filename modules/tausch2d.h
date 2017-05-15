@@ -87,7 +87,7 @@ public:
      * \param data
      *  The buffer holding the CPU data. This is expected to be one contiguous buffer holding both the values owned by this MPI rank and the ghost values.
      */
-    void setCPUData(real_t *data);
+    void setCpuData(real_t *data);
 
     /*!
      * Tells %Tausch2D where to find the buffer for the CPU stencil data.
@@ -98,7 +98,7 @@ public:
      *  The number of points in the stencil. If the storage makes use of symmetry, this is expected to be the effective number of stored stencil values.
      *
      */
-    void setCPUStencil(real_t *stencil, int stencilNumPoints);
+    void setCpuStencil(real_t *stencil, int stencilNumPoints);
 
     /*!
      * Post the MPI_Irecv required for the halo exchange. This has to be called before any halo exchange is started.
@@ -248,7 +248,7 @@ public:
      * \param gpuDim
      *  Array of size 2, holding the x (first value) and y (second value) dimensions of the GPU buffer.
      */
-    void setGPUData(cl::Buffer &dat, int *gpuDim);
+    void setGpuData(cl::Buffer &dat, int *gpuDim);
 
     /*!
      * Tells %Tausch2D where to find the buffer for the GPU stencil and some of its main important details.
@@ -262,7 +262,7 @@ public:
      * \param stencilDim
      *  Array of size 2, holding the x (first value) and y (second value) dimensions of the GPU stencil buffer. This is typically the same as gpuDim. If stencilDim is set to {0,0} or nullptr, %Tausch2D will copy the values from gpuDim.
      */
-    void setGPUStencil(cl::Buffer &stencil, int stencilNumPoints, int *stencilDim = nullptr);
+    void setGpuStencil(cl::Buffer &stencil, int stencilNumPoints, int *stencilDim = nullptr);
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange from the CPU to GPU. It calls startCpuToGpuData() and completeGpuToCpuData().

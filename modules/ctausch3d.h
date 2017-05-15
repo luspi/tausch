@@ -34,7 +34,7 @@ void tausch3d_startCpuEdge(CTausch3D *tC, enum Edge edge);
 
 void tausch3d_completeCpuEdge(CTausch3D *tC, enum Edge edge);
 
-void tausch3d_setCPUData(CTausch3D *tC, real_t *dat);
+void tausch3d_setCpuData(CTausch3D *tC, real_t *dat);
 
 #ifdef TAUSCH_OPENCL
 void tausch3d_enableOpenCL(CTausch3D *tC, int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
@@ -52,7 +52,7 @@ void tausch3d_startGpuToCpu(CTausch3D *tC);
 void tausch3d_completeCpuToGpu(CTausch3D *tC);
 void tausch3d_completeGpuToCpu(CTausch3D *tC);
 
-void tausch3d_setGPUData(CTausch3D *tC, cl_mem dat, int *gpuDim);
+void tausch3d_setGpuData(CTausch3D *tC, cl_mem dat, int *gpuDim);
 
 cl_context tausch3d_getContext(CTausch3D *tC);
 cl_command_queue tausch3d_getQueue(CTausch3D *tC);

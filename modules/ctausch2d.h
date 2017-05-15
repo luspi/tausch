@@ -38,8 +38,8 @@ void tausch2d_startCpuStencilEdge(CTausch2D *tC, enum Edge edge);
 void tausch2d_completeCpuDataEdge(CTausch2D *tC, enum Edge edge);
 void tausch2d_completeCpuStencilEdge(CTausch2D *tC, enum Edge edge);
 
-void tausch2d_setCPUData(CTausch2D *tC, real_t *dat);
-void tausch2d_setCPUStencil(CTausch2D *tC, real_t *dat, int stencilNumPoints);
+void tausch2d_setCpuData(CTausch2D *tC, real_t *dat);
+void tausch2d_setCpuStencil(CTausch2D *tC, real_t *dat, int stencilNumPoints);
 
 #ifdef TAUSCH_OPENCL
 void tausch2d_enableOpenCL(CTausch2D *tC, int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
@@ -64,8 +64,8 @@ void tausch2d_completeCpuToGpuStencil(CTausch2D *tC);
 void tausch2d_completeGpuToCpuData(CTausch2D *tC);
 void tausch2d_completeGpuToCpuStencil(CTausch2D *tC);
 
-void tausch2d_setGPUData(CTausch2D *tC, cl_mem dat, int *gpuDim);
-void tausch2d_setGPUStencil(CTausch2D *tC, cl_mem stencil, int stencilNumPoints, int *stencilDim);
+void tausch2d_setGpuData(CTausch2D *tC, cl_mem dat, int *gpuDim);
+void tausch2d_setGpuStencil(CTausch2D *tC, cl_mem stencil, int stencilNumPoints, int *stencilDim);
 
 cl_context tausch2d_getContext(CTausch2D *tC);
 cl_command_queue tausch2d_getQueue(CTausch2D *tC);

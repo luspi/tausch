@@ -81,7 +81,7 @@ Tausch3D::~Tausch3D() {
 }
 
 // get a pointer to the CPU data
-void Tausch3D::setCPUData(real_t *dat) {
+void Tausch3D::setCpuData(real_t *dat) {
 
     cpuInfoGiven = true;
     cpuData = dat;
@@ -436,7 +436,7 @@ void Tausch3D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_contex
 }
 
 // get a pointer to the GPU buffer and its dimensions
-void Tausch3D::setGPUData(cl::Buffer &dat, int *gpuDim) {
+void Tausch3D::setGpuData(cl::Buffer &dat, int *gpuDim) {
 
     // check whether OpenCL has been set up
     if(!gpuEnabled) {

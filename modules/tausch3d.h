@@ -72,7 +72,7 @@ public:
      * \param dat
      *  The buffer holding the CPU data. This is expected to be one contiguous buffer holding both the values owned by this MPI rank and the ghost values.
      */
-    void setCPUData(real_t *dat);
+    void setCpuData(real_t *dat);
 
     /*!
      * Post the MPI_Irecv required for the halo exchange. This has to be called before any halo exchange is started.
@@ -158,7 +158,7 @@ public:
      * \param gpuDim
      *  Array of size 3, holding the x (first value), y (second value), and z (third value) dimensions of the GPU buffer.
      */
-    void setGPUData(cl::Buffer &dat, int *gpuDim);
+    void setGpuData(cl::Buffer &dat, int *gpuDim);
 
     /*!
      * Convenience function that calls the necessary functions performing a halo exchange from the CPU to GPU.
