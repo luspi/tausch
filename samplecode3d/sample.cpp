@@ -1,6 +1,6 @@
 #include "sample.h"
 
-Sample::Sample(int *localDim, int *gpuDim, int loops, int *cpuHaloWidth, int gpuHaloWidth, int *mpiNum, bool cpuonly, int clWorkGroupSize, bool giveOpenCLDeviceName) {
+Sample::Sample(int *localDim, int *gpuDim, int loops, int *cpuHaloWidth, int *gpuHaloWidth, int *mpiNum, bool cpuonly, int clWorkGroupSize, bool giveOpenCLDeviceName) {
 
     // obtain MPI rank
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -26,7 +26,8 @@ Sample::Sample(int *localDim, int *gpuDim, int loops, int *cpuHaloWidth, int gpu
     // the width of the halos
     for(int i = 0; i < 6; ++i)
         this->cpuHaloWidth[i] = cpuHaloWidth[i];
-    this->gpuHaloWidth = gpuHaloWidth;
+    for(int i = 0; i < 6; ++i)
+        this->gpuHaloWidth[i] = gpuHaloWidth[i];
 
     tausch = new Tausch3D(localDim, mpiNum, cpuHaloWidth);
     if(!cpuonly) tausch->enableOpenCL(gpuHaloWidth, true, clWorkGroupSize, giveOpenCLDeviceName);
@@ -54,16 +55,16 @@ Sample::Sample(int *localDim, int *gpuDim, int loops, int *cpuHaloWidth, int gpu
     if(!cpuonly) {
 
         // how many points only on the device and an OpenCL buffer for them
-        datGPU = new real_t[(gpuDimX+2*gpuHaloWidth)*(gpuDimY+2*gpuHaloWidth)*(gpuDimZ+2*gpuHaloWidth)]{};
+        datGPU = new real_t[(gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1])*(gpuDimY+gpuHaloWidth[2]+gpuHaloWidth[3])*(gpuDimZ+gpuHaloWidth[4]+gpuHaloWidth[5])]{};
 
         for(int z = 0; z < gpuDimZ; ++z)
             for(int j = 0; j < gpuDimY; ++j)
                 for(int i = 0; i < gpuDimX; ++i)
-                    datGPU[(z+gpuHaloWidth)*(gpuDimX+2*gpuHaloWidth)*(gpuDimY+2*gpuHaloWidth) + (j+gpuHaloWidth)*(gpuDimX+2*gpuHaloWidth) + i+gpuHaloWidth] = z*gpuDimX*gpuDimY+j*gpuDimX+i+1;
+                    datGPU[(z+gpuHaloWidth[4])*(gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1])*(gpuDimY+gpuHaloWidth[2]+gpuHaloWidth[3]) + (j+gpuHaloWidth[3])*(gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1]) + i+gpuHaloWidth[0]] = z*gpuDimX*gpuDimY+j*gpuDimX+i+1;
 
         try {
 
-            cl_datGpu = cl::Buffer(tausch->getContext(), &datGPU[0], (&datGPU[(gpuDimX+2*gpuHaloWidth)*(gpuDimY+2*gpuHaloWidth)*(gpuDimZ+2*gpuHaloWidth)-1])+1, false);
+            cl_datGpu = cl::Buffer(tausch->getContext(), &datGPU[0], (&datGPU[(gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1])*(gpuDimY+gpuHaloWidth[2]+gpuHaloWidth[3])*(gpuDimZ+gpuHaloWidth[4]+gpuHaloWidth[5])-1])+1, false);
 
         } catch(cl::Error error) {
             std::cout << "[sample] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -74,9 +75,9 @@ Sample::Sample(int *localDim, int *gpuDim, int loops, int *cpuHaloWidth, int gpu
         datGPU = new real_t[1]{};
 
     // pass pointers to the two data containers
-    tausch->setCPUData(datCPU);
+    tausch->setCpuData(datCPU);
     if(!cpuonly)
-        tausch->setGPUData(cl_datGpu, gpuDim);
+        tausch->setGpuData(cl_datGpu, gpuDim);
 
 }
 
@@ -112,7 +113,7 @@ void Sample::launchGPU() {
         tausch->performGpuToCpu();
 
     try {
-        cl::copy(tausch->getQueue(), cl_datGpu, &datGPU[0], (&datGPU[(gpuDimX+2*gpuHaloWidth)*(gpuDimY+2*gpuHaloWidth)*(gpuDimZ+2*gpuHaloWidth)-1])+1);
+        cl::copy(tausch->getQueue(), cl_datGpu, &datGPU[0], (&datGPU[(gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1])*(gpuDimY+gpuHaloWidth[2]+gpuHaloWidth[3])*(gpuDimZ+gpuHaloWidth[4]+gpuHaloWidth[5])-1])+1);
     } catch(cl::Error error) {
         std::cout << "[launchGPU] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
@@ -144,9 +145,9 @@ void Sample::printCPU() {
 
             for(int j = dimY+cpuHaloWidth[2]+cpuHaloWidth[3]-1; j >= 0; --j) {
                 for(int i = 0; i < dimX+cpuHaloWidth[0]+cpuHaloWidth[1]; ++i) {
-                    if(i >= (dimX-gpuDimX)/2+cpuHaloWidth[Tausch3D::LEFT]+gpuHaloWidth && i < (dimX-gpuDimX)/2+cpuHaloWidth[Tausch3D::LEFT]+gpuDimX-gpuHaloWidth
-                       && j >= (dimY-gpuDimY)/2+cpuHaloWidth[Tausch3D::BOTTOM]+gpuHaloWidth && j < (dimY-gpuDimY)/2+cpuHaloWidth[Tausch3D::BOTTOM]+gpuDimY-gpuHaloWidth
-                       && z >= (dimZ-gpuDimZ)/2+cpuHaloWidth[Tausch3D::FRONT]+gpuHaloWidth && z < (dimZ-gpuDimZ)/2+cpuHaloWidth[Tausch3D::FRONT]+gpuDimZ-gpuHaloWidth)
+                    if(i >= (dimX-gpuDimX)/2+cpuHaloWidth[Tausch3D::LEFT]+gpuHaloWidth[Tausch3D::LEFT] && i < (dimX-gpuDimX)/2+cpuHaloWidth[Tausch3D::LEFT]+gpuDimX-gpuHaloWidth[Tausch3D::RIGHT]
+                       && j >= (dimY-gpuDimY)/2+cpuHaloWidth[Tausch3D::BOTTOM]+gpuHaloWidth[Tausch3D::BOTTOM] && j < (dimY-gpuDimY)/2+cpuHaloWidth[Tausch3D::BOTTOM]+gpuDimY-gpuHaloWidth[Tausch3D::TOP]
+                       && z >= (dimZ-gpuDimZ)/2+cpuHaloWidth[Tausch3D::FRONT]+gpuHaloWidth[Tausch3D::FRONT] && z < (dimZ-gpuDimZ)/2+cpuHaloWidth[Tausch3D::FRONT]+gpuDimZ-gpuHaloWidth[Tausch3D::BACK])
                         std::cout << std::setw(3) << "    ";
                     else
                         std::cout << std::setw(3) << datCPU[z*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1])*(dimY+cpuHaloWidth[2]+cpuHaloWidth[3]) + j*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1]) + i] << " ";
@@ -162,13 +163,13 @@ void Sample::printCPU() {
 
 void Sample::printGPU() {
 
-    for(int z = 0; z < gpuDimZ+2*gpuHaloWidth; ++z) {
+    for(int z = 0; z < gpuDimZ+gpuHaloWidth[Tausch3D::FRONT]+gpuHaloWidth[Tausch3D::BACK]; ++z) {
 
         std::cout << std::endl << "z = " << z << std::endl;
 
-        for(int i = gpuDimY+2*gpuHaloWidth -1; i >= 0; --i) {
-            for(int j = 0; j < gpuDimX+2*gpuHaloWidth; ++j)
-                std::cout << std::setw(3) << datGPU[z*(gpuDimX+2*gpuHaloWidth)*(gpuDimY+2*gpuHaloWidth) + i*(gpuDimX+2*gpuHaloWidth) + j] << " ";
+        for(int i = gpuDimY+gpuHaloWidth[Tausch3D::TOP]+gpuHaloWidth[Tausch3D::BOTTOM] -1; i >= 0; --i) {
+            for(int j = 0; j < gpuDimX+gpuHaloWidth[Tausch3D::LEFT]+gpuHaloWidth[Tausch3D::RIGHT]; ++j)
+                std::cout << std::setw(3) << datGPU[z*(gpuDimX+gpuHaloWidth[Tausch3D::LEFT]+gpuHaloWidth[Tausch3D::RIGHT])*(gpuDimY+gpuHaloWidth[Tausch3D::TOP]+gpuHaloWidth[Tausch3D::BOTTOM]) + i*(gpuDimX+gpuHaloWidth[Tausch3D::LEFT]+gpuHaloWidth[Tausch3D::RIGHT]) + j] << " ";
             std::cout << std::endl;
         }
 

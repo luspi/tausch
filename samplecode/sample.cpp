@@ -130,11 +130,11 @@ Sample::Sample(int localDim[2], int gpuDim[2], int loops, int cpuHaloWidth[4], i
         datGPU = new real_t[1]{};
 
     // pass pointers to the two data containers
-    tausch->setCPUData(datCPU);
-    tausch->setCPUStencil(stencil, stencilNumPoints);
+    tausch->setCpuData(datCPU);
+    tausch->setCpuStencil(stencil, stencilNumPoints);
     if(!cpuonly) {
-        tausch->setGPUData(cl_datGpu, gpuDim);
-        tausch->setGPUStencil(cl_stencilGPU, stencilNumPoints);
+        tausch->setGpuData(cl_datGpu, gpuDim);
+        tausch->setGpuStencil(cl_stencilGPU, stencilNumPoints);
     }
 
 }

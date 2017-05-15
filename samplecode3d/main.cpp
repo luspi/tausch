@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
     bool giveOpenClDeviceName = false;
     int printMpiRank = -1;
     int cpuHaloWidth[6] = {1,1,1,1,1,1};
-    int gpuHaloWidth = 1;
+    int gpuHaloWidth[6] = {1,1,1,1,1,1};
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {
@@ -94,8 +94,31 @@ int main(int argc, char** argv) {
                     str << arg.substr(last);
                     str >> cpuHaloWidth[5];
                 }
-            } else if(argv[i] == std::string("-ghalo") && i < argc-1)
-                gpuHaloWidth = atoi(argv[++i]);
+            } else if(argv[i] == std::string("-ghalo") && i < argc-1) {
+                std::string arg(argv[++i]);
+                size_t last = 0;
+                size_t next = 0;
+                int count = 0;
+                while((next = arg.find(",", last)) != std::string::npos && count < 5) {
+                    std::stringstream str;
+                    str << arg.substr(last, next-last);
+                    str >> gpuHaloWidth[count];
+                    last = next + 1;
+                    ++count;
+                }
+                if(count != 5) {
+                    int tmpHalo = 0;
+                    std::stringstream str;
+                    str << arg;
+                    str >> tmpHalo;
+                    for(int i = 0; i < 6; ++i)
+                        gpuHaloWidth[i] = tmpHalo;
+                } else {
+                    std::stringstream str;
+                    str << arg.substr(last);
+                    str >> gpuHaloWidth[5];
+                }
+            }
         }
     }
 
@@ -117,7 +140,9 @@ int main(int argc, char** argv) {
                   << "CPU halo      = " << cpuHaloWidth[0];
         for(int i = 1; i < 6; ++i) std::cout << "/" << cpuHaloWidth[i];
         std::cout << std::endl
-                  << "GPU halo      = " << gpuHaloWidth << std::endl
+                  << "GPU halo      = " << gpuHaloWidth[0];
+        for(int i = 1; i < 6; ++i) std::cout << "/" << gpuHaloWidth[i];
+        std::cout << std::endl
                   << std::endl;
 
     }
