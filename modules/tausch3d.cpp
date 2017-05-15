@@ -405,7 +405,13 @@ void Tausch3D::enableOpenCL(int *gpuHaloWidth, bool blockingSyncCpuGpu,
     // Tausch creates its own OpenCL environment
     this->setupOpenCL(giveOpenCLDeviceName);
 
-    cl_gpuHaloWidth = cl::Buffer(cl_context, &gpuHaloWidth, (&gpuHaloWidth)+1, true);
+    try {
+        cl_gpuHaloWidth = cl::Buffer(cl_context, &gpuHaloWidth[0], (&gpuHaloWidth[5])+1, true);
+    } catch(cl::Error error) {
+        std::cout << "Tausch3D :: [setup gpuHaloWidth buffer] Error: "
+                  << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
 
 }
 
@@ -483,7 +489,6 @@ void Tausch3D::setGpuData(cl::Buffer &dat, int *gpuDim) {
         cl_gpuDim[X] = cl::Buffer(cl_context, &gpuDim[X], (&gpuDim[X])+1, true);
         cl_gpuDim[Y] = cl::Buffer(cl_context, &gpuDim[Y], (&gpuDim[Y])+1, true);
         cl_gpuDim[Z] = cl::Buffer(cl_context, &gpuDim[Z], (&gpuDim[Z])+1, true);
-        cl_gpuHaloWidth = cl::Buffer(cl_context, &gpuHaloWidth[0], (&gpuHaloWidth[5])+1, true);
     } catch(cl::Error error) {
         std::cout << "[setup send/recv buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);

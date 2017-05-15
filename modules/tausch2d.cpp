@@ -404,7 +404,12 @@ void Tausch2D::enableOpenCL(int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLo
     // Tausch creates its own OpenCL environment
     this->setupOpenCL(giveOpenCLDeviceName);
 
-    cl_gpuHaloWidth = cl::Buffer(cl_context, &gpuHaloWidth[0], (&gpuHaloWidth[3])+1, true);
+    try {
+        cl_gpuHaloWidth = cl::Buffer(cl_context, &gpuHaloWidth[0], (&gpuHaloWidth[3])+1, true);
+    } catch(cl::Error error) {
+        std::cout << "Tausch2D :: [setup gpuHaloWidth buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
 
 }
 
@@ -425,7 +430,12 @@ void Tausch2D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_contex
     for(int i = 0; i < 4; ++i)
         this->gpuHaloWidth[i] = gpuHaloWidth[i];
 
-    cl_gpuHaloWidth = cl::Buffer(cl_context, &gpuHaloWidth[0], (&gpuHaloWidth[3])+1, true);
+    try {
+        cl_gpuHaloWidth = cl::Buffer(cl_context, &gpuHaloWidth[0], (&gpuHaloWidth[3])+1, true);
+    } catch(cl::Error error) {
+        std::cout << "Tausch2D :: [setup gpuHaloWidth buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
 
     gpuEnabled = true;
 
