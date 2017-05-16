@@ -399,48 +399,60 @@ private:
 
     // The OpenCL buffer holding the data on the GPU
     cl::Buffer gpuData;
+    cl::Buffer gpuStencil;
 
     int gpuHaloWidth[6];
 
     // Some meta information about the OpenCL region
     int gpuDim[3];
+    int stencilDim[3];
     cl::Buffer cl_gpuDim[3];
+    cl::Buffer cl_stencilDim[3];
     cl::Buffer cl_gpuHaloWidth;
+    cl::Buffer cl_stencilNumPoints;
 
     // the size of the buffers for the cpu/gpu halo exchange. The stencil values are these variables multiplier by stencilNumPoints
-    int cTg, gTc;
+    int cTgData, gTcData;
+    int cTgStencil, gTcStencil;
 
     // Methods to set up the OpenCL environment and compile the required kernels
     void setupOpenCL(bool giveOpenCLDeviceName);
     void compileKernels();
 
     // Pointers to atomic arrays for communicating halo data between CPU and GPU thread via shared memory
-    std::atomic<real_t> *cpuToGpuBuffer;
-    std::atomic<real_t> *gpuToCpuBuffer;
+    std::atomic<real_t> *cpuToGpuDataBuffer;
+    std::atomic<real_t> *gpuToCpuDataBuffer;
+    std::atomic<real_t> *cpuToGpuStencilBuffer;
+    std::atomic<real_t> *gpuToCpuStencilBuffer;
 
     // These are only needed/set when Tausch3D set up its own OpenCL environment, not needed otherwise
     cl::Platform cl_platform;
     cl::Program cl_programs;
 
     // Collecting the halo data to be sent/recvd
-    cl::Buffer cl_gpuToCpuBuffer;
-    cl::Buffer cl_cpuToGpuBuffer;
+    cl::Buffer cl_gpuToCpuDataBuffer;
+    cl::Buffer cl_cpuToGpuDataBuffer;
+    cl::Buffer cl_gpuToCpuStencilBuffer;
+    cl::Buffer cl_cpuToGpuStencilBuffer;
 
     // Whether the necessary steps were taken before starting a halo exchange
     bool gpuEnabled;
     bool gpuInfoGiven;
+    bool gpuStencilInfoGiven;
 
     // Which halo exchange has been started
-    std::atomic<bool> cpuToGpuStarted;
-    std::atomic<bool> gpuToCpuStarted;
+    std::atomic<bool> cpuToGpuDataStarted;
+    std::atomic<bool> gpuToCpuDataStarted;
+    std::atomic<bool> cpuToGpuStencilStarted;
+    std::atomic<bool> gpuToCpuStencilStarted;
 
     // The local OpenCL workgroup size
     int cl_kernelLocalSize;
 
     // Function to synchronize the CPU and GPU thread. Only needed when using asynchronous computing (i.e., when blocking is enabled)
-    void syncCpuAndGpu();
-    std::atomic<int> sync_counter[2];
-    std::atomic<int> sync_lock[2];
+    void syncCpuAndGpu(bool offsetByTwo);
+    std::atomic<int> sync_counter[4];
+    std::atomic<int> sync_lock[4];
 
     // Whether there are two threads running and thus whether there needs to be blocking synchronisation happen
     bool blockingSyncCpuGpu;
