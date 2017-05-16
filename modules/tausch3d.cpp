@@ -103,71 +103,57 @@ void Tausch3D::setCpuData(real_t *dat) {
     cpuData = dat;
 
     int sendBufferSizes[6] = {
-
         // left
         cpuHaloWidth[RIGHT]*
         (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
         (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-
         // right
         cpuHaloWidth[LEFT]*
         (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
         (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-
         // top
         cpuHaloWidth[BOTTOM]*
         (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
         (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-
         // bottom
         cpuHaloWidth[TOP]*
         (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
         (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-
         // front
         cpuHaloWidth[BACK]*
         (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
         (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
-
         // back
         cpuHaloWidth[FRONT]*
         (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
         (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])
-
     };
 
     int recvBufferSizes[6] = {
-
         // left
         cpuHaloWidth[LEFT]*
         (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
         (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-
         // right
         cpuHaloWidth[RIGHT]*
         (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
         (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-
         // top
         cpuHaloWidth[TOP]*
         (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
         (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-
         // bottom
         cpuHaloWidth[BOTTOM]*
         (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
         (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-
         // front
         cpuHaloWidth[FRONT]*
         (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
         (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
-
         // back
         cpuHaloWidth[BACK]*
         (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
         (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])
-
     };
 
     int ranks[6] = {mpiRank-1, mpiRank+1, mpiRank+mpiNum[X], mpiRank-mpiNum[X], mpiRank-mpiNum[X]*mpiNum[Y], mpiRank+mpiNum[X]*mpiNum[Y]};
@@ -189,112 +175,79 @@ void Tausch3D::setCpuData(real_t *dat) {
 
 // get a pointer to the CPU data
 void Tausch3D::setCpuStencil(real_t *stencil, int stencilNumPoints) {
-/*
-    cpuInfoGiven = true;
-    cpuData = dat;
 
-    // a send and recv buffer for the CPU-CPU communication
-    cpuToCpuSendBuffer = new real_t*[6];
-    cpuToCpuSendBuffer[LEFT]   = new real_t[cpuHaloWidth[RIGHT]*
-                                           (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
-                                           (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
-    cpuToCpuSendBuffer[RIGHT]  = new real_t[cpuHaloWidth[LEFT]*
-                                           (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
-                                           (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
-    cpuToCpuSendBuffer[TOP]    = new real_t[cpuHaloWidth[BOTTOM]*
-                                           (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                           (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
-    cpuToCpuSendBuffer[BOTTOM] = new real_t[cpuHaloWidth[TOP]*
-                                           (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                           (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
-    cpuToCpuSendBuffer[FRONT]  = new real_t[cpuHaloWidth[BACK]*
-                                           (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                           (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])]{};
-    cpuToCpuSendBuffer[BACK]   = new real_t[cpuHaloWidth[FRONT]*
-                                           (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                           (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])]{};
-    cpuToCpuRecvBuffer = new real_t*[6];
-    cpuToCpuRecvBuffer[LEFT]   = new real_t[cpuHaloWidth[LEFT]*
-                                           (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
-                                           (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
-    cpuToCpuRecvBuffer[RIGHT]  = new real_t[cpuHaloWidth[RIGHT]*
-                                           (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
-                                           (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
-    cpuToCpuRecvBuffer[TOP]    = new real_t[cpuHaloWidth[TOP]*
-                                           (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                           (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
-    cpuToCpuRecvBuffer[BOTTOM] = new real_t[cpuHaloWidth[BOTTOM]*
-                                           (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                           (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK])]{};
-    cpuToCpuRecvBuffer[FRONT]  = new real_t[cpuHaloWidth[FRONT]*
-                                           (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                           (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])]{};
-    cpuToCpuRecvBuffer[BACK]   = new real_t[cpuHaloWidth[BACK]*
-                                           (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                           (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])]{};
+    stencilInfoGiven = true;
+    cpuStencil = stencil;
+    this->stencilNumPoints = stencilNumPoints;
 
-    // Initialise the Recv/Send operations
-    if(haveBoundary[LEFT]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[LEFT], cpuHaloWidth[LEFT]*
-                                               (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
-                                               (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-                      mpiDataType, mpiRank-1, 0, TAUSCH_COMM, &cpuToCpuRecvRequest[LEFT]);
-        MPI_Send_init(cpuToCpuSendBuffer[LEFT], cpuHaloWidth[RIGHT]*
-                                               (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
-                                               (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-                      mpiDataType, mpiRank-1, 2, TAUSCH_COMM, &cpuToCpuSendRequest[LEFT]);
+    int sendBufferSizes[6] = {
+        // left
+        cpuHaloWidth[RIGHT]*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+        // right
+        cpuHaloWidth[LEFT]*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+        // top
+        cpuHaloWidth[BOTTOM]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+        // bottom
+        cpuHaloWidth[TOP]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+        // front
+        cpuHaloWidth[BACK]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
+        // back
+        cpuHaloWidth[FRONT]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])
+    };
+
+    int recvBufferSizes[6] = {
+        // left
+        cpuHaloWidth[LEFT]*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+        // right
+        cpuHaloWidth[RIGHT]*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+        // top
+        cpuHaloWidth[TOP]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+        // bottom
+        cpuHaloWidth[BOTTOM]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
+        // front
+        cpuHaloWidth[FRONT]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
+        // back
+        cpuHaloWidth[BACK]*
+        (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+        (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])
+    };
+
+    int ranks[6] = {mpiRank-1, mpiRank+1, mpiRank+mpiNum[X], mpiRank-mpiNum[X], mpiRank-mpiNum[X]*mpiNum[Y], mpiRank+mpiNum[X]*mpiNum[Y]};
+    int recvTags[6] = {0, 2, 1, 3, 4, 5};
+    int sendTags[6] = {2, 0, 3, 1, 5, 4};
+
+    cpuToCpuStencilSendBuffer = new real_t*[6];
+    cpuToCpuStencilRecvBuffer = new real_t*[6];
+    for(int i = 0; i < 6; ++i) {
+        if(haveBoundary[i]) {
+            cpuToCpuStencilSendBuffer[i] = new real_t[stencilNumPoints*sendBufferSizes[i]]{};
+            cpuToCpuStencilRecvBuffer[i] = new real_t[stencilNumPoints*recvBufferSizes[i]]{};
+            MPI_Recv_init(cpuToCpuStencilRecvBuffer[i], stencilNumPoints*recvBufferSizes[i], mpiDataType, ranks[i], recvTags[i], TAUSCH_COMM, &cpuToCpuStencilRecvRequest[i]);
+            MPI_Send_init(cpuToCpuStencilSendBuffer[i], stencilNumPoints*sendBufferSizes[i], mpiDataType, ranks[i], sendTags[i], TAUSCH_COMM, &cpuToCpuStencilSendRequest[i]);
+        }
     }
-    if(haveBoundary[RIGHT]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[RIGHT], cpuHaloWidth[RIGHT]*
-                                                (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
-                                                (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-                      mpiDataType, mpiRank+1, 2, TAUSCH_COMM, &cpuToCpuRecvRequest[RIGHT]);
-        MPI_Send_init(cpuToCpuSendBuffer[RIGHT], cpuHaloWidth[LEFT]*
-                                                (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
-                                                (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-                      mpiDataType, mpiRank+1, 0, TAUSCH_COMM, &cpuToCpuSendRequest[RIGHT]);
-    }
-    if(haveBoundary[TOP]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[TOP], cpuHaloWidth[TOP]*
-                                              (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                              (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-                      mpiDataType, mpiRank+mpiNum[X], 1, TAUSCH_COMM, &cpuToCpuRecvRequest[TOP]);
-        MPI_Send_init(cpuToCpuSendBuffer[TOP], cpuHaloWidth[BOTTOM]*
-                                              (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                              (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-                      mpiDataType, mpiRank+mpiNum[X], 3, TAUSCH_COMM, &cpuToCpuSendRequest[TOP]);
-    }
-    if(haveBoundary[BOTTOM]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[BOTTOM], cpuHaloWidth[BOTTOM]*
-                                                 (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                                 (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-                      mpiDataType, mpiRank-mpiNum[X], 3, TAUSCH_COMM, &cpuToCpuRecvRequest[BOTTOM]);
-        MPI_Send_init(cpuToCpuSendBuffer[BOTTOM], cpuHaloWidth[TOP]*
-                                                 (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                                 (localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]),
-                      mpiDataType, mpiRank-mpiNum[X], 1, TAUSCH_COMM, &cpuToCpuSendRequest[BOTTOM]);
-    }
-    if(haveBoundary[FRONT]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[FRONT], cpuHaloWidth[FRONT]*
-                                                (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                                (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
-                      mpiDataType, mpiRank-mpiNum[X]*mpiNum[Y], 4, TAUSCH_COMM, &cpuToCpuRecvRequest[FRONT]);
-        MPI_Send_init(cpuToCpuSendBuffer[FRONT], cpuHaloWidth[BACK]*
-                                                (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                                (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
-                      mpiDataType, mpiRank-mpiNum[X]*mpiNum[Y], 5, TAUSCH_COMM, &cpuToCpuSendRequest[FRONT]);
-    }
-    if(haveBoundary[BACK]) {
-        MPI_Recv_init(cpuToCpuRecvBuffer[BACK], cpuHaloWidth[BACK]*
-                                               (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                               (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
-                      mpiDataType, mpiRank+mpiNum[X]*mpiNum[Y], 5, TAUSCH_COMM, &cpuToCpuRecvRequest[BACK]);
-        MPI_Send_init(cpuToCpuSendBuffer[BACK], cpuHaloWidth[FRONT]*
-                                               (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
-                                               (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]),
-                      mpiDataType, mpiRank+mpiNum[X]*mpiNum[Y], 4, TAUSCH_COMM, &cpuToCpuSendRequest[BACK]);
-    }
-*/
 }
 
 // post the MPI_Irecv's for inter-rank communication
@@ -315,6 +268,23 @@ void Tausch3D::postCpuDataReceives() {
 
 }
 
+void Tausch3D::postCpuStencilReceives() {
+
+    if(!stencilInfoGiven) {
+        std::cerr << "ERROR: You didn't tell me yet where to find the stencil data! Abort..." << std::endl;
+        exit(1);
+    }
+
+    stencilRecvsPosted = true;
+
+    mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
+
+    for(int i = 0; i < 6; ++i)
+        if(haveBoundary[i])
+            MPI_Start(&cpuToCpuStencilRecvRequest[i]);
+
+}
+
 void Tausch3D::startCpuDataEdge(Edge edge) {
 
     if(!cpuRecvsPosted) {
@@ -323,7 +293,7 @@ void Tausch3D::startCpuDataEdge(Edge edge) {
     }
 
     if(edge != LEFT && edge != RIGHT && edge != TOP && edge != BOTTOM && edge != FRONT && edge != BACK) {
-        std::cerr << "startCpuEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
+        std::cerr << "startCpuDataEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
         exit(1);
     }
 
@@ -399,11 +369,105 @@ void Tausch3D::startCpuDataEdge(Edge edge) {
 
 }
 
+void Tausch3D::startCpuStencilEdge(Edge edge) {
+
+    if(!stencilRecvsPosted) {
+        std::cerr << "ERROR: No CPU stencil Recvs have been posted yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    if(edge != LEFT && edge != RIGHT && edge != TOP && edge != BOTTOM && edge != FRONT && edge != BACK) {
+        std::cerr << "startCpuStencilEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
+        exit(1);
+    }
+
+    cpuStencilStarted[edge] = true;
+
+    mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
+
+    if(edge == LEFT && haveBoundary[LEFT]) {
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < cpuHaloWidth[RIGHT]; ++x)
+                    for(int st = 0; st < stencilNumPoints; ++st) {
+                        cpuToCpuStencilSendBuffer[LEFT][stencilNumPoints*(z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*cpuHaloWidth[RIGHT]+
+                                                                          y*cpuHaloWidth[RIGHT] + x) + st]
+                                = cpuStencil[stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                               (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                              y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x+cpuHaloWidth[LEFT]) + st];
+                    }
+        MPI_Start(&cpuToCpuStencilSendRequest[LEFT]);
+    } else if(edge == RIGHT && haveBoundary[RIGHT]) {
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < cpuHaloWidth[LEFT]; ++x)
+                    for(int st = 0; st < stencilNumPoints; ++st) {
+                        cpuToCpuStencilSendBuffer[RIGHT][stencilNumPoints*(z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*cpuHaloWidth[LEFT]+
+                                                                           y*cpuHaloWidth[LEFT] + x) + st]
+                                = cpuStencil[stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                               (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                               y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + localDim[X]+x) + st];
+                    }
+        MPI_Start(&cpuToCpuStencilSendRequest[RIGHT]);
+    } else if(edge == TOP && haveBoundary[TOP]) {
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < cpuHaloWidth[BOTTOM]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    for(int st = 0; st < stencilNumPoints; ++st) {
+                        cpuToCpuStencilSendBuffer[TOP][stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*cpuHaloWidth[BOTTOM]+
+                                                                         y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x) + st]
+                                = cpuStencil[stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                               (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                               (y+localDim[Y])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x) + st];
+                    }
+        MPI_Start(&cpuToCpuStencilSendRequest[TOP]);
+    } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    for(int st = 0; st < stencilNumPoints; ++st) {
+                        cpuToCpuStencilSendBuffer[BOTTOM][stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*cpuHaloWidth[TOP]+
+                                                                            y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x) + st]
+                                = cpuStencil[stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                               (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                               (y+cpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x) + st];
+                    }
+        MPI_Start(&cpuToCpuStencilSendRequest[BOTTOM]);
+    } else if(edge == FRONT && haveBoundary[FRONT]) {
+        for(int z = 0; z < cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    for(int st = 0; st < stencilNumPoints; ++st) {
+                        cpuToCpuStencilSendBuffer[FRONT][stencilNumPoints*(z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+                                                                           (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                                                                           y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x) + st]
+                                = cpuStencil[stencilNumPoints*((z+cpuHaloWidth[FRONT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                               (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                               y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x) + st];
+                    }
+        MPI_Start(&cpuToCpuStencilSendRequest[FRONT]);
+    } else if(edge == BACK && haveBoundary[BACK]) {
+        for(int z = 0; z < cpuHaloWidth[FRONT]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    for(int st = 0; st < stencilNumPoints; ++st) {
+                        cpuToCpuStencilSendBuffer[BACK][stencilNumPoints*(z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+                                                                          (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                                                                          y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x) + st]
+                                = cpuStencil[stencilNumPoints*((z+localDim[Z])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                               (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                               y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x) + st];
+                    }
+        MPI_Start(&cpuToCpuStencilSendRequest[BACK]);
+    }
+
+}
+
 // Complete CPU-CPU exchange to the left
 void Tausch3D::completeCpuDataEdge(Edge edge) {
 
     if(edge != LEFT && edge != RIGHT && edge != TOP && edge != BOTTOM && edge != FRONT && edge != BACK) {
-        std::cerr << "completeCpuEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
+        std::cerr << "completeCpuDataEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
         exit(1);
     }
 
@@ -483,6 +547,100 @@ void Tausch3D::completeCpuDataEdge(Edge edge) {
                                                          (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
                                                        y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x];
         MPI_Wait(&cpuToCpuSendRequest[BACK], MPI_STATUS_IGNORE);
+    }
+
+}
+
+// Complete CPU-CPU exchange to the left
+void Tausch3D::completeCpuStencilEdge(Edge edge) {
+
+    if(edge != LEFT && edge != RIGHT && edge != TOP && edge != BOTTOM && edge != FRONT && edge != BACK) {
+        std::cerr << "completeCpuStencilEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
+        exit(1);
+    }
+
+    if(!cpuStencilStarted[edge]) {
+        std::cerr << "ERROR: No edge #" << edge << " CPU stencil exchange has been started yet... Abort!" << std::endl;
+        exit(1);
+    }
+
+    if(edge == LEFT && haveBoundary[LEFT]) {
+        MPI_Wait(&cpuToCpuStencilRecvRequest[LEFT], MPI_STATUS_IGNORE);
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < cpuHaloWidth[LEFT]; ++x)
+                    for(int st = 0; st < stencilNumPoints; ++st)
+                        cpuStencil[stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                     (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                     y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x) + st]
+                                = cpuToCpuStencilRecvBuffer[LEFT][stencilNumPoints*(z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+                                                                                    cpuHaloWidth[LEFT] + y*cpuHaloWidth[LEFT] + x) + st];
+        MPI_Wait(&cpuToCpuStencilSendRequest[LEFT], MPI_STATUS_IGNORE);
+    } else if(edge == RIGHT && haveBoundary[RIGHT]) {
+        MPI_Wait(&cpuToCpuStencilRecvRequest[RIGHT], MPI_STATUS_IGNORE);
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < cpuHaloWidth[RIGHT]; ++x)
+                    for(int st = 0; st < stencilNumPoints; ++st)
+                        cpuStencil[stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                     (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                     y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                                                     localDim[X]+cpuHaloWidth[LEFT]+x) + st]
+                                = cpuToCpuStencilRecvBuffer[RIGHT][stencilNumPoints*(z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+                                                                                     cpuHaloWidth[RIGHT] + y*cpuHaloWidth[RIGHT] + x) + st];
+        MPI_Wait(&cpuToCpuStencilSendRequest[RIGHT], MPI_STATUS_IGNORE);
+    } else if(edge == TOP && haveBoundary[TOP]) {
+        MPI_Wait(&cpuToCpuStencilRecvRequest[TOP], MPI_STATUS_IGNORE);
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    for(int st = 0; st < stencilNumPoints; ++st)
+                        cpuStencil[stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                     (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                     (y+localDim[Y]+cpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x) +st]
+                                = cpuToCpuStencilRecvBuffer[TOP][stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                                                   cpuHaloWidth[TOP] +
+                                                                                   y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x) + st];
+        MPI_Wait(&cpuToCpuStencilSendRequest[TOP], MPI_STATUS_IGNORE);
+    } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
+        MPI_Wait(&cpuToCpuStencilRecvRequest[BOTTOM], MPI_STATUS_IGNORE);
+        for(int z = 0; z < localDim[Z]+cpuHaloWidth[FRONT]+cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < cpuHaloWidth[BOTTOM]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    for(int st = 0; st < stencilNumPoints; ++st)
+                        cpuStencil[stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                     (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                     y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x) + st]
+                                = cpuToCpuStencilRecvBuffer[BOTTOM][stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                                                      cpuHaloWidth[BOTTOM] +
+                                                                                      y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +x) +st];
+        MPI_Wait(&cpuToCpuStencilSendRequest[BOTTOM], MPI_STATUS_IGNORE);
+    } else if(edge == FRONT && haveBoundary[FRONT]) {
+        MPI_Wait(&cpuToCpuStencilRecvRequest[FRONT], MPI_STATUS_IGNORE);
+        for(int z = 0; z < cpuHaloWidth[FRONT]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    for(int st = 0; st < stencilNumPoints; ++st)
+                        cpuStencil[stencilNumPoints*(z*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                     (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                     y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x) + st]
+                                = cpuToCpuStencilRecvBuffer[FRONT][stencilNumPoints*(z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+                                                                                     (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                                                     y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x) +st];
+        MPI_Wait(&cpuToCpuStencilSendRequest[FRONT], MPI_STATUS_IGNORE);
+    } else if(edge == BACK && haveBoundary[BACK]) {
+        MPI_Wait(&cpuToCpuStencilRecvRequest[BACK], MPI_STATUS_IGNORE);
+        for(int z = 0; z < cpuHaloWidth[BACK]; ++z)
+            for(int y = 0; y < localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]; ++y)
+                for(int x = 0; x < localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]; ++x)
+                    for(int st = 0; st < stencilNumPoints; ++st)
+                        cpuStencil[stencilNumPoints*((z+cpuHaloWidth[FRONT]+localDim[Z])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*
+                                                     (localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]) +
+                                                     y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+x) + st]
+                                = cpuToCpuStencilRecvBuffer[BACK][stencilNumPoints*(z*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP])*
+                                                                                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
+                                                                                    y*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + x) + st];
+        MPI_Wait(&cpuToCpuStencilSendRequest[BACK], MPI_STATUS_IGNORE);
     }
 
 }
