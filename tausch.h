@@ -166,5 +166,6 @@
 #include "modules/tausch3d.h"
 
 #include "modules/ctausch2d.h"
+#include "modules/ctausch3d.h"
 
 #endif // TAUSCH_H
