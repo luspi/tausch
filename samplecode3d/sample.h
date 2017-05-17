@@ -18,7 +18,9 @@ public:
     ~Sample();
 
     void printCPU();
+    void printCpuStencil();
     void printGPU();
+    void printGpuStencil ();
 
     void launchCPU();
     void launchGPU();
@@ -28,7 +30,13 @@ private:
 
     real_t *datCPU;
     real_t *datGPU;
+
+    int stencilNumPoints;
+    real_t *stencilCPU;
+    real_t *stencilGPU;
+
     cl::Buffer cl_datGpu;
+    cl::Buffer cl_stencilGpu;
     int loops;
     Tausch3D *tausch;
     bool cpuonly;

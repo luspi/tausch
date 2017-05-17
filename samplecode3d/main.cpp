@@ -25,7 +25,8 @@ int main(int argc, char** argv) {
     bool cpuonly = false;
     int workgroupsize = 64;
     bool giveOpenClDeviceName = false;
-    int printMpiRank = -1;
+    int printMpiRankData = -1;
+    int printMpiRankStencil = -1;
     int cpuHaloWidth[6] = {1,1,1,1,1,1};
     int gpuHaloWidth[6] = {1,1,1,1,1,1};
 
@@ -68,8 +69,10 @@ int main(int argc, char** argv) {
                 workgroupsize = atof(argv[++i]);
             else if(argv[i] == std::string("-gpuinfo"))
                 giveOpenClDeviceName = true;
-            else if(argv[i] == std::string("-print") && i < argc-1)
-                printMpiRank = atoi(argv[++i]);
+            else if(argv[i] == std::string("-printD") && i < argc-1)
+                printMpiRankData = atoi(argv[++i]);
+            else if(argv[i] == std::string("-printS") && i < argc-1)
+                printMpiRankStencil = atoi(argv[++i]);
             else if(argv[i] == std::string("-chalo") && i < argc-1) {
                 std::string arg(argv[++i]);
                 size_t last = 0;
@@ -148,7 +151,7 @@ int main(int argc, char** argv) {
     }
     Sample sample(localDim, gpuDim, loops, cpuHaloWidth, gpuHaloWidth, mpiNum, cpuonly, workgroupsize, giveOpenClDeviceName);
 
-    if(mpiRank == printMpiRank) {
+    if(mpiRank == printMpiRankData) {
         if(!cpuonly) {
             std::cout << "-------------------------------" << std::endl;
             std::cout << "-------------------------------" << std::endl;
@@ -161,6 +164,20 @@ int main(int argc, char** argv) {
         std::cout << "CPU region BEFORE" << std::endl;
         std::cout << "-------------------------------" << std::endl;
         sample.printCPU();
+        std::cout << "-------------------------------" << std::endl;
+    } else if(mpiRank == printMpiRankStencil) {
+        if(!cpuonly) {
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "GPU stencil region BEFORE" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            sample.printGpuStencil();
+        }
+        std::cout << "-------------------------------" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        std::cout << "CPU stencil region BEFORE" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        sample.printCpuStencil();
         std::cout << "-------------------------------" << std::endl;
     }
 
@@ -182,7 +199,7 @@ int main(int argc, char** argv) {
     MPI_Barrier(MPI_COMM_WORLD);
     auto t_end = std::chrono::steady_clock::now();
 
-    if(mpiRank == printMpiRank) {
+    if(mpiRank == printMpiRankData) {
         if(!cpuonly) {
             std::cout << "-------------------------------" << std::endl;
             std::cout << "-------------------------------" << std::endl;
@@ -195,6 +212,20 @@ int main(int argc, char** argv) {
         std::cout << "CPU region AFTER" << std::endl;
         std::cout << "-------------------------------" << std::endl;
         sample.printCPU();
+        std::cout << "-------------------------------" << std::endl;
+    } else if(mpiRank == printMpiRankStencil) {
+        if(!cpuonly) {
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "GPU stencil region AFTER" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            sample.printGpuStencil();
+        }
+        std::cout << "-------------------------------" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        std::cout << "CPU stencil region AFTER" << std::endl;
+        std::cout << "-------------------------------" << std::endl;
+        sample.printCpuStencil();
         std::cout << "-------------------------------" << std::endl;
     }
 

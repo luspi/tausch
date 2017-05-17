@@ -56,7 +56,7 @@ Sample::Sample(int localDim[2], int gpuDim[2], int loops, int cpuHaloWidth[4], i
     int num = (dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT])*(dimY+cpuHaloWidth[Tausch2D::TOP]+cpuHaloWidth[Tausch2D::BOTTOM]);
     datCPU = new real_t[num]{};
 
-    stencilNumPoints = 5;
+    stencilNumPoints = 3;
     stencil = new real_t[num*5]{};
 
     if(cpuonly) {
@@ -67,11 +67,8 @@ Sample::Sample(int localDim[2], int gpuDim[2], int loops, int cpuHaloWidth[4], i
         for(int y = 0; y < dimY; ++y) {
             for(int x = 0; x < dimX; ++x) {
                 int index = (y+cpuHaloWidth[Tausch2D::BOTTOM])*(dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT])+x+cpuHaloWidth[Tausch2D::LEFT];
-                stencil[stencilNumPoints*index + 0] = index*10+1;
-                stencil[stencilNumPoints*index + 1] = index*10+2;
-                stencil[stencilNumPoints*index + 2] = index*10+4;
-                stencil[stencilNumPoints*index + 3] = index*10+5;
-                stencil[stencilNumPoints*index + 4] = index*10+7;
+                for(int st = 0; st < stencilNumPoints; ++st)
+                    stencil[stencilNumPoints*index + st] = index*10+st+1;
             }
         }
     } else {
@@ -86,11 +83,8 @@ Sample::Sample(int localDim[2], int gpuDim[2], int loops, int cpuHaloWidth[4], i
                 if(!(x >= (dimX-gpuDim[0])/2 && x < (dimX-gpuDim[0])/2+gpuDim[0]
                      && y >= (dimY-gpuDim[1])/2 && y < (dimY-gpuDim[1])/2+gpuDim[1])) {
                     int index = (y+cpuHaloWidth[Tausch2D::BOTTOM])*(dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT])+x+cpuHaloWidth[Tausch2D::LEFT];
-                    stencil[stencilNumPoints*index + 0] = index*10+1;
-                    stencil[stencilNumPoints*index + 1] = index*10+2;
-                    stencil[stencilNumPoints*index + 2] = index*10+4;
-                    stencil[stencilNumPoints*index + 3] = index*10+5;
-                    stencil[stencilNumPoints*index + 4] = index*10+7;
+                    for(int st = 0; st < stencilNumPoints; ++st)
+                        stencil[stencilNumPoints*index + st] = index*10+st+1;
                 }
             }
         }
@@ -109,11 +103,8 @@ Sample::Sample(int localDim[2], int gpuDim[2], int loops, int cpuHaloWidth[4], i
         for(int j = 0; j < gpuDim[1]; ++j)
             for(int i = 0; i < gpuDim[0]; ++i) {
                 int index = (j+gpuHaloWidth[Tausch2D::BOTTOM])*(gpuDim[0]+gpuHaloWidth[Tausch2D::LEFT]+gpuHaloWidth[Tausch2D::RIGHT]) + i+gpuHaloWidth[Tausch2D::LEFT];
-                stencilGPU[stencilNumPoints*index + 0] = index*10+1;
-                stencilGPU[stencilNumPoints*index + 1] = index*10+2;
-                stencilGPU[stencilNumPoints*index + 2] = index*10+4;
-                stencilGPU[stencilNumPoints*index + 3] = index*10+5;
-                stencilGPU[stencilNumPoints*index + 4] = index*10+7;
+                for(int st = 0; st < stencilNumPoints; ++st)
+                    stencilGPU[stencilNumPoints*index + st] = index*10+st+1;
             }
 
         try {
@@ -231,29 +222,27 @@ void Sample::printCPUStencil() {
 
     if(cpuonly) {
 
-        for(int j = 0; j < dimY+cpuHaloWidth[Tausch2D::TOP]+cpuHaloWidth[Tausch2D::BOTTOM]; ++j) {
-            for(int i = 0; i < dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT]; ++i) {
-                std::cout << j*(dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT]) + i << " :: ";
-                for(int s = 0; s < stencilNumPoints; ++s)
-                          std::cout << stencil[stencilNumPoints*(j*(dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT]) + i) + s] << (s != stencilNumPoints-1 ? "/" : "");
-                std::cout << std::endl;
+        for(int j = dimY+cpuHaloWidth[Tausch2D::TOP]+cpuHaloWidth[Tausch2D::BOTTOM]-1; j >= 0; --j) {
+            for(int st = 0; st < stencilNumPoints; ++st) {
+                for(int i = 0; i < dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT]; ++i)
+                    std::cout << std::setw(4) << stencil[stencilNumPoints*(j*(dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT]) + i) + st] << " ";
+                std::cout << "        ";
             }
             std::cout << std::endl;
         }
 
     } else {
 
-        for(int j = 0; j < dimY+cpuHaloWidth[Tausch2D::TOP]+cpuHaloWidth[Tausch2D::BOTTOM]; ++j) {
-            for(int i = 0; i < dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT]; ++i) {
-                std::cout << j*(dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT]) + i << " :: ";
-                if(i >= (dimX-gpuDim[0])/2+cpuHaloWidth[Tausch2D::LEFT]+gpuHaloWidth[Tausch2D::LEFT] && i < (dimX-gpuDim[0])/2+cpuHaloWidth[Tausch2D::LEFT]+gpuDim[0]-gpuHaloWidth[Tausch2D::RIGHT]
-                   && j >= (dimY-gpuDim[1])/2+cpuHaloWidth[Tausch2D::BOTTOM]+gpuHaloWidth[Tausch2D::BOTTOM] && j < (dimY-gpuDim[1])/2+cpuHaloWidth[Tausch2D::BOTTOM]+gpuDim[1]-gpuHaloWidth[Tausch2D::TOP]) {
-                    std::cout << "---------" << std::endl;
-                    continue;
+        for(int j = dimY+cpuHaloWidth[Tausch2D::TOP]+cpuHaloWidth[Tausch2D::BOTTOM]-1; j >= 0; --j) {
+            for(int st = 0; st < stencilNumPoints; ++st) {
+                for(int i = 0; i < dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT]; ++i) {
+                    if(i >= (dimX-gpuDim[0])/2+cpuHaloWidth[Tausch2D::LEFT]+gpuHaloWidth[Tausch2D::LEFT] && i < (dimX-gpuDim[0])/2+cpuHaloWidth[Tausch2D::LEFT]+gpuDim[0]-gpuHaloWidth[Tausch2D::RIGHT]
+                       && j >= (dimY-gpuDim[1])/2+cpuHaloWidth[Tausch2D::BOTTOM]+gpuHaloWidth[Tausch2D::BOTTOM] && j < (dimY-gpuDim[1])/2+cpuHaloWidth[Tausch2D::BOTTOM]+gpuDim[1]-gpuHaloWidth[Tausch2D::TOP])
+                        std::cout << std::setw(5) << " ";
+                    else
+                        std::cout << std::setw(4) << stencil[stencilNumPoints*(j*(dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT]) + i) + st] << " ";
                 }
-                for(int s = 0; s < stencilNumPoints; ++s)
-                          std::cout << stencil[stencilNumPoints*(j*(dimX+cpuHaloWidth[Tausch2D::LEFT]+cpuHaloWidth[Tausch2D::RIGHT]) + i) + s] << (s != stencilNumPoints-1 ? "/" : "");
-                std::cout << std::endl;
+                std::cout << "        ";
             }
             std::cout << std::endl;
         }
@@ -274,12 +263,11 @@ void Sample::printGPU() {
 
 void Sample::printGPUStencil() {
 
-    for(int j = 0; j < gpuDim[1]+gpuHaloWidth[Tausch2D::TOP]+gpuHaloWidth[Tausch2D::BOTTOM]; ++j) {
-        for(int i = 0; i < gpuDim[0]+gpuHaloWidth[Tausch2D::LEFT]+gpuHaloWidth[Tausch2D::RIGHT]; ++i) {
-            std::cout << j*(gpuDim[0]+gpuHaloWidth[Tausch2D::LEFT]+gpuHaloWidth[Tausch2D::RIGHT]) + i << " :: ";
-            for(int s = 0; s < stencilNumPoints; ++s)
-                      std::cout << stencilGPU[stencilNumPoints*(j*(gpuDim[0]+gpuHaloWidth[Tausch2D::LEFT]+gpuHaloWidth[Tausch2D::RIGHT]) + i) + s] << (s != stencilNumPoints-1 ? "/" : "");
-            std::cout << std::endl;
+    for(int i = gpuDim[1]+gpuHaloWidth[Tausch2D::TOP]+gpuHaloWidth[Tausch2D::BOTTOM] -1; i >= 0; --i) {
+        for(int st = 0; st < stencilNumPoints; ++st) {
+            for(int j = 0; j < gpuDim[0]+gpuHaloWidth[Tausch2D::LEFT]+gpuHaloWidth[Tausch2D::RIGHT]; ++j)
+                std::cout << std::setw(3) << stencilGPU[stencilNumPoints*(i*(gpuDim[0]+gpuHaloWidth[Tausch2D::LEFT]+gpuHaloWidth[Tausch2D::RIGHT]) + j) + st] << " ";
+            std::cout << "        ";
         }
         std::cout << std::endl;
     }

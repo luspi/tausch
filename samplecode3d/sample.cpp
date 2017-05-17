@@ -32,15 +32,25 @@ Sample::Sample(int *localDim, int *gpuDim, int loops, int *cpuHaloWidth, int *gp
     tausch = new Tausch3D(localDim, mpiNum, cpuHaloWidth);
     if(!cpuonly) tausch->enableOpenCL(gpuHaloWidth, true, clWorkGroupSize, giveOpenCLDeviceName);
 
+    stencilNumPoints = 3;
+
     // how many points overall in the mesh and a CPU buffer for all of them
     int num = (dimX+cpuHaloWidth[0]+cpuHaloWidth[1])*(dimY+cpuHaloWidth[2]+cpuHaloWidth[3])*(dimZ+cpuHaloWidth[4]+cpuHaloWidth[5]);
     datCPU = new real_t[num]{};
+
+    stencilCPU = new real_t[stencilNumPoints*num]{};
 
     if(cpuonly) {
         for(int z = 0; z < dimZ; ++z)
             for(int j = 0; j < dimY; ++j)
                 for(int i = 0; i < dimX; ++i)
                     datCPU[(z+cpuHaloWidth[4])*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1])*(dimY+cpuHaloWidth[2]+cpuHaloWidth[3]) + (j+cpuHaloWidth[3])*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1]) + i+cpuHaloWidth[0]] = z*dimX*dimY+j*dimX+i+1;
+        for(int z = 0; z < dimZ; ++z)
+            for(int j = 0; j < dimY; ++j)
+                for(int i = 0; i < dimX; ++i)
+                    for(int st = 0; st < stencilNumPoints; ++st) {
+                        stencilCPU[stencilNumPoints*((z+cpuHaloWidth[4])*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1])*(dimY+cpuHaloWidth[2]+cpuHaloWidth[3]) + (j+cpuHaloWidth[3])*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1]) + i+cpuHaloWidth[0]) + st] = (z*dimX*dimY+j*dimX+i+1)*10 + st+1;
+                    }
     } else {
         for(int z = 0; z < dimZ; ++z)
             for(int j = 0; j < dimY; ++j)
@@ -49,22 +59,40 @@ Sample::Sample(int *localDim, int *gpuDim, int loops, int *cpuHaloWidth, int *gp
                          && j >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY
                          && z >= (dimZ-gpuDimZ)/2 && z < (dimZ-gpuDimZ)/2+gpuDimZ))
                         datCPU[(z+cpuHaloWidth[4])*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1])*(dimY+cpuHaloWidth[2]+cpuHaloWidth[3]) + (j+cpuHaloWidth[3])*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1]) + i+cpuHaloWidth[0]] = z*dimX*dimY+j*dimX+i+1;
+        for(int z = 0; z < dimZ; ++z)
+            for(int j = 0; j < dimY; ++j)
+                for(int i = 0; i < dimX; ++i)
+                    for(int st = 0; st < stencilNumPoints; ++st) {
+                        if(!(i >= (dimX-gpuDimX)/2 && i < (dimX-gpuDimX)/2+gpuDimX
+                             && j >= (dimY-gpuDimY)/2 && j < (dimY-gpuDimY)/2+gpuDimY
+                             && z >= (dimZ-gpuDimZ)/2 && z < (dimZ-gpuDimZ)/2+gpuDimZ))
+                            stencilCPU[stencilNumPoints*((z+cpuHaloWidth[4])*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1])*(dimY+cpuHaloWidth[2]+cpuHaloWidth[3]) + (j+cpuHaloWidth[3])*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1]) + i+cpuHaloWidth[0]) + st] = (z*dimX*dimY+j*dimX+i+1)*10 + st+1;
+                    }
     }
 
 
     if(!cpuonly) {
 
         // how many points only on the device and an OpenCL buffer for them
-        datGPU = new real_t[(gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1])*(gpuDimY+gpuHaloWidth[2]+gpuHaloWidth[3])*(gpuDimZ+gpuHaloWidth[4]+gpuHaloWidth[5])]{};
+        int num = (gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1])*(gpuDimY+gpuHaloWidth[2]+gpuHaloWidth[3])*(gpuDimZ+gpuHaloWidth[4]+gpuHaloWidth[5]);
+        datGPU = new real_t[num]{};
+        stencilGPU = new real_t[stencilNumPoints*num]{};
 
         for(int z = 0; z < gpuDimZ; ++z)
             for(int j = 0; j < gpuDimY; ++j)
                 for(int i = 0; i < gpuDimX; ++i)
                     datGPU[(z+gpuHaloWidth[4])*(gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1])*(gpuDimY+gpuHaloWidth[2]+gpuHaloWidth[3]) + (j+gpuHaloWidth[3])*(gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1]) + i+gpuHaloWidth[0]] = z*gpuDimX*gpuDimY+j*gpuDimX+i+1;
 
+        for(int z = 0; z < gpuDimZ; ++z)
+            for(int j = 0; j < gpuDimY; ++j)
+                for(int i = 0; i < gpuDimX; ++i)
+                    for(int st = 0; st < stencilNumPoints; ++st)
+                        stencilGPU[stencilNumPoints*((z+gpuHaloWidth[4])*(gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1])*(gpuDimY+gpuHaloWidth[2]+gpuHaloWidth[3]) + (j+gpuHaloWidth[3])*(gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1]) + i+gpuHaloWidth[0]) + st] = (z*gpuDimX*gpuDimY+j*gpuDimX+i+1)*10 + st+1;
+
         try {
 
-            cl_datGpu = cl::Buffer(tausch->getContext(), &datGPU[0], (&datGPU[(gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1])*(gpuDimY+gpuHaloWidth[2]+gpuHaloWidth[3])*(gpuDimZ+gpuHaloWidth[4]+gpuHaloWidth[5])-1])+1, false);
+            cl_datGpu = cl::Buffer(tausch->getContext(), &datGPU[0], (&datGPU[num-1])+1, false);
+            cl_stencilGpu = cl::Buffer(tausch->getContext(), &stencilGPU[0], (&stencilGPU[stencilNumPoints*num -1])+1, false);
 
         } catch(cl::Error error) {
             std::cout << "[sample] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -76,8 +104,11 @@ Sample::Sample(int *localDim, int *gpuDim, int loops, int *cpuHaloWidth, int *gp
 
     // pass pointers to the two data containers
     tausch->setCpuData(datCPU);
-    if(!cpuonly)
+    tausch->setCpuStencil(stencilCPU, stencilNumPoints);
+    if(!cpuonly) {
         tausch->setGpuData(cl_datGpu, gpuDim);
+        tausch->setGpuStencil(cl_stencilGpu, stencilNumPoints, gpuDim);
+    }
 
 }
 
@@ -93,13 +124,13 @@ void Sample::launchCPU() {
 
     for(int run = 0; run < loops; ++run) {
 
-        // post the receives
-        tausch->postCpuReceives();
-
-        if(cpuonly)
-            tausch->performCpuToCpu();
-        else
-            tausch->performCpuToCpuAndCpuToGpu();
+        if(cpuonly) {
+            tausch->performCpuToCpuData();
+            tausch->performCpuToCpuStencil();
+        } else {
+            tausch->performCpuToCpuDataAndCpuToGpuData();
+            tausch->performCpuToCpuStencilAndCpuToGpuStencil();
+        }
 
     }
 
@@ -109,11 +140,14 @@ void Sample::launchGPU() {
 
     if(cpuonly) return;
 
-    for(int run = 0; run < loops; ++run)
-        tausch->performGpuToCpu();
+    for(int run = 0; run < loops; ++run) {
+        tausch->performGpuToCpuData();
+        tausch->performGpuToCpuStencil();
+    }
 
     try {
         cl::copy(tausch->getQueue(), cl_datGpu, &datGPU[0], (&datGPU[(gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1])*(gpuDimY+gpuHaloWidth[2]+gpuHaloWidth[3])*(gpuDimZ+gpuHaloWidth[4]+gpuHaloWidth[5])-1])+1);
+        cl::copy(tausch->getQueue(), cl_stencilGpu, &stencilGPU[0], (&stencilGPU[stencilNumPoints*((gpuDimX+gpuHaloWidth[0]+gpuHaloWidth[1])*(gpuDimY+gpuHaloWidth[2]+gpuHaloWidth[3])*(gpuDimZ+gpuHaloWidth[4]+gpuHaloWidth[5]))-1])+1);
     } catch(cl::Error error) {
         std::cout << "[launchGPU] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
@@ -161,6 +195,62 @@ void Sample::printCPU() {
 
 }
 
+void Sample::printCpuStencil() {
+
+    if(cpuonly) {
+
+        for(int z = 0; z < dimZ+cpuHaloWidth[4]+cpuHaloWidth[5]; ++z) {
+
+            std::cout << std::endl << "z = " << z << std::endl;
+
+            for(int j = dimY+cpuHaloWidth[2]+cpuHaloWidth[3]-1; j >= 0; --j) {
+
+                for(int st = 0; st < stencilNumPoints; ++st) {
+
+                    for(int i = 0; i < dimX+cpuHaloWidth[0]+cpuHaloWidth[1]; ++i)
+                        std::cout << std::setw(4) << stencilCPU[stencilNumPoints*(z*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1])*(dimY+cpuHaloWidth[2]+cpuHaloWidth[3]) + j*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1]) + i) + st] << " ";
+
+                    std::cout << "          ";
+
+                }
+
+                std::cout << std::endl;
+            }
+
+        }
+
+    } else {
+
+        for(int z = 0; z < dimZ+cpuHaloWidth[4]+cpuHaloWidth[5]; ++z) {
+
+            std::cout << std::endl << "z = " << z << std::endl;
+
+            for(int j = dimY+cpuHaloWidth[2]+cpuHaloWidth[3]-1; j >= 0; --j) {
+
+                for(int st = 0; st < stencilNumPoints; ++st) {
+
+                    for(int i = 0; i < dimX+cpuHaloWidth[0]+cpuHaloWidth[1]; ++i) {
+                        if(i >= (dimX-gpuDimX)/2+cpuHaloWidth[Tausch3D::LEFT]+gpuHaloWidth[Tausch3D::LEFT] && i < (dimX-gpuDimX)/2+cpuHaloWidth[Tausch3D::LEFT]+gpuDimX-gpuHaloWidth[Tausch3D::RIGHT]
+                           && j >= (dimY-gpuDimY)/2+cpuHaloWidth[Tausch3D::BOTTOM]+gpuHaloWidth[Tausch3D::BOTTOM] && j < (dimY-gpuDimY)/2+cpuHaloWidth[Tausch3D::BOTTOM]+gpuDimY-gpuHaloWidth[Tausch3D::TOP]
+                           && z >= (dimZ-gpuDimZ)/2+cpuHaloWidth[Tausch3D::FRONT]+gpuHaloWidth[Tausch3D::FRONT] && z < (dimZ-gpuDimZ)/2+cpuHaloWidth[Tausch3D::FRONT]+gpuDimZ-gpuHaloWidth[Tausch3D::BACK])
+                            std::cout << "     ";
+                        else
+                            std::cout << std::setw(4) << stencilCPU[stencilNumPoints*(z*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1])*(dimY+cpuHaloWidth[2]+cpuHaloWidth[3]) + j*(dimX+cpuHaloWidth[0]+cpuHaloWidth[1]) + i) + st] << " ";
+                    }
+
+                    std::cout << "          ";
+
+                }
+
+                std::cout << std::endl;
+            }
+
+        }
+
+    }
+
+}
+
 void Sample::printGPU() {
 
     for(int z = 0; z < gpuDimZ+gpuHaloWidth[Tausch3D::FRONT]+gpuHaloWidth[Tausch3D::BACK]; ++z) {
@@ -170,6 +260,28 @@ void Sample::printGPU() {
         for(int i = gpuDimY+gpuHaloWidth[Tausch3D::TOP]+gpuHaloWidth[Tausch3D::BOTTOM] -1; i >= 0; --i) {
             for(int j = 0; j < gpuDimX+gpuHaloWidth[Tausch3D::LEFT]+gpuHaloWidth[Tausch3D::RIGHT]; ++j)
                 std::cout << std::setw(3) << datGPU[z*(gpuDimX+gpuHaloWidth[Tausch3D::LEFT]+gpuHaloWidth[Tausch3D::RIGHT])*(gpuDimY+gpuHaloWidth[Tausch3D::TOP]+gpuHaloWidth[Tausch3D::BOTTOM]) + i*(gpuDimX+gpuHaloWidth[Tausch3D::LEFT]+gpuHaloWidth[Tausch3D::RIGHT]) + j] << " ";
+            std::cout << std::endl;
+        }
+
+    }
+
+}
+
+void Sample::printGpuStencil() {
+
+    for(int z = 0; z < gpuDimZ+gpuHaloWidth[Tausch3D::FRONT]+gpuHaloWidth[Tausch3D::BACK]; ++z) {
+
+        std::cout << std::endl << "z = " << z << std::endl;
+
+        for(int i = gpuDimY+gpuHaloWidth[Tausch3D::TOP]+gpuHaloWidth[Tausch3D::BOTTOM] -1; i >= 0; --i) {
+            for(int st = 0; st < stencilNumPoints; ++st) {
+
+                for(int j = 0; j < gpuDimX+gpuHaloWidth[Tausch3D::LEFT]+gpuHaloWidth[Tausch3D::RIGHT]; ++j)
+                    std::cout << std::setw(4) << stencilGPU[stencilNumPoints*(z*(gpuDimX+gpuHaloWidth[Tausch3D::LEFT]+gpuHaloWidth[Tausch3D::RIGHT])*(gpuDimY+gpuHaloWidth[Tausch3D::TOP]+gpuHaloWidth[Tausch3D::BOTTOM]) + i*(gpuDimX+gpuHaloWidth[Tausch3D::LEFT]+gpuHaloWidth[Tausch3D::RIGHT]) + j) + st] << " ";
+
+                std::cout << "          ";
+
+            }
             std::cout << std::endl;
         }
 
