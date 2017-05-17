@@ -1,3 +1,9 @@
+/*!
+ * \file
+ * \author  Lukas Spies <LSpies@illinois.edu>
+ * \version 1.0
+ */
+
 #ifndef CTAUSCH2D_H
 #define CTAUSCH2D_H
 
