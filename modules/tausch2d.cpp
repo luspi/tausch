@@ -147,12 +147,17 @@ void Tausch2D::setCpuData(real_t *data) {
 
     cpuToCpuSendBuffer = new real_t*[4];
     cpuToCpuRecvBuffer = new real_t*[4];
+
     for(int i = 0; i < 4; ++i) {
+
         if(haveBoundary[i]) {
+
             cpuToCpuSendBuffer[i] = new real_t[sendBufferSizes[i]]{};
             cpuToCpuRecvBuffer[i] = new real_t[recvBufferSizes[i]]{};
+
             MPI_Recv_init(cpuToCpuRecvBuffer[i], recvBufferSizes[i], mpiDataType, ranks[i], recvTags[i], TAUSCH_COMM, &cpuToCpuRecvRequest[i]);
             MPI_Send_init(cpuToCpuSendBuffer[i], sendBufferSizes[i], mpiDataType, ranks[i], sendTags[i], TAUSCH_COMM, &cpuToCpuSendRequest[i]);
+
         }
     }
 
@@ -190,14 +195,22 @@ void Tausch2D::setCpuStencil(real_t *stencil, int stencilNumPoints) {
     int recvTags[4] = {10, 12, 11, 13};
     int sendTags[4] = {12, 10, 13, 11};
 
+    // four buffers for each edge's MPI send/recv operations
     cpuToCpuStencilSendBuffer = new real_t*[4];
     cpuToCpuStencilRecvBuffer = new real_t*[4];
+
     for(int i = 0; i < 4; ++i) {
+
         if(haveBoundary[i]) {
+
             cpuToCpuStencilSendBuffer[i] = new real_t[stencilNumPoints*sendBufferSizes[i]]{};
             cpuToCpuStencilRecvBuffer[i] = new real_t[stencilNumPoints*recvBufferSizes[i]]{};
-            MPI_Recv_init(cpuToCpuStencilRecvBuffer[i], stencilNumPoints*recvBufferSizes[i], mpiDataType, ranks[i], recvTags[i], TAUSCH_COMM, &cpuToCpuStencilRecvRequest[i]);
-            MPI_Send_init(cpuToCpuStencilSendBuffer[i], stencilNumPoints*sendBufferSizes[i], mpiDataType, ranks[i], sendTags[i], TAUSCH_COMM, &cpuToCpuStencilSendRequest[i]);
+
+            MPI_Recv_init(cpuToCpuStencilRecvBuffer[i], stencilNumPoints*recvBufferSizes[i], mpiDataType,
+                          ranks[i], recvTags[i], TAUSCH_COMM, &cpuToCpuStencilRecvRequest[i]);
+            MPI_Send_init(cpuToCpuStencilSendBuffer[i], stencilNumPoints*sendBufferSizes[i], mpiDataType,
+                          ranks[i], sendTags[i], TAUSCH_COMM, &cpuToCpuStencilSendRequest[i]);
+
         }
     }
 
@@ -249,26 +262,36 @@ void Tausch2D::startCpuDataEdge(Edge edge) {
 
     cpuStarted[edge] = true;
 
-    MPI_Datatype mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
-
     if(edge == LEFT && haveBoundary[LEFT]) {
+
         for(int i = 0; i < cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
             cpuToCpuSendBuffer[LEFT][i] = cpuData[cpuHaloWidth[LEFT]+ (i/cpuHaloWidth[RIGHT])*(localDim[X]+cpuHaloWidth[LEFT]+
                                                   cpuHaloWidth[RIGHT])+i%cpuHaloWidth[RIGHT]];
+
         MPI_Start(&cpuToCpuSendRequest[LEFT]);
+
     } else if(edge == RIGHT && haveBoundary[RIGHT]) {
+
         for(int i = 0; i < cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
             cpuToCpuSendBuffer[RIGHT][i] = cpuData[(i/cpuHaloWidth[LEFT]+1)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) -
                                                    (cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+i%cpuHaloWidth[LEFT]];
+
         MPI_Start(&cpuToCpuSendRequest[RIGHT]);
+
     } else if(edge == TOP && haveBoundary[TOP]) {
+
         for(int i = 0; i < cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
             cpuToCpuSendBuffer[TOP][i] = cpuData[(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]) + i];
+
         MPI_Start(&cpuToCpuSendRequest[TOP]);
+
     } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
+
         for(int i = 0; i < cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
             cpuToCpuSendBuffer[BOTTOM][i] = cpuData[cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + i];
+
         MPI_Start(&cpuToCpuSendRequest[BOTTOM]);
+
     }
 
 }
@@ -288,31 +311,47 @@ void Tausch2D::startCpuStencilEdge(Edge edge) {
     cpuStencilStarted[edge] = true;
 
     if(edge == LEFT && haveBoundary[LEFT]) {
+
         for(int i = 0; i < cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]); ++i)
-            for(int j = 0; j < stencilNumPoints; ++j)
-                cpuToCpuStencilSendBuffer[LEFT][stencilNumPoints*i + j] =
+
+            for(int st = 0; st < stencilNumPoints; ++st)
+                cpuToCpuStencilSendBuffer[LEFT][stencilNumPoints*i + st] =
                         cpuStencil[stencilNumPoints*(cpuHaloWidth[LEFT]+ (i/cpuHaloWidth[RIGHT])*(localDim[X]+cpuHaloWidth[LEFT]+
-                                                     cpuHaloWidth[RIGHT])+i%cpuHaloWidth[RIGHT]) + j];
+                                                     cpuHaloWidth[RIGHT])+i%cpuHaloWidth[RIGHT]) + st];
+
         MPI_Start(&cpuToCpuStencilSendRequest[LEFT]);
+
     } else if(edge == RIGHT && haveBoundary[RIGHT]) {
+
         for(int i = 0; i < cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
-            for(int j = 0; j < stencilNumPoints; ++j)
-                cpuToCpuStencilSendBuffer[RIGHT][stencilNumPoints*i + j] =
+
+            for(int st = 0; st < stencilNumPoints; ++st)
+                cpuToCpuStencilSendBuffer[RIGHT][stencilNumPoints*i + st] =
                         cpuStencil[stencilNumPoints*((i/cpuHaloWidth[LEFT]+1)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) -
-                                                     (cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+i%cpuHaloWidth[LEFT]) + j];
+                                                     (cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+i%cpuHaloWidth[LEFT]) + st];
+
         MPI_Start(&cpuToCpuStencilSendRequest[RIGHT]);
+
     } else if(edge == TOP && haveBoundary[TOP]) {
+
         for(int i = 0; i < cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
-            for(int j = 0; j < stencilNumPoints; ++j)
-                cpuToCpuStencilSendBuffer[TOP][stencilNumPoints*i + j] =
-                        cpuStencil[stencilNumPoints*((localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]) + i) + j];
+
+            for(int st = 0; st < stencilNumPoints; ++st)
+                cpuToCpuStencilSendBuffer[TOP][stencilNumPoints*i + st] =
+                        cpuStencil[stencilNumPoints*((localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]) + i) + st];
+
         MPI_Start(&cpuToCpuStencilSendRequest[TOP]);
+
     } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
+
         for(int i = 0; i < cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
-            for(int j = 0; j < stencilNumPoints; ++j)
-                cpuToCpuStencilSendBuffer[BOTTOM][stencilNumPoints*i + j] =
-                        cpuStencil[stencilNumPoints*(cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + i) + j];
+
+            for(int st = 0; st < stencilNumPoints; ++st)
+                cpuToCpuStencilSendBuffer[BOTTOM][stencilNumPoints*i + st] =
+                        cpuStencil[stencilNumPoints*(cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + i) + st];
+
         MPI_Start(&cpuToCpuStencilSendRequest[BOTTOM]);
+
     }
 
 }
@@ -331,25 +370,42 @@ void Tausch2D::completeCpuDataEdge(Edge edge) {
     }
 
     if(edge == LEFT && haveBoundary[LEFT]) {
+
         MPI_Wait(&cpuToCpuRecvRequest[LEFT], MPI_STATUS_IGNORE);
+
         for(int i = 0; i < cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
             cpuData[(i/cpuHaloWidth[LEFT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+i%cpuHaloWidth[LEFT]] = cpuToCpuRecvBuffer[LEFT][i];
+
         MPI_Wait(&cpuToCpuSendRequest[LEFT], MPI_STATUS_IGNORE);
+
     } else if(edge == RIGHT && haveBoundary[RIGHT]) {
+
         MPI_Wait(&cpuToCpuRecvRequest[RIGHT], MPI_STATUS_IGNORE);
+
         for(int i = 0; i < cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
-            cpuData[(i/cpuHaloWidth[RIGHT]+1)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])-cpuHaloWidth[RIGHT]+i%cpuHaloWidth[RIGHT]] = cpuToCpuRecvBuffer[RIGHT][i];
+            cpuData[(i/cpuHaloWidth[RIGHT]+1)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) - cpuHaloWidth[RIGHT] + i%cpuHaloWidth[RIGHT]] =
+                    cpuToCpuRecvBuffer[RIGHT][i];
+
         MPI_Wait(&cpuToCpuSendRequest[RIGHT], MPI_STATUS_IGNORE);
+
     } else if(edge == TOP && haveBoundary[TOP]) {
+
         MPI_Wait(&cpuToCpuRecvRequest[TOP], MPI_STATUS_IGNORE);
+
         for(int i = 0; i < cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
             cpuData[(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]) + i] = cpuToCpuRecvBuffer[TOP][i];
+
         MPI_Wait(&cpuToCpuSendRequest[TOP], MPI_STATUS_IGNORE);
+
     } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
+
         MPI_Wait(&cpuToCpuRecvRequest[BOTTOM], MPI_STATUS_IGNORE);
+
         for(int i = 0; i < cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
             cpuData[i] = cpuToCpuRecvBuffer[BOTTOM][i];
+
         MPI_Wait(&cpuToCpuSendRequest[BOTTOM], MPI_STATUS_IGNORE);
+
     }
 
 }
@@ -368,32 +424,52 @@ void Tausch2D::completeCpuStencilEdge(Edge edge) {
     }
 
     if(edge == LEFT && haveBoundary[LEFT]) {
+
         MPI_Wait(&cpuToCpuStencilRecvRequest[LEFT], MPI_STATUS_IGNORE);
+
         for(int i = 0; i < cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
-            for(int j = 0; j < stencilNumPoints; ++j)
+
+            for(int st = 0; st < stencilNumPoints; ++st)
                 cpuStencil[stencilNumPoints*((i/cpuHaloWidth[LEFT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+
-                                             i%cpuHaloWidth[LEFT]) + j] = cpuToCpuStencilRecvBuffer[LEFT][stencilNumPoints*i + j];
+                                             i%cpuHaloWidth[LEFT]) + st] = cpuToCpuStencilRecvBuffer[LEFT][stencilNumPoints*i + st];
+
         MPI_Wait(&cpuToCpuStencilSendRequest[LEFT], MPI_STATUS_IGNORE);
+
     } else if(edge == RIGHT && haveBoundary[RIGHT]) {
+
         MPI_Wait(&cpuToCpuStencilRecvRequest[RIGHT], MPI_STATUS_IGNORE);
+
         for(int i = 0; i < cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
-            for(int j = 0; j < stencilNumPoints; ++j)
+
+            for(int st = 0; st < stencilNumPoints; ++st)
                 cpuStencil[stencilNumPoints*((i/cpuHaloWidth[RIGHT]+1)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])-
-                                             cpuHaloWidth[RIGHT]+i%cpuHaloWidth[RIGHT]) + j] = cpuToCpuStencilRecvBuffer[RIGHT][stencilNumPoints*i + j];
+                                             cpuHaloWidth[RIGHT]+i%cpuHaloWidth[RIGHT])+st] = cpuToCpuStencilRecvBuffer[RIGHT][stencilNumPoints*i+st];
+
         MPI_Wait(&cpuToCpuStencilSendRequest[RIGHT], MPI_STATUS_IGNORE);
+
     } else if(edge == TOP && haveBoundary[TOP]) {
+
         MPI_Wait(&cpuToCpuStencilRecvRequest[TOP], MPI_STATUS_IGNORE);
+
         for(int i = 0; i < cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
-            for(int j = 0; j < stencilNumPoints; ++j)
-                cpuStencil[stencilNumPoints*((localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]) + i) + j] =
-                        cpuToCpuStencilRecvBuffer[TOP][stencilNumPoints*i + j];
+
+            for(int st = 0; st < stencilNumPoints; ++st)
+                cpuStencil[stencilNumPoints*((localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]) + i) + st] =
+                        cpuToCpuStencilRecvBuffer[TOP][stencilNumPoints*i + st];
+
         MPI_Wait(&cpuToCpuStencilSendRequest[TOP], MPI_STATUS_IGNORE);
+
     } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
+
         MPI_Wait(&cpuToCpuStencilRecvRequest[BOTTOM], MPI_STATUS_IGNORE);
+
         for(int i = 0; i < cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
-            for(int j = 0; j < stencilNumPoints; ++j)
-                cpuStencil[stencilNumPoints*i + j] = cpuToCpuStencilRecvBuffer[BOTTOM][stencilNumPoints*i + j];
+
+            for(int st = 0; st < stencilNumPoints; ++st)
+                cpuStencil[stencilNumPoints*i + st] = cpuToCpuStencilRecvBuffer[BOTTOM][stencilNumPoints*i + st];
+
         MPI_Wait(&cpuToCpuStencilSendRequest[BOTTOM], MPI_STATUS_IGNORE);
+
     }
 
 }
@@ -476,23 +552,22 @@ void Tausch2D::setGpuData(cl::Buffer &dat, int *gpuDim) {
 
     // store buffer to store the GPU and the CPU part of the halo.
     // We do not need two buffers each, as each thread has direct access to both arrays, no MPI communication necessary
-    // the cTg and gTc buffers need to be set up here and in setGpuStencil() as only either one might be called
-    cTg = gpuHaloWidth[TOP]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-          gpuHaloWidth[BOTTOM]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-          gpuHaloWidth[LEFT]*gpuDim[Y] +
-          gpuHaloWidth[RIGHT]*gpuDim[Y];
-    gTc = gpuHaloWidth[TOP]*gpuDim[X] + gpuHaloWidth[BOTTOM]*gpuDim[X] +
-          gpuHaloWidth[LEFT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]) +
-          gpuHaloWidth[RIGHT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
-    cpuToGpuDataBuffer = new std::atomic<real_t>[cTg]{};
-    gpuToCpuDataBuffer = new std::atomic<real_t>[gTc]{};
+    cTgData = gpuHaloWidth[TOP]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+              gpuHaloWidth[BOTTOM]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+              gpuHaloWidth[LEFT]*gpuDim[Y] +
+              gpuHaloWidth[RIGHT]*gpuDim[Y];
+    gTcData = gpuHaloWidth[TOP]*gpuDim[X] + gpuHaloWidth[BOTTOM]*gpuDim[X] +
+              gpuHaloWidth[LEFT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]) +
+              gpuHaloWidth[RIGHT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
+    cpuToGpuDataBuffer = new std::atomic<real_t>[cTgData]{};
+    gpuToCpuDataBuffer = new std::atomic<real_t>[gTcData]{};
 
     // set up buffers on device
     try {
-        cl_gpuToCpuDataBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, gTc*sizeof(real_t));
-        cl_cpuToGpuDataBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, cTg*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuDataBuffer, 0, 0, gTc*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_cpuToGpuDataBuffer, 0, 0, cTg*sizeof(real_t));
+        cl_gpuToCpuDataBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, gTcData*sizeof(real_t));
+        cl_cpuToGpuDataBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, cTgData*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuDataBuffer, 0, 0, gTcData*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_cpuToGpuDataBuffer, 0, 0, cTgData*sizeof(real_t));
         cl_gpuDim[X] = cl::Buffer(cl_context, &gpuDim[X], (&gpuDim[X])+1, true);
         cl_gpuDim[Y] = cl::Buffer(cl_context, &gpuDim[Y], (&gpuDim[Y])+1, true);
     } catch(cl::Error error) {
@@ -520,23 +595,22 @@ void Tausch2D::setGpuStencil(cl::Buffer &stencil, int stencilNumPoints, int *ste
 
     // store buffer to store the GPU and the CPU part of the halo.
     // We do not need two buffers each, as each thread has direct access to both arrays, no MPI communication necessary
-    // the cTg and gTc buffers need to be set up here and in setGpuData() as only either one might be called
-    cTg = gpuHaloWidth[TOP]*(this->stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-          gpuHaloWidth[BOTTOM]*(this->stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-          gpuHaloWidth[LEFT]*this->stencilDim[Y] +
-          gpuHaloWidth[RIGHT]*this->stencilDim[Y];
-    gTc = gpuHaloWidth[TOP]*this->stencilDim[X] + gpuHaloWidth[BOTTOM]*this->stencilDim[X] +
-          gpuHaloWidth[LEFT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]) +
-          gpuHaloWidth[RIGHT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
-    cpuToGpuStencilBuffer = new std::atomic<real_t>[stencilNumPoints*cTg]{};
-    gpuToCpuStencilBuffer = new std::atomic<real_t>[stencilNumPoints*gTc]{};
+    cTgStencil = stencilNumPoints*(gpuHaloWidth[TOP]*(this->stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+                                   gpuHaloWidth[BOTTOM]*(this->stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
+                                   gpuHaloWidth[LEFT]*this->stencilDim[Y] +
+                                   gpuHaloWidth[RIGHT]*this->stencilDim[Y]);
+    gTcStencil = stencilNumPoints*(gpuHaloWidth[TOP]*this->stencilDim[X] + gpuHaloWidth[BOTTOM]*this->stencilDim[X] +
+                                   gpuHaloWidth[LEFT]*(this->stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]) +
+                                   gpuHaloWidth[RIGHT]*(this->stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]));
+    cpuToGpuStencilBuffer = new std::atomic<real_t>[cTgStencil]{};
+    gpuToCpuStencilBuffer = new std::atomic<real_t>[gTcStencil]{};
 
     // set up buffers on device
     try {
-        cl_gpuToCpuStencilBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, stencilNumPoints*gTc*sizeof(real_t));
-        cl_cpuToGpuStencilBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, stencilNumPoints*cTg*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuStencilBuffer, 0, 0, stencilNumPoints*gTc*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_cpuToGpuStencilBuffer, 0, 0, stencilNumPoints*cTg*sizeof(real_t));
+        cl_gpuToCpuStencilBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, gTcStencil*sizeof(real_t));
+        cl_cpuToGpuStencilBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, cTgStencil*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_gpuToCpuStencilBuffer, 0, 0, gTcStencil*sizeof(real_t));
+        cl_queue.enqueueFillBuffer(cl_cpuToGpuStencilBuffer, 0, 0, cTgStencil*sizeof(real_t));
         cl_stencilDim[X] = cl::Buffer(cl_context, &this->stencilDim[X], (&this->stencilDim[X])+1, true);
         cl_stencilDim[Y] = cl::Buffer(cl_context, &this->stencilDim[Y], (&this->stencilDim[Y])+1, true);
         cl_stencilNumPoints = cl::Buffer(cl_context, &stencilNumPoints, (&stencilNumPoints)+1, true);
@@ -560,28 +634,50 @@ void Tausch2D::startCpuToGpuData() {
 
     // left
     for(int i = 0; i < gpuHaloWidth[LEFT]*gpuDim[Y]; ++i) {
+
         int index = ((localDim[Y]-gpuDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
                     (localDim[X]-gpuDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT]-gpuHaloWidth[LEFT];
+
         cpuToGpuDataBuffer[i].store(cpuData[index]);
+
     }
+
+    int offset = gpuHaloWidth[LEFT]*gpuDim[Y];
+
     // right
     for(int i = 0; i < gpuHaloWidth[RIGHT]*gpuDim[Y]; ++i) {
+
         int index = ((localDim[Y]-gpuDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
                     (localDim[X]-gpuDim[X])/2 + cpuHaloWidth[LEFT] + gpuDim[X] + i%gpuHaloWidth[RIGHT];
-        cpuToGpuDataBuffer[gpuHaloWidth[LEFT]*gpuDim[Y] + i].store(cpuData[index]);
+
+        cpuToGpuDataBuffer[offset + i].store(cpuData[index]);
+
     }
+
+    offset += gpuHaloWidth[RIGHT]*gpuDim[Y];
+
     // top
     for(int i = 0; i < gpuHaloWidth[TOP]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
-        int index = ((localDim[Y]-gpuDim[Y])/2+gpuDim[Y]+cpuHaloWidth[BOTTOM] + i/(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]))*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + ((localDim[X]-gpuDim[X])/2-gpuHaloWidth[LEFT]) +i%(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
-        cpuToGpuDataBuffer[gpuHaloWidth[LEFT]*gpuDim[Y] + gpuHaloWidth[RIGHT]*gpuDim[Y] + i].store(cpuData[index]);
+
+        int index = ((localDim[Y]-gpuDim[Y])/2+gpuDim[Y]+cpuHaloWidth[BOTTOM] + i/(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]))*
+                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + cpuHaloWidth[LEFT] + ((localDim[X]-gpuDim[X])/2-gpuHaloWidth[LEFT]) +
+                    i%(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
+
+        cpuToGpuDataBuffer[offset + i].store(cpuData[index]);
+
     }
+
+    offset += gpuHaloWidth[TOP]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
+
     // bottom
     for(int i = 0; i < gpuHaloWidth[BOTTOM]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
+
         int index = (i/(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
                      cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDim[Y])/2 - gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
                     cpuHaloWidth[LEFT] + (localDim[X]-gpuDim[X])/2 - gpuHaloWidth[LEFT] + i%(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
-        cpuToGpuDataBuffer[gpuHaloWidth[LEFT]*gpuDim[Y] + gpuHaloWidth[RIGHT]*gpuDim[Y]+gpuHaloWidth[TOP]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) + i].store(cpuData[index]);
+
+        cpuToGpuDataBuffer[offset + i].store(cpuData[index]);
+
     }
 
 }
@@ -599,35 +695,56 @@ void Tausch2D::startCpuToGpuStencil() {
 
     // left
     for(int i = 0; i < gpuHaloWidth[LEFT]*stencilDim[Y]; ++i) {
+
         int index = ((localDim[Y]-stencilDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
                     (localDim[X]-stencilDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT]-gpuHaloWidth[LEFT];
+
         for(int j = 0; j < stencilNumPoints; ++j)
             cpuToGpuStencilBuffer[stencilNumPoints*i + j].store(cpuStencil[stencilNumPoints*index + j]);
+
     }
+
+    int offset = stencilNumPoints*gpuHaloWidth[LEFT]*stencilDim[Y];
+
     // right
     for(int i = 0; i < gpuHaloWidth[RIGHT]*stencilDim[Y]; ++i) {
+
         int index = ((localDim[Y]-stencilDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
                     (localDim[X]-stencilDim[X])/2 + cpuHaloWidth[LEFT] + stencilDim[X] + i%gpuHaloWidth[RIGHT];
+
         for(int j = 0; j < stencilNumPoints; ++j)
-            cpuToGpuStencilBuffer[stencilNumPoints*(gpuHaloWidth[LEFT]*stencilDim[Y] + i) + j].store(cpuStencil[stencilNumPoints*index + j]);
+            cpuToGpuStencilBuffer[offset + stencilNumPoints*i + j].store(cpuStencil[stencilNumPoints*index + j]);
+
     }
+
+    offset += stencilNumPoints*gpuHaloWidth[RIGHT]*stencilDim[Y];
+
     // top
     for(int i = 0; i < gpuHaloWidth[TOP]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
+
         int index = ((localDim[Y]-stencilDim[Y])/2+stencilDim[Y]+cpuHaloWidth[BOTTOM] +
                      i/(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]))*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
                     cpuHaloWidth[LEFT] + ((localDim[X]-stencilDim[X])/2-gpuHaloWidth[LEFT]) +
                     i%(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
+
         for(int j = 0; j < stencilNumPoints; ++j)
-            cpuToGpuStencilBuffer[stencilNumPoints*(gpuHaloWidth[LEFT]*stencilDim[Y] + gpuHaloWidth[RIGHT]*stencilDim[Y] + i) + j].store(cpuStencil[stencilNumPoints*index + j]);
+            cpuToGpuStencilBuffer[offset + stencilNumPoints*i + j].store(cpuStencil[stencilNumPoints*index + j]);
+
     }
+
+    offset += stencilNumPoints*gpuHaloWidth[TOP]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
+
     // bottom
     for(int i = 0; i < gpuHaloWidth[BOTTOM]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
+
         int index = (i/(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) + cpuHaloWidth[BOTTOM] +
                      (localDim[Y]-stencilDim[Y])/2 - gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
                     cpuHaloWidth[LEFT] + (localDim[X]-stencilDim[X])/2 - gpuHaloWidth[LEFT] +
                     i%(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
+
         for(int j = 0; j < stencilNumPoints; ++j)
-            cpuToGpuStencilBuffer[stencilNumPoints*(gpuHaloWidth[LEFT]*stencilDim[Y] + gpuHaloWidth[RIGHT]*stencilDim[Y]+gpuHaloWidth[TOP]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) + i) + j].store(cpuStencil[stencilNumPoints*index + j]);
+            cpuToGpuStencilBuffer[offset + stencilNumPoints*i + j].store(cpuStencil[stencilNumPoints*index + j]);
+
     }
 
 }
@@ -652,14 +769,14 @@ void Tausch2D::startGpuToCpuData() {
 
         auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloData");
 
-        int globalSize = (gTc/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = (gTcData/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
                            cl_gpuDim[X], cl_gpuDim[Y], cl_gpuHaloWidth, gpuData, cl_gpuToCpuDataBuffer);
 
-        double *dat = new double[gTc];
-        cl::copy(cl_queue, cl_gpuToCpuDataBuffer, &dat[0], (&dat[gTc-1])+1);
-        for(int i = 0; i < gTc; ++i)
+        double *dat = new double[gTcData];
+        cl::copy(cl_queue, cl_gpuToCpuDataBuffer, &dat[0], (&dat[gTcData-1])+1);
+        for(int i = 0; i < gTcData; ++i)
             gpuToCpuDataBuffer[i].store(dat[i]);
 
         delete[] dat;
@@ -689,16 +806,17 @@ void Tausch2D::startGpuToCpuStencil() {
 
     try {
 
-        auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloStencil");
+        auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&,
+                                                  cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloStencil");
 
-        int globalSize = ((stencilNumPoints*gTc)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = (gTcStencil/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
                            cl_stencilDim[X], cl_stencilDim[Y], cl_gpuHaloWidth, gpuStencil, cl_stencilNumPoints, cl_gpuToCpuStencilBuffer);
 
-        double *dat = new double[stencilNumPoints*gTc];
-        cl::copy(cl_queue, cl_gpuToCpuStencilBuffer, &dat[0], (&dat[stencilNumPoints*gTc-1])+1);
-        for(int i = 0; i < stencilNumPoints*gTc; ++i)
+        double *dat = new double[gTcStencil];
+        cl::copy(cl_queue, cl_gpuToCpuStencilBuffer, &dat[0], (&dat[gTcStencil-1])+1);
+        for(int i = 0; i < gTcStencil; ++i)
             gpuToCpuStencilBuffer[i].store(dat[i]);
 
         delete[] dat;
@@ -724,30 +842,49 @@ void Tausch2D::completeGpuToCpuData() {
 
     // left
     for(int i = 0; i < gpuHaloWidth[LEFT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
-        int index = ((localDim[Y]-gpuDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM]+gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-gpuDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT];
+
+        int index = ((localDim[Y]-gpuDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM]+gpuHaloWidth[BOTTOM])*
+                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-gpuDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT];
+
         cpuData[index] = gpuToCpuDataBuffer[i].load();
+
     }
+
     int offset = gpuHaloWidth[LEFT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
+
     // right
     for(int i = 0; i < gpuHaloWidth[RIGHT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
-        int index = ((localDim[Y]-gpuDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT] + gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-gpuDim[X])/2 + cpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT] + gpuDim[X] + i%gpuHaloWidth[RIGHT];
+
+        int index = ((localDim[Y]-gpuDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT] + gpuHaloWidth[BOTTOM])*
+                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-gpuDim[X])/2 + cpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT] +
+                    gpuDim[X] + i%gpuHaloWidth[RIGHT];
+
         cpuData[index] = gpuToCpuDataBuffer[offset + i].load();
+
     }
+
     offset += gpuHaloWidth[RIGHT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
+
     // top
     for(int i = 0; i < gpuHaloWidth[TOP]*gpuDim[X]; ++ i) {
-        int index = ((localDim[Y]-gpuDim[Y])/2+gpuDim[Y]+cpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP] + i/gpuDim[X])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + (localDim[X]-gpuDim[X])/2 +i%gpuDim[X];
+
+        int index = ((localDim[Y]-gpuDim[Y])/2+gpuDim[Y]+cpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP] + i/gpuDim[X])*
+                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + cpuHaloWidth[LEFT] + (localDim[X]-gpuDim[X])/2 +i%gpuDim[X];
+
         cpuData[index] = gpuToCpuDataBuffer[offset + i].load();
+
     }
+
     offset += gpuHaloWidth[TOP]*gpuDim[X];
+
     // bottom
     for(int i = 0; i < gpuHaloWidth[BOTTOM]*gpuDim[X]; ++ i) {
+
         int index = (i/gpuDim[X] + cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
                     cpuHaloWidth[LEFT] + (localDim[X]-gpuDim[X])/2 + i%gpuDim[X];
+
         cpuData[index] = gpuToCpuDataBuffer[offset + i].load();
+
     }
 
 }
@@ -766,34 +903,53 @@ void Tausch2D::completeGpuToCpuStencil() {
 
     // left
     for(int i = 0; i < gpuHaloWidth[LEFT]*(stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
-        int index = ((localDim[Y]-stencilDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM]+gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-stencilDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT];
+
+        int index = ((localDim[Y]-stencilDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM]+gpuHaloWidth[BOTTOM])*
+                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-stencilDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT];
+
         for(int j = 0; j < stencilNumPoints; ++j)
             cpuStencil[stencilNumPoints*index + j] = gpuToCpuStencilBuffer[stencilNumPoints*i + j].load();
+
     }
+
     int offset = gpuHaloWidth[LEFT]*(stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
+
     // right
     for(int i = 0; i < gpuHaloWidth[RIGHT]*(stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
-        int index = ((localDim[Y]-stencilDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT] + gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-stencilDim[X])/2 + cpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT] + stencilDim[X] + i%gpuHaloWidth[RIGHT];
+
+        int index = ((localDim[Y]-stencilDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT] + gpuHaloWidth[BOTTOM])*
+                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-stencilDim[X])/2 + cpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT] +
+                    stencilDim[X] + i%gpuHaloWidth[RIGHT];
+
         for(int j = 0; j < stencilNumPoints; ++j)
             cpuStencil[stencilNumPoints*index + j] = gpuToCpuStencilBuffer[stencilNumPoints*(offset+i) + j].load();
+
     }
+
     offset += gpuHaloWidth[RIGHT]*(stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
+
     // top
     for(int i = 0; i < gpuHaloWidth[TOP]*stencilDim[X]; ++ i) {
-        int index = ((localDim[Y]-stencilDim[Y])/2+stencilDim[Y]+cpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP] + i/stencilDim[X])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + (localDim[X]-stencilDim[X])/2 +i%stencilDim[X];
+
+        int index = ((localDim[Y]-stencilDim[Y])/2+stencilDim[Y]+cpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP] + i/stencilDim[X])*
+                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + cpuHaloWidth[LEFT] + (localDim[X]-stencilDim[X])/2 +i%stencilDim[X];
+
         for(int j = 0; j < stencilNumPoints; ++j)
             cpuStencil[stencilNumPoints*index + j] = gpuToCpuStencilBuffer[stencilNumPoints*(offset + i) + j].load();
+
     }
+
     offset += gpuHaloWidth[TOP]*stencilDim[X];
+
     // bottom
     for(int i = 0; i < gpuHaloWidth[BOTTOM]*stencilDim[X]; ++ i) {
+
         int index = (i/stencilDim[X] + cpuHaloWidth[BOTTOM] + (localDim[Y]-stencilDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
                     cpuHaloWidth[LEFT] + (localDim[X]-stencilDim[X])/2 + i%stencilDim[X];
+
         for(int j = 0; j < stencilNumPoints; ++j)
             cpuStencil[stencilNumPoints*index + j] = gpuToCpuStencilBuffer[stencilNumPoints*(offset + i) + j].load();
+
     }
 
 }
@@ -812,20 +968,21 @@ void Tausch2D::completeCpuToGpuData() {
 
     try {
 
-        double *dat = new double[cTg];
-        for(int i = 0; i < cTg; ++i)
+        double *dat = new double[cTgData];
+        for(int i = 0; i < cTgData; ++i)
             dat[i] = cpuToGpuDataBuffer[i].load();
 
-        cl::copy(cl_queue, &dat[0], (&dat[cTg-1])+1, cl_cpuToGpuDataBuffer);
+        cl::copy(cl_queue, &dat[0], (&dat[cTgData-1])+1, cl_cpuToGpuDataBuffer);
 
         delete[] dat;
 
-        auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
+        auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&,
+                                                         cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
 
-        int globalSize = (cTg/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = (cTgData/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         kernel_distributeHaloData(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                                  cl_stencilDim[X], cl_stencilDim[Y], cl_gpuHaloWidth, gpuData, cl_cpuToGpuDataBuffer);
+                                  cl_gpuDim[X], cl_gpuDim[Y], cl_gpuHaloWidth, gpuData, cl_cpuToGpuDataBuffer);
 
     } catch(cl::Error error) {
         std::cout << "Tausch2D :: [dist halo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -848,20 +1005,21 @@ void Tausch2D::completeCpuToGpuStencil() {
 
     try {
 
-        double *dat = new double[stencilNumPoints*cTg];
-        for(int i = 0; i < stencilNumPoints*cTg; ++i)
+        double *dat = new double[cTgStencil];
+        for(int i = 0; i < cTgStencil; ++i)
             dat[i] = cpuToGpuStencilBuffer[i].load();
 
-        cl::copy(cl_queue, &dat[0], (&dat[stencilNumPoints*cTg-1])+1, cl_cpuToGpuStencilBuffer);
+        cl::copy(cl_queue, &dat[0], (&dat[cTgStencil-1])+1, cl_cpuToGpuStencilBuffer);
 
         delete[] dat;
 
-        auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloStencil");
+        auto kernel_distributeHaloStencil = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&,
+                                                            cl::Buffer&>(cl_programs, "distributeHaloStencil");
 
-        int globalSize = ((stencilNumPoints*cTg)/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+        int globalSize = (cTgStencil/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
-        kernel_distributeHaloData(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                                  cl_stencilDim[X], cl_stencilDim[Y], cl_gpuHaloWidth, gpuStencil, cl_stencilNumPoints, cl_cpuToGpuStencilBuffer);
+        kernel_distributeHaloStencil(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
+                                     cl_stencilDim[X], cl_stencilDim[Y], cl_gpuHaloWidth, gpuStencil, cl_stencilNumPoints, cl_cpuToGpuStencilBuffer);
 
     } catch(cl::Error error) {
         std::cout << "Tausch2D :: [dist halo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -899,173 +1057,287 @@ void Tausch2D::compileKernels() {
 
     oclstr += R"d(
 enum { LEFT, RIGHT, TOP, BOTTOM };
+
 kernel void collectHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
                             global const int * restrict const haloWidth,
                             global const real_t * restrict const vec, global real_t * sync) {
-    int currentIndex = get_global_id(0);
-    int current = currentIndex;
-    int maxNum = haloWidth[TOP]*(*dimX) + haloWidth[BOTTOM]*(*dimX) +
-    haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]) + haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
+
+    int current = get_global_id(0);
+
+    int maxNum = haloWidth[TOP]*(*dimX) +
+                 haloWidth[BOTTOM]*(*dimX) +
+                 haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]) +
+                 haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
+
     if(current >= maxNum)
         return;
+
     // left
     if(current < haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM])) {
-        int index = (2*haloWidth[BOTTOM]+current/haloWidth[LEFT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +haloWidth[LEFT] +
-        current%haloWidth[LEFT];
-        sync[currentIndex] = vec[index];
+
+        int index = (2*haloWidth[BOTTOM]+current/haloWidth[LEFT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +haloWidth[LEFT] + current%haloWidth[LEFT];
+
+        sync[current] = vec[index];
         return;
+
     }
-    current -= haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
+
+    int offset = haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
+
     // right
-    if(current < haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM])) {
-        int index = (1+2*haloWidth[BOTTOM]+current/haloWidth[RIGHT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) -2*haloWidth[RIGHT]+
-        current%haloWidth[RIGHT];
-        sync[currentIndex] = vec[index];
+    if(current < offset + haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM])) {
+
+        current -= offset;
+
+        int index = (1+2*haloWidth[BOTTOM]+current/haloWidth[RIGHT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) -
+                    2*haloWidth[RIGHT]+current%haloWidth[RIGHT];
+
+        sync[offset+current] = vec[index];
         return;
+
     }
-    current -= haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
+
+    offset += haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
+
     // top
-    if(current < haloWidth[TOP]*(*dimX)) {
-        int index = (*dimY+haloWidth[BOTTOM]-haloWidth[TOP] + current/(*dimX))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-        current%(*dimX)+haloWidth[LEFT];
-        sync[currentIndex] = vec[index];
+    if(current < offset + haloWidth[TOP]*(*dimX)) {
+
+        current -= offset;
+
+        int index = (*dimY+haloWidth[BOTTOM]-haloWidth[TOP]+current/(*dimX))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])+current%(*dimX)+haloWidth[LEFT];
+
+        sync[offset+current] = vec[index];
         return;
+
     }
-    current -= haloWidth[TOP]*(*dimX);
+
+    offset += haloWidth[TOP]*(*dimX);
+
     // bottom
+    current -= offset;
     int index = (haloWidth[BOTTOM]+current/(*dimX))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])+current%(*dimX)+haloWidth[LEFT];
-    sync[currentIndex] = vec[index];
+
+    sync[offset+current] = vec[index];
+
 }
+
 kernel void collectHaloStencil(global const int * restrict const dimX, global const int * restrict const dimY,
                                global const int * restrict const haloWidth, global const real_t * restrict const vec,
                                global const int * restrict const stencilNumPoints, global real_t * sync) {
-    int currentIndex = get_global_id(0);
-    int current = currentIndex;
-    int maxNum = (*stencilNumPoints)*(haloWidth[TOP]*(*dimX) + haloWidth[BOTTOM]*(*dimX) +
-    haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]) + haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]));
+
+    int current = get_global_id(0);
+
+    int maxNum = (*stencilNumPoints)*(haloWidth[TOP]*(*dimX) +
+                                      haloWidth[BOTTOM]*(*dimX) +
+                                      haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]) +
+                                      haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]));
     if(current >= maxNum)
         return;
+
     // left
     if(current < (*stencilNumPoints)*haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM])) {
+
         int current_stencil = current%(*stencilNumPoints);
         int current_index = current/(*stencilNumPoints);
+
         int index = (*stencilNumPoints)*((2*haloWidth[BOTTOM]+current_index/haloWidth[LEFT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-        haloWidth[LEFT] + current_index%haloWidth[LEFT]) + current_stencil;
-        sync[currentIndex] = vec[index];
+                                         haloWidth[LEFT] + current_index%haloWidth[LEFT]) + current_stencil;
+
+        sync[current] = vec[index];
         return;
+
     }
-    current -= (*stencilNumPoints)*haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
+
+    int offset = (*stencilNumPoints)*haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
+
     // right
-    if(current < (*stencilNumPoints)*haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM])) {
+    if(current < offset + (*stencilNumPoints)*haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM])) {
+
+        current -= offset;
+
         int current_stencil = current%(*stencilNumPoints);
         int current_index = current/(*stencilNumPoints);
+
         int index = (*stencilNumPoints)*((1+2*haloWidth[BOTTOM]+current_index/haloWidth[RIGHT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) -
-        2*haloWidth[RIGHT]+current_index%haloWidth[RIGHT]) + current_stencil;
-        sync[currentIndex] = vec[index];
+                                         2*haloWidth[RIGHT]+current_index%haloWidth[RIGHT]) + current_stencil;
+
+        sync[offset+current] = vec[index];
         return;
     }
-    current -= (*stencilNumPoints)*haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
+
+    offset += (*stencilNumPoints)*haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
+
     // top
-    if(current < (*stencilNumPoints)*haloWidth[BOTTOM]*(*dimX)) {
+    if(current < offset + (*stencilNumPoints)*haloWidth[BOTTOM]*(*dimX)) {
+
+        current -= offset;
+
         int current_stencil = current%(*stencilNumPoints);
         int current_index = current/(*stencilNumPoints);
+
         int index = (*stencilNumPoints)*((*dimY+haloWidth[BOTTOM]-haloWidth[TOP] + current_index/(*dimX))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-        current_index%(*dimX)+haloWidth[LEFT]) + current_stencil;
-        sync[currentIndex] = vec[index];
+                                         current_index%(*dimX)+haloWidth[LEFT]) + current_stencil;
+
+        sync[offset+current] = vec[index];
         return;
+
     }
+
+    offset += (*stencilNumPoints)*haloWidth[BOTTOM]*(*dimX);
+
     // bottom
-    current -= (*stencilNumPoints)*haloWidth[BOTTOM]*(*dimX);
+    current -= offset;
+
     int current_stencil = current%(*stencilNumPoints);
     int current_index = current/(*stencilNumPoints);
+
     int index = (*stencilNumPoints)*((haloWidth[BOTTOM]+current_index/(*dimX))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])+
-    current_index%(*dimX)+haloWidth[LEFT]) + current_stencil;
-    sync[currentIndex] = vec[index];
+                                     current_index%(*dimX)+haloWidth[LEFT]) + current_stencil;
+
+    sync[offset+current] = vec[index];
+
 }
+
 kernel void distributeHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
                                global const int * restrict const haloWidth,
                                global real_t * vec, global const real_t * restrict const sync) {
-    int syncIndex = get_global_id(0);
-    int current = syncIndex;
-    int maxNum = haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) + haloWidth[BOTTOM]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-    haloWidth[LEFT]*(*dimY) + haloWidth[RIGHT]*(*dimY);
+
+    int current = get_global_id(0);
+
+    int maxNum = haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
+                 haloWidth[BOTTOM]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
+                 haloWidth[LEFT]*(*dimY) +
+                 haloWidth[RIGHT]*(*dimY);
+
     if(current >= maxNum)
         return;
+
     // left
     if(current < haloWidth[LEFT]*(*dimY)) {
+
         int index = (haloWidth[BOTTOM]+current/haloWidth[LEFT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) + current%haloWidth[LEFT];
-        vec[index] = sync[syncIndex];
+
+        vec[index] = sync[current];
         return;
+
     }
-    current -= haloWidth[LEFT]*(*dimY);
+
+    int offset = haloWidth[LEFT]*(*dimY);
+
     // right
-    if(current < haloWidth[RIGHT]*(*dimY)) {
-        int index = (haloWidth[BOTTOM]+1+current/haloWidth[RIGHT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) -
-        haloWidth[RIGHT]+current%haloWidth[RIGHT];
-        vec[index] = sync[syncIndex];
+    if(current < offset + haloWidth[RIGHT]*(*dimY)) {
+
+        current -= offset;
+
+        int index = (haloWidth[BOTTOM]+1+current/haloWidth[RIGHT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])-haloWidth[RIGHT]+current%haloWidth[RIGHT];
+
+        vec[index] = sync[offset + current];
         return;
+
     }
-    current -= haloWidth[RIGHT]*(*dimY);
+
+    offset += haloWidth[RIGHT]*(*dimY);
+
     // top
-    if(current < haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) {
+    if(current < offset + haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) {
+
+        current -= offset;
+
         int index = (*dimX+haloWidth[LEFT]+haloWidth[RIGHT])*(*dimY+haloWidth[BOTTOM] + current/(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) +
-        current%(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]);
-        vec[index] = sync[syncIndex];
+                    current%(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]);
+
+        vec[index] = sync[offset + current];
         return;
+
     }
-    current -= haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]);
+
+    offset += haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]);
+
     // bottom
+    current -= offset;
+
     int index = (current/(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])+
-    current%(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]);
-    vec[index] = sync[syncIndex];
+                current%(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]);
+
+    vec[index] = sync[offset + current];
+
 }
+
 kernel void distributeHaloStencil(global const int * restrict const dimX, global const int * restrict const dimY,
                                   global const int * restrict const haloWidth, global real_t * vec,
                                   global const int * restrict const stencilNumPoints, global const real_t * restrict const sync) {
-    int syncIndex = get_global_id(0);
-    int current = syncIndex;
+
+    int current = get_global_id(0);
+
     int maxNum = (*stencilNumPoints)*(haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-    haloWidth[BOTTOM]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-    haloWidth[LEFT]*(*dimY) + haloWidth[RIGHT]*(*dimY));
+                                      haloWidth[BOTTOM]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
+                                      haloWidth[LEFT]*(*dimY) +
+                                      haloWidth[RIGHT]*(*dimY));
+
     if(current >= maxNum)
         return;
+
     // left
     if(current < (*stencilNumPoints)*haloWidth[LEFT]*(*dimY)) {
-        int currentStencil = current%(*stencilNumPoints);
-        int currentIndex = current/(*stencilNumPoints);
-        int index = (*stencilNumPoints)*((haloWidth[BOTTOM]+currentIndex/haloWidth[LEFT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-        currentIndex%haloWidth[LEFT]) + currentStencil;
-        vec[index] = sync[syncIndex];
+
+        int current_stencil = current%(*stencilNumPoints);
+        int current_index = current/(*stencilNumPoints);
+
+        int index = (*stencilNumPoints)*((haloWidth[BOTTOM]+current_index/haloWidth[LEFT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
+                                         current_index%haloWidth[LEFT]) + current_stencil;
+
+        vec[index] = sync[current];
         return;
+
     }
-    current -= (*stencilNumPoints)*haloWidth[LEFT]*(*dimY);
+
+    int offset = (*stencilNumPoints)*haloWidth[LEFT]*(*dimY);
+
     // right
-    if(current < (*stencilNumPoints)*haloWidth[RIGHT]*(*dimY)) {
-        int currentStencil = current%(*stencilNumPoints);
-        int currentIndex = current/(*stencilNumPoints);
-        int index = (*stencilNumPoints)*((haloWidth[BOTTOM]+1+currentIndex/haloWidth[RIGHT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) -
-        haloWidth[RIGHT]+currentIndex%haloWidth[RIGHT]) + currentStencil;
-        vec[index] = sync[syncIndex];
+    if(current < offset + (*stencilNumPoints)*haloWidth[RIGHT]*(*dimY)) {
+
+        current -= offset;
+        int current_stencil = current%(*stencilNumPoints);
+        int current_index = current/(*stencilNumPoints);
+
+        int index = (*stencilNumPoints)*((haloWidth[BOTTOM]+1+current_index/haloWidth[RIGHT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) -
+                                         haloWidth[RIGHT]+current_index%haloWidth[RIGHT]) + current_stencil;
+
+        vec[index] = sync[offset + current];
         return;
+
     }
-    current -= (*stencilNumPoints)*haloWidth[RIGHT]*(*dimY);
+
+    offset += (*stencilNumPoints)*haloWidth[RIGHT]*(*dimY);
+
     // top
-    if(current < (*stencilNumPoints)*haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) {
-        int currentStencil = current%(*stencilNumPoints);
-        int currentIndex = current/(*stencilNumPoints);
-        int index = (*stencilNumPoints)*((*dimX+haloWidth[LEFT]+haloWidth[RIGHT])*(*dimY+haloWidth[BOTTOM] +
-        currentIndex/(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) + currentIndex%(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) +
-        currentStencil;
-        vec[index] = sync[syncIndex];
+    if(current < offset + (*stencilNumPoints)*haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) {
+
+        current -= offset;
+        int current_stencil = current%(*stencilNumPoints);
+        int current_index = current/(*stencilNumPoints);
+
+        int index = (*stencilNumPoints)*((*dimX+haloWidth[LEFT]+haloWidth[RIGHT])*
+                                         (*dimY+haloWidth[BOTTOM] + current_index/(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) +
+                                         current_index%(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) + current_stencil;
+
+        vec[index] = sync[offset + current];
         return;
+
     }
-    current -= (*stencilNumPoints)*haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]);
+
+    offset += (*stencilNumPoints)*haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]);
+
     // bottom
-    int currentStencil = current%(*stencilNumPoints);
-    int currentIndex = current/(*stencilNumPoints);
-    int index = (*stencilNumPoints)*((currentIndex/(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])+
-    currentIndex%(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) + currentStencil;
-    vec[index] = sync[syncIndex];
+    current -= offset;
+    int current_stencil = current%(*stencilNumPoints);
+    int current_index = current/(*stencilNumPoints);
+
+    int index = (*stencilNumPoints)*((current_index/(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])+
+                                     current_index%(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) + current_stencil;
+
+    vec[index] = sync[offset + current];
+
 }
         )d";
 

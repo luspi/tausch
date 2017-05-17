@@ -39,7 +39,8 @@ void tausch3d_setCpuData(CTausch3D *tC, real_t *dat);
 #ifdef TAUSCH_OPENCL
 void tausch3d_enableOpenCL(CTausch3D *tC, int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
 
-void tausch3d_setOpenCLInfo(CTausch3D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize);
+void tausch3d_setOpenCLInfo(CTausch3D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue,
+                            int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize);
 
 void tausch3d_performCpuToCpuDataAndCpuToGpuData(CTausch3D *tC);
 

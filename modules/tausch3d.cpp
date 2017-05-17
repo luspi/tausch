@@ -137,14 +137,20 @@ void Tausch3D::setCpuData(real_t *dat) {
     int recvTags[6] = {0, 2, 1, 3, 4, 5};
     int sendTags[6] = {2, 0, 3, 1, 5, 4};
 
+    // six buffers for each of the MPI send/recv operations
     cpuToCpuSendBuffer = new real_t*[6];
     cpuToCpuRecvBuffer = new real_t*[6];
+
     for(int i = 0; i < 6; ++i) {
+
         if(haveBoundary[i]) {
+
             cpuToCpuSendBuffer[i] = new real_t[sendBufferSizes[i]]{};
             cpuToCpuRecvBuffer[i] = new real_t[recvBufferSizes[i]]{};
+
             MPI_Recv_init(cpuToCpuRecvBuffer[i], recvBufferSizes[i], mpiDataType, ranks[i], recvTags[i], TAUSCH_COMM, &cpuToCpuRecvRequest[i]);
             MPI_Send_init(cpuToCpuSendBuffer[i], sendBufferSizes[i], mpiDataType, ranks[i], sendTags[i], TAUSCH_COMM, &cpuToCpuSendRequest[i]);
+
         }
     }
 
@@ -191,20 +197,17 @@ void Tausch3D::setCpuStencil(real_t *stencil, int stencilNumPoints) {
     int recvTags[6] = {0, 2, 1, 3, 4, 5};
     int sendTags[6] = {2, 0, 3, 1, 5, 4};
 
-    // six buffers for each of the MPI send/recv operations
+    // six buffers for each edge's MPI send/recv operations
     cpuToCpuStencilSendBuffer = new real_t*[6];
     cpuToCpuStencilRecvBuffer = new real_t*[6];
 
-    // we have six edges
     for(int i = 0; i < 6; ++i) {
 
         if(haveBoundary[i]) {
 
-            // the send/recv buffer of the current edge
             cpuToCpuStencilSendBuffer[i] = new real_t[stencilNumPoints*sendBufferSizes[i]]{};
             cpuToCpuStencilRecvBuffer[i] = new real_t[stencilNumPoints*recvBufferSizes[i]]{};
 
-            // Init the send and recv operations
             MPI_Recv_init(cpuToCpuStencilRecvBuffer[i], stencilNumPoints*recvBufferSizes[i], mpiDataType,
                           ranks[i], recvTags[i], TAUSCH_COMM, &cpuToCpuStencilRecvRequest[i]);
             MPI_Send_init(cpuToCpuStencilSendBuffer[i], stencilNumPoints*sendBufferSizes[i], mpiDataType,
@@ -2002,11 +2005,11 @@ kernel void distributeHaloStencil(global const int * restrict const dimX, global
         int current_index = current/(*stencilNumPoints);
 
         int index = (*stencilNumPoints)*
-                      /* z */  ((current_index/(haloWidth[RIGHT]*(*dimY+haloWidth[TOP]+haloWidth[BOTTOM]))) * (*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) *
-                      /* z */  (*dimY+haloWidth[TOP]+haloWidth[BOTTOM]) +
-                      /* y */  ((current_index%(haloWidth[RIGHT]*(*dimY+haloWidth[TOP]+haloWidth[BOTTOM]))) / haloWidth[RIGHT]) *
-                      /* y */  (*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-                      /* z */  current_index%haloWidth[RIGHT] + *dimX+haloWidth[LEFT]) + current_stencil;
+               /* z */  ((current_index/(haloWidth[RIGHT]*(*dimY+haloWidth[TOP]+haloWidth[BOTTOM]))) * (*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) *
+               /* z */  (*dimY+haloWidth[TOP]+haloWidth[BOTTOM]) +
+               /* y */  ((current_index%(haloWidth[RIGHT]*(*dimY+haloWidth[TOP]+haloWidth[BOTTOM]))) / haloWidth[RIGHT]) *
+               /* y */  (*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
+               /* z */  current_index%haloWidth[RIGHT] + *dimX+haloWidth[LEFT]) + current_stencil;
 
         vec[index] = sync[offset+current];
         return;
@@ -2084,7 +2087,7 @@ kernel void distributeHaloStencil(global const int * restrict const dimX, global
 
 }
 
-                         )d";
+              )d";
 
     try {
         cl_programs = cl::Program(cl_context, oclstr, true);

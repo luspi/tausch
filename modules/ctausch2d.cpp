@@ -41,20 +41,32 @@ extern "C" {
 
     void tausch2d_startCpuDataEdge(CTausch2D *tC, enum Edge edge) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->startCpuDataEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT : (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT : (edge==TAUSCH_TOP ? Tausch2D::TOP : Tausch2D::BOTTOM)));
+        t->startCpuDataEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT :
+                                                (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT :
+                                                                      (edge==TAUSCH_TOP ? Tausch2D::TOP :
+                                                                                          Tausch2D::BOTTOM)));
     }
     void tausch2d_startCpuStencilEdge(CTausch2D *tC, enum Edge edge) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->startCpuStencilEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT : (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT : (edge==TAUSCH_TOP ? Tausch2D::TOP : Tausch2D::BOTTOM)));
+        t->startCpuStencilEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT :
+                                                   (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT :
+                                                                         (edge==TAUSCH_TOP ? Tausch2D::TOP :
+                                                                                             Tausch2D::BOTTOM)));
     }
 
     void tausch2d_completeCpuDataEdge(CTausch2D *tC, enum Edge edge) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->completeCpuDataEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT : (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT : (edge==TAUSCH_TOP ? Tausch2D::TOP : Tausch2D::BOTTOM)));
+        t->completeCpuDataEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT :
+                                                   (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT :
+                                                                         (edge==TAUSCH_TOP ? Tausch2D::TOP :
+                                                                                             Tausch2D::BOTTOM)));
     }
     void tausch2d_completeCpuStencilEdge(CTausch2D *tC, enum Edge edge) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
-        t->completeCpuStencilEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT : (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT : (edge==TAUSCH_TOP ? Tausch2D::TOP : Tausch2D::BOTTOM)));
+        t->completeCpuStencilEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT :
+                                                      (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT :
+                                                                            (edge==TAUSCH_TOP ? Tausch2D::TOP :
+                                                                                                Tausch2D::BOTTOM)));
     }
 
     void tausch2d_setCpuData(CTausch2D *tC, real_t *dat) {
@@ -72,12 +84,13 @@ extern "C" {
         t->enableOpenCL(gpuHaloWidth, blockingSyncCpuGpu, clLocalWorkgroupSize, giveOpenCLDeviceName);
     }
 
-    void tausch2d_setOpenCLInfo(CTausch2D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, int *gpuHaloWidth, bool blockingSyncCpuGpu) {
+    void tausch2d_setOpenCLInfo(CTausch2D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue,
+                                int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         cl::Device *dev = new cl::Device(*clDefaultDevice);
         cl::Context *con = new cl::Context(*clContext);
         cl::CommandQueue *que = new cl::CommandQueue(*clQueue);
-        t->enableOpenCL(*dev, *con, *que, gpuHaloWidth, blockingSyncCpuGpu);
+        t->enableOpenCL(*dev, *con, *que, gpuHaloWidth, blockingSyncCpuGpu, clLocalWorkgroupSize);
     }
 
     void tausch2d_setGpuData(CTausch2D *tC, cl_mem dat, int *gpuDim) {

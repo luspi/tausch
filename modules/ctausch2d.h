@@ -44,7 +44,8 @@ void tausch2d_setCpuStencil(CTausch2D *tC, real_t *dat, int stencilNumPoints);
 #ifdef TAUSCH_OPENCL
 void tausch2d_enableOpenCL(CTausch2D *tC, int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
 
-void tausch2d_setOpenCLInfo(CTausch2D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, int *gpuHaloWidth, bool blockingSyncCpuGpu);
+void tausch2d_setOpenCLInfo(CTausch2D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue,
+                            int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize);
 
 void tausch2d_performCpuToCpuDataAndCpuToGpuData(CTausch2D *tC);
 void tausch2d_performCpuToCpuStencilAndCpuToGpuStencil(CTausch2D *tC);

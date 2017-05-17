@@ -44,11 +44,11 @@ extern "C" {
     void tausch3d_completeCpuDataEdge(CTausch3D *tC, enum Edge edge) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
         t->completeCpuDataEdge(edge==TAUSCH_LEFT ? Tausch3D::LEFT :
-                                               (edge==TAUSCH_RIGHT ? Tausch3D::RIGHT :
+                                                 (edge==TAUSCH_RIGHT ? Tausch3D::RIGHT :
                                                                      (edge==TAUSCH_TOP ? Tausch3D::TOP :
-                                                                                         (edge==TAUSCH_BOTTOM ? Tausch3D::BOTTOM :
-                                                                                                                edge==TAUSCH_FRONT ? Tausch3D::FRONT :
-                                                                                                                                     Tausch3D::BACK))));
+                                                                                       (edge==TAUSCH_BOTTOM ? Tausch3D::BOTTOM :
+                                                                                                            edge==TAUSCH_FRONT ? Tausch3D::FRONT :
+                                                                                                                                 Tausch3D::BACK))));
     }
 
     void tausch3d_setCpuData(CTausch3D *tC, real_t *dat) {
@@ -62,7 +62,8 @@ extern "C" {
         t->enableOpenCL(gpuHaloWidth, blockingSyncCpuGpu, clLocalWorkgroupSize, giveOpenCLDeviceName);
     }
 
-    void tausch3d_setOpenCLInfo(CTausch3D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue, int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
+    void tausch3d_setOpenCLInfo(CTausch3D *tC, const cl_device_id *clDefaultDevice, const cl_context *clContext, const cl_command_queue *clQueue,
+                                int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
         Tausch3D *t = reinterpret_cast<Tausch3D*>(tC);
         cl::Device *dev = new cl::Device(*clDefaultDevice);
         cl::Context *con = new cl::Context(*clContext);
