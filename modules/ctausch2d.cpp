@@ -39,14 +39,14 @@ extern "C" {
         t->performCpuToCpuStencil();
     }
 
-    void tausch2d_startCpuDataEdge(CTausch2D *tC, enum Edge edge) {
+    void tausch2d_startCpuDataEdge(CTausch2D *tC, Edge edge) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         t->startCpuDataEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT :
                                                 (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT :
                                                                       (edge==TAUSCH_TOP ? Tausch2D::TOP :
                                                                                           Tausch2D::BOTTOM)));
     }
-    void tausch2d_startCpuStencilEdge(CTausch2D *tC, enum Edge edge) {
+    void tausch2d_startCpuStencilEdge(CTausch2D *tC, Edge edge) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         t->startCpuStencilEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT :
                                                    (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT :
@@ -54,14 +54,14 @@ extern "C" {
                                                                                              Tausch2D::BOTTOM)));
     }
 
-    void tausch2d_completeCpuDataEdge(CTausch2D *tC, enum Edge edge) {
+    void tausch2d_completeCpuDataEdge(CTausch2D *tC, Edge edge) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         t->completeCpuDataEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT :
                                                    (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT :
                                                                          (edge==TAUSCH_TOP ? Tausch2D::TOP :
                                                                                              Tausch2D::BOTTOM)));
     }
-    void tausch2d_completeCpuStencilEdge(CTausch2D *tC, enum Edge edge) {
+    void tausch2d_completeCpuStencilEdge(CTausch2D *tC, Edge edge) {
         Tausch2D *t = reinterpret_cast<Tausch2D*>(tC);
         t->completeCpuStencilEdge(edge==TAUSCH_LEFT ? Tausch2D::LEFT :
                                                       (edge==TAUSCH_RIGHT ? Tausch2D::RIGHT :

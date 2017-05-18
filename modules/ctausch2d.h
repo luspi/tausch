@@ -20,10 +20,11 @@ extern "C" {
  * Use real_t in code to allow easier switch between double/float.
  */
 typedef double real_t;
+typedef int Edge;
 
 typedef void* CTausch2D;
 
-enum Edge { TAUSCH_LEFT, TAUSCH_RIGHT, TAUSCH_TOP, TAUSCH_BOTTOM };
+enum Edges { TAUSCH_LEFT, TAUSCH_RIGHT, TAUSCH_TOP, TAUSCH_BOTTOM };
 
 CTausch2D* tausch2d_new(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm);
 void tausch2d_delete(CTausch2D *tC);
@@ -38,11 +39,11 @@ void tausch2d_performCpuToCpuStencil(CTausch2D *tC);
 
 void tausch2d_startCpuToGpu(CTausch2D *tC);
 
-void tausch2d_startCpuDataEdge(CTausch2D *tC, enum Edge edge);
-void tausch2d_startCpuStencilEdge(CTausch2D *tC, enum Edge edge);
+void tausch2d_startCpuDataEdge(CTausch2D *tC, Edge edge);
+void tausch2d_startCpuStencilEdge(CTausch2D *tC, Edge edge);
 
-void tausch2d_completeCpuDataEdge(CTausch2D *tC, enum Edge edge);
-void tausch2d_completeCpuStencilEdge(CTausch2D *tC, enum Edge edge);
+void tausch2d_completeCpuDataEdge(CTausch2D *tC, Edge edge);
+void tausch2d_completeCpuStencilEdge(CTausch2D *tC, Edge edge);
 
 void tausch2d_setCpuData(CTausch2D *tC, real_t *dat);
 void tausch2d_setCpuStencil(CTausch2D *tC, real_t *dat, int stencilNumPoints);
