@@ -1,15 +1,6 @@
 #include "tausch2d.h"
 
-Tausch2D::Tausch2D(int *localDim, int *mpiNum, int cpuHaloWidth, MPI_Comm comm) {
-    int useHaloWidth[4] = {cpuHaloWidth, cpuHaloWidth, cpuHaloWidth, cpuHaloWidth};
-    _constructor(localDim, mpiNum, useHaloWidth, comm);
-}
-
 Tausch2D::Tausch2D(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm) {
-    _constructor(localDim, mpiNum, cpuHaloWidth, comm);
-}
-
-void Tausch2D::_constructor(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm) {
 
     MPI_Comm_dup(comm, &TAUSCH_COMM);
 

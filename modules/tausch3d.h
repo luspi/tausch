@@ -15,6 +15,8 @@
 #include <thread>
 #include <future>
 
+#include "tausch.h"
+
 #ifdef TAUSCH_OPENCL
     #define __CL_ENABLE_EXCEPTIONS
     #include <CL/cl.hpp>
@@ -24,6 +26,7 @@
  * Use real_t in code to allow easier switch between double/float.
  */
 typedef double real_t;
+typedef int Edge;
 
 /*!
  *
@@ -34,14 +37,14 @@ typedef double real_t;
  * into a structured coarse mesh for MPI. It supports halo exchange across the partition boundaries, and across a CPU/GPU boundary for GPU partitions
  * living centered inside a CPU partition.
  */
-class Tausch3D {
+class Tausch3D : public Tausch {
 
 public:
 
     /*!
      * These are the edges available for inter-MPI halo exchanges: LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK.
      */
-    enum Edge { LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK };
+    enum Edges { LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK };
 
     /*!
      * These are the three dimensions used, used for clarity as to which array entry is which dimension: X, Y, Z.
@@ -65,7 +68,7 @@ public:
      *  The MPI Communictor to be used. %Tausch3D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch3D working
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    explicit Tausch3D(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch3D(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * Destructor freeing any allocated memory.
@@ -189,6 +192,23 @@ public:
     void enableOpenCL(int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
 
     /*!
+     * Overloaded function, allowing specification of GPU halo using single integer.
+     *
+     * Note: This is only available if %Tausch3D was compiled with OpenCL support!
+     *
+     * \param gpuHaloWidth
+     *  The width of the CPU/GPU halo, taken as width for all six edges.
+     * \param blockingSyncCpuGpu
+     *  Whether to sync the CPU and GPU. This is necessary when running both parts in asynchronous threads, but causes a deadlock when only one thread
+     *  is used.
+     * \param clLocalWorkgroupSize
+     *  The local workgroup size for each kernel call.
+     * \param giveOpenCLDeviceName
+     *  Whether %Tausch3D should print out the OpenCL device name. This can come in handy for debugging.
+     */
+    void enableOpenCL(int gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
+
+    /*!
      * Overloaded function. Enabled OpenCL for the current %Tausch3D object, making %Tausch3D use the user-provided OpenCL environment.
      *
      * Note: This is only available if %Tausch3D was compiled with OpenCL support!
@@ -210,6 +230,28 @@ public:
      */
     void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue,
                       int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize);
+
+    /*!
+     * Overloaded function, allowing specification of GPU halo using single integer.
+     *
+     * Note: This is only available if %Tausch3D was compiled with OpenCL support!
+     *
+     * \param cl_defaultDevice
+     *  The OpenCL device.
+     * \param cl_context
+     *  The OpenCL context
+     * \param cl_queue
+     *  The OpenCL queue
+     * \param gpuHaloWidth
+     *  The width of the CPU/GPU halo, taken as width for all six edges.
+     * \param blockingSyncCpuGpu
+     *  Whether to sync the CPU and GPU. This is necessary when running both parts in asynchronous threads, but causes a deadlock when only one thread
+     *  is used.
+     * \param clLocalWorkgroupSize
+     *  The local workgroup size for each kernel call.
+     */
+    void enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue,
+                      int gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize);
 
     /*!
      * Tells %Tausch3D where to find the buffer for the GPU data and some of its main important details.

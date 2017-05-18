@@ -703,8 +703,7 @@ void Tausch3D::completeCpuStencilEdge(Edge edge) {
 
 #ifdef TAUSCH_OPENCL
 
-void Tausch3D::enableOpenCL(int *gpuHaloWidth, bool blockingSyncCpuGpu,
-                            int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+void Tausch3D::enableOpenCL(int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
 
     // gpu disabled by default, only enabled if flag is set
     gpuEnabled = true;
@@ -725,6 +724,11 @@ void Tausch3D::enableOpenCL(int *gpuHaloWidth, bool blockingSyncCpuGpu,
         exit(1);
     }
 
+}
+
+void Tausch3D::enableOpenCL(int gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
+    int useHaloWidth[6] = {gpuHaloWidth, gpuHaloWidth, gpuHaloWidth, gpuHaloWidth, gpuHaloWidth, gpuHaloWidth};
+    enableOpenCL(useHaloWidth, blockingSyncCpuGpu, clLocalWorkgroupSize, giveOpenCLDeviceName);
 }
 
 // If Tausch didn't set up OpenCL, the user needs to pass some OpenCL variables
@@ -751,6 +755,12 @@ void Tausch3D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_contex
 
     compileKernels();
 
+}
+
+void Tausch3D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue,
+                            int gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
+    int useHaloWidth[6] = {gpuHaloWidth, gpuHaloWidth, gpuHaloWidth, gpuHaloWidth, gpuHaloWidth, gpuHaloWidth};
+    enableOpenCL(cl_defaultDevice, cl_context, cl_queue, useHaloWidth, blockingSyncCpuGpu, clLocalWorkgroupSize);
 }
 
 // get a pointer to the GPU buffer and its dimensions

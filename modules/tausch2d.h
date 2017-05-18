@@ -15,6 +15,8 @@
 #include <thread>
 #include <future>
 
+#include "tausch.h"
+
 #ifdef TAUSCH_OPENCL
     #define __CL_ENABLE_EXCEPTIONS
     #include <CL/cl.hpp>
@@ -24,6 +26,7 @@
  * Use real_t in code to allow easier switch between double/float.
  */
 typedef double real_t;
+typedef int Edge;
 
 /*!
  *
@@ -34,14 +37,14 @@ typedef double real_t;
  * a structured coarse mesh for MPI. It supports halo exchange across the partition boundaries, and across a CPU/GPU boundary for GPU partitions
  * living centered inside a CPU partition.
  */
-class Tausch2D {
+class Tausch2D : public Tausch {
 
 public:
 
     /*!
      * These are the edges available for inter-MPI halo exchanges: LEFT, RIGHT, TOP, BOTTOM.
      */
-    enum Edge { LEFT, RIGHT, TOP, BOTTOM };
+    enum Edges { LEFT, RIGHT, TOP, BOTTOM };
 
     /*!
      * These are the two dimensions used, used for clarity as to which array entry is which dimension: X, Y.
@@ -66,24 +69,6 @@ public:
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
     Tausch2D(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
-
-    /*!
-     *
-     * Overloaded constructor, allowing specification of CPU halo using single integer.
-     *
-     * \param localDim
-     *  Array of size 2 holding the dimensions of the local partition (not the global dimensions), with the x dimension being the first value and the
-     *  y dimension being the second one.
-     * \param mpiNum
-     *  Array of size 2 holding the number of MPI ranks lined up in the x (first value) and y (second value) direction. mpiNumX*mpiNumY has to be
-     *  equal to the total number of MPI ranks.
-     * \param cpuHaloWidth
-     *  Width of the CPU-to-CPU halos, i.e., the inter-MPI halo. Will be used for all four halo widths.
-     * \param comm
-     *  The MPI Communictor to be used. %Tausch2D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch2D working
-     *  with the same communicator. By default, MPI_COMM_WORLD will be used.
-     */
-    Tausch2D(int *localDim, int *mpiNum, int cpuHaloWidth, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * Destructor freeing any allocated memory.
@@ -435,8 +420,6 @@ public:
 #endif
 
 private:
-    void _constructor(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm);
-
     // The current MPI rank and size of TAUSCH_COMM world
     int mpiRank, mpiSize;
     // The number of MPI ranks in the x/y direction of the domain
