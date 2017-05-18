@@ -701,6 +701,44 @@ void Tausch3D::completeCpuStencilEdge(Edge edge) {
 
 }
 
+void Tausch3D::info() {
+
+    int w = 25;
+
+    std::cout << std::endl
+              << "Tausch - structured halo exchange library - 3D version" << std::endl << std::endl
+              << mpiSize << " MPI ranks (current rank: " << mpiRank << ") laid out in " << mpiNum[0] << "x" << mpiNum[1] << "x" << mpiNum[2] << " mesh"
+              << std::endl << std::endl << std::endl
+              << " CPU PROPERTIES" << std::endl
+              << "----------------" << std::endl
+              << std::setw(w) << "localDim: " << localDim[0] << "x" << localDim[1] << "x" << localDim[2] << std::endl
+              << std::setw(w) << "cpuDataInfoGiven: " << (cpuInfoGiven ? "yes" : "no") << std::endl
+              << std::setw(w) << "cpuStencilInfoGiven: " << (stencilInfoGiven ? "yes" : "no") << std::endl;
+    if(stencilInfoGiven) std::cout << std::setw(w) << "stencilNumPoints: " << stencilNumPoints << std::endl;
+    std::cout << std::setw(w) << "cpuHaloWidth: " << "LEFT = " << cpuHaloWidth[LEFT] << ", RIGHT = " << cpuHaloWidth[RIGHT]
+                                                  << ", TOP = " << cpuHaloWidth[TOP] << ", BOTTOM = " << cpuHaloWidth[BOTTOM]
+                                                  << ", FRONT = " << cpuHaloWidth[FRONT] << ", BACK = " << cpuHaloWidth[BACK]
+              << std::endl << std::endl;
+#ifdef TAUSCH_OPENCL
+    std::cout << " GPU PROPERTIES" << std::endl
+              << "----------------" << std::endl
+              << std::setw(w) << "GPU enabled: " << (gpuEnabled ? "yes" : "no") << std::endl;
+    if(gpuEnabled) {
+        std::cout << std::setw(w) << "gpuDataInfoGiven: " << (gpuInfoGiven ? "yes" : "no") << std::endl;
+        if(gpuInfoGiven) std::cout << std::setw(w) << "gpuDim: " << gpuDim[0] << "x" << gpuDim[1] << "x" << gpuDim[2] << std::endl;
+        std::cout << std::setw(w) << "gpuStencilInfoGiven: " << (gpuStencilInfoGiven ? "yes" : "no") << std::endl;
+        if(gpuStencilInfoGiven) std::cout << std::setw(w) << "stencilDim: " << stencilDim[0] << "x" << stencilDim[1] << "x" << stencilDim[2] << std::endl;
+        if(gpuStencilInfoGiven) std::cout << std::setw(w) << "stencilNumPoints: " << stencilNumPoints << std::endl;
+        std::cout << std::setw(w) << "gpuHaloWidth: " << "LEFT = " << gpuHaloWidth[LEFT] << ", RIGHT = " << gpuHaloWidth[RIGHT]
+                                                      << ", TOP = " << gpuHaloWidth[TOP] << ", BOTTOM = " << gpuHaloWidth[BOTTOM]
+                                                      << ", FRONT = " << gpuHaloWidth[TOP] << ", BACK = " << gpuHaloWidth[BOTTOM]
+                  << std::endl << std::endl;
+    }
+#endif
+    std::cout << std::endl;
+
+}
+
 #ifdef TAUSCH_OPENCL
 
 void Tausch3D::enableOpenCL(int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {

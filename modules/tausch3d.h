@@ -14,6 +14,7 @@
 #include <iostream>
 #include <thread>
 #include <future>
+#include <iomanip>
 
 #include "tausch.h"
 
@@ -170,6 +171,8 @@ public:
      *  Returns the MPI communicator used by %Tausch3D.
      */
     MPI_Comm getMPICommunicator() { return TAUSCH_COMM; }
+
+    void info();
 
 #ifdef TAUSCH_OPENCL
 
