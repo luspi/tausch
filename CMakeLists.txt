@@ -22,6 +22,8 @@ if(OPENCL)
     find_package(OpenCL REQUIRED)
     include_directories(${OPENCL_INCLUDE_DIRS})
     ADD_DEFINITIONS(-DTAUSCH_OPENCL)
+else(not OPENCL)
+    remove_definitions(-DTAUSCH_OPENCL)
 endif(OPENCL)
 
 # fine OpenMP
@@ -30,8 +32,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 # All headers and source files
-set(tausch_headers "tausch.h" "modules/tausch2d.h" "/modules/tausch3d.h" "/modules/ctausch2d.h" "/modules/ctausch3d.h")
-set(tausch_source "tausch.h" "modules/tausch2d.cpp" "modules/tausch3d.cpp" "modules/ctausch2d.cpp" "modules/ctausch3d.cpp")
+set(tausch_headers "tausch.h" "modules/tausch2d.h" "modules/tausch3d.h" "modules/ctausch2d.h" "modules/ctausch3d.h" "modules/tausch.h")
+set(tausch_source "tausch.h" "modules/tausch2d.cpp" "modules/tausch3d.cpp" "modules/ctausch2d.cpp" "modules/ctausch3d.cpp" "modules/tausch.h")
 
 # Turn semicolon separated list into spaces separated list for doxgen
 foreach(arg ${tausch_headers})
@@ -48,7 +50,7 @@ install(TARGETS tausch_static DESTINATION "lib")
 
 # Install library headers
 install(FILES "tausch.h" DESTINATION "include/tausch")
-install(FILES "modules/tausch2d.h" "modules/ctausch2d.h" "modules/tausch3d.h" "modules/ctausch3d.h" DESTINATION "include/tausch/modules")
+install(FILES "modules/tausch2d.h" "modules/ctausch2d.h" "modules/tausch3d.h" "modules/ctausch3d.h" "modules/tausch.h" DESTINATION "include/tausch/modules")
 
 # build documentation (if enabled)
 find_package(Doxygen)
