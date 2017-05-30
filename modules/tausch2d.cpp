@@ -1,6 +1,6 @@
 #include "tausch2d.h"
 
-Tausch2D::Tausch2D(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm) {
+template <class real_t> Tausch2D<real_t>::Tausch2D(int *localDim, int *haloWidth, int numBuffers, int valuesPerPoint, MPI_Comm comm) {
 
     MPI_Comm_dup(comm, &TAUSCH_COMM);
 
@@ -8,1450 +8,156 @@ Tausch2D::Tausch2D(int *localDim, int *mpiNum, int *cpuHaloWidth, MPI_Comm comm)
     MPI_Comm_rank(TAUSCH_COMM, &mpiRank);
     MPI_Comm_size(TAUSCH_COMM, &mpiSize);
 
-    this->mpiNum[X] = mpiNum[X];
-    this->mpiNum[Y] = mpiNum[Y];
-
-    // store configuration
-    this->localDim[X] = localDim[X];
-    this->localDim[Y] = localDim[Y];
-
-    this->cpuHaloWidth[0] = cpuHaloWidth[0];
-    this->cpuHaloWidth[1] = cpuHaloWidth[1];
-    this->cpuHaloWidth[2] = cpuHaloWidth[2];
-    this->cpuHaloWidth[3] = cpuHaloWidth[3];
-
-    // check if this rank has a boundary with another rank
-    haveBoundary[LEFT] = (mpiRank%mpiNum[X] != 0);
-    haveBoundary[RIGHT] = ((mpiRank+1)%mpiNum[X] != 0);
-    haveBoundary[TOP] = (mpiRank < mpiSize-mpiNum[X]);
-    haveBoundary[BOTTOM] = (mpiRank > mpiNum[X]-1);
-
-    // whether the cpu/gpu pointers have been passed
-    cpuInfoGiven = false;
-
-    stencilInfoGiven = false;
-
-    // cpu at beginning
-    cpuRecvsPosted = false;
-
-    stencilRecvsPosted = false;
-
-    // communication to neither edge has been started
-    cpuStarted[LEFT] = false;
-    cpuStarted[RIGHT] = false;
-    cpuStarted[TOP] = false;
-    cpuStarted[BOTTOM] = false;
-
-    cpuStencilStarted[LEFT] = false;
-    cpuStencilStarted[RIGHT] = false;
-    cpuStencilStarted[TOP] = false;
-    cpuStencilStarted[BOTTOM] = false;
-
-    mpiDataType = ((sizeof(real_t) == sizeof(double)) ? MPI_DOUBLE : MPI_FLOAT);
-
-#ifdef TAUSCH_OPENCL
-
-    gpuDataInfoGiven = false;
-    gpuStencilInfoGiven = false;
-    gpuEnabled = false;
-
-    gpuToCpuDataStarted = false;
-    cpuToGpuDataStarted = false;
-
-    // used for syncing the CPU and GPU thread
-    for(int i = 0; i < 4; ++i) {
-        sync_counter[i].store(0);
-        sync_lock[i].store(0);
-    }
-
-#endif
-
-}
-
-Tausch2D::~Tausch2D() {
-    // clean up memory
-    if(cpuInfoGiven) {
-        for(int i = 0; i < 4; ++i) {
-            if(haveBoundary[i]) {
-                delete[] cpuToCpuSendBuffer[i];
-                delete[] cpuToCpuRecvBuffer[i];
-            }
-        }
-        delete[] cpuToCpuSendBuffer;
-        delete[] cpuToCpuRecvBuffer;
-    }
-    if(stencilInfoGiven) {
-        for(int i = 0; i < 4; ++i) {
-            if(haveBoundary[i]) {
-                delete[] cpuToCpuStencilSendBuffer[i];
-                delete[] cpuToCpuStencilRecvBuffer[i];
-            }
-        }
-        delete[] cpuToCpuStencilSendBuffer;
-        delete[] cpuToCpuStencilRecvBuffer;
-    }
-#ifdef TAUSCH_OPENCL
-    if(gpuEnabled) {
-        if(gpuDataInfoGiven) {
-            delete[] cpuToGpuDataBuffer;
-            delete[] gpuToCpuDataBuffer;
-        }
-        if(gpuStencilInfoGiven) {
-            delete[] cpuToGpuStencilBuffer;
-            delete[] gpuToCpuStencilBuffer;
-        }
-    }
-#endif
-}
-
-// get a pointer to the CPU data
-void Tausch2D::setCpuData(real_t *data) {
-
-    cpuInfoGiven = true;
-    cpuData = data;
-
-    int sendBufferSizes[4] = {
-        // left
-        cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]),
-        // right
-        cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]),
-        // top
-        cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]),
-        // bottom
-        cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])
-    };
-
-    int recvBufferSizes[4] = {
-        // left
-        cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]),
-        // right
-        cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]),
-        // top
-        cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]),
-        // bottom
-        cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])
-    };
-
-    int ranks[4] = {mpiRank-1, mpiRank+1, mpiRank+mpiNum[X], mpiRank-mpiNum[X]};
-    int recvTags[4] = {0, 2, 1, 3};
-    int sendTags[4] = {2, 0, 3, 1};
-
-    cpuToCpuSendBuffer = new real_t*[4];
-    cpuToCpuRecvBuffer = new real_t*[4];
-
-    for(int i = 0; i < 4; ++i) {
-
-        if(haveBoundary[i]) {
-
-            cpuToCpuSendBuffer[i] = new real_t[sendBufferSizes[i]]{};
-            cpuToCpuRecvBuffer[i] = new real_t[recvBufferSizes[i]]{};
-
-            MPI_Recv_init(cpuToCpuRecvBuffer[i], recvBufferSizes[i], mpiDataType, ranks[i], recvTags[i], TAUSCH_COMM, &cpuToCpuRecvRequest[i]);
-            MPI_Send_init(cpuToCpuSendBuffer[i], sendBufferSizes[i], mpiDataType, ranks[i], sendTags[i], TAUSCH_COMM, &cpuToCpuSendRequest[i]);
-
-        }
-    }
-
-}
-
-void Tausch2D::setCpuStencil(real_t *stencil, int stencilNumPoints) {
-
-    stencilInfoGiven = true;
-    cpuStencil = stencil;
-    this->stencilNumPoints = stencilNumPoints;
-
-    int sendBufferSizes[4] = {
-        // left
-        cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]),
-        // right
-        cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]),
-        // top
-        cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]),
-        // bottom
-        cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])
-    };
-
-    int recvBufferSizes[4] = {
-        // left
-        cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]),
-        // right
-        cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]),
-        // top
-        cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]),
-        // bottom
-        cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])
-    };
-
-    int ranks[4] = {mpiRank-1, mpiRank+1, mpiRank+mpiNum[X], mpiRank-mpiNum[X]};
-    int recvTags[4] = {10, 12, 11, 13};
-    int sendTags[4] = {12, 10, 13, 11};
-
-    // four buffers for each edge's MPI send/recv operations
-    cpuToCpuStencilSendBuffer = new real_t*[4];
-    cpuToCpuStencilRecvBuffer = new real_t*[4];
-
-    for(int i = 0; i < 4; ++i) {
-
-        if(haveBoundary[i]) {
-
-            cpuToCpuStencilSendBuffer[i] = new real_t[stencilNumPoints*sendBufferSizes[i]]{};
-            cpuToCpuStencilRecvBuffer[i] = new real_t[stencilNumPoints*recvBufferSizes[i]]{};
-
-            MPI_Recv_init(cpuToCpuStencilRecvBuffer[i], stencilNumPoints*recvBufferSizes[i], mpiDataType,
-                          ranks[i], recvTags[i], TAUSCH_COMM, &cpuToCpuStencilRecvRequest[i]);
-            MPI_Send_init(cpuToCpuStencilSendBuffer[i], stencilNumPoints*sendBufferSizes[i], mpiDataType,
-                          ranks[i], sendTags[i], TAUSCH_COMM, &cpuToCpuStencilSendRequest[i]);
-
-        }
-    }
-
-}
-
-// post the MPI_Irecv's for inter-rank communication
-void Tausch2D::postCpuDataReceives() {
-
-    if(!cpuInfoGiven) {
-        std::cerr << "Tausch2D :: ERROR: You didn't tell me yet where to find the data! Abort..." << std::endl;
-        exit(1);
-    }
-
-    cpuRecvsPosted = true;
+    this->localDim[0] = localDim[0];
+    this->localDim[1] = localDim[1];
 
     for(int i = 0; i < 4; ++i)
-        if(haveBoundary[i])
-            MPI_Start(&cpuToCpuRecvRequest[i]);
+        this->haloWidth[i] = haloWidth[i];
+
+    this->numBuffers = numBuffers;
+    this->valuesPerPoint = valuesPerPoint;
+
+    mpiDatatype = (std::is_same<real_t, float>::value ? MPI_FLOAT
+                        : (std::is_same<real_t, int>::value ? MPI_INT
+                        : (std::is_same<real_t, unsigned int>::value ? MPI_UNSIGNED
+                        : (std::is_same<real_t, long>::value ? MPI_LONG
+                        : (std::is_same<real_t, long long>::value ? MPI_LONG_LONG
+                        : (std::is_same<real_t, long double>::value ? MPI_LONG_DOUBLE : MPI_DOUBLE))))));
 
 }
 
-// post the MPI_Irecv's for inter-rank communication
-void Tausch2D::postCpuStencilReceives() {
-
-    if(!cpuInfoGiven) {
-        std::cerr << "Tausch2D :: ERROR: You didn't tell me yet where to find the data! Abort..." << std::endl;
-        exit(1);
+template <class real_t> Tausch2D<real_t>::~Tausch2D() {
+    for(int i = 0; i < localHaloNumParts; ++i) {
+        delete[] localHaloSpecs[i];
+        delete[] mpiSendBuffer[i];
+        delete[] remoteHaloSpecs[i];
+        delete[] mpiRecvBuffer[i];
     }
+    delete[] localHaloSpecs;
+    delete[] mpiSendBuffer;
+    delete[] remoteHaloSpecs;
+    delete[] mpiRecvBuffer;
 
-    stencilRecvsPosted = true;
-
-    for(int i = 0; i < 4; ++i)
-        if(haveBoundary[i])
-            MPI_Start(&cpuToCpuStencilRecvRequest[i]);
-
+    delete[] mpiSendRequests;
+    delete[] numBuffersPacked;
+    delete[] mpiRecvRequests;
+    delete[] numBuffersUnpacked;
 }
 
-void Tausch2D::startCpuDataEdge(Edge edge) {
+template <class real_t> void Tausch2D<real_t>::setLocalHaloInfo(int numHaloParts, int **haloSpecs) {
 
-    if(!cpuRecvsPosted) {
-        std::cerr << "Tausch2D :: ERROR: No CPU Recvs have been posted yet... Abort!" << std::endl;
-        exit(1);
-    }
+    localHaloNumParts = numHaloParts;
+    localHaloSpecs = new int*[numHaloParts];
+    mpiSendBuffer = new real_t*[numHaloParts];
+    mpiSendRequests = new MPI_Request[numHaloParts];
+    numBuffersPacked =  new int[numHaloParts]{};
 
-    if(edge != LEFT && edge != RIGHT && edge != TOP && edge != BOTTOM) {
-        std::cerr << "Tausch2D :: startCpuDataEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
-        exit(1);
-    }
+    for(int i = 0; i < numHaloParts; ++i) {
 
-    cpuStarted[edge] = true;
+        localHaloSpecs[i] = new int[5];
+        for(int j = 0; j < 5; ++j)
+            localHaloSpecs[i][j] = haloSpecs[i][j];
 
-    if(edge == LEFT && haveBoundary[LEFT]) {
+        mpiSendBuffer[i] = new real_t[numBuffers*valuesPerPoint*haloSpecs[i][2]*haloSpecs[i][3]]{};
 
-        for(int i = 0; i < cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
-            cpuToCpuSendBuffer[LEFT][i] = cpuData[cpuHaloWidth[LEFT]+ (i/cpuHaloWidth[RIGHT])*(localDim[X]+cpuHaloWidth[LEFT]+
-                                                  cpuHaloWidth[RIGHT])+i%cpuHaloWidth[RIGHT]];
-
-        MPI_Start(&cpuToCpuSendRequest[LEFT]);
-
-    } else if(edge == RIGHT && haveBoundary[RIGHT]) {
-
-        for(int i = 0; i < cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
-            cpuToCpuSendBuffer[RIGHT][i] = cpuData[(i/cpuHaloWidth[LEFT]+1)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) -
-                                                   (cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+i%cpuHaloWidth[LEFT]];
-
-        MPI_Start(&cpuToCpuSendRequest[RIGHT]);
-
-    } else if(edge == TOP && haveBoundary[TOP]) {
-
-        for(int i = 0; i < cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
-            cpuToCpuSendBuffer[TOP][i] = cpuData[(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]) + i];
-
-        MPI_Start(&cpuToCpuSendRequest[TOP]);
-
-    } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
-
-        for(int i = 0; i < cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
-            cpuToCpuSendBuffer[BOTTOM][i] = cpuData[cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + i];
-
-        MPI_Start(&cpuToCpuSendRequest[BOTTOM]);
+        int size = localHaloSpecs[i][2] * localHaloSpecs[i][3];
+        MPI_Send_init(&mpiSendBuffer[i][0], numBuffers*valuesPerPoint*size, mpiDatatype, localHaloSpecs[i][4], mpiRank, TAUSCH_COMM, &mpiSendRequests[i]);
 
     }
 
 }
 
-void Tausch2D::startCpuStencilEdge(Edge edge) {
+template <class real_t> void Tausch2D<real_t>::setRemoteHaloInfo(int numHaloParts, int **haloSpecs) {
 
-    if(!stencilRecvsPosted) {
-        std::cerr << "Tausch2D :: ERROR: No CPU stencil recvs have been posted yet... Abort!" << std::endl;
-        exit(1);
-    }
+    remoteHaloNumParts = numHaloParts;
+    remoteHaloSpecs = new int*[numHaloParts];
+    mpiRecvBuffer = new real_t*[numHaloParts];
+    mpiRecvRequests = new MPI_Request[numHaloParts];
+    numBuffersUnpacked =  new int[numHaloParts]{};
 
-    if(edge != LEFT && edge != RIGHT && edge != TOP && edge != BOTTOM) {
-        std::cerr << "Tausch2D :: startCpuStencilEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
-        exit(1);
-    }
+    for(int i = 0; i < numHaloParts; ++i) {
 
-    cpuStencilStarted[edge] = true;
+        remoteHaloSpecs[i] = new int[5];
+        for(int j = 0; j < 5; ++j)
+            remoteHaloSpecs[i][j] = haloSpecs[i][j];
 
-    if(edge == LEFT && haveBoundary[LEFT]) {
+        mpiRecvBuffer[i] = new real_t[numBuffers*valuesPerPoint*haloSpecs[i][2]*haloSpecs[i][3]]{};
 
-        for(int i = 0; i < cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[BOTTOM]+cpuHaloWidth[TOP]); ++i)
-
-            for(int st = 0; st < stencilNumPoints; ++st)
-                cpuToCpuStencilSendBuffer[LEFT][stencilNumPoints*i + st] =
-                        cpuStencil[stencilNumPoints*(cpuHaloWidth[LEFT]+ (i/cpuHaloWidth[RIGHT])*(localDim[X]+cpuHaloWidth[LEFT]+
-                                                     cpuHaloWidth[RIGHT])+i%cpuHaloWidth[RIGHT]) + st];
-
-        MPI_Start(&cpuToCpuStencilSendRequest[LEFT]);
-
-    } else if(edge == RIGHT && haveBoundary[RIGHT]) {
-
-        for(int i = 0; i < cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
-
-            for(int st = 0; st < stencilNumPoints; ++st)
-                cpuToCpuStencilSendBuffer[RIGHT][stencilNumPoints*i + st] =
-                        cpuStencil[stencilNumPoints*((i/cpuHaloWidth[LEFT]+1)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) -
-                                                     (cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+i%cpuHaloWidth[LEFT]) + st];
-
-        MPI_Start(&cpuToCpuStencilSendRequest[RIGHT]);
-
-    } else if(edge == TOP && haveBoundary[TOP]) {
-
-        for(int i = 0; i < cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
-
-            for(int st = 0; st < stencilNumPoints; ++st)
-                cpuToCpuStencilSendBuffer[TOP][stencilNumPoints*i + st] =
-                        cpuStencil[stencilNumPoints*((localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]) + i) + st];
-
-        MPI_Start(&cpuToCpuStencilSendRequest[TOP]);
-
-    } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
-
-        for(int i = 0; i < cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
-
-            for(int st = 0; st < stencilNumPoints; ++st)
-                cpuToCpuStencilSendBuffer[BOTTOM][stencilNumPoints*i + st] =
-                        cpuStencil[stencilNumPoints*(cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + i) + st];
-
-        MPI_Start(&cpuToCpuStencilSendRequest[BOTTOM]);
+        int size = remoteHaloSpecs[i][2] * remoteHaloSpecs[i][3];
+        int sender = remoteHaloSpecs[i][4];
+        MPI_Recv_init(&mpiRecvBuffer[i][0], numBuffers*valuesPerPoint*size, mpiDatatype, sender, sender, TAUSCH_COMM, &mpiRecvRequests[i]);
 
     }
 
 }
 
-// Complete CPU-CPU exchange to the left
-void Tausch2D::completeCpuDataEdge(Edge edge) {
+template <class real_t> void Tausch2D<real_t>::postReceives() {
 
-    if(edge != LEFT && edge != RIGHT && edge != TOP && edge != BOTTOM) {
-        std::cerr << "Tausch2D :: completeCpuDataEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
-        exit(1);
-    }
-
-    if(!cpuStarted[edge]) {
-        std::cerr << "Tausch2D :: ERROR: No edge #" << edge << " CPU exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    if(edge == LEFT && haveBoundary[LEFT]) {
-
-        MPI_Wait(&cpuToCpuRecvRequest[LEFT], MPI_STATUS_IGNORE);
-
-        for(int i = 0; i < cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
-            cpuData[(i/cpuHaloWidth[LEFT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+i%cpuHaloWidth[LEFT]] = cpuToCpuRecvBuffer[LEFT][i];
-
-        MPI_Wait(&cpuToCpuSendRequest[LEFT], MPI_STATUS_IGNORE);
-
-    } else if(edge == RIGHT && haveBoundary[RIGHT]) {
-
-        MPI_Wait(&cpuToCpuRecvRequest[RIGHT], MPI_STATUS_IGNORE);
-
-        for(int i = 0; i < cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
-            cpuData[(i/cpuHaloWidth[RIGHT]+1)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) - cpuHaloWidth[RIGHT] + i%cpuHaloWidth[RIGHT]] =
-                    cpuToCpuRecvBuffer[RIGHT][i];
-
-        MPI_Wait(&cpuToCpuSendRequest[RIGHT], MPI_STATUS_IGNORE);
-
-    } else if(edge == TOP && haveBoundary[TOP]) {
-
-        MPI_Wait(&cpuToCpuRecvRequest[TOP], MPI_STATUS_IGNORE);
-
-        for(int i = 0; i < cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
-            cpuData[(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]) + i] = cpuToCpuRecvBuffer[TOP][i];
-
-        MPI_Wait(&cpuToCpuSendRequest[TOP], MPI_STATUS_IGNORE);
-
-    } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
-
-        MPI_Wait(&cpuToCpuRecvRequest[BOTTOM], MPI_STATUS_IGNORE);
-
-        for(int i = 0; i < cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
-            cpuData[i] = cpuToCpuRecvBuffer[BOTTOM][i];
-
-        MPI_Wait(&cpuToCpuSendRequest[BOTTOM], MPI_STATUS_IGNORE);
-
-    }
+    for(int rem = 0; rem < remoteHaloNumParts; ++rem)
+        MPI_Start(&mpiRecvRequests[rem]);
 
 }
 
-// Complete CPU-CPU exchange to the left
-void Tausch2D::completeCpuStencilEdge(Edge edge) {
+template <class real_t> void Tausch2D<real_t>::packNextSendBuffer(int id, real_t *buf) {
 
-    if(edge != LEFT && edge != RIGHT && edge != TOP && edge != BOTTOM) {
-        std::cerr << "Tausch2D :: completeCpuStencilEdge(): ERROR: Invalid edge specified: " << edge << std::endl;
-        exit(1);
+    if(numBuffersPacked[id] == numBuffers)
+        numBuffersPacked[id] = 0;
+
+    int size = localHaloSpecs[id][2] * localHaloSpecs[id][3];
+    for(int s = 0; s < size; ++s) {
+        int index = (s/localHaloSpecs[id][2] + localHaloSpecs[id][1])*(localDim[::Tausch::X] + haloWidth[::Tausch::LEFT] + haloWidth[::Tausch::RIGHT]) +
+                    s%localHaloSpecs[id][2] + localHaloSpecs[id][0];
+        for(int val = 0; val < valuesPerPoint; ++val)
+            mpiSendBuffer[id][numBuffersPacked[id]*valuesPerPoint*size + valuesPerPoint*s + val] = buf[valuesPerPoint*index + val];
     }
-
-    if(!cpuStencilStarted[edge]) {
-        std::cerr << "Tausch2D :: ERROR: No edge #" << edge << " CPU stencil exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    if(edge == LEFT && haveBoundary[LEFT]) {
-
-        MPI_Wait(&cpuToCpuStencilRecvRequest[LEFT], MPI_STATUS_IGNORE);
-
-        for(int i = 0; i < cpuHaloWidth[LEFT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
-
-            for(int st = 0; st < stencilNumPoints; ++st)
-                cpuStencil[stencilNumPoints*((i/cpuHaloWidth[LEFT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])+
-                                             i%cpuHaloWidth[LEFT]) + st] = cpuToCpuStencilRecvBuffer[LEFT][stencilNumPoints*i + st];
-
-        MPI_Wait(&cpuToCpuStencilSendRequest[LEFT], MPI_STATUS_IGNORE);
-
-    } else if(edge == RIGHT && haveBoundary[RIGHT]) {
-
-        MPI_Wait(&cpuToCpuStencilRecvRequest[RIGHT], MPI_STATUS_IGNORE);
-
-        for(int i = 0; i < cpuHaloWidth[RIGHT]*(localDim[Y]+cpuHaloWidth[TOP]+cpuHaloWidth[BOTTOM]); ++i)
-
-            for(int st = 0; st < stencilNumPoints; ++st)
-                cpuStencil[stencilNumPoints*((i/cpuHaloWidth[RIGHT]+1)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])-
-                                             cpuHaloWidth[RIGHT]+i%cpuHaloWidth[RIGHT])+st] = cpuToCpuStencilRecvBuffer[RIGHT][stencilNumPoints*i+st];
-
-        MPI_Wait(&cpuToCpuStencilSendRequest[RIGHT], MPI_STATUS_IGNORE);
-
-    } else if(edge == TOP && haveBoundary[TOP]) {
-
-        MPI_Wait(&cpuToCpuStencilRecvRequest[TOP], MPI_STATUS_IGNORE);
-
-        for(int i = 0; i < cpuHaloWidth[TOP]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
-
-            for(int st = 0; st < stencilNumPoints; ++st)
-                cpuStencil[stencilNumPoints*((localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT])*(localDim[Y]+cpuHaloWidth[BOTTOM]) + i) + st] =
-                        cpuToCpuStencilRecvBuffer[TOP][stencilNumPoints*i + st];
-
-        MPI_Wait(&cpuToCpuStencilSendRequest[TOP], MPI_STATUS_IGNORE);
-
-    } else if(edge == BOTTOM && haveBoundary[BOTTOM]) {
-
-        MPI_Wait(&cpuToCpuStencilRecvRequest[BOTTOM], MPI_STATUS_IGNORE);
-
-        for(int i = 0; i < cpuHaloWidth[BOTTOM]*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]); ++i)
-
-            for(int st = 0; st < stencilNumPoints; ++st)
-                cpuStencil[stencilNumPoints*i + st] = cpuToCpuStencilRecvBuffer[BOTTOM][stencilNumPoints*i + st];
-
-        MPI_Wait(&cpuToCpuStencilSendRequest[BOTTOM], MPI_STATUS_IGNORE);
-
-    }
+    ++numBuffersPacked[id];
 
 }
 
-void Tausch2D::info() {
+template <class real_t> void Tausch2D<real_t>::send(int id) {
 
-    int w = 25;
-
-    std::cout << std::endl
-              << "Tausch - structured halo exchange library - 2D version" << std::endl << std::endl
-              << mpiSize << " MPI ranks (current rank: " << mpiRank << ") laid out in " << mpiNum[0] << "x" << mpiNum[1] << " mesh"
-              << std::endl << std::endl << std::endl
-              << " CPU PROPERTIES" << std::endl
-              << "----------------" << std::endl
-              << std::setw(w) << "localDim: " << localDim[0] << "x" << localDim[1] << std::endl
-              << std::setw(w) << "cpuDataInfoGiven: " << (cpuInfoGiven ? "yes" : "no") << std::endl
-              << std::setw(w) << "cpuStencilInfoGiven: " << (stencilInfoGiven ? "yes" : "no") << std::endl;
-    if(stencilInfoGiven) std::cout << std::setw(w) << "stencilNumPoints: " << stencilNumPoints << std::endl;
-    std::cout << std::setw(w) << "cpuHaloWidth: " << "LEFT = " << cpuHaloWidth[LEFT] << ", RIGHT = " << cpuHaloWidth[RIGHT]
-                                                   << ", TOP = " << cpuHaloWidth[TOP] << ", BOTTOM = " << cpuHaloWidth[BOTTOM]
-              << std::endl << std::endl;
-#ifdef TAUSCH_OPENCL
-    std::cout << " GPU PROPERTIES" << std::endl
-              << "----------------" << std::endl
-              << std::setw(w) << "GPU enabled: " << (gpuEnabled ? "yes" : "no") << std::endl;
-    if(gpuEnabled) {
-        std::cout << std::setw(w) << "gpuDataInfoGiven: " << (gpuDataInfoGiven ? "yes" : "no") << std::endl;
-        if(gpuDataInfoGiven) std::cout << std::setw(w) << "gpuDim: " << gpuDim[0] << "x" << gpuDim[1] << std::endl;
-        std::cout << std::setw(w) << "gpuStencilInfoGiven: " << (gpuStencilInfoGiven ? "yes" : "no") << std::endl;
-        if(gpuStencilInfoGiven) std::cout << std::setw(w) << "stencilDim: " << stencilDim[0] << "x" << stencilDim[1] << std::endl;
-        if(gpuStencilInfoGiven) std::cout << std::setw(w) << "stencilNumPoints: " << stencilNumPoints << std::endl;
-        std::cout << std::setw(w) << "gpuHaloWidth: " << "LEFT = " << gpuHaloWidth[LEFT] << ", RIGHT = " << gpuHaloWidth[RIGHT]
-                                                       << ", TOP = " << gpuHaloWidth[TOP] << ", BOTTOM = " << gpuHaloWidth[BOTTOM] << std::endl;
-    }
-#endif
-    std::cout << std::endl << std::endl;
-
-}
-
-#ifdef TAUSCH_OPENCL
-
-void Tausch2D::enableOpenCL(int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
-
-    // gpu disabled by default, only enabled if flag is set
-    gpuEnabled = true;
-    // local workgroup size
-    cl_kernelLocalSize = clLocalWorkgroupSize;
-    this->blockingSyncCpuGpu = blockingSyncCpuGpu;
-    // the GPU halo widths
-    for(int i = 0; i < 4; ++i)
-        this->gpuHaloWidth[i] = gpuHaloWidth[i];
-    // Tausch creates its own OpenCL environment
-    this->setupOpenCL(giveOpenCLDeviceName);
-
-    try {
-        cl_gpuHaloWidth = cl::Buffer(cl_context, &gpuHaloWidth[0], (&gpuHaloWidth[3])+1, true);
-    } catch(cl::Error error) {
-        std::cout << "Tausch2D :: [setup gpuHaloWidth buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
+    if(numBuffersPacked[id] != numBuffers) {
+        std::cerr << "Tausch2D: ERROR: halo part " << id << " has " << numBuffersPacked[id] << " out of "
+                  << numBuffers << " send buffers packed... Abort!" << std::endl;
         exit(1);
     }
 
-}
-
-void Tausch2D::enableOpenCL(int gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName) {
-    int useHaloWidth[4] = {gpuHaloWidth, gpuHaloWidth, gpuHaloWidth, gpuHaloWidth};
-    enableOpenCL(useHaloWidth, blockingSyncCpuGpu, clLocalWorkgroupSize, giveOpenCLDeviceName);
-}
-
-// If Tausch didn't set up OpenCL, the user needs to pass some OpenCL variables
-void Tausch2D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue,
-                            int *gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
-
-    this->cl_defaultDevice = cl_defaultDevice;
-    this->cl_context = cl_context;
-    this->cl_queue = cl_queue;
-    this->blockingSyncCpuGpu = blockingSyncCpuGpu;
-    this->cl_kernelLocalSize = clLocalWorkgroupSize;
-    for(int i = 0; i < 4; ++i)
-        this->gpuHaloWidth[i] = gpuHaloWidth[i];
-
-    try {
-        cl_gpuHaloWidth = cl::Buffer(cl_context, &gpuHaloWidth[0], (&gpuHaloWidth[3])+1, true);
-    } catch(cl::Error error) {
-        std::cout << "Tausch2D :: [setup gpuHaloWidth buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
-        exit(1);
-    }
-
-    gpuEnabled = true;
-
-    compileKernels();
+    MPI_Start(&mpiSendRequests[id]);
 
 }
 
-void Tausch2D::enableOpenCL(cl::Device &cl_defaultDevice, cl::Context &cl_context, cl::CommandQueue &cl_queue,
-                            int gpuHaloWidth, bool blockingSyncCpuGpu, int clLocalWorkgroupSize) {
-    int useHaloWidth[4] = {gpuHaloWidth, gpuHaloWidth, gpuHaloWidth, gpuHaloWidth};
-    enableOpenCL(cl_defaultDevice, cl_context, cl_queue, useHaloWidth, blockingSyncCpuGpu, clLocalWorkgroupSize);
+template <class real_t> void Tausch2D<real_t>::recv(int id) {
+    numBuffersUnpacked[id] = 0;
+    MPI_Wait(&mpiRecvRequests[id], MPI_STATUS_IGNORE);
 }
 
-// get a pointer to the GPU buffer and its dimensions
-void Tausch2D::setGpuData(cl::Buffer &dat, int *gpuDim) {
+template <class real_t> void Tausch2D<real_t>::unpackNextRecvBuffer(int id, real_t *buf) {
 
-    // check whether OpenCL has been set up
-    if(!gpuEnabled) {
-        std::cerr << "Tausch2D :: ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
-        exit(1);
+    int size = remoteHaloSpecs[id][2] * remoteHaloSpecs[id][3];
+    for(int s = 0; s < size; ++s) {
+        int index = (s/remoteHaloSpecs[id][2] + remoteHaloSpecs[id][1])*(localDim[::Tausch::X] + haloWidth[::Tausch::LEFT] + haloWidth[::Tausch::RIGHT]) +
+                    s%remoteHaloSpecs[id][2] + remoteHaloSpecs[id][0];
+        for(int val = 0; val < valuesPerPoint; ++val)
+            buf[valuesPerPoint*index + val] = mpiRecvBuffer[id][numBuffersUnpacked[id]*valuesPerPoint*size + valuesPerPoint*s + val];
     }
-
-    gpuDataInfoGiven = true;
-
-    // store parameters
-    gpuData = dat;
-    this->gpuDim[X] = gpuDim[X];
-    this->gpuDim[Y] = gpuDim[Y];
-
-    // store buffer to store the GPU and the CPU part of the halo.
-    // We do not need two buffers each, as each thread has direct access to both arrays, no MPI communication necessary
-    cTgData = gpuHaloWidth[TOP]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-              gpuHaloWidth[BOTTOM]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-              gpuHaloWidth[LEFT]*gpuDim[Y] +
-              gpuHaloWidth[RIGHT]*gpuDim[Y];
-    gTcData = gpuHaloWidth[TOP]*gpuDim[X] + gpuHaloWidth[BOTTOM]*gpuDim[X] +
-              gpuHaloWidth[LEFT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]) +
-              gpuHaloWidth[RIGHT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
-    cpuToGpuDataBuffer = new std::atomic<real_t>[cTgData]{};
-    gpuToCpuDataBuffer = new std::atomic<real_t>[gTcData]{};
-
-    // set up buffers on device
-    try {
-        cl_gpuToCpuDataBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, gTcData*sizeof(real_t));
-        cl_cpuToGpuDataBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, cTgData*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuDataBuffer, 0, 0, gTcData*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_cpuToGpuDataBuffer, 0, 0, cTgData*sizeof(real_t));
-        cl_gpuDim[X] = cl::Buffer(cl_context, &gpuDim[X], (&gpuDim[X])+1, true);
-        cl_gpuDim[Y] = cl::Buffer(cl_context, &gpuDim[Y], (&gpuDim[Y])+1, true);
-    } catch(cl::Error error) {
-        std::cout << "Tausch2D :: [setup send/recv buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
-        exit(1);
-    }
+    ++numBuffersUnpacked[id];
 
 }
 
-void Tausch2D::setGpuStencil(cl::Buffer &stencil, int stencilNumPoints, int *stencilDim) {
-
-    // check whether OpenCL has been set up
-    if(!gpuEnabled) {
-        std::cerr << "Tausch2D :: ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
-        exit(1);
-    }
-
-    gpuStencilInfoGiven = true;
-
-    // store parameters
-    gpuStencil = stencil;
-    this->stencilNumPoints = stencilNumPoints;
-    this->stencilDim[X] = ((stencilDim==nullptr || stencilDim[X] == 0) ? gpuDim[X] : stencilDim[X]);
-    this->stencilDim[Y] = ((stencilDim==nullptr || stencilDim[Y] == 0) ? gpuDim[Y] : stencilDim[Y]);
-
-    // store buffer to store the GPU and the CPU part of the halo.
-    // We do not need two buffers each, as each thread has direct access to both arrays, no MPI communication necessary
-    cTgStencil = stencilNumPoints*(gpuHaloWidth[TOP]*(this->stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-                                   gpuHaloWidth[BOTTOM]*(this->stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-                                   gpuHaloWidth[LEFT]*this->stencilDim[Y] +
-                                   gpuHaloWidth[RIGHT]*this->stencilDim[Y]);
-    gTcStencil = stencilNumPoints*(gpuHaloWidth[TOP]*this->stencilDim[X] + gpuHaloWidth[BOTTOM]*this->stencilDim[X] +
-                                   gpuHaloWidth[LEFT]*(this->stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]) +
-                                   gpuHaloWidth[RIGHT]*(this->stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]));
-    cpuToGpuStencilBuffer = new std::atomic<real_t>[cTgStencil]{};
-    gpuToCpuStencilBuffer = new std::atomic<real_t>[gTcStencil]{};
-
-    // set up buffers on device
-    try {
-        cl_gpuToCpuStencilBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, gTcStencil*sizeof(real_t));
-        cl_cpuToGpuStencilBuffer = cl::Buffer(cl_context, CL_MEM_READ_WRITE, cTgStencil*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_gpuToCpuStencilBuffer, 0, 0, gTcStencil*sizeof(real_t));
-        cl_queue.enqueueFillBuffer(cl_cpuToGpuStencilBuffer, 0, 0, cTgStencil*sizeof(real_t));
-        cl_stencilDim[X] = cl::Buffer(cl_context, &this->stencilDim[X], (&this->stencilDim[X])+1, true);
-        cl_stencilDim[Y] = cl::Buffer(cl_context, &this->stencilDim[Y], (&this->stencilDim[Y])+1, true);
-        cl_stencilNumPoints = cl::Buffer(cl_context, &stencilNumPoints, (&stencilNumPoints)+1, true);
-    } catch(cl::Error error) {
-        std::cout << "Tausch2D :: [setup send/recv buffer] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
-        exit(1);
-    }
-
+template <class real_t> void Tausch2D<real_t>::packAndSend(int id, real_t *buf) {
+    packNextSendBuffer(id, buf);
+    send(id);
 }
 
-// collect cpu side of cpu/gpu halo and store in buffer
-void Tausch2D::startCpuToGpuData() {
-
-    // check whether GPU is enabled
-    if(!gpuEnabled) {
-        std::cerr << "Tausch2D :: ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
-        exit(1);
-    }
-
-    cpuToGpuDataStarted.store(true);
-
-    // left
-    for(int i = 0; i < gpuHaloWidth[LEFT]*gpuDim[Y]; ++i) {
-
-        int index = ((localDim[Y]-gpuDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-gpuDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT]-gpuHaloWidth[LEFT];
-
-        cpuToGpuDataBuffer[i].store(cpuData[index]);
-
-    }
-
-    int offset = gpuHaloWidth[LEFT]*gpuDim[Y];
-
-    // right
-    for(int i = 0; i < gpuHaloWidth[RIGHT]*gpuDim[Y]; ++i) {
-
-        int index = ((localDim[Y]-gpuDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-gpuDim[X])/2 + cpuHaloWidth[LEFT] + gpuDim[X] + i%gpuHaloWidth[RIGHT];
-
-        cpuToGpuDataBuffer[offset + i].store(cpuData[index]);
-
-    }
-
-    offset += gpuHaloWidth[RIGHT]*gpuDim[Y];
-
-    // top
-    for(int i = 0; i < gpuHaloWidth[TOP]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
-
-        int index = ((localDim[Y]-gpuDim[Y])/2+gpuDim[Y]+cpuHaloWidth[BOTTOM] + i/(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]))*
-                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + cpuHaloWidth[LEFT] + ((localDim[X]-gpuDim[X])/2-gpuHaloWidth[LEFT]) +
-                    i%(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
-
-        cpuToGpuDataBuffer[offset + i].store(cpuData[index]);
-
-    }
-
-    offset += gpuHaloWidth[TOP]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
-
-    // bottom
-    for(int i = 0; i < gpuHaloWidth[BOTTOM]*(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
-
-        int index = (i/(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) +
-                     cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDim[Y])/2 - gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + (localDim[X]-gpuDim[X])/2 - gpuHaloWidth[LEFT] + i%(gpuDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
-
-        cpuToGpuDataBuffer[offset + i].store(cpuData[index]);
-
-    }
-
+template <class real_t> void Tausch2D<real_t>::recvAndUnpack(int id, real_t *buf) {
+    recv(id);
+    unpackNextRecvBuffer(id, buf);
 }
 
-// collect cpu side of cpu/gpu halo and store in buffer
-void Tausch2D::startCpuToGpuStencil() {
-
-    // check whether GPU is enabled
-    if(!gpuEnabled) {
-        std::cerr << "Tausch2D :: ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
-        exit(1);
-    }
-
-    cpuToGpuStencilStarted.store(true);
-
-    // left
-    for(int i = 0; i < gpuHaloWidth[LEFT]*stencilDim[Y]; ++i) {
-
-        int index = ((localDim[Y]-stencilDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-stencilDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT]-gpuHaloWidth[LEFT];
-
-        for(int j = 0; j < stencilNumPoints; ++j)
-            cpuToGpuStencilBuffer[stencilNumPoints*i + j].store(cpuStencil[stencilNumPoints*index + j]);
-
-    }
-
-    int offset = stencilNumPoints*gpuHaloWidth[LEFT]*stencilDim[Y];
-
-    // right
-    for(int i = 0; i < gpuHaloWidth[RIGHT]*stencilDim[Y]; ++i) {
-
-        int index = ((localDim[Y]-stencilDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    (localDim[X]-stencilDim[X])/2 + cpuHaloWidth[LEFT] + stencilDim[X] + i%gpuHaloWidth[RIGHT];
-
-        for(int j = 0; j < stencilNumPoints; ++j)
-            cpuToGpuStencilBuffer[offset + stencilNumPoints*i + j].store(cpuStencil[stencilNumPoints*index + j]);
-
-    }
-
-    offset += stencilNumPoints*gpuHaloWidth[RIGHT]*stencilDim[Y];
-
-    // top
-    for(int i = 0; i < gpuHaloWidth[TOP]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
-
-        int index = ((localDim[Y]-stencilDim[Y])/2+stencilDim[Y]+cpuHaloWidth[BOTTOM] +
-                     i/(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]))*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + ((localDim[X]-stencilDim[X])/2-gpuHaloWidth[LEFT]) +
-                    i%(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
-
-        for(int j = 0; j < stencilNumPoints; ++j)
-            cpuToGpuStencilBuffer[offset + stencilNumPoints*i + j].store(cpuStencil[stencilNumPoints*index + j]);
-
-    }
-
-    offset += stencilNumPoints*gpuHaloWidth[TOP]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
-
-    // bottom
-    for(int i = 0; i < gpuHaloWidth[BOTTOM]*(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]); ++i) {
-
-        int index = (i/(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]) + cpuHaloWidth[BOTTOM] +
-                     (localDim[Y]-stencilDim[Y])/2 - gpuHaloWidth[BOTTOM])*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + (localDim[X]-stencilDim[X])/2 - gpuHaloWidth[LEFT] +
-                    i%(stencilDim[X]+gpuHaloWidth[LEFT]+gpuHaloWidth[RIGHT]);
-
-        for(int j = 0; j < stencilNumPoints; ++j)
-            cpuToGpuStencilBuffer[offset + stencilNumPoints*i + j].store(cpuStencil[stencilNumPoints*index + j]);
-
-    }
-
-}
-
-// collect gpu side of cpu/gpu halo and download into buffer
-void Tausch2D::startGpuToCpuData() {
-
-    // check whether GPU is enabled
-    if(!gpuEnabled) {
-        std::cerr << "Tausch2D :: ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
-        exit(1);
-    }
-    // check whether GPU info was given
-    if(!gpuDataInfoGiven) {
-        std::cerr << "Tausch2D :: ERROR: GPU info not available! Did you call setGPUData()? Abort..." << std::endl;
-        exit(1);
-    }
-
-    gpuToCpuDataStarted.store(true);
-
-    try {
-
-        auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloData");
-
-        int globalSize = (gTcData/cl_kernelLocalSize +1)*cl_kernelLocalSize;
-
-        kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                           cl_gpuDim[X], cl_gpuDim[Y], cl_gpuHaloWidth, gpuData, cl_gpuToCpuDataBuffer);
-
-        double *dat = new double[gTcData];
-        cl::copy(cl_queue, cl_gpuToCpuDataBuffer, &dat[0], (&dat[gTcData-1])+1);
-        for(int i = 0; i < gTcData; ++i)
-            gpuToCpuDataBuffer[i].store(dat[i]);
-
-        delete[] dat;
-
-    } catch(cl::Error error) {
-        std::cout << "Tausch2D :: [kernel collectHalo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
-        exit(1);
-    }
-
-}
-
-// collect gpu side of cpu/gpu halo and download into buffer
-void Tausch2D::startGpuToCpuStencil() {
-
-    // check whether GPU is enabled
-    if(!gpuEnabled) {
-        std::cerr << "Tausch2D :: ERROR: GPU flag not passed on when creating Tausch object! Abort..." << std::endl;
-        exit(1);
-    }
-    // check whether GPU info was given
-    if(!gpuStencilInfoGiven) {
-        std::cerr << "Tausch2D :: ERROR: GPU info not available! Did you call setGPUStencil()? Abort..." << std::endl;
-        exit(1);
-    }
-
-    gpuToCpuStencilStarted.store(true);
-
-    try {
-
-        auto kernel_collectHalo = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&,
-                                                  cl::Buffer&, cl::Buffer&, cl::Buffer&>(cl_programs, "collectHaloStencil");
-
-        int globalSize = (gTcStencil/cl_kernelLocalSize +1)*cl_kernelLocalSize;
-
-        kernel_collectHalo(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                           cl_stencilDim[X], cl_stencilDim[Y], cl_gpuHaloWidth, gpuStencil, cl_stencilNumPoints, cl_gpuToCpuStencilBuffer);
-
-        double *dat = new double[gTcStencil];
-        cl::copy(cl_queue, cl_gpuToCpuStencilBuffer, &dat[0], (&dat[gTcStencil-1])+1);
-        for(int i = 0; i < gTcStencil; ++i)
-            gpuToCpuStencilBuffer[i].store(dat[i]);
-
-        delete[] dat;
-
-    } catch(cl::Error error) {
-        std::cout << "Tausch2D :: [kernel collectHalo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
-        exit(1);
-    }
-
-}
-
-// Complete CPU side of CPU/GPU halo exchange
-void Tausch2D::completeGpuToCpuData() {
-
-    // we need to wait for the GPU thread to arrive here
-    if(blockingSyncCpuGpu)
-        syncCpuAndGpu(false);
-
-    if(!gpuToCpuDataStarted.load()) {
-        std::cerr << "Tausch2D :: ERROR: No CPU->GPU data exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    // left
-    for(int i = 0; i < gpuHaloWidth[LEFT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
-
-        int index = ((localDim[Y]-gpuDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM]+gpuHaloWidth[BOTTOM])*
-                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-gpuDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT];
-
-        cpuData[index] = gpuToCpuDataBuffer[i].load();
-
-    }
-
-    int offset = gpuHaloWidth[LEFT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
-
-    // right
-    for(int i = 0; i < gpuHaloWidth[RIGHT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
-
-        int index = ((localDim[Y]-gpuDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT] + gpuHaloWidth[BOTTOM])*
-                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-gpuDim[X])/2 + cpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT] +
-                    gpuDim[X] + i%gpuHaloWidth[RIGHT];
-
-        cpuData[index] = gpuToCpuDataBuffer[offset + i].load();
-
-    }
-
-    offset += gpuHaloWidth[RIGHT]*(gpuDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
-
-    // top
-    for(int i = 0; i < gpuHaloWidth[TOP]*gpuDim[X]; ++ i) {
-
-        int index = ((localDim[Y]-gpuDim[Y])/2+gpuDim[Y]+cpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP] + i/gpuDim[X])*
-                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + cpuHaloWidth[LEFT] + (localDim[X]-gpuDim[X])/2 +i%gpuDim[X];
-
-        cpuData[index] = gpuToCpuDataBuffer[offset + i].load();
-
-    }
-
-    offset += gpuHaloWidth[TOP]*gpuDim[X];
-
-    // bottom
-    for(int i = 0; i < gpuHaloWidth[BOTTOM]*gpuDim[X]; ++ i) {
-
-        int index = (i/gpuDim[X] + cpuHaloWidth[BOTTOM] + (localDim[Y]-gpuDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + (localDim[X]-gpuDim[X])/2 + i%gpuDim[X];
-
-        cpuData[index] = gpuToCpuDataBuffer[offset + i].load();
-
-    }
-
-}
-
-// Complete CPU side of CPU/GPU halo exchange
-void Tausch2D::completeGpuToCpuStencil() {
-
-    // we need to wait for the GPU thread to arrive here
-    if(blockingSyncCpuGpu)
-        syncCpuAndGpu(true);
-
-    if(!gpuToCpuStencilStarted.load()) {
-        std::cerr << "Tausch2D :: ERROR: No CPU->GPU stencil exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    // left
-    for(int i = 0; i < gpuHaloWidth[LEFT]*(stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
-
-        int index = ((localDim[Y]-stencilDim[Y])/2 +i/gpuHaloWidth[LEFT]+cpuHaloWidth[BOTTOM]+gpuHaloWidth[BOTTOM])*
-                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-stencilDim[X])/2+i%gpuHaloWidth[LEFT] + cpuHaloWidth[LEFT];
-
-        for(int j = 0; j < stencilNumPoints; ++j)
-            cpuStencil[stencilNumPoints*index + j] = gpuToCpuStencilBuffer[stencilNumPoints*i + j].load();
-
-    }
-
-    int offset = gpuHaloWidth[LEFT]*(stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
-
-    // right
-    for(int i = 0; i < gpuHaloWidth[RIGHT]*(stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]); ++ i) {
-
-        int index = ((localDim[Y]-stencilDim[Y])/2 +cpuHaloWidth[BOTTOM] + i/gpuHaloWidth[RIGHT] + gpuHaloWidth[BOTTOM])*
-                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + (localDim[X]-stencilDim[X])/2 + cpuHaloWidth[LEFT]-gpuHaloWidth[RIGHT] +
-                    stencilDim[X] + i%gpuHaloWidth[RIGHT];
-
-        for(int j = 0; j < stencilNumPoints; ++j)
-            cpuStencil[stencilNumPoints*index + j] = gpuToCpuStencilBuffer[stencilNumPoints*(offset+i) + j].load();
-
-    }
-
-    offset += gpuHaloWidth[RIGHT]*(stencilDim[Y]-gpuHaloWidth[TOP]-gpuHaloWidth[BOTTOM]);
-
-    // top
-    for(int i = 0; i < gpuHaloWidth[TOP]*stencilDim[X]; ++ i) {
-
-        int index = ((localDim[Y]-stencilDim[Y])/2+stencilDim[Y]+cpuHaloWidth[BOTTOM]-gpuHaloWidth[TOP] + i/stencilDim[X])*
-                    (localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) + cpuHaloWidth[LEFT] + (localDim[X]-stencilDim[X])/2 +i%stencilDim[X];
-
-        for(int j = 0; j < stencilNumPoints; ++j)
-            cpuStencil[stencilNumPoints*index + j] = gpuToCpuStencilBuffer[stencilNumPoints*(offset + i) + j].load();
-
-    }
-
-    offset += gpuHaloWidth[TOP]*stencilDim[X];
-
-    // bottom
-    for(int i = 0; i < gpuHaloWidth[BOTTOM]*stencilDim[X]; ++ i) {
-
-        int index = (i/stencilDim[X] + cpuHaloWidth[BOTTOM] + (localDim[Y]-stencilDim[Y])/2)*(localDim[X]+cpuHaloWidth[LEFT]+cpuHaloWidth[RIGHT]) +
-                    cpuHaloWidth[LEFT] + (localDim[X]-stencilDim[X])/2 + i%stencilDim[X];
-
-        for(int j = 0; j < stencilNumPoints; ++j)
-            cpuStencil[stencilNumPoints*index + j] = gpuToCpuStencilBuffer[stencilNumPoints*(offset + i) + j].load();
-
-    }
-
-}
-
-// Complete GPU side of CPU/GPU halo exchange
-void Tausch2D::completeCpuToGpuData() {
-
-    // we need to wait for the CPU thread to arrive here
-    if(blockingSyncCpuGpu)
-        syncCpuAndGpu(false);
-
-    if(!cpuToGpuDataStarted.load()) {
-        std::cerr << "Tausch2D :: ERROR: No GPU->CPU exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    try {
-
-        double *dat = new double[cTgData];
-        for(int i = 0; i < cTgData; ++i)
-            dat[i] = cpuToGpuDataBuffer[i].load();
-
-        cl::copy(cl_queue, &dat[0], (&dat[cTgData-1])+1, cl_cpuToGpuDataBuffer);
-
-        delete[] dat;
-
-        auto kernel_distributeHaloData = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&,
-                                                         cl::Buffer&, cl::Buffer&>(cl_programs, "distributeHaloData");
-
-        int globalSize = (cTgData/cl_kernelLocalSize +1)*cl_kernelLocalSize;
-
-        kernel_distributeHaloData(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                                  cl_gpuDim[X], cl_gpuDim[Y], cl_gpuHaloWidth, gpuData, cl_cpuToGpuDataBuffer);
-
-    } catch(cl::Error error) {
-        std::cout << "Tausch2D :: [dist halo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
-        exit(1);
-    }
-
-}
-
-// Complete GPU side of CPU/GPU halo exchange
-void Tausch2D::completeCpuToGpuStencil() {
-
-    // we need to wait for the CPU thread to arrive here
-    if(blockingSyncCpuGpu)
-        syncCpuAndGpu(true);
-
-    if(!cpuToGpuStencilStarted.load()) {
-        std::cerr << "Tausch2D :: ERROR: No GPU->CPU exchange has been started yet... Abort!" << std::endl;
-        exit(1);
-    }
-
-    try {
-
-        double *dat = new double[cTgStencil];
-        for(int i = 0; i < cTgStencil; ++i)
-            dat[i] = cpuToGpuStencilBuffer[i].load();
-
-        cl::copy(cl_queue, &dat[0], (&dat[cTgStencil-1])+1, cl_cpuToGpuStencilBuffer);
-
-        delete[] dat;
-
-        auto kernel_distributeHaloStencil = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&,
-                                                            cl::Buffer&>(cl_programs, "distributeHaloStencil");
-
-        int globalSize = (cTgStencil/cl_kernelLocalSize +1)*cl_kernelLocalSize;
-
-        kernel_distributeHaloStencil(cl::EnqueueArgs(cl_queue, cl::NDRange(globalSize), cl::NDRange(cl_kernelLocalSize)),
-                                     cl_stencilDim[X], cl_stencilDim[Y], cl_gpuHaloWidth, gpuStencil, cl_stencilNumPoints, cl_cpuToGpuStencilBuffer);
-
-    } catch(cl::Error error) {
-        std::cout << "Tausch2D :: [dist halo] Error: " << error.what() << " (" << error.err() << ")" << std::endl;
-        exit(1);
-    }
-
-}
-
-// both the CPU and GPU have to arrive at this point before either can continue
-void Tausch2D::syncCpuAndGpu(bool offsetByTwo) {
-
-    int starti = (offsetByTwo ? 2 : 0);
-    int endi = (offsetByTwo ? 4 : 2);
-
-    // need to do this twice to prevent potential (though unlikely) deadlocks
-    for(int i = starti; i < endi; ++i) {
-
-        if(sync_lock[i].load() == 0)
-            sync_lock[i].store(1);
-        int val = sync_counter[i].fetch_add(1);
-        if(val == 1) {
-            sync_counter[i].store(0);
-            sync_lock[i].store(0);
-        }
-        while(sync_lock[i].load() == 1);
-
-    }
-
-}
-
-void Tausch2D::compileKernels() {
-
-    // Tausch requires two kernels: One for collecting the halo data and one for distributing that data
-    std::string oclstr = "typedef " + std::string((sizeof(real_t)==sizeof(double)) ? "double" : "float") + " real_t;\n";
-
-    oclstr += R"d(
-enum { LEFT, RIGHT, TOP, BOTTOM };
-
-kernel void collectHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
-                            global const int * restrict const haloWidth,
-                            global const real_t * restrict const vec, global real_t * sync) {
-
-    int current = get_global_id(0);
-
-    int maxNum = haloWidth[TOP]*(*dimX) +
-                 haloWidth[BOTTOM]*(*dimX) +
-                 haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]) +
-                 haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
-
-    if(current >= maxNum)
-        return;
-
-    // left
-    if(current < haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM])) {
-
-        int index = (2*haloWidth[BOTTOM]+current/haloWidth[LEFT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +haloWidth[LEFT] + current%haloWidth[LEFT];
-
-        sync[current] = vec[index];
-        return;
-
-    }
-
-    int offset = haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
-
-    // right
-    if(current < offset + haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM])) {
-
-        current -= offset;
-
-        int index = (1+2*haloWidth[BOTTOM]+current/haloWidth[RIGHT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) -
-                    2*haloWidth[RIGHT]+current%haloWidth[RIGHT];
-
-        sync[offset+current] = vec[index];
-        return;
-
-    }
-
-    offset += haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
-
-    // top
-    if(current < offset + haloWidth[TOP]*(*dimX)) {
-
-        current -= offset;
-
-        int index = (*dimY+haloWidth[BOTTOM]-haloWidth[TOP]+current/(*dimX))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])+current%(*dimX)+haloWidth[LEFT];
-
-        sync[offset+current] = vec[index];
-        return;
-
-    }
-
-    offset += haloWidth[TOP]*(*dimX);
-
-    // bottom
-    current -= offset;
-    int index = (haloWidth[BOTTOM]+current/(*dimX))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])+current%(*dimX)+haloWidth[LEFT];
-
-    sync[offset+current] = vec[index];
-
-}
-
-kernel void collectHaloStencil(global const int * restrict const dimX, global const int * restrict const dimY,
-                               global const int * restrict const haloWidth, global const real_t * restrict const vec,
-                               global const int * restrict const stencilNumPoints, global real_t * sync) {
-
-    int current = get_global_id(0);
-
-    int maxNum = (*stencilNumPoints)*(haloWidth[TOP]*(*dimX) +
-                                      haloWidth[BOTTOM]*(*dimX) +
-                                      haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]) +
-                                      haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]));
-    if(current >= maxNum)
-        return;
-
-    // left
-    if(current < (*stencilNumPoints)*haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM])) {
-
-        int current_stencil = current%(*stencilNumPoints);
-        int current_index = current/(*stencilNumPoints);
-
-        int index = (*stencilNumPoints)*((2*haloWidth[BOTTOM]+current_index/haloWidth[LEFT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-                                         haloWidth[LEFT] + current_index%haloWidth[LEFT]) + current_stencil;
-
-        sync[current] = vec[index];
-        return;
-
-    }
-
-    int offset = (*stencilNumPoints)*haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
-
-    // right
-    if(current < offset + (*stencilNumPoints)*haloWidth[RIGHT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM])) {
-
-        current -= offset;
-
-        int current_stencil = current%(*stencilNumPoints);
-        int current_index = current/(*stencilNumPoints);
-
-        int index = (*stencilNumPoints)*((1+2*haloWidth[BOTTOM]+current_index/haloWidth[RIGHT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) -
-                                         2*haloWidth[RIGHT]+current_index%haloWidth[RIGHT]) + current_stencil;
-
-        sync[offset+current] = vec[index];
-        return;
-    }
-
-    offset += (*stencilNumPoints)*haloWidth[LEFT]*(*dimY-haloWidth[TOP]-haloWidth[BOTTOM]);
-
-    // top
-    if(current < offset + (*stencilNumPoints)*haloWidth[BOTTOM]*(*dimX)) {
-
-        current -= offset;
-
-        int current_stencil = current%(*stencilNumPoints);
-        int current_index = current/(*stencilNumPoints);
-
-        int index = (*stencilNumPoints)*((*dimY+haloWidth[BOTTOM]-haloWidth[TOP] + current_index/(*dimX))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-                                         current_index%(*dimX)+haloWidth[LEFT]) + current_stencil;
-
-        sync[offset+current] = vec[index];
-        return;
-
-    }
-
-    offset += (*stencilNumPoints)*haloWidth[BOTTOM]*(*dimX);
-
-    // bottom
-    current -= offset;
-
-    int current_stencil = current%(*stencilNumPoints);
-    int current_index = current/(*stencilNumPoints);
-
-    int index = (*stencilNumPoints)*((haloWidth[BOTTOM]+current_index/(*dimX))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])+
-                                     current_index%(*dimX)+haloWidth[LEFT]) + current_stencil;
-
-    sync[offset+current] = vec[index];
-
-}
-
-kernel void distributeHaloData(global const int * restrict const dimX, global const int * restrict const dimY,
-                               global const int * restrict const haloWidth,
-                               global real_t * vec, global const real_t * restrict const sync) {
-
-    int current = get_global_id(0);
-
-    int maxNum = haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-                 haloWidth[BOTTOM]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-                 haloWidth[LEFT]*(*dimY) +
-                 haloWidth[RIGHT]*(*dimY);
-
-    if(current >= maxNum)
-        return;
-
-    // left
-    if(current < haloWidth[LEFT]*(*dimY)) {
-
-        int index = (haloWidth[BOTTOM]+current/haloWidth[LEFT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) + current%haloWidth[LEFT];
-
-        vec[index] = sync[current];
-        return;
-
-    }
-
-    int offset = haloWidth[LEFT]*(*dimY);
-
-    // right
-    if(current < offset + haloWidth[RIGHT]*(*dimY)) {
-
-        current -= offset;
-
-        int index = (haloWidth[BOTTOM]+1+current/haloWidth[RIGHT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])-haloWidth[RIGHT]+current%haloWidth[RIGHT];
-
-        vec[index] = sync[offset + current];
-        return;
-
-    }
-
-    offset += haloWidth[RIGHT]*(*dimY);
-
-    // top
-    if(current < offset + haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) {
-
-        current -= offset;
-
-        int index = (*dimX+haloWidth[LEFT]+haloWidth[RIGHT])*(*dimY+haloWidth[BOTTOM] + current/(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) +
-                    current%(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]);
-
-        vec[index] = sync[offset + current];
-        return;
-
-    }
-
-    offset += haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]);
-
-    // bottom
-    current -= offset;
-
-    int index = (current/(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])+
-                current%(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]);
-
-    vec[index] = sync[offset + current];
-
-}
-
-kernel void distributeHaloStencil(global const int * restrict const dimX, global const int * restrict const dimY,
-                                  global const int * restrict const haloWidth, global real_t * vec,
-                                  global const int * restrict const stencilNumPoints, global const real_t * restrict const sync) {
-
-    int current = get_global_id(0);
-
-    int maxNum = (*stencilNumPoints)*(haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-                                      haloWidth[BOTTOM]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-                                      haloWidth[LEFT]*(*dimY) +
-                                      haloWidth[RIGHT]*(*dimY));
-
-    if(current >= maxNum)
-        return;
-
-    // left
-    if(current < (*stencilNumPoints)*haloWidth[LEFT]*(*dimY)) {
-
-        int current_stencil = current%(*stencilNumPoints);
-        int current_index = current/(*stencilNumPoints);
-
-        int index = (*stencilNumPoints)*((haloWidth[BOTTOM]+current_index/haloWidth[LEFT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) +
-                                         current_index%haloWidth[LEFT]) + current_stencil;
-
-        vec[index] = sync[current];
-        return;
-
-    }
-
-    int offset = (*stencilNumPoints)*haloWidth[LEFT]*(*dimY);
-
-    // right
-    if(current < offset + (*stencilNumPoints)*haloWidth[RIGHT]*(*dimY)) {
-
-        current -= offset;
-        int current_stencil = current%(*stencilNumPoints);
-        int current_index = current/(*stencilNumPoints);
-
-        int index = (*stencilNumPoints)*((haloWidth[BOTTOM]+1+current_index/haloWidth[RIGHT])*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]) -
-                                         haloWidth[RIGHT]+current_index%haloWidth[RIGHT]) + current_stencil;
-
-        vec[index] = sync[offset + current];
-        return;
-
-    }
-
-    offset += (*stencilNumPoints)*haloWidth[RIGHT]*(*dimY);
-
-    // top
-    if(current < offset + (*stencilNumPoints)*haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) {
-
-        current -= offset;
-        int current_stencil = current%(*stencilNumPoints);
-        int current_index = current/(*stencilNumPoints);
-
-        int index = (*stencilNumPoints)*((*dimX+haloWidth[LEFT]+haloWidth[RIGHT])*
-                                         (*dimY+haloWidth[BOTTOM] + current_index/(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) +
-                                         current_index%(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) + current_stencil;
-
-        vec[index] = sync[offset + current];
-        return;
-
-    }
-
-    offset += (*stencilNumPoints)*haloWidth[TOP]*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]);
-
-    // bottom
-    current -= offset;
-    int current_stencil = current%(*stencilNumPoints);
-    int current_index = current/(*stencilNumPoints);
-
-    int index = (*stencilNumPoints)*((current_index/(*dimX+haloWidth[LEFT]+haloWidth[RIGHT]))*(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])+
-                                     current_index%(*dimX+haloWidth[LEFT]+haloWidth[RIGHT])) + current_stencil;
-
-    vec[index] = sync[offset + current];
-
-}
-        )d";
-
-    try {
-        cl_programs = cl::Program(cl_context, oclstr, true);
-    } catch(cl::Error error) {
-        std::cout << "[kernel compile] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
-        if(error.err() == -11) {
-            std::string log = cl_programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl_defaultDevice);
-            std::cout << std::endl << " ******************** " << std::endl << " ** BUILD LOG" << std::endl
-                      << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** "
-                      << std::endl << std::endl;
-        }
-    }
-
-}
-
-// Create OpenCL context and choose a device (if multiple devices are available, the MPI ranks will split up evenly)
-void Tausch2D::setupOpenCL(bool giveOpenCLDeviceName) {
-
-    gpuEnabled = true;
-
-    try {
-
-        // Get platform count
-        std::vector<cl::Platform> all_platforms;
-        cl::Platform::get(&all_platforms);
-        int platform_length = all_platforms.size();
-
-        // We need at most mpiSize many devices
-        int *platform_num = new int[mpiSize]{};
-        int *device_num = new int[mpiSize]{};
-
-        // Counter so that we know when to stop
-        int num = 0;
-
-        // Loop over platforms
-        for(int i = 0; i < platform_length; ++i) {
-            // Get devices on platform
-            std::vector<cl::Device> all_devices;
-            all_platforms[i].getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
-            int device_length = all_devices.size();
-            // Loop over platforms
-            for(int j = 0; j < device_length; ++j) {
-                // Store current pair
-                platform_num[num] = i;
-                device_num[num] = j;
-                ++num;
-                // and stop
-                if(num == mpiSize) {
-                    i = platform_length;
-                    break;
-                }
-            }
-        }
-
-        // Get the platform and device to be used by this MPI thread
-        cl_platform = all_platforms[platform_num[mpiRank%num]];
-        std::vector<cl::Device> all_devices;
-        cl_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
-        cl_defaultDevice = all_devices[device_num[mpiRank%num]];
-
-        // Give some feedback of the choice.
-        if(giveOpenCLDeviceName) {
-            for(int iRank = 0; iRank < mpiSize; ++iRank){
-                if(mpiRank == iRank)
-                    std::cout << "Rank " << mpiRank << " using OpenCL platform #" << platform_num[mpiRank%num]
-                              << " with device #" << device_num[mpiRank%num] << ": " << cl_defaultDevice.getInfo<CL_DEVICE_NAME>() << std::endl;
-                MPI_Barrier(TAUSCH_COMM);
-            }
-            if(mpiRank == 0)
-                std::cout << std::endl;
-        }
-
-        delete[] platform_num;
-        delete[] device_num;
-
-        // Create context and queue
-        cl_context = cl::Context({cl_defaultDevice});
-        cl_queue = cl::CommandQueue(cl_context,cl_defaultDevice);
-
-    } catch(cl::Error error) {
-        std::cout << "[setup] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
-        exit(1);
-    }
-
-    // And compile kernels
-    compileKernels();
-
-}
-#endif
+template class Tausch2D<double>;
+template class Tausch2D<float>;
+template class Tausch2D<int>;
+template class Tausch2D<unsigned int>;
+template class Tausch2D<long>;
+template class Tausch2D<long long>;
+template class Tausch2D<long double>;
