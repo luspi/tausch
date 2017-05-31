@@ -16,12 +16,12 @@
 /*!
  * These are the edges available for inter-MPI halo exchanges: LEFT, RIGHT, TOP, BOTTOM.
  */
-enum Edges { TLEFT, TRIGHT, TTOP, TBOTTOM };
+enum Edges { TAUSCH_LEFT, TAUSCH_RIGHT, TAUSCH_TOP, TAUSCH_BOTTOM, TAUSCH_FRONT, TAUSCH_BACK };
 
 /*!
  * These are the two dimensions used, used for clarity as to which array entry is which dimension: X, Y.
  */
-enum Dimensions { TX, TY, TZ };
+enum Dimensions { TAUSCH_X, TAUSCH_Y, TAUSCH_Z };
 #endif // TAUSCH_ENUM
 
 /*!
@@ -70,8 +70,8 @@ public:
      * \param numHaloParts
      *  How many different parts there are to the halo
      * \param haloSpecs
-     *  The specification of the different halo parts. This is expected to be a an array of arrays of int's. Each array of int's contains 5 entries,
-     *  the order of which will be preserved, and each halo region can be referenced later by its index in this array. The 5 entries are:
+     *  The specification of the different halo parts. This is expected to be a an array of arrays of int's. Each array of int's contains 6 entries,
+     *  the order of which will be preserved, and each halo region can be referenced later by its index in this array. The 6 entries are:
      *   1. The starting x coordinate of the local region
      *   2. The starting y coordinate of the local region
      *   3. The width of the region

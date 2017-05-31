@@ -105,7 +105,7 @@ template <class real_t> void Tausch2D<real_t>::packNextSendBuffer(int id, real_t
 
     int size = localHaloSpecs[id][2] * localHaloSpecs[id][3];
     for(int s = 0; s < size; ++s) {
-        int index = (s/localHaloSpecs[id][2] + localHaloSpecs[id][1])*(localDim[TX] + haloWidth[TLEFT] + haloWidth[TRIGHT]) +
+        int index = (s/localHaloSpecs[id][2] + localHaloSpecs[id][1])*(localDim[TAUSCH_X] + haloWidth[TAUSCH_LEFT] + haloWidth[TAUSCH_RIGHT]) +
                     s%localHaloSpecs[id][2] + localHaloSpecs[id][0];
         for(int val = 0; val < valuesPerPoint; ++val)
             mpiSendBuffer[id][numBuffersPacked[id]*valuesPerPoint*size + valuesPerPoint*s + val] = buf[valuesPerPoint*index + val];
@@ -135,7 +135,7 @@ template <class real_t> void Tausch2D<real_t>::unpackNextRecvBuffer(int id, real
 
     int size = remoteHaloSpecs[id][2] * remoteHaloSpecs[id][3];
     for(int s = 0; s < size; ++s) {
-        int index = (s/remoteHaloSpecs[id][2] + remoteHaloSpecs[id][1])*(localDim[TX] + haloWidth[TLEFT] + haloWidth[TRIGHT]) +
+        int index = (s/remoteHaloSpecs[id][2] + remoteHaloSpecs[id][1])*(localDim[TAUSCH_X] + haloWidth[TAUSCH_LEFT] + haloWidth[TAUSCH_RIGHT]) +
                     s%remoteHaloSpecs[id][2] + remoteHaloSpecs[id][0];
         for(int val = 0; val < valuesPerPoint; ++val)
             buf[valuesPerPoint*index + val] = mpiRecvBuffer[id][numBuffersUnpacked[id]*valuesPerPoint*size + valuesPerPoint*s + val];
