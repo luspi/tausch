@@ -67,8 +67,8 @@ int main(int argc, char** argv) {
     Tausch2D<double> *tausch = new Tausch2D<double>(localDim, cpuHaloWidth, numBuffers, 1);
 
     // Tell Tausch about the local and remote halo regions
-    tausch->setCpuLocalHaloInfo(1, localHaloSpecs);
-    tausch->setCpuRemoteHaloInfo(1, remoteHaloSpecs);
+    tausch->setLocalHaloInfoCpu(1, localHaloSpecs);
+    tausch->setRemoteHaloInfoCpu(1, remoteHaloSpecs);
 
     /*****************
      * HALO EXCHANGE *
@@ -80,17 +80,17 @@ int main(int argc, char** argv) {
     auto t_start = std::chrono::steady_clock::now();
 
     // post the MPI receives
-    tausch->postMpiReceives();
+    tausch->postReceivesCpu();
 
     // pack the right buffers and send them off
-    tausch->packNextSendBuffer(0, dat1);
-    tausch->packNextSendBuffer(0, dat2);
-    tausch->send(0);
+    tausch->packNextSendBufferCpu(0, dat1);
+    tausch->packNextSendBufferCpu(0, dat2);
+    tausch->sendCpu(0);
 
     // receive the left buffers and unpack them
-    tausch->recv(0);
-    tausch->unpackNextRecvBuffer(0, dat1);
-    tausch->unpackNextRecvBuffer(0, dat2);
+    tausch->recvCpu(0);
+    tausch->unpackNextRecvBufferCpu(0, dat1);
+    tausch->unpackNextRecvBufferCpu(0, dat2);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
