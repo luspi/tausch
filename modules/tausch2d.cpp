@@ -30,6 +30,8 @@ template <class real_t> Tausch2D<real_t>::~Tausch2D() {
     for(int i = 0; i < localHaloNumParts; ++i) {
         delete[] localHaloSpecs[i];
         delete[] mpiSendBuffer[i];
+    }
+    for(int i = 0; i < remoteHaloNumParts; ++i) {
         delete[] remoteHaloSpecs[i];
         delete[] mpiRecvBuffer[i];
     }
