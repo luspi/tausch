@@ -1,3 +1,14 @@
+/*!
+ * \file
+ * \author  Lukas Spies <LSpies@illinois.edu>
+ * \version 1.0
+ *
+ * \brief
+ *  Virtual API, allowing runtime choice of 1D, 2D or 3D version.
+ *
+ *  Virtual API, allowing runtime choice of 1D, 2D or 3D version. For more details on the implementation of the various functions in the API refer to
+ * the respective documentation of Tausch1D, Tausch2D, or Tausch3D.
+ */
 #ifndef TAUSCHBASE_H
 #define TAUSCHBASE_H
 

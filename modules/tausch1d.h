@@ -2,6 +2,12 @@
  * \file
  * \author  Lukas Spies <LSpies@illinois.edu>
  * \version 1.0
+ *
+ * \brief
+ *  One-dimensional halo exchange library.
+ *
+ *  A library providing a clean and efficient interface for halo exchange in one dimension.
+ *
  */
 
 #ifndef TAUSCH1D_H
@@ -11,23 +17,10 @@
 #include <mpi.h>
 #include <iostream>
 
-#ifndef TAUSCH_ENUM
-#define TAUSCH_ENUM
-/*!
- * These are the edges available for inter-MPI halo exchanges: LEFT, RIGHT, TOP, BOTTOM.
- */
-enum Edges { TAUSCH_LEFT, TAUSCH_RIGHT, TAUSCH_TOP, TAUSCH_BOTTOM, TAUSCH_FRONT, TAUSCH_BACK };
-
-/*!
- * These are the two dimensions used, used for clarity as to which array entry is which dimension: X, Y.
- */
-enum Dimensions { TAUSCH_X, TAUSCH_Y, TAUSCH_Z };
-#endif // TAUSCH_ENUM
-
 /*!
  *
  * \brief
- *  A library providing a clean and efficient interface for halo exchange in two dimensions.
+ *  A library providing a clean and efficient interface for halo exchange in one dimension.
  *
  * %Tausch1D is a library that provides a clean and efficient C and C++ API for halo exchange for one dimensional domains. It doesn't assume
  * anything about the grid, except that the data is stored in one contiguous buffer (including halo). After specifying the local and remote halo

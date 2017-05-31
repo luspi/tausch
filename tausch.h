@@ -3,6 +3,12 @@
  * \author  Lukas Spies <LSpies@illinois.edu>
  * \version 1.0
  *
+ * \brief
+ *  Header to be used by user.
+ *
+ * Header providing access to any version of API. This is the one the user is strongly encouraged to include in any project instead of the individual
+ * module headers!
+ *
  * \section LICENSE
  *
  * This program is free software; you can redistribute it and/or
@@ -22,13 +28,13 @@
  *
  * Tausch (pronounced:\htmlonly [ta&upsilon;&#x0283;\endhtmlonly\latexonly [ta\textipa{uS}\endlatexonly]) is a library that provides a clean and
  * efficient C/C++ API for halo exchange for structured grids. It supports halo exchange across the partition boundaries as specified by the user.
- * It comes with an API for one dimension, Tausch1D (work in progress), for two dimensions, Tausch2D, and for three dimensions, Tausch3D (work in
- * progress). The C API is a simple wrapper to the C++ API, taking advantage of the polymorphism of C++. Thus, there is one C wrapper, \link ctausch.h CTausch\endlink, for
- * all three versions of Tausch, that can be chosen by a simple macro in the constructor.
+ * It comes with an API for one dimension, Tausch1D, for two dimensions, Tausch2D, and for three dimensions, Tausch3D. The C API is a simple wrapper
+ * to the C++ API, taking advantage of the polymorphism of C++. Thus, for all three versions of Tausch there
+ * is one C wrapper for each datatype (differentiated by a suffix), e.g., \link ctauschdouble.h CTauschDouble\endlink for the double datatype.
  *
  * The interface is contained within a single header file \em tausch.h for both the C and C++ APIs. Nothing additional is required other than linking
- * against the %Tausch library. Both the C and C++ bindings are very similar. The underlying C++ API is documented here in detail, the C API works
- * equivalently, with the object being called %CTausch and any method having the prefix 'tausch_'.
+ * against the %Tausch library. Both the C and C++ bindings are very similar. Both the underlying C++ API, and the C wrapper API are documented here
+ * in detail.
  *
  * \em Note: %Tausch requires C++11 support to work!
  *
@@ -71,6 +77,28 @@
 
 #ifndef TAUSCH_H
 #define TAUSCH_H
+
+/*!
+ * An enum to choose at runtime which version of Tausch to use: 1D, 2D or 3D. This enum is only used for the C API!
+ */
+enum TauschVersion {
+    TAUSCH_1D,
+    TAUSCH_2D,
+    TAUSCH_3D
+};
+
+/*!
+ * These are the edges available for inter-MPI halo exchanges: LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK. Depending on the dimensionality of the use
+ * case, not all might be available for use.
+ */
+enum TauschEdges { TAUSCH_LEFT, TAUSCH_RIGHT, TAUSCH_TOP, TAUSCH_BOTTOM, TAUSCH_FRONT, TAUSCH_BACK };
+
+/*!
+ * These are the three dimensions that can be used with Tausch, providing better clarity as to which array entry is which dimension: X, Y, Z.
+ * Depending on the dimensionality of the use case, not all might be available for use.
+ */
+enum TauschDimensions { TAUSCH_X, TAUSCH_Y, TAUSCH_Z };
+
 
 #include "modules/tausch1d.h"
 #include "modules/tausch2d.h"

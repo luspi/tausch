@@ -2,6 +2,12 @@
  * \file
  * \author  Lukas Spies <LSpies@illinois.edu>
  * \version 1.0
+ *
+ * \brief
+ *  Three-dimensional halo exchange library.
+ *
+ *  A library providing a clean and efficient interface for halo exchange in Three dimensions.
+ *
  */
 
 #ifndef TAUSCH3D_H
@@ -10,19 +16,6 @@
 #include "tausch.h"
 #include <mpi.h>
 #include <iostream>
-
-#ifndef TAUSCH_ENUM
-#define TAUSCH_ENUM
-/*!
- * These are the edges available for inter-MPI halo exchanges: LEFT, RIGHT, TOP, BOTTOM.
- */
-enum Edges { TAUSCH_LEFT, TAUSCH_RIGHT, TAUSCH_TOP, TAUSCH_BOTTOM, TAUSCH_FRONT, TAUSCH_BACK };
-
-/*!
- * These are the two dimensions used, used for clarity as to which array entry is which dimension: X, Y.
- */
-enum Dimensions { TAUSCH_X, TAUSCH_Y, TAUSCH_Z };
-#endif // TAUSCH_ENUM
 
 /*!
  *

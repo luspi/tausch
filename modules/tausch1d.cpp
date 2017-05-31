@@ -1,3 +1,4 @@
+#include "../tausch.h"
 #include "tausch1d.h"
 
 template <class real_t> Tausch1D<real_t>::Tausch1D(int *localDim, int *haloWidth, int numBuffers, int valuesPerPoint, MPI_Comm comm) {
