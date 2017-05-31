@@ -117,7 +117,7 @@ template <class real_t> void Tausch2D<real_t>::packNextSendBuffer(int id, real_t
 template <class real_t> void Tausch2D<real_t>::send(int id) {
 
     if(numBuffersPacked[id] != numBuffers) {
-        std::cerr << "Tausch2D: ERROR: halo part " << id << " has " << numBuffersPacked[id] << " out of "
+        std::cerr << "[Tausch2D] ERROR: halo part " << id << " has " << numBuffersPacked[id] << " out of "
                   << numBuffers << " send buffers packed... Abort!" << std::endl;
         exit(1);
     }

@@ -10,7 +10,7 @@ CTausch *tausch_new(int *localDim, int *haloWidth, int numBuffers, int valuesPer
                     MPI_Comm comm, TAUSCH_VERSION version, TAUSCH_DATATYPE datatype) {
 
     if(version != TAUSCH_1D && version != TAUSCH_2D && version != TAUSCH_3D) {
-        std::cerr << "[CTausch] ERROR! Invalid version specified: " << version << " - Abort..." << std::endl;
+        std::cerr << "[CTausch] ERROR: Invalid version specified: " << version << " - Abort..." << std::endl;
         exit(1);
     }
 
@@ -107,7 +107,7 @@ CTausch *tausch_new(int *localDim, int *haloWidth, int numBuffers, int valuesPer
 
     } else {
 
-        std::cerr << "[CTausch] ERROR! Invalid data type specified: " << datatype << " - Abort..." << std::endl;
+        std::cerr << "[CTausch] ERROR: Invalid data type specified: " << datatype << " - Abort..." << std::endl;
         exit(1);
 
     }
