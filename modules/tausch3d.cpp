@@ -104,10 +104,14 @@ template <class real_t> void Tausch3D<real_t>::packNextSendBuffer(int id, real_t
 
     int size = localHaloSpecs[id][3] * localHaloSpecs[id][4] * localHaloSpecs[id][5];
     for(int s = 0; s < size; ++s) {
-//        int index = (s/localHaloSpecs[id][2] + localHaloSpecs[id][1])*(localDim[TAUSCH_X] + haloWidth[TAUSCH_LEFT] + haloWidth[TAUSCH_RIGHT]) +
-//                    s%localHaloSpecs[id][2] + localHaloSpecs[id][0];
-//        for(int val = 0; val < valuesPerPoint; ++val)
-//            mpiSendBuffer[id][numBuffersPacked[id]*valuesPerPoint*size + valuesPerPoint*s + val] = buf[valuesPerPoint*index + val];
+        int index = (s/(localHaloSpecs[id][3]*localHaloSpecs[id][4]) + localHaloSpecs[id][2]) *
+                        (haloWidth[TAUSCH_LEFT]+localDim[TAUSCH_X]+haloWidth[TAUSCH_RIGHT])*
+                        (haloWidth[TAUSCH_BOTTOM]+localDim[TAUSCH_Y]+haloWidth[TAUSCH_TOP]) +
+                    ((s%(localHaloSpecs[id][3]*localHaloSpecs[id][4]))/localHaloSpecs[id][3] + localHaloSpecs[id][1]) *
+                        (haloWidth[TAUSCH_LEFT]+localDim[TAUSCH_X]+haloWidth[TAUSCH_RIGHT]) +
+                    s%localHaloSpecs[id][3] + localHaloSpecs[id][0];
+        for(int val = 0; val < valuesPerPoint; ++val)
+            mpiSendBuffer[id][numBuffersPacked[id]*valuesPerPoint*size + valuesPerPoint*s + val] = buf[valuesPerPoint*index + val];
     }
     ++numBuffersPacked[id];
 
@@ -132,12 +136,16 @@ template <class real_t> void Tausch3D<real_t>::recv(int id) {
 
 template <class real_t> void Tausch3D<real_t>::unpackNextRecvBuffer(int id, real_t *buf) {
 
-    int size = remoteHaloSpecs[id][3] * remoteHaloSpecs[id][4] * localHaloSpecs[id][5];
+    int size = remoteHaloSpecs[id][3] * remoteHaloSpecs[id][4] * remoteHaloSpecs[id][5];
     for(int s = 0; s < size; ++s) {
-//        int index = (s/remoteHaloSpecs[id][2] + remoteHaloSpecs[id][1])*(localDim[TAUSCH_X] + haloWidth[TAUSCH_LEFT] + haloWidth[TAUSCH_RIGHT]) +
-//                    s%remoteHaloSpecs[id][2] + remoteHaloSpecs[id][0];
-//        for(int val = 0; val < valuesPerPoint; ++val)
-//            buf[valuesPerPoint*index + val] = mpiRecvBuffer[id][numBuffersUnpacked[id]*valuesPerPoint*size + valuesPerPoint*s + val];
+        int index = (s/(remoteHaloSpecs[id][3]*remoteHaloSpecs[id][4]) + remoteHaloSpecs[id][2]) *
+                        (haloWidth[TAUSCH_LEFT]+localDim[TAUSCH_X]+haloWidth[TAUSCH_RIGHT])*
+                        (haloWidth[TAUSCH_BOTTOM]+localDim[TAUSCH_Y]+haloWidth[TAUSCH_TOP]) +
+                    ((s%(remoteHaloSpecs[id][3]*remoteHaloSpecs[id][4]))/remoteHaloSpecs[id][3] + remoteHaloSpecs[id][1]) *
+                        (haloWidth[TAUSCH_LEFT]+localDim[TAUSCH_X]+haloWidth[TAUSCH_RIGHT]) +
+                    s%remoteHaloSpecs[id][3] + remoteHaloSpecs[id][0];
+        for(int val = 0; val < valuesPerPoint; ++val)
+            buf[valuesPerPoint*index + val] = mpiRecvBuffer[id][numBuffersUnpacked[id]*valuesPerPoint*size + valuesPerPoint*s + val];
     }
     ++numBuffersUnpacked[id];
 
