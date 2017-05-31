@@ -8,106 +8,110 @@ extern "C" {
 
 CTausch *tausch_new(int *localDim, int *haloWidth, int numBuffers, int valuesPerPoint,
                     MPI_Comm comm, TAUSCH_VERSION version, TAUSCH_DATATYPE datatype) {
-    if(version == TAUSCH_1D) {
-        if(datatype == TAUSCH_DOUBLE){
-            Tausch<double> *t;
-            t = new Tausch1D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else if(datatype == TAUSCH_FLOAT) {
-            Tausch<float> *t;
-            t = new Tausch1D<float>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else if(datatype == TAUSCH_INT) {
-            Tausch<int> *t;
-            t = new Tausch1D<int>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else if(datatype == TAUSCH_UNSIGNED_INT) {
-            Tausch<unsigned int> *t;
-            t = new Tausch1D<unsigned int>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else if(datatype == TAUSCH_LONG) {
-            Tausch<long> *t;
-            t = new Tausch1D<long>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else if(datatype == TAUSCH_LONG_LONG) {
-            Tausch<long long> *t;
-            t = new Tausch1D<long long>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else if(datatype == TAUSCH_LONG_DOUBLE) {
-            Tausch<long double> *t;
-            t = new Tausch1D<long double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else {
-            std::cerr << "ERROR! Invalid data type specified: " << datatype << " - Abort..." << std::endl;
-            exit(1);
-        }
-    } else if(version == TAUSCH_2D) {
-        if(datatype == TAUSCH_DOUBLE) {
-            Tausch<double> *t;
-            t = new Tausch2D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else if(datatype == TAUSCH_FLOAT) {
-            Tausch<float> *t;
-            t = new Tausch2D<float>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else if(datatype == TAUSCH_INT) {
-            Tausch<int> *t;
-            t = new Tausch2D<int>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else if(datatype == TAUSCH_UNSIGNED_INT) {
-            Tausch<unsigned int> *t;
-            t = new Tausch2D<unsigned int>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else if(datatype == TAUSCH_LONG) {
-            Tausch<long> *t;
-            t = new Tausch2D<long>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else if(datatype == TAUSCH_LONG_LONG) {
-            Tausch<long long> *t;
-            t = new Tausch2D<long long>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else if(datatype == TAUSCH_LONG_DOUBLE) {
-            Tausch<long double> *t;
-            t = new Tausch2D<long double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-            return reinterpret_cast<CTausch*>(t);
-        } else {
-            std::cerr << "ERROR! Invalid data type specified: " << datatype << " - Abort..." << std::endl;
-            exit(1);
-        }
-    } else if(version == TAUSCH_3D) {
-//        if(datatype == TAUSCH_DOUBLE) {
-//            Tausch<double> *t;
-//            t = new Tausch3D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-//            return reinterpret_cast<CTausch*>(t);
-//        } else if(datatype == TAUSCH_FLOAT) {
-//            Tausch<float> *t;
-//            t = new Tausch3D<float>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-//            return reinterpret_cast<CTausch*>(t);
-//        } else if(datatype == TAUSCH_INT) {
-//            Tausch<int> *t;
-//            t = new Tausch3D<int>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-//            return reinterpret_cast<CTausch*>(t);
-//        } else if(datatype == TAUSCH_UNSIGNED_INT) {
-//            Tausch<unsigned int> *t;
-//            t = new Tausch3D<unsigned int>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-//            return reinterpret_cast<CTausch*>(t);
-//        } else if(datatype == TAUSCH_LONG) {
-//            Tausch<long> *t;
-//            t = new Tausch3D<long>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-//            return reinterpret_cast<CTausch*>(t);
-//        } else if(datatype == TAUSCH_LONG_LONG) {
-//            Tausch<long long> *t;
-//            t = new Tausch3D<long long>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-//            return reinterpret_cast<CTausch*>(t);
-//        } else if(datatype == TAUSCH_LONG_DOUBLE) {
-//            Tausch<long double> *t;
-//            t = new Tausch3D<long double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-//            return reinterpret_cast<CTausch*>(t);
-//        } else {
-//            std::cerr << "ERROR! Invalid data type specified: " << datatype << " - Abort..." << std::endl;
-//            exit(1);
-//        }
+
+    if(version != TAUSCH_1D && version != TAUSCH_2D && version != TAUSCH_3D) {
+        std::cerr << "[CTausch] ERROR! Invalid version specified: " << version << " - Abort..." << std::endl;
+        exit(1);
     }
+
+    if(datatype == TAUSCH_DOUBLE){
+
+        Tausch<double> *t;
+
+        if(version == TAUSCH_1D)
+            t = new Tausch1D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_2D)
+            t = new Tausch2D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_3D)
+            t = new Tausch3D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+
+        return reinterpret_cast<CTausch*>(t);
+
+    } else if(datatype == TAUSCH_FLOAT) {
+
+        Tausch<float> *t;
+
+        if(version == TAUSCH_1D)
+            t = new Tausch1D<float>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_2D)
+            t = new Tausch2D<float>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_3D)
+            t = new Tausch3D<float>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+
+        return reinterpret_cast<CTausch*>(t);
+
+    } else if(datatype == TAUSCH_INT) {
+
+        Tausch<int> *t;
+
+        if(version == TAUSCH_1D)
+            t = new Tausch1D<int>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_2D)
+            t = new Tausch2D<int>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_3D)
+            t = new Tausch3D<int>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+
+        return reinterpret_cast<CTausch*>(t);
+
+    } else if(datatype == TAUSCH_UNSIGNED_INT) {
+
+        Tausch<unsigned int> *t;
+
+        if(version == TAUSCH_1D)
+            t = new Tausch1D<unsigned int>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_2D)
+            t = new Tausch2D<unsigned int>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_3D)
+            t = new Tausch3D<unsigned int>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+
+        return reinterpret_cast<CTausch*>(t);
+
+    } else if(datatype == TAUSCH_LONG) {
+
+        Tausch<long> *t;
+
+        if(version == TAUSCH_1D)
+            t = new Tausch1D<long>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_2D)
+            t = new Tausch2D<long>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_3D)
+            t = new Tausch3D<long>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+
+        return reinterpret_cast<CTausch*>(t);
+
+    } else if(datatype == TAUSCH_LONG_LONG) {
+
+        Tausch<long long> *t;
+
+        if(version == TAUSCH_1D)
+            t = new Tausch1D<long long>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_2D)
+            t = new Tausch2D<long long>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_3D)
+            t = new Tausch3D<long long>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+
+        return reinterpret_cast<CTausch*>(t);
+
+    } else if(datatype == TAUSCH_LONG_DOUBLE) {
+
+        Tausch<long double> *t;
+
+        if(version == TAUSCH_1D)
+            t = new Tausch1D<long double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_2D)
+            t = new Tausch2D<long double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        else if(version == TAUSCH_3D)
+            t = new Tausch3D<long double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+
+        return reinterpret_cast<CTausch*>(t);
+
+    } else {
+
+        std::cerr << "[CTausch] ERROR! Invalid data type specified: " << datatype << " - Abort..." << std::endl;
+        exit(1);
+
+    }
+
 }
 
 void tausch_delete(CTausch *tC) {
