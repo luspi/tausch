@@ -44,7 +44,7 @@ template <class real_t> Tausch2D<real_t>::~Tausch2D() {
     delete[] numBuffersUnpacked;
 }
 
-template <class real_t> void Tausch2D<real_t>::setLocalHaloInfo(int numHaloParts, int **haloSpecs) {
+template <class real_t> void Tausch2D<real_t>::setCpuLocalHaloInfo(int numHaloParts, int **haloSpecs) {
 
     localHaloNumParts = numHaloParts;
     localHaloSpecs = new int*[numHaloParts];
@@ -54,20 +54,20 @@ template <class real_t> void Tausch2D<real_t>::setLocalHaloInfo(int numHaloParts
 
     for(int i = 0; i < numHaloParts; ++i) {
 
-        localHaloSpecs[i] = new int[5];
-        for(int j = 0; j < 5; ++j)
+        localHaloSpecs[i] = new int[6];
+        for(int j = 0; j < 6; ++j)
             localHaloSpecs[i][j] = haloSpecs[i][j];
 
         mpiSendBuffer[i] = new real_t[numBuffers*valuesPerPoint*haloSpecs[i][2]*haloSpecs[i][3]]{};
 
         int size = localHaloSpecs[i][2] * localHaloSpecs[i][3];
-        MPI_Send_init(&mpiSendBuffer[i][0], numBuffers*valuesPerPoint*size, mpiDatatype, localHaloSpecs[i][4], mpiRank, TAUSCH_COMM, &mpiSendRequests[i]);
+        MPI_Send_init(&mpiSendBuffer[i][0], numBuffers*valuesPerPoint*size, mpiDatatype, localHaloSpecs[i][4], haloSpecs[i][5], TAUSCH_COMM, &mpiSendRequests[i]);
 
     }
 
 }
 
-template <class real_t> void Tausch2D<real_t>::setRemoteHaloInfo(int numHaloParts, int **haloSpecs) {
+template <class real_t> void Tausch2D<real_t>::setCpuRemoteHaloInfo(int numHaloParts, int **haloSpecs) {
 
     remoteHaloNumParts = numHaloParts;
     remoteHaloSpecs = new int*[numHaloParts];
@@ -77,21 +77,21 @@ template <class real_t> void Tausch2D<real_t>::setRemoteHaloInfo(int numHaloPart
 
     for(int i = 0; i < numHaloParts; ++i) {
 
-        remoteHaloSpecs[i] = new int[5];
-        for(int j = 0; j < 5; ++j)
+        remoteHaloSpecs[i] = new int[6];
+        for(int j = 0; j < 6; ++j)
             remoteHaloSpecs[i][j] = haloSpecs[i][j];
 
         mpiRecvBuffer[i] = new real_t[numBuffers*valuesPerPoint*haloSpecs[i][2]*haloSpecs[i][3]]{};
 
         int size = remoteHaloSpecs[i][2] * remoteHaloSpecs[i][3];
         int sender = remoteHaloSpecs[i][4];
-        MPI_Recv_init(&mpiRecvBuffer[i][0], numBuffers*valuesPerPoint*size, mpiDatatype, sender, sender, TAUSCH_COMM, &mpiRecvRequests[i]);
+        MPI_Recv_init(&mpiRecvBuffer[i][0], numBuffers*valuesPerPoint*size, mpiDatatype, sender, haloSpecs[i][5], TAUSCH_COMM, &mpiRecvRequests[i]);
 
     }
 
 }
 
-template <class real_t> void Tausch2D<real_t>::postReceives() {
+template <class real_t> void Tausch2D<real_t>::postMpiReceives() {
 
     for(int rem = 0; rem < remoteHaloNumParts; ++rem)
         MPI_Start(&mpiRecvRequests[rem]);
@@ -105,7 +105,7 @@ template <class real_t> void Tausch2D<real_t>::packNextSendBuffer(int id, real_t
 
     int size = localHaloSpecs[id][2] * localHaloSpecs[id][3];
     for(int s = 0; s < size; ++s) {
-        int index = (s/localHaloSpecs[id][2] + localHaloSpecs[id][1])*(localDim[::Tausch::X] + haloWidth[::Tausch::LEFT] + haloWidth[::Tausch::RIGHT]) +
+        int index = (s/localHaloSpecs[id][2] + localHaloSpecs[id][1])*(localDim[TX] + haloWidth[TLEFT] + haloWidth[TRIGHT]) +
                     s%localHaloSpecs[id][2] + localHaloSpecs[id][0];
         for(int val = 0; val < valuesPerPoint; ++val)
             mpiSendBuffer[id][numBuffersPacked[id]*valuesPerPoint*size + valuesPerPoint*s + val] = buf[valuesPerPoint*index + val];
@@ -135,7 +135,7 @@ template <class real_t> void Tausch2D<real_t>::unpackNextRecvBuffer(int id, real
 
     int size = remoteHaloSpecs[id][2] * remoteHaloSpecs[id][3];
     for(int s = 0; s < size; ++s) {
-        int index = (s/remoteHaloSpecs[id][2] + remoteHaloSpecs[id][1])*(localDim[::Tausch::X] + haloWidth[::Tausch::LEFT] + haloWidth[::Tausch::RIGHT]) +
+        int index = (s/remoteHaloSpecs[id][2] + remoteHaloSpecs[id][1])*(localDim[TX] + haloWidth[TLEFT] + haloWidth[TRIGHT]) +
                     s%remoteHaloSpecs[id][2] + remoteHaloSpecs[id][0];
         for(int val = 0; val < valuesPerPoint; ++val)
             buf[valuesPerPoint*index + val] = mpiRecvBuffer[id][numBuffersUnpacked[id]*valuesPerPoint*size + valuesPerPoint*s + val];
