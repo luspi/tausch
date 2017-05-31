@@ -8,11 +8,11 @@ extern "C" {
 
 CTausch *tausch_new(int *localDim, int *haloWidth, int numBuffers, int valuesPerPoint, MPI_Comm comm, TAUSCH_VERSION version) {
     Tausch<double> *t;
-//    if(version == TAUSCH_1D_VERSION)
-//        t = new Tausch1D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-    if(version == TAUSCH_2D_VERSION)
+    if(version == TAUSCH_1D_VERSION)
+        t = new Tausch1D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+    else if(version == TAUSCH_2D_VERSION)
         t = new Tausch2D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
-//    if(version == TAUSCH_3D_VERSION)
+//    else if(version == TAUSCH_3D_VERSION)
 //        t = new Tausch3D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
     return reinterpret_cast<CTausch*>(t);
 }
