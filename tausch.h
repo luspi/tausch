@@ -23,7 +23,8 @@
  * Tausch (pronounced:\htmlonly [ta&upsilon;&#x0283;\endhtmlonly\latexonly [ta\textipa{uS}\endlatexonly]) is a library that provides a clean and
  * efficient C/C++ API for halo exchange for structured grids. It supports halo exchange across the partition boundaries as specified by the user.
  * It comes with an API for one dimension, Tausch1D (work in progress), for two dimensions, Tausch2D, and for three dimensions, Tausch3D (work in
- * progress). The C API is a simple wrapper to the C++ API and also comes in three flavours, CTausch1D, CTausch2D, and CTausch3D.
+ * progress). The C API is a simple wrapper to the C++ API, taking advantage of the polymorphism of C++. Thus, there is one C wrapper, \link ctausch.h CTausch\endlink, for
+ * all three versions of Tausch, that can be chosen by a simple macro in the constructor.
  *
  * The interface is contained within a single header file \em tausch.h for both the C and C++ APIs. Nothing additional is required other than linking
  * against the %Tausch library. Both the C and C++ bindings are very similar. The underlying C++ API is documented here in detail, the C API works

@@ -32,7 +32,8 @@ enum Dimensions { TAUSCH_X, TAUSCH_Y, TAUSCH_Z };
  * %Tausch2D is a library that provides a clean and efficient C and C++ API for halo exchange for two dimensional domains. It doesn't assume
  * anything about the grid, except that the data is stored in one contiguous buffer. After specifying the local and remote halo regions, it takes care
  * of extracting the data for each halo from as many buffers as there are, sends the data for each halo combined into a single message each, and
- * unpacks the received data into the same number of buffers again.
+ * unpacks the received data into the same number of buffers again. This is a template class and can be used with any of the following data types:
+ * double, float, int, unsigned int, long, long long, long double.
  */
 template <class real_t>
 class Tausch2D : public Tausch<real_t> {
@@ -126,10 +127,10 @@ public:
     void recv(int id);
 
     /*!
-     * This unpacks the next buffer from the received message. This has to be called as many times as there are buffers.
+     * This unpacks the next halo from the received message into the provided buffer. This has to be called as many times as there are buffers.
      * \param id
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
-     * \param buf
+     * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
     void unpackNextRecvBuffer(int id, real_t *buf);
@@ -147,7 +148,7 @@ public:
      * all with one call.
      * \param id
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
-     * \param buf
+     * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
     void recvAndUnpack(int id, real_t *buf);

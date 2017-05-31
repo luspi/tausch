@@ -7,7 +7,9 @@
 #endif
 
 /*!
+ *
  * \internal
+ *
  * \brief
  * Virtual API, allowing runtime choice of 1D, 2D or 3D version.
  *
