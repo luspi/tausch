@@ -57,10 +57,10 @@
  * data passed on, i.e., the buffer can be changed should that be required, as long as the discretisation is kept the same.
  *
  * \section code Code snippet
- * Here you can find a short code that uses %Tausch for a halo exchange in two dimensions across a structured grid, i.e., it always has four
- * neighbours (left, right, top, bottom) and if it is along the domain boundary it wraps around to the opposite end again (periodic boundary
- * conditions). It shows how to use %Tausch with two buffers over the same domain. It also makes use of the diagonal trick to send halo data
- * diagonally across its corners (left/right before top/bottom). At the end it outputs the required runtime.
+ * Here you can find a short code that uses %Tausch for a halo exchange in two dimensions across a structured grid. For simplicity, we will only
+ * perform a halo exchange to the right, across the right edge. If the right edge is along the domain boundary it wraps around to the opposite end
+ * again (periodic boundary conditions). It shows how to use %Tausch with two buffers over the same domain. At the end it outputs the required
+ * runtime.
  *
  * \includelineno samplecode.cpp
  *
