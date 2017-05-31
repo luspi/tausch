@@ -47,7 +47,7 @@ template <class real_t> Tausch3D<real_t>::~Tausch3D() {
     delete[] numBuffersUnpacked;
 }
 
-template <class real_t> void Tausch3D<real_t>::setCpuLocalHaloInfo(int numHaloParts, int **haloSpecs) {
+template <class real_t> void Tausch3D<real_t>::setLocalHaloInfoCpu(int numHaloParts, int **haloSpecs) {
 
     localHaloNumParts = numHaloParts;
     localHaloSpecs = new int*[numHaloParts];
@@ -70,7 +70,7 @@ template <class real_t> void Tausch3D<real_t>::setCpuLocalHaloInfo(int numHaloPa
 
 }
 
-template <class real_t> void Tausch3D<real_t>::setCpuRemoteHaloInfo(int numHaloParts, int **haloSpecs) {
+template <class real_t> void Tausch3D<real_t>::setRemoteHaloInfoCpu(int numHaloParts, int **haloSpecs) {
 
     remoteHaloNumParts = numHaloParts;
     remoteHaloSpecs = new int*[numHaloParts];
@@ -93,14 +93,14 @@ template <class real_t> void Tausch3D<real_t>::setCpuRemoteHaloInfo(int numHaloP
 
 }
 
-template <class real_t> void Tausch3D<real_t>::postMpiReceives() {
+template <class real_t> void Tausch3D<real_t>::postReceivesCpu() {
 
     for(int rem = 0; rem < remoteHaloNumParts; ++rem)
         MPI_Start(&mpiRecvRequests[rem]);
 
 }
 
-template <class real_t> void Tausch3D<real_t>::packNextSendBuffer(int id, real_t *buf) {
+template <class real_t> void Tausch3D<real_t>::packNextSendBufferCpu(int id, real_t *buf) {
 
     if(numBuffersPacked[id] == numBuffers)
         numBuffersPacked[id] = 0;
@@ -120,7 +120,7 @@ template <class real_t> void Tausch3D<real_t>::packNextSendBuffer(int id, real_t
 
 }
 
-template <class real_t> void Tausch3D<real_t>::send(int id) {
+template <class real_t> void Tausch3D<real_t>::sendCpu(int id) {
 
     if(numBuffersPacked[id] != numBuffers) {
         std::cerr << "[Tausch3D] ERROR: halo part " << id << " has " << numBuffersPacked[id] << " out of "
@@ -132,12 +132,12 @@ template <class real_t> void Tausch3D<real_t>::send(int id) {
 
 }
 
-template <class real_t> void Tausch3D<real_t>::recv(int id) {
+template <class real_t> void Tausch3D<real_t>::recvCpu(int id) {
     numBuffersUnpacked[id] = 0;
     MPI_Wait(&mpiRecvRequests[id], MPI_STATUS_IGNORE);
 }
 
-template <class real_t> void Tausch3D<real_t>::unpackNextRecvBuffer(int id, real_t *buf) {
+template <class real_t> void Tausch3D<real_t>::unpackNextRecvBufferCpu(int id, real_t *buf) {
 
     int size = remoteHaloSpecs[id][3] * remoteHaloSpecs[id][4] * remoteHaloSpecs[id][5];
     for(int s = 0; s < size; ++s) {
@@ -154,14 +154,14 @@ template <class real_t> void Tausch3D<real_t>::unpackNextRecvBuffer(int id, real
 
 }
 
-template <class real_t> void Tausch3D<real_t>::packAndSend(int id, real_t *buf) {
-    packNextSendBuffer(id, buf);
-    send(id);
+template <class real_t> void Tausch3D<real_t>::packAndSendCpu(int id, real_t *buf) {
+    packNextSendBufferCpu(id, buf);
+    sendCpu(id);
 }
 
-template <class real_t> void Tausch3D<real_t>::recvAndUnpack(int id, real_t *buf) {
-    recv(id);
-    unpackNextRecvBuffer(id, buf);
+template <class real_t> void Tausch3D<real_t>::recvAndUnpackCpu(int id, real_t *buf) {
+    recvCpu(id);
+    unpackNextRecvBufferCpu(id, buf);
 }
 
 template class Tausch3D<double>;

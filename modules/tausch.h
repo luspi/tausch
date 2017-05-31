@@ -39,7 +39,7 @@ public:
      * \param haloSpecs
      *  The specifications of the local halo regions.
      */
-    virtual void setCpuLocalHaloInfo(int numHaloParts, int **haloSpecs) = 0;
+    virtual void setLocalHaloInfoCpu(int numHaloParts, int **haloSpecs) = 0;
     /*!
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.
@@ -48,44 +48,12 @@ public:
      * \param haloSpecs
      *  The specifications of the remote halo regions.
      */
-    virtual void setCpuRemoteHaloInfo(int numHaloParts, int **haloSpecs) = 0;
+    virtual void setRemoteHaloInfoCpu(int numHaloParts, int **haloSpecs) = 0;
     /*!
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.
      */
-    virtual void postMpiReceives() = 0;
-    /*!
-     * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
-     * respective class.
-     * \param id
-     *  The id of the local halo region.
-     * \param buf
-     *  The buffer from where to extract the halo data from.
-     */
-    virtual void packNextSendBuffer(int id, real_t *buf) = 0;
-    /*!
-     * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
-     * respective class.
-     * \param id
-     *  The id of the local halo region.
-     */
-    virtual void send(int id) = 0;
-    /*!
-     * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
-     * respective class.
-     * \param id
-     *  The id of the remote halo region.
-     */
-    virtual void recv(int id) = 0;
-    /*!
-     * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
-     * respective class.
-     * \param id
-     *  The id of the remote halo region.
-     * \param buf
-     *  The buffer to where to extract the halo data to.
-     */
-    virtual void unpackNextRecvBuffer(int id, real_t *buf) = 0;
+    virtual void postReceivesCpu() = 0;
     /*!
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.
@@ -94,7 +62,21 @@ public:
      * \param buf
      *  The buffer from where to extract the halo data from.
      */
-    virtual void packAndSend(int id, real_t *buf) = 0;
+    virtual void packNextSendBufferCpu(int id, real_t *buf) = 0;
+    /*!
+     * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
+     * respective class.
+     * \param id
+     *  The id of the local halo region.
+     */
+    virtual void sendCpu(int id) = 0;
+    /*!
+     * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
+     * respective class.
+     * \param id
+     *  The id of the remote halo region.
+     */
+    virtual void recvCpu(int id) = 0;
     /*!
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.
@@ -103,7 +85,25 @@ public:
      * \param buf
      *  The buffer to where to extract the halo data to.
      */
-    virtual void recvAndUnpack(int id, real_t *buf) = 0;
+    virtual void unpackNextRecvBufferCpu(int id, real_t *buf) = 0;
+    /*!
+     * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
+     * respective class.
+     * \param id
+     *  The id of the local halo region.
+     * \param buf
+     *  The buffer from where to extract the halo data from.
+     */
+    virtual void packAndSendCpu(int id, real_t *buf) = 0;
+    /*!
+     * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
+     * respective class.
+     * \param id
+     *  The id of the remote halo region.
+     * \param buf
+     *  The buffer to where to extract the halo data to.
+     */
+    virtual void recvAndUnpackCpu(int id, real_t *buf) = 0;
 
 };
 

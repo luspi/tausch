@@ -75,7 +75,7 @@ public:
      *   7. The receiving processor
      *   8. A unique id that matches the id for the corresponding local halo region of the sending MPI rank.
      */
-    void setCpuLocalHaloInfo(int numHaloParts, int **haloSpecs);
+    void setLocalHaloInfoCpu(int numHaloParts, int **haloSpecs);
 
     /*!
      * Set the info about all remote halos that are needed by this MPI rank.
@@ -93,12 +93,12 @@ public:
      *   7. The sending processor
      *   8. A unique id that matches the id for the corresponding remote halo region of the receiving MPI rank.
      */
-    void setCpuRemoteHaloInfo(int numHaloParts, int **haloSpecs);
+    void setRemoteHaloInfoCpu(int numHaloParts, int **haloSpecs);
 
     /*!
      * Post all receives for the current MPI rank. This doesn't do anything else but call MPI_Start() and all MPI_Recv_init().
      */
-    void postMpiReceives();
+    void postReceivesCpu();
 
     /*!
      * This packs the next buffer for a send. This has to be called as many times as there are buffers before sending the message.
@@ -107,21 +107,21 @@ public:
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
      */
-    void packNextSendBuffer(int id, real_t *buf);
+    void packNextSendBufferCpu(int id, real_t *buf);
 
     /*!
      * Sends off the send buffer for the specified halo region. This calls MPI_Start() on the respective MPI_Send_init().
      * \param id
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
      */
-    void send(int id);
+    void sendCpu(int id);
 
     /*!
      * Makes sure the MPI message for the specified halo is received by this buffer. It does not do anything with that message!
      * \param id
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
      */
-    void recv(int id);
+    void recvCpu(int id);
 
     /*!
      * This unpacks the next halo from the received message into the provided buffer. This has to be called as many times as there are buffers.
@@ -130,7 +130,7 @@ public:
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
-    void unpackNextRecvBuffer(int id, real_t *buf);
+    void unpackNextRecvBufferCpu(int id, real_t *buf);
 
     /*!
      * Shortcut function. If only one buffer is used, this will both pack the data out of the provided buffer and send it off, all with one call.
@@ -139,7 +139,7 @@ public:
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
      */
-    void packAndSend(int id, real_t *buf);
+    void packAndSendCpu(int id, real_t *buf);
     /*!
      * Shortcut function. If only one buffer is used, this will both receive the MPI message and unpack the received data into the provided buffer,
      * all with one call.
@@ -148,7 +148,7 @@ public:
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
-    void recvAndUnpack(int id, real_t *buf);
+    void recvAndUnpackCpu(int id, real_t *buf);
 
 private:
 

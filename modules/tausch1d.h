@@ -77,7 +77,7 @@ public:
      *   4. A unique id that matches the id for the corresponding local halo region of the sending MPI rank.
      *
      */
-    void setCpuLocalHaloInfo(int numHaloParts, int **haloSpecs);
+    void setLocalHaloInfoCpu(int numHaloParts, int **haloSpecs);
 
     /*!
      *
@@ -94,14 +94,14 @@ public:
      *   4. A unique id that matches the id for the corresponding remote halo region of the receiving MPI rank.
      *
      */
-    void setCpuRemoteHaloInfo(int numHaloParts, int **haloSpecs);
+    void setRemoteHaloInfoCpu(int numHaloParts, int **haloSpecs);
 
     /*!
      *
      * Post all MPI receives for the current MPI rank. This doesn't do anything else but call MPI_Start() and all MPI_Recv_init().
      *
      */
-    void postMpiReceives();
+    void postReceivesCpu();
 
     /*!
      *
@@ -113,7 +113,7 @@ public:
      *  The buffer from which the data is to be extracted according to the local halo specification.
      *
      */
-    void packNextSendBuffer(int id, real_t *buf);
+    void packNextSendBufferCpu(int id, real_t *buf);
 
     /*!
      *
@@ -123,7 +123,7 @@ public:
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
      *
      */
-    void send(int id);
+    void sendCpu(int id);
 
     /*!
      *
@@ -133,7 +133,7 @@ public:
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
      *
      */
-    void recv(int id);
+    void recvCpu(int id);
 
     /*!
      *
@@ -145,7 +145,7 @@ public:
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      *
      */
-    void unpackNextRecvBuffer(int id, real_t *buf);
+    void unpackNextRecvBufferCpu(int id, real_t *buf);
 
     /*!
      *
@@ -157,7 +157,7 @@ public:
      *  The buffer from which the data is to be extracted according to the local halo specification.
      *
      */
-    void packAndSend(int id, real_t *buf);
+    void packAndSendCpu(int id, real_t *buf);
     /*!
      *
      * Shortcut function. If only one buffer is used, this will both receive the MPI message and unpack the received data into the provided buffer,
@@ -169,7 +169,7 @@ public:
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      *
      */
-    void recvAndUnpack(int id, real_t *buf);
+    void recvAndUnpackCpu(int id, real_t *buf);
 
 private:
 

@@ -33,47 +33,47 @@ void tausch_delete_double(CTauschDouble *tC) {
 
 void tausch_setCpuLocalHaloInfo_double(CTauschDouble *tC, int numHaloParts, int **haloSpecs) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->setCpuLocalHaloInfo(numHaloParts, haloSpecs);
+    t->setLocalHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
 void tausch_setCpuRemoteHaloInfo_double(CTauschDouble *tC, int numHaloParts, int **haloSpecs) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->setCpuRemoteHaloInfo(numHaloParts, haloSpecs);
+    t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
 void tausch_postMpiReceives_double(CTauschDouble *tC) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->postMpiReceives();
+    t->postReceivesCpu();
 }
 
 void tausch_packNextSendBuffer_double(CTauschDouble *tC, int id, double *buf) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->packNextSendBuffer(id, buf);
+    t->packNextSendBufferCpu(id, buf);
 }
 
 void tausch_send_double(CTauschDouble *tC, int id) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->send(id);
+    t->sendCpu(id);
 }
 
 void tausch_recv_double(CTauschDouble *tC, int id) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->recv(id);
+    t->recvCpu(id);
 }
 
 void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, int id, double *buf) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->unpackNextRecvBuffer(id, buf);
+    t->unpackNextRecvBufferCpu(id, buf);
 }
 
 void tausch_packAndSend_double(CTauschDouble *tC, int id, double *buf) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->packAndSend(id, buf);
+    t->packAndSendCpu(id, buf);
 }
 
 void tausch_recvAndUnpack_double(CTauschDouble *tC, int id, double *buf) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->recvAndUnpack(id, buf);
+    t->recvAndUnpackCpu(id, buf);
 }
 
 
