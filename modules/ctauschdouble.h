@@ -4,14 +4,14 @@
  * \version 1.0
  *
  * \brief
- *  C wrapper to C++ API.
+ *  C wrapper to C++ API, double datatype.
  *
- *  C wrapper to C++ API. It provides a single interface for all three versions (1D, 2D, 3D). It is possible to choose at runtime which version to use
- * (using enum).
+ *  C wrapper to C++ API, double datatype. It provides a single interface for all three versions (1D, 2D, 3D). It is possible to choose at runtime
+ *  which version to use (using enum).
  */
 
-#ifndef CTAUSCH2D_H
-#define CTAUSCH2D_H
+#ifndef CTAUSCH2DDOUBLE_H
+#define CTAUSCH2DDOUBLE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,37 +23,15 @@ extern "C" {
 #endif
 
 /*!
- * An enum to choose at runtime which version of Tausch to use: 1D, 2D or 3D.
+ *
+ * The object that is created by the C API is called CTauschDouble. After its creation it needs to be passed as parameter to any call to the API.
+ *
  */
-enum TAUSCH_VERSION {
-    TAUSCH_1D,
-    TAUSCH_2D,
-    TAUSCH_3D
-};
-
-/*!
- * An enum to choose at runtime which data typeto use with Tausch: double, float, int, unsigned int, long, long long, long double
- */
-enum TAUSCH_DATATYPE {
-    TAUSCH_DOUBLE,
-    TAUSCH_FLOAT,
-    TAUSCH_INT,
-    TAUSCH_UNSIGNED_INT,
-    TAUSCH_LONG,
-    TAUSCH_LONG_LONG,
-    TAUSCH_LONG_DOUBLE
-};
+typedef void* CTauschDouble;
 
 /*!
  *
- * The object that is created by the C API is called CTausch. After its creation it needs to be passed as parameter to any call to the API.
- *
- */
-typedef void* CTausch;
-
-/*!
- *
- * Create and return a new CTausch object.
+ * Create and return a new CTauschDouble object using the datatype double.
  *
  * \param localDim
  *  Array of size 1 to 3 holding the dimension(s) of the local partition (not the global dimensions), with the x dimension being the first value, the
@@ -69,37 +47,34 @@ typedef void* CTausch;
  *  How many values are stored consecutively per point in the same buffer. All points will have to have the same number of values stored for them.
  *  Typical value: 1
  * \param comm
- *  The MPI Communictor to be used. %CTausch will duplicate the communicator, thus it is safe to have multiple instances of %CTausch working
+ *  The MPI Communictor to be used. %CTauschDouble will duplicate the communicator, thus it is safe to have multiple instances of %CTauschDouble working
  *  with the same communicator. By default, MPI_COMM_WORLD will be used.
  * \param version
- *  Which version of CTausch to create. This depends on the dimensionality of the problem and can be any one of the enum TAUSCH_VERSION: TAUSCH_1D,
+ *  Which version of CTauschDouble to create. This depends on the dimensionality of the problem and can be any one of the enum TAUSCH_VERSION: TAUSCH_1D,
  *  TAUSCH_2D, or TAUSCH_3D.
- * \param datatype
- *  Which datatype to use with Tausch. This can be any one value of the TAUSCH_DATATYPE enum: TAUSCH_DOUBLE, TAUSCH_FLOAT, TAUSCH_INT,
- *  TAUSCH_UNSIGNED_INT, TAUSCH_LONG, TAUSCH_LONG_LONG, TAUSCH_LONG_DOUBLE
  *
  * \return
- *  Return the CTausch object created with the specified configuration.
+ *  Return the CTauschDouble object created with the specified configuration.
  *
  */
-CTausch *tausch_new(int *localDim, int *haloWidth, int numBuffers, int valuesPerPoint, MPI_Comm comm, TAUSCH_VERSION version, TAUSCH_DATATYPE datatype);
+CTauschDouble *tausch_new_double(int *localDim, int *haloWidth, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version);
 
 /*!
  *
- * Deletes the CTausch object, cleaning up all the memory.
+ * Deletes the CTauschDouble object, cleaning up all the memory.
  *
  * \param tC
- *  The CTausch object to be deleted.
+ *  The CTauschDouble object to be deleted.
  *
  */
-void tausch_delete(CTausch *tC);
+void tausch_delete_double(CTauschDouble *tC);
 
 /*!
  *
  * Set the info about all local halos that need to be sent to remote MPI ranks.
  *
  * \param tC
- *  The CTausch object to operate on.
+ *  The CTauschDouble object to operate on.
  * \param numHaloParts
  *  How many different parts there are to the halo
  * \param haloSpecs
@@ -116,14 +91,14 @@ void tausch_delete(CTausch *tC);
  *   8. A unique id that matches the id for the corresponding local halo region of the sending MPI rank.
  *
  */
-void tausch_setCpuLocalHaloInfo(CTausch *tC, int numHaloParts, int **haloSpecs);
+void tausch_setCpuLocalHaloInfo_double(CTauschDouble *tC, int numHaloParts, int **haloSpecs);
 
 /*!
  *
  * Set the info about all remote halos that are needed by this MPI rank.
  *
  * \param tC
- *  The CTausch object to operate on.
+ *  The CTauschDouble object to operate on.
  * \param numHaloParts
  *  How many different parts there are to the halo
  * \param haloSpecs
@@ -140,83 +115,83 @@ void tausch_setCpuLocalHaloInfo(CTausch *tC, int numHaloParts, int **haloSpecs);
  *   8. A unique id that matches the id for the corresponding remote halo region of the receiving MPI rank.
  *
  */
-void tausch_setCpuRemoteHaloInfo(CTausch *tC, int numHaloParts, int **haloSpecs);
+void tausch_setCpuRemoteHaloInfo_double(CTauschDouble *tC, int numHaloParts, int **haloSpecs);
 
 /*!
  *
  * Post all MPI receives for the current MPI rank. This doesn't do anything else but call MPI_Start() and all MPI_Recv_init().
  *
  * \param tC
- *  The CTausch object to operate on.
+ *  The CTauschDouble object to operate on.
  *
  */
-void tausch_postMpiReceives(CTausch *tC);
+void tausch_postMpiReceives_double(CTauschDouble *tC);
 
 /*!
  *
  * This packs the next buffer for a send. This has to be called as many times as there are buffers before sending the message.
  *
  * \param tC
- *  The CTausch object to operate on.
+ *  The CTauschDouble object to operate on.
  * \param id
  *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
  * \param buf
  *  The buffer from which the data is to be extracted according to the local halo specification.
  *
  */
-void tausch_packNextSendBuffer(CTausch *tC, int id, double *buf);
+void tausch_packNextSendBuffer_double(CTauschDouble *tC, int id, double *buf);
 
 /*!
  *
  * Sends off the send buffer for the specified halo region. This calls MPI_Start() on the respective MPI_Send_init().
  *
  * \param tC
- *  The CTausch object to operate on.
+ *  The CTauschDouble object to operate on.
  * \param id
  *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
  *
  */
-void tausch_send(CTausch *tC, int id);
+void tausch_send_double(CTauschDouble *tC, int id);
 
 /*!
  *
  * Makes sure the MPI message for the specified halo is received by this buffer. It does not do anything with that message!
  *
  * \param tC
- *  The CTausch object to operate on.
+ *  The CTauschDouble object to operate on.
  * \param id
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  *
  */
-void tausch_recv(CTausch *tC, int id);
+void tausch_recv_double(CTauschDouble *tC, int id);
 
 /*!
  *
  * This unpacks the next halo from the received message into provided buffer. This has to be called as many times as there are buffers.
  *
  * \param tC
- *  The CTausch object to operate on.
+ *  The CTauschDouble object to operate on.
  * \param id
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  * \param buf
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
  *
  */
-void tausch_unpackNextRecvBuffer(CTausch *tC, int id, double *buf);
+void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, int id, double *buf);
 
 /*!
  *
  * Shortcut function. If only one buffer is used, this will both pack the data out of the provided buffer and send it off, all with one call.
  *
  * \param tC
- *  The CTausch object to operate on.
+ *  The CTauschDouble object to operate on.
  * \param id
  *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
  * \param buf
  *  The buffer from which the data is to be extracted according to the local halo specification.
  *
  */
-void tausch_packAndSend(CTausch *tC, int id, double *buf);
+void tausch_packAndSend_double(CTauschDouble *tC, int id, double *buf);
 
 /*!
  *
@@ -224,18 +199,18 @@ void tausch_packAndSend(CTausch *tC, int id, double *buf);
  * all with one call.
  *
  * \param tC
- *  The CTausch object to operate on.
+ *  The CTauschDouble object to operate on.
  * \param id
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  * \param buf
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
  *
  */
-void tausch_recvAndUnpack(CTausch *tC, int id, double *buf);
+void tausch_recvAndUnpack_double(CTauschDouble *tC, int id, double *buf);
 
 #ifdef __cplusplus
 }
 #endif
 
 
-#endif // CTAUSCH2D_H
+#endif // CTAUSCH2DDOUBLE_H

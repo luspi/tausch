@@ -76,6 +76,8 @@
 #include "modules/tausch2d.h"
 #include "modules/tausch3d.h"
 
-#include "modules/ctausch.h"
+#include "modules/ctauschdouble.h"
+#include "modules/ctauschfloat.h"
+#include "modules/ctauschint.h"
 
 #endif // TAUSCH_H
