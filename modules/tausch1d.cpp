@@ -147,10 +147,21 @@ template <class real_t> void Tausch1D<real_t>::recvAndUnpackCpu(int id, real_t *
     unpackNextRecvBufferCpu(id, buf);
 }
 
-template class Tausch1D<double>;
-template class Tausch1D<float>;
+template class Tausch1D<char>;
+template class Tausch1D<char16_t>;
+template class Tausch1D<char32_t>;
+template class Tausch1D<wchar_t>;
+template class Tausch1D<signed char>;
+template class Tausch1D<short int>;
 template class Tausch1D<int>;
-template class Tausch1D<unsigned int>;
 template class Tausch1D<long>;
 template class Tausch1D<long long>;
+template class Tausch1D<unsigned char>;
+template class Tausch1D<unsigned short int>;
+template class Tausch1D<unsigned int>;
+template class Tausch1D<unsigned long>;
+template class Tausch1D<unsigned long long>;
+template class Tausch1D<float>;
+template class Tausch1D<double>;
 template class Tausch1D<long double>;
+template class Tausch1D<bool>;

@@ -26,7 +26,8 @@
  * anything about the grid, except that the data is stored in one contiguous buffer. After specifying the local and remote halo regions, it takes care
  * of extracting the data for each halo from as many buffers as there are, sends the data for each halo combined into a single message each, and
  * unpacks the received data into the same number of buffers again. This is a template class and can be used with any of the following data types:
- * double, float, int, unsigned int, long, long long, long double.
+ * char, char16_t, char32_t, wchar_t, signed char, short int, int, long, long long, unsigned char, unsigned short int, unsigned int, unsigned long,
+ * unsigned long long, float, double, long double, bool.
  */
 template <class real_t>
 class Tausch2D : public Tausch<real_t> {
@@ -42,6 +43,8 @@ public:
      * \param haloWidth
      *  Array of size 4 containing the widths of the CPU-to-CPU halos, i.e., the inter-MPI halo. The order in which the halo widths are expected to be
      *  stored is: LEFT -> RIGHT -> TOP -> BOTTOM
+     * \param mpiDataType
+     *  The MPI_Datatype corresponding to the datatype used for the template.
      * \param numBuffers
      *  The number of buffers that will be used. If more than one, they are all combined into one message. All buffers will have to use the same
      *  discretisation! Default value: 1
