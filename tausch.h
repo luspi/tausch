@@ -103,18 +103,6 @@
 #ifndef TAUSCH_H
 #define TAUSCH_H
 
-/*!
- * An enum to choose at runtime which version of Tausch to use: 1D, 2D or 3D. This enum is only used for the C API!
- */
-enum TauschVersion {
-    TAUSCH_1D,
-    TAUSCH_2D,
-    TAUSCH_3D
-};
-
-
-
-
 #include "modules/tausch1d.h"
 #include "modules/tausch2d.h"
 #include "modules/tausch3d.h"

@@ -22,6 +22,18 @@ extern "C" {
 #include <CL/cl.h>
 #endif
 
+#ifndef TAUSCHVERSIONDEF
+#define TAUSCHVERSIONDEF
+/*!
+ * An enum to choose at runtime which version of Tausch to use: 1D, 2D or 3D. This enum is only used for the C API!
+ */
+enum TauschVersion {
+    TAUSCH_1D,
+    TAUSCH_2D,
+    TAUSCH_3D
+};
+#endif // TAUSCHVERSIONDEF
+
 /*!
  *
  * The object that is created by the C API is called CTauschBool. After its creation it needs to be passed as parameter to any call to the API.

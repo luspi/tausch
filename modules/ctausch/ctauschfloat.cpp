@@ -1,4 +1,6 @@
-#include "../../tausch.h"
+#include "../tausch1d.h"
+#include "../tausch2d.h"
+#include "../tausch3d.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,7 +48,7 @@ void tausch_postReceiveCpu_float(CTauschFloat *tC, int id, int mpitag) {
     t->postReceiveCpu(id, mpitag);
 }
 
-void tausch_postAllReceivesCpu_float(CTauschUnsignedInt *tC, int *mpitag) {
+void tausch_postAllReceivesCpu_float(CTauschFloat *tC, int *mpitag) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
     t->postAllReceivesCpu(mpitag);
 }

@@ -1,4 +1,6 @@
-#include "../../tausch.h"
+#include "../tausch1d.h"
+#include "../tausch2d.h"
+#include "../tausch3d.h"
 
 #ifdef __cplusplus
 extern "C" {
