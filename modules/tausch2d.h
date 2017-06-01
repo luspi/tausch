@@ -17,6 +17,15 @@
 #include <mpi.h>
 #include <iostream>
 
+#ifndef TAUSCH_DIMENSIONS
+#define TAUSCH_DIMENSIONS
+/*!
+ * These are the three dimensions that can be used with Tausch, providing better clarity as to which array entry is which dimension: X, Y, Z.
+ * Depending on the dimensionality of the use case, not all might be available for use.
+ */
+enum TauschDimensions { TAUSCH_X, TAUSCH_Y, TAUSCH_Z };
+#endif // TAUSCH_DIMENSIONS
+
 /*!
  *
  * \brief
@@ -29,8 +38,8 @@
  * char, char16_t, char32_t, wchar_t, signed char, short int, int, long, long long, unsigned char, unsigned short int, unsigned int, unsigned long,
  * unsigned long long, float, double, long double, bool.
  */
-template <class real_t>
-class Tausch2D : public Tausch<real_t> {
+template <class buf_t>
+class Tausch2D : public Tausch<buf_t> {
 
 public:
 
@@ -39,10 +48,7 @@ public:
      *
      * \param localDim
      *  Array of size 2 holding the dimensions of the local partition (not the global dimensions), with the x dimension being the first value and the
-     *  y dimension being the second one.
-     * \param haloWidth
-     *  Array of size 4 containing the widths of the CPU-to-CPU halos, i.e., the inter-MPI halo. The order in which the halo widths are expected to be
-     *  stored is: LEFT -> RIGHT -> TOP -> BOTTOM
+     *  y dimension being the second one. Note: These dimensions <b>DO INCLUDE</b> the halo widths!
      * \param mpiDataType
      *  The MPI_Datatype corresponding to the datatype used for the template.
      * \param numBuffers
@@ -55,7 +61,7 @@ public:
      *  The MPI Communictor to be used. %Tausch2D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch2D working
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    Tausch2D(int *localDim, int *haloWidth, MPI_Datatype mpiDataType, int numBuffers = 1, int valuesPerPoint = 1, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch2D(int *localDim, MPI_Datatype mpiDataType, int numBuffers = 1, int valuesPerPoint = 1, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * The destructor cleaning up all memory.
@@ -115,7 +121,7 @@ public:
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
      */
-    void packNextSendBufferCpu(int id, real_t *buf);
+    void packNextSendBufferCpu(int id, buf_t *buf);
 
     /*!
      * Sends off the send buffer for the specified halo region. This calls MPI_Start() on the respective MPI_Send_init().
@@ -140,7 +146,7 @@ public:
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
-    void unpackNextRecvBufferCpu(int id, real_t *buf);
+    void unpackNextRecvBufferCpu(int id, buf_t *buf);
 
     /*!
      * Shortcut function. If only one buffer is used, this will both pack the data out of the provided buffer and send it off, all with one call.
@@ -151,7 +157,7 @@ public:
      * \param mpitag
      *  The mpitag to be used for this MPI_Isend().
      */
-    void packAndSendCpu(int id, int mpitag, real_t *buf);
+    void packAndSendCpu(int id, int mpitag, buf_t *buf);
     /*!
      * Shortcut function. If only one buffer is used, this will both receive the MPI message and unpack the received data into the provided buffer,
      * all with one call.
@@ -160,11 +166,11 @@ public:
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
-    void recvAndUnpackCpu(int id, real_t *buf);
+    void recvAndUnpackCpu(int id, buf_t *buf);
 
 private:
 
-    int localDim[2], haloWidth[4];
+    int localDim[2];
 
     MPI_Comm TAUSCH_COMM;
     int mpiRank, mpiSize;
@@ -177,8 +183,8 @@ private:
     int numBuffers;
     int valuesPerPoint;
 
-    real_t **mpiRecvBuffer;
-    real_t **mpiSendBuffer;
+    buf_t **mpiRecvBuffer;
+    buf_t **mpiSendBuffer;
     MPI_Request *mpiRecvRequests;
     MPI_Request *mpiSendRequests;
     MPI_Datatype mpiDataType;

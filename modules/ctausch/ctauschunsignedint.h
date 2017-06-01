@@ -57,7 +57,7 @@ typedef void* CTauschUnsignedInt;
  *  Return the CTauschUnsignedInt object created with the specified configuration.
  *
  */
-CTauschUnsignedInt *tausch_new_unsignedint(int *localDim, int *haloWidth, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version);
+CTauschUnsignedInt *tausch_new_unsignedint(int *localDim, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version);
 
 /*!
  *

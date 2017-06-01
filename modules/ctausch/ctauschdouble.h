@@ -57,7 +57,7 @@ typedef void* CTauschDouble;
  *  Return the CTauschDouble object created with the specified configuration.
  *
  */
-CTauschDouble *tausch_new_double(int *localDim, int *haloWidth, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version);
+CTauschDouble *tausch_new_double(int *localDim, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version);
 
 /*!
  *

@@ -27,7 +27,7 @@
  * Virtual API, allowing runtime choice of 1D, 2D or 3D version. For more details on the implementation of the various functions in the API refer to
  * the respective documentation of Tausch1D, Tausch2D, or Tausch3D.
  */
-template <class real_t>
+template <class buf_t>
 class Tausch {
 public:
     virtual ~Tausch() {}
@@ -63,7 +63,7 @@ public:
      * \param buf
      *  The buffer from where to extract the halo data from.
      */
-    virtual void packNextSendBufferCpu(int id, real_t *buf) = 0;
+    virtual void packNextSendBufferCpu(int id, buf_t *buf) = 0;
     /*!
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.
@@ -86,7 +86,7 @@ public:
      * \param buf
      *  The buffer to where to extract the halo data to.
      */
-    virtual void unpackNextRecvBufferCpu(int id, real_t *buf) = 0;
+    virtual void unpackNextRecvBufferCpu(int id, buf_t *buf) = 0;
     /*!
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.
@@ -95,7 +95,7 @@ public:
      * \param buf
      *  The buffer from where to extract the halo data from.
      */
-    virtual void packAndSendCpu(int id, int mpitag, real_t *buf) = 0;
+    virtual void packAndSendCpu(int id, int mpitag, buf_t *buf) = 0;
     /*!
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.
@@ -104,7 +104,7 @@ public:
      * \param buf
      *  The buffer to where to extract the halo data to.
      */
-    virtual void recvAndUnpackCpu(int id, real_t *buf) = 0;
+    virtual void recvAndUnpackCpu(int id, buf_t *buf) = 0;
 
 };
 

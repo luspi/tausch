@@ -53,9 +53,11 @@ install(TARGETS tausch_static DESTINATION "lib")
 
 # Install library headers
 install(FILES "tausch.h" DESTINATION "include/tausch")
-install(FILES "modules/tausch1d.h" "modules/tausch2d.h" "modules/tausch3d.h" "modules/ctausch/ctauschdouble.h" "modules/ctausch/ctauschfloat.h"
-        "modules/ctausch/ctauschint.h" "modules/ctausch/ctauschunsignedint.h" "modules/ctausch/ctauschbool.h" "modules/tausch.h"
+install(FILES "modules/tausch1d.h" "modules/tausch2d.h" "modules/tausch3d.h" "modules/tausch.h"
         DESTINATION "include/tausch/modules")
+install(FILES "modules/ctausch/ctauschdouble.h" "modules/ctausch/ctauschfloat.h" "modules/ctausch/ctauschint.h" "modules/ctausch/ctauschunsignedint.h"
+        "modules/ctausch/ctauschbool.h"
+        DESTINATION "include/tausch/modules/ctausch")
 
 # build documentation (if enabled)
 find_package(Doxygen)

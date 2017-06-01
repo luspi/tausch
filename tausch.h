@@ -115,17 +115,7 @@ enum TauschVersion {
     TAUSCH_3D
 };
 
-/*!
- * These are the edges available for inter-MPI halo exchanges: LEFT, RIGHT, TOP, BOTTOM, FRONT, BACK. Depending on the dimensionality of the use
- * case, not all might be available for use.
- */
-enum TauschEdges { TAUSCH_LEFT, TAUSCH_RIGHT, TAUSCH_TOP, TAUSCH_BOTTOM, TAUSCH_FRONT, TAUSCH_BACK };
 
-/*!
- * These are the three dimensions that can be used with Tausch, providing better clarity as to which array entry is which dimension: X, Y, Z.
- * Depending on the dimensionality of the use case, not all might be available for use.
- */
-enum TauschDimensions { TAUSCH_X, TAUSCH_Y, TAUSCH_Z };
 
 
 #include "modules/tausch1d.h"

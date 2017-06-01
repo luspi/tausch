@@ -6,7 +6,7 @@ extern "C" {
 
 #include "ctauschfloat.h"
 
-CTauschFloat *tausch_new_float(int *localDim, int *haloWidth, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version) {
+CTauschFloat *tausch_new_float(int *localDim, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version) {
 
     if(version != TAUSCH_1D && version != TAUSCH_2D && version != TAUSCH_3D) {
         std::cerr << "[CTauschFloat] ERROR: Invalid version specified: " << version << " - Abort..." << std::endl;
@@ -16,11 +16,11 @@ CTauschFloat *tausch_new_float(int *localDim, int *haloWidth, int numBuffers, in
     Tausch<float> *t;
 
     if(version == TAUSCH_1D)
-        t = new Tausch1D<float>(localDim, haloWidth, MPI_FLOAT, numBuffers, valuesPerPoint, comm);
+        t = new Tausch1D<float>(localDim, MPI_FLOAT, numBuffers, valuesPerPoint, comm);
     else if(version == TAUSCH_2D)
-        t = new Tausch2D<float>(localDim, haloWidth, MPI_FLOAT, numBuffers, valuesPerPoint, comm);
+        t = new Tausch2D<float>(localDim, MPI_FLOAT, numBuffers, valuesPerPoint, comm);
     else if(version == TAUSCH_3D)
-        t = new Tausch3D<float>(localDim, haloWidth, MPI_FLOAT, numBuffers, valuesPerPoint, comm);
+        t = new Tausch3D<float>(localDim, MPI_FLOAT, numBuffers, valuesPerPoint, comm);
 
     return reinterpret_cast<CTauschFloat*>(t);
 

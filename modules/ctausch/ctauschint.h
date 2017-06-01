@@ -57,7 +57,7 @@ typedef void* CTauschInt;
  *  Return the CTauschInt object created with the specified configuration.
  *
  */
-CTauschInt *tausch_new_int(int *localDim, int *haloWidth, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version);
+CTauschInt *tausch_new_int(int *localDim, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version);
 
 /*!
  *
