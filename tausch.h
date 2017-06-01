@@ -49,6 +49,11 @@
  * -# <b>GPU fully inside</b>: Any GPU partition (if available) lies fully inside the MPI partition and is not involved with any inter-MPI
  * communication. This restriction is planned to be removed in the future.
  *
+ * \section terminology Terminology
+ * For clarification, there are two types of halos that is referred to in the documentation and also the API itself:
+ * - <b>Local halo</b>: the region of the partition owned by the current processor that is requested by other processors as halo data
+ * - <b>Remote halo</b>: the halo required by the current processor for computations that lives on other processors
+ *
  * \section possible What is possible
  * Due to making only very few assumption, %Tausch is very flexible and can be used for many different scenarios:
  * - If there are multiple buffers covering a domain, then their halos can all be sent in one combined message for each halo region, assuming they all
@@ -63,6 +68,28 @@
  * at runtime which version to use. Using virtual function pointers does not appear to cause any slowdown in the case of %Tausch.
  * - The buffers do not have to be the same throughout the lifetime of any %Tausch object. When packing a buffer, %Tausch requires a pointer to the
  * data passed on, i.e., the buffer can be changed should that be required, as long as the discretisation is kept the same.
+ *
+ * \section overview High level API overview
+ * You can find the details of the API in the documentation of each individual function, but here is a high level overview of how the API works:
+ *
+ * Tausch expects to be told for each partition how big the partition is, how wide the different halos are, and which part of the partition is needed
+ * by another MPI rank and which parts of the halo are filed by which other MPI rank. Thus, for each of the different halo regions it needs to be told
+ * the following information:
+ * 1. The x/y/z coordinates of start of the halo region
+ * 2. The width/height/depth of the halo region
+ * 3. The receiving MPI rank (if region is required by other MPI rank) or the sending MPI rank (if region lives on other MPI rank is required by this
+ * one)
+ * 4. A unique id. This id needs to be unique amongst all the halo regions, but it must be matched with the same id in the corresponding set of halo
+ * regions on the other MPI rank. This id is used as tag for the MPI messages, so any message sent by a processor with the specified id is received by
+ * another processor using the same specified id.
+ *
+ * This set of halo regions needs to be specified twice: For the local halo regions and for the remote halo regions. Once this information is
+ * specified, performing a halo exchange is very simple. Generally, the following four steps are necessary, though the first two (sending off local
+ * halo data) or the last two (receiving rmeote halo data) could be optional if ther eis a usecase for which they are not required.
+ * 1. Pack the a provided data buffer for a specific local halo region into a dedicated MPI send buffer.
+ * 2. Send off the MPI send buffer for a specified local halo region.
+ * 3. Received an incoming message for a specific remote halo region.
+ * 4. Unpack a received message for a specific remote halo region into a specified data buffer.
  *
  * \section code Code snippet
  * Here you can find a short code that uses %Tausch for a halo exchange in two dimensions across a structured grid. For simplicity, we will only
