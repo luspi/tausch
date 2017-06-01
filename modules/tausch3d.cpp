@@ -1,7 +1,8 @@
 #include "../tausch.h"
 #include "tausch3d.h"
 
-template <class real_t> Tausch3D<real_t>::Tausch3D(int *localDim, int *haloWidth, MPI_Datatype mpiDataType, int numBuffers, int valuesPerPoint, MPI_Comm comm) {
+template <class real_t> Tausch3D<real_t>::Tausch3D(int *localDim, int *haloWidth, MPI_Datatype mpiDataType,
+                                                   int numBuffers, int valuesPerPoint, MPI_Comm comm) {
 
     MPI_Comm_dup(comm, &TAUSCH_COMM);
 
