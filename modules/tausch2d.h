@@ -61,7 +61,7 @@ public:
      *  The MPI Communictor to be used. %Tausch2D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch2D working
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    Tausch2D(int *localDim, MPI_Datatype mpiDataType, int numBuffers = 1, int valuesPerPoint = 1, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch2D(size_t *localDim, MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t valuesPerPoint = 1, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * The destructor cleaning up all memory.
@@ -81,7 +81,7 @@ public:
      *   4. The height of the region
      *   5. The receiving processor
      */
-    void setLocalHaloInfoCpu(int numHaloParts, int **haloSpecs);
+    void setLocalHaloInfoCpu(size_t numHaloParts, size_t **haloSpecs);
 
     /*!
      * Set the info about all remote halos that are needed by this MPI rank.
@@ -96,7 +96,7 @@ public:
      *   4. The height of the halo region
      *   5. The sending processor
      */
-    void setRemoteHaloInfoCpu(int numHaloParts, int **haloSpecs);
+    void setRemoteHaloInfoCpu(size_t numHaloParts, size_t **haloSpecs);
 
     /*!
      * Post the receive for the specified remote halo region of the current MPI rank. This doesn't do anything else but call MPI_Irecv().
@@ -105,7 +105,7 @@ public:
      * \param mpitag
      *  The mpitag to be used for this MPI receive.
      */
-    void postReceiveCpu(int id, int mpitag);
+    void postReceiveCpu(size_t id, int mpitag);
 
     /*!
      * Post all receives for the current MPI rank. This doesn't do anything else but call MPI_Irecv() for each remote halo region.
@@ -121,7 +121,7 @@ public:
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
      */
-    void packNextSendBufferCpu(int id, buf_t *buf);
+    void packNextSendBufferCpu(size_t id, buf_t *buf);
 
     /*!
      * Sends off the send buffer for the specified halo region. This calls MPI_Start() on the respective MPI_Send_init().
@@ -130,14 +130,14 @@ public:
      * \param mpitag
      *  The mpitag to be used for this MPI_Isend().
      */
-    void sendCpu(int id, int mpitag);
+    void sendCpu(size_t id, int mpitag);
 
     /*!
      * Makes sure the MPI message for the specified halo is received by this buffer. It does not do anything with that message!
      * \param id
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
      */
-    void recvCpu(int id);
+    void recvCpu(size_t id);
 
     /*!
      * This unpacks the next halo from the received message into the provided buffer. This has to be called as many times as there are buffers.
@@ -146,7 +146,7 @@ public:
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
-    void unpackNextRecvBufferCpu(int id, buf_t *buf);
+    void unpackNextRecvBufferCpu(size_t id, buf_t *buf);
 
     /*!
      * Shortcut function. If only one buffer is used, this will both pack the data out of the provided buffer and send it off, all with one call.
@@ -157,7 +157,7 @@ public:
      * \param mpitag
      *  The mpitag to be used for this MPI_Isend().
      */
-    void packAndSendCpu(int id, int mpitag, buf_t *buf);
+    void packAndSendCpu(size_t id, int mpitag, buf_t *buf);
     /*!
      * Shortcut function. If only one buffer is used, this will both receive the MPI message and unpack the received data into the provided buffer,
      * all with one call.
@@ -166,22 +166,22 @@ public:
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
-    void recvAndUnpackCpu(int id, buf_t *buf);
+    void recvAndUnpackCpu(size_t id, buf_t *buf);
 
 private:
 
-    int localDim[2];
+    size_t localDim[2];
 
     MPI_Comm TAUSCH_COMM;
     int mpiRank, mpiSize;
 
-    int localHaloNumParts;
-    int **localHaloSpecs;
-    int remoteHaloNumParts;
-    int **remoteHaloSpecs;
+    size_t localHaloNumParts;
+    size_t **localHaloSpecs;
+    size_t remoteHaloNumParts;
+    size_t **remoteHaloSpecs;
 
-    int numBuffers;
-    int valuesPerPoint;
+    size_t numBuffers;
+    size_t valuesPerPoint;
 
     buf_t **mpiRecvBuffer;
     buf_t **mpiSendBuffer;
@@ -189,8 +189,8 @@ private:
     MPI_Request *mpiSendRequests;
     MPI_Datatype mpiDataType;
 
-    int *numBuffersPacked;
-    int *numBuffersUnpacked;
+    size_t *numBuffersPacked;
+    size_t *numBuffersUnpacked;
 
 };
 

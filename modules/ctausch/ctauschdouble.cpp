@@ -8,7 +8,7 @@ extern "C" {
 
 #include "ctauschdouble.h"
 
-CTauschDouble *tausch_new_double(int *localDim, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version) {
+CTauschDouble *tausch_new_double(size_t *localDim, size_t numBuffers, size_t valuesPerPoint, MPI_Comm comm, TauschVersion version) {
 
     if(version != TAUSCH_1D && version != TAUSCH_2D && version != TAUSCH_3D) {
         std::cerr << "[CTauschDouble] ERROR: Invalid version specified: " << version << " - Abort..." << std::endl;
@@ -33,17 +33,17 @@ void tausch_delete_double(CTauschDouble *tC) {
     delete t;
 }
 
-void tausch_setCpuLocalHaloInfo_double(CTauschDouble *tC, int numHaloParts, int **haloSpecs) {
+void tausch_setCpuLocalHaloInfo_double(CTauschDouble *tC, size_t numHaloParts, size_t **haloSpecs) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     t->setLocalHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_setCpuRemoteHaloInfo_double(CTauschDouble *tC, int numHaloParts, int **haloSpecs) {
+void tausch_setCpuRemoteHaloInfo_double(CTauschDouble *tC, size_t numHaloParts, size_t **haloSpecs) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_postReceiveCpu_double(CTauschDouble *tC, int id, int mpitag) {
+void tausch_postReceiveCpu_double(CTauschDouble *tC, size_t id, int mpitag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     t->postReceiveCpu(id, mpitag);
 }
@@ -53,32 +53,32 @@ void tausch_postAllReceivesCpu_double(CTauschDouble *tC, int *mpitag) {
     t->postAllReceivesCpu(mpitag);
 }
 
-void tausch_packNextSendBuffer_double(CTauschDouble *tC, int id, double *buf) {
+void tausch_packNextSendBuffer_double(CTauschDouble *tC, size_t id, double *buf) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     t->packNextSendBufferCpu(id, buf);
 }
 
-void tausch_send_double(CTauschDouble *tC, int id, int mpitag) {
+void tausch_send_double(CTauschDouble *tC, size_t id, int mpitag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     t->sendCpu(id, mpitag);
 }
 
-void tausch_recv_double(CTauschDouble *tC, int id) {
+void tausch_recv_double(CTauschDouble *tC, size_t id) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     t->recvCpu(id);
 }
 
-void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, int id, double *buf) {
+void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, size_t id, double *buf) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     t->unpackNextRecvBufferCpu(id, buf);
 }
 
-void tausch_packAndSend_double(CTauschDouble *tC, int id, int mpitag, double *buf) {
+void tausch_packAndSend_double(CTauschDouble *tC, size_t id, int mpitag, double *buf) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     t->packAndSendCpu(id, mpitag, buf);
 }
 
-void tausch_recvAndUnpack_double(CTauschDouble *tC, int id, double *buf) {
+void tausch_recvAndUnpack_double(CTauschDouble *tC, size_t id, double *buf) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     t->recvAndUnpackCpu(id, buf);
 }

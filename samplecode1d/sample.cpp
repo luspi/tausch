@@ -1,6 +1,6 @@
 #include "sample.h"
 
-Sample::Sample(int localDim, int loops, int *cpuHaloWidth) {
+Sample::Sample(size_t localDim, size_t loops, size_t *cpuHaloWidth) {
 
     this->localDim = localDim;
     this->loops = loops;
@@ -28,18 +28,18 @@ Sample::Sample(int localDim, int loops, int *cpuHaloWidth) {
         }
     }
 
-    int tauschLocalDim = localDim+cpuHaloWidth[0]+cpuHaloWidth[1];
+    size_t tauschLocalDim = localDim+cpuHaloWidth[0]+cpuHaloWidth[1];
     tausch = new Tausch1D<double>(&tauschLocalDim, MPI_DOUBLE, numBuffers, valuesPerPoint);
 
     // These are the (up to) 4 remote halos that are needed by this rank
-    remoteHaloSpecs = new int*[2];
+    remoteHaloSpecs = new size_t*[2];
     // These are the (up to) 4 local halos that are needed tobe sent by this rank
-    localHaloSpecs = new int*[2];
+    localHaloSpecs = new size_t*[2];
 
-    localHaloSpecs[0] = new int[6]{cpuHaloWidth[0], cpuHaloWidth[1], left, 0};
-    remoteHaloSpecs[0] = new int[6]{0, cpuHaloWidth[0], left, 1};
-    localHaloSpecs[1] = new int[6]{localDim, cpuHaloWidth[0], right, 1};
-    remoteHaloSpecs[1] = new int[6]{cpuHaloWidth[0]+localDim, cpuHaloWidth[1], right, 0};
+    localHaloSpecs[0] = new size_t[6]{cpuHaloWidth[0], cpuHaloWidth[1], left, 0};
+    remoteHaloSpecs[0] = new size_t[6]{0, cpuHaloWidth[0], left, 1};
+    localHaloSpecs[1] = new size_t[6]{localDim, cpuHaloWidth[0], right, 1};
+    remoteHaloSpecs[1] = new size_t[6]{cpuHaloWidth[0]+localDim, cpuHaloWidth[1], right, 0};
 
     tausch->setLocalHaloInfoCpu(2, localHaloSpecs);
     tausch->setRemoteHaloInfoCpu(2, remoteHaloSpecs);

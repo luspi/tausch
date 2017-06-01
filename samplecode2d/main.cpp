@@ -18,11 +18,11 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-    int localDim[2] = {5, 5};
-    int mpiNum[2] = {(int)std::sqrt(mpiSize), (int)std::sqrt(mpiSize)};
-    int loops = 1;
+    size_t localDim[2] = {5, 5};
+    size_t mpiNum[2] = {(size_t)std::sqrt(mpiSize), (size_t)std::sqrt(mpiSize)};
+    size_t loops = 1;
     int printMpiRank = -1;
-    int cpuHaloWidth[4] = {1,1,1,1};
+    size_t cpuHaloWidth[4] = {1,1,1,1};
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {

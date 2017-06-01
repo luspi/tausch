@@ -8,7 +8,7 @@
 class Sample {
 
 public:
-    explicit Sample(int *localDim, int loops, int *cpuHaloWidth, int *mpiNum);
+    explicit Sample(size_t *localDim, size_t loops, size_t *cpuHaloWidth, size_t *mpiNum);
     ~Sample();
 
     void launchCPU();
@@ -16,20 +16,20 @@ public:
     void print();
 
 private:
-    int localDim[3];
-    int loops;
-    int cpuHaloWidth[6];
-    int mpiNum[3];
+    size_t localDim[3];
+    size_t loops;
+    size_t cpuHaloWidth[6];
+    size_t mpiNum[3];
 
     Tausch<double> *tausch;
 
-    int **localHaloSpecs;
-    int **remoteHaloSpecs;
+    size_t **localHaloSpecs;
+    size_t **remoteHaloSpecs;
     double *dat1, *dat2;
-    int numBuffers;
-    int valuesPerPoint;
+    size_t numBuffers;
+    size_t valuesPerPoint;
 
-    int left, right, top, bottom, front, back;
+    size_t left, right, top, bottom, front, back;
 
 };
 

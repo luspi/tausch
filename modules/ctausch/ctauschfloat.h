@@ -69,7 +69,7 @@ typedef void* CTauschFloat;
  *  Return the CTauschFloat object created with the specified configuration.
  *
  */
-CTauschFloat *tausch_new_float(int *localDim, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version);
+CTauschFloat *tausch_new_float(size_t *localDim, size_t numBuffers, size_t valuesPerPoint, MPI_Comm comm, TauschVersion version);
 
 /*!
  *
@@ -101,7 +101,7 @@ void tausch_delete_float(CTauschFloat *tC);
  *   7. The receiving processor
  *
  */
-void tausch_setCpuLocalHaloInfo_float(CTauschFloat *tC, int numHaloParts, int **haloSpecs);
+void tausch_setCpuLocalHaloInfo_float(CTauschFloat *tC, size_t numHaloParts, size_t **haloSpecs);
 
 /*!
  *
@@ -123,7 +123,7 @@ void tausch_setCpuLocalHaloInfo_float(CTauschFloat *tC, int numHaloParts, int **
  *   7. The sending processor
  *
  */
-void tausch_setCpuRemoteHaloInfo_float(CTauschFloat *tC, int numHaloParts, int **haloSpecs);
+void tausch_setCpuRemoteHaloInfo_float(CTauschFloat *tC, size_t numHaloParts, size_t **haloSpecs);
 
 /*!
  *
@@ -137,7 +137,7 @@ void tausch_setCpuRemoteHaloInfo_float(CTauschFloat *tC, int numHaloParts, int *
  *  The mpitag to be used for this MPI_Irecv().
  *
  */
-void tausch_postReceiveCpu_float(CTauschFloat *tC, int id, int mpitag);
+void tausch_postReceiveCpu_float(CTauschFloat *tC, size_t id, int mpitag);
 
 /*!
  *
@@ -163,7 +163,7 @@ void tausch_postAllReceivesCpu_float(CTauschFloat *tC, int *mpitag);
  *  The buffer from which the data is to be extracted according to the local halo specification.
  *
  */
-void tausch_packNextSendBuffer_float(CTauschFloat *tC, int id, float *buf);
+void tausch_packNextSendBuffer_float(CTauschFloat *tC, size_t id, float *buf);
 
 /*!
  *
@@ -177,7 +177,7 @@ void tausch_packNextSendBuffer_float(CTauschFloat *tC, int id, float *buf);
  *  The mpitag to be used for this MPI_Isend().
  *
  */
-void tausch_send_float(CTauschFloat *tC, int id, int mpitag);
+void tausch_send_float(CTauschFloat *tC, size_t id, int mpitag);
 
 /*!
  *
@@ -189,7 +189,7 @@ void tausch_send_float(CTauschFloat *tC, int id, int mpitag);
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  *
  */
-void tausch_recv_float(CTauschFloat *tC, int id);
+void tausch_recv_float(CTauschFloat *tC, size_t id);
 
 /*!
  *
@@ -203,7 +203,7 @@ void tausch_recv_float(CTauschFloat *tC, int id);
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
  *
  */
-void tausch_unpackNextRecvBuffer_float(CTauschFloat *tC, int id, float *buf);
+void tausch_unpackNextRecvBuffer_float(CTauschFloat *tC, size_t id, float *buf);
 
 /*!
  *
@@ -219,7 +219,7 @@ void tausch_unpackNextRecvBuffer_float(CTauschFloat *tC, int id, float *buf);
  *  The mpitag to be used for this MPI_Isend().
  *
  */
-void tausch_packAndSend_float(CTauschFloat *tC, int id, int mpitag, float *buf);
+void tausch_packAndSend_float(CTauschFloat *tC, size_t id, int mpitag, float *buf);
 
 /*!
  *
@@ -234,7 +234,7 @@ void tausch_packAndSend_float(CTauschFloat *tC, int id, int mpitag, float *buf);
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
  *
  */
-void tausch_recvAndUnpack_float(CTauschFloat *tC, int id, float *buf);
+void tausch_recvAndUnpack_float(CTauschFloat *tC, size_t id, float *buf);
 
 #ifdef __cplusplus
 }

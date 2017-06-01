@@ -8,7 +8,7 @@ extern "C" {
 
 #include "ctauschbool.h"
 
-CTauschBool *tausch_new_bool(int *localDim, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version) {
+CTauschBool *tausch_new_bool(size_t *localDim, size_t numBuffers, size_t valuesPerPoint, MPI_Comm comm, TauschVersion version) {
 
     if(version != TAUSCH_1D && version != TAUSCH_2D && version != TAUSCH_3D) {
         std::cerr << "[CTauschBool] ERROR: Invalid version specified: " << version << " - Abort..." << std::endl;
@@ -33,17 +33,17 @@ void tausch_delete_bool(CTauschBool *tC) {
     delete t;
 }
 
-void tausch_setCpuLocalHaloInfo_bool(CTauschBool *tC, int numHaloParts, int **haloSpecs) {
+void tausch_setCpuLocalHaloInfo_bool(CTauschBool *tC, size_t numHaloParts, size_t **haloSpecs) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
     t->setLocalHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_setCpuRemoteHaloInfo_bool(CTauschBool *tC, int numHaloParts, int **haloSpecs) {
+void tausch_setCpuRemoteHaloInfo_bool(CTauschBool *tC, size_t numHaloParts, size_t **haloSpecs) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
     t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_postReceiveCpu_bool(CTauschBool *tC, int id, int mpitag) {
+void tausch_postReceiveCpu_bool(CTauschBool *tC, size_t id, int mpitag) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
     t->postReceiveCpu(id, mpitag);
 }
@@ -53,32 +53,32 @@ void tausch_postAllReceivesCpu_bool(CTauschBool *tC, int *mpitag) {
     t->postAllReceivesCpu(mpitag);
 }
 
-void tausch_packNextSendBuffer_bool(CTauschBool *tC, int id, bool *buf) {
+void tausch_packNextSendBuffer_bool(CTauschBool *tC, size_t id, bool *buf) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
     t->packNextSendBufferCpu(id, buf);
 }
 
-void tausch_send_bool(CTauschBool *tC, int id, int mpitag) {
+void tausch_send_bool(CTauschBool *tC, size_t id, int mpitag) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
     t->sendCpu(id, mpitag);
 }
 
-void tausch_recv_bool(CTauschBool *tC, int id) {
+void tausch_recv_bool(CTauschBool *tC, size_t id) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
     t->recvCpu(id);
 }
 
-void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, int id, bool *buf) {
+void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t id, bool *buf) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
     t->unpackNextRecvBufferCpu(id, buf);
 }
 
-void tausch_packAndSend_bool(CTauschBool *tC, int id, int mpitag, bool *buf) {
+void tausch_packAndSend_bool(CTauschBool *tC, size_t id, int mpitag, bool *buf) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
     t->packAndSendCpu(id, mpitag, buf);
 }
 
-void tausch_recvAndUnpack_bool(CTauschBool *tC, int id, bool *buf) {
+void tausch_recvAndUnpack_bool(CTauschBool *tC, size_t id, bool *buf) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
     t->recvAndUnpackCpu(id, buf);
 }

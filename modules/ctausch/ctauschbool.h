@@ -69,7 +69,7 @@ typedef void* CTauschBool;
  *  Return the CTauschBool object created with the specified configuration.
  *
  */
-CTauschBool *tausch_new_bool(int *localDim, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version);
+CTauschBool *tausch_new_bool(size_t *localDim, size_t numBuffers, size_t valuesPerPoint, MPI_Comm comm, TauschVersion version);
 
 /*!
  *
@@ -101,7 +101,7 @@ void tausch_delete_bool(CTauschBool *tC);
  *   7. The receiving processor
  *
  */
-void tausch_setCpuLocalHaloInfo_bool(CTauschBool *tC, int numHaloParts, int **haloSpecs);
+void tausch_setCpuLocalHaloInfo_bool(CTauschBool *tC, size_t numHaloParts, size_t **haloSpecs);
 
 /*!
  *
@@ -123,7 +123,7 @@ void tausch_setCpuLocalHaloInfo_bool(CTauschBool *tC, int numHaloParts, int **ha
  *   7. The sending processor
  *
  */
-void tausch_setCpuRemoteHaloInfo_bool(CTauschBool *tC, int numHaloParts, int **haloSpecs);
+void tausch_setCpuRemoteHaloInfo_bool(CTauschBool *tC, size_t numHaloParts, size_t **haloSpecs);
 
 /*!
  *
@@ -137,7 +137,7 @@ void tausch_setCpuRemoteHaloInfo_bool(CTauschBool *tC, int numHaloParts, int **h
  *  The mpitag to be used for this MPI_Irecv().
  *
  */
-void tausch_postReceiveCpu_bool(CTauschBool *tC, int id, int mpitag);
+void tausch_postReceiveCpu_bool(CTauschBool *tC, size_t id, int mpitag);
 
 /*!
  *
@@ -163,7 +163,7 @@ void tausch_postAllReceivesCpu_bool(CTauschBool *tC, int *mpitag);
  *  The buffer from which the data is to be extracted according to the local halo specification.
  *
  */
-void tausch_packNextSendBuffer_bool(CTauschBool *tC, int id, bool *buf);
+void tausch_packNextSendBuffer_bool(CTauschBool *tC, size_t id, bool *buf);
 
 /*!
  *
@@ -177,7 +177,7 @@ void tausch_packNextSendBuffer_bool(CTauschBool *tC, int id, bool *buf);
  *  The mpitag to be used for this MPI_Isend().
  *
  */
-void tausch_send_bool(CTauschBool *tC, int id, int mpitag);
+void tausch_send_bool(CTauschBool *tC, size_t id, int mpitag);
 
 /*!
  *
@@ -189,7 +189,7 @@ void tausch_send_bool(CTauschBool *tC, int id, int mpitag);
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  *
  */
-void tausch_recv_bool(CTauschBool *tC, int id);
+void tausch_recv_bool(CTauschBool *tC, size_t id);
 
 /*!
  *
@@ -203,7 +203,7 @@ void tausch_recv_bool(CTauschBool *tC, int id);
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
  *
  */
-void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, int id, bool *buf);
+void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t id, bool *buf);
 
 /*!
  *
@@ -219,7 +219,7 @@ void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, int id, bool *buf);
  *  The mpitag to be used for this MPI_Isend().
  *
  */
-void tausch_packAndSend_bool(CTauschBool *tC, int id, int mpitag, bool *buf);
+void tausch_packAndSend_bool(CTauschBool *tC, size_t id, int mpitag, bool *buf);
 
 /*!
  *
@@ -234,7 +234,7 @@ void tausch_packAndSend_bool(CTauschBool *tC, int id, int mpitag, bool *buf);
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
  *
  */
-void tausch_recvAndUnpack_bool(CTauschBool *tC, int id, bool *buf);
+void tausch_recvAndUnpack_bool(CTauschBool *tC, size_t id, bool *buf);
 
 #ifdef __cplusplus
 }

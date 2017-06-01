@@ -1,13 +1,13 @@
 #include "sample.h"
 
-Sample::Sample(int *localDim, int loops, int *cpuHaloWidth, int *mpiNum) {
+Sample::Sample(size_t *localDim, size_t loops, size_t *cpuHaloWidth, size_t *mpiNum) {
 
-    for(unsigned int i = 0; i < 3; ++i)
+    for(int i = 0; i < 3; ++i)
         this->localDim[i] = localDim[i];
     this->loops = loops;
     for(int i = 0; i < 6; ++i)
         this->cpuHaloWidth[i] = cpuHaloWidth[i];
-    for(unsigned int i = 0; i < 3; ++i)
+    for(int i = 0; i < 3; ++i)
         this->mpiNum[i] = mpiNum[i];
 
     int mpiRank = 0, mpiSize = 1;
@@ -55,51 +55,51 @@ Sample::Sample(int *localDim, int loops, int *cpuHaloWidth, int *mpiNum) {
                 }
             }
 
-    int tauschLocalDim[3] = {localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1],
-                             localDim[1]+cpuHaloWidth[2]+cpuHaloWidth[3],
-                             localDim[2]+cpuHaloWidth[4]+cpuHaloWidth[5]};
+    size_t tauschLocalDim[3] = {localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1],
+                                localDim[1]+cpuHaloWidth[2]+cpuHaloWidth[3],
+                                localDim[2]+cpuHaloWidth[4]+cpuHaloWidth[5]};
     tausch = new Tausch3D<double>(tauschLocalDim, MPI_DOUBLE, numBuffers, valuesPerPoint);
 
     // These are the (up to) 4 remote halos that are needed by this rank
-    remoteHaloSpecs = new int*[6];
+    remoteHaloSpecs = new size_t*[6];
     // These are the (up to) 4 local halos that are needed tobe sent by this rank
-    localHaloSpecs = new int*[6];
+    localHaloSpecs = new size_t*[6];
 
-    localHaloSpecs[0] = new int[8]{cpuHaloWidth[0], 0, 0,
+    localHaloSpecs[0] = new size_t[8]{cpuHaloWidth[0], 0, 0,
                                    cpuHaloWidth[1], cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
                                    left, 0};
-    localHaloSpecs[1] = new int[8]{localDim[0], 0, 0,
+    localHaloSpecs[1] = new size_t[8]{localDim[0], 0, 0,
                                    cpuHaloWidth[0], cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
                                    right, 1};
-    localHaloSpecs[2] = new int[8]{0, localDim[1], 0,
+    localHaloSpecs[2] = new size_t[8]{0, localDim[1], 0,
                                    cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[3], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
                                    top, 2};
-    localHaloSpecs[3] = new int[8]{0, cpuHaloWidth[3], 0,
+    localHaloSpecs[3] = new size_t[8]{0, cpuHaloWidth[3], 0,
                                    cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
                                    bottom, 3};
-    localHaloSpecs[4] = new int[8]{0, 0, cpuHaloWidth[4],
+    localHaloSpecs[4] = new size_t[8]{0, 0, cpuHaloWidth[4],
                                    cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3], cpuHaloWidth[5],
                                    front, 4};
-    localHaloSpecs[5] = new int[8]{0, 0, localDim[2],
+    localHaloSpecs[5] = new size_t[8]{0, 0, localDim[2],
                                    cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3], cpuHaloWidth[4],
                                    back, 5};
 
-    remoteHaloSpecs[0] = new int[8]{0, 0, 0,
+    remoteHaloSpecs[0] = new size_t[8]{0, 0, 0,
                                    cpuHaloWidth[0], cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
                                    left, 1};
-    remoteHaloSpecs[1] = new int[8]{localDim[0]+cpuHaloWidth[0], 0, 0,
+    remoteHaloSpecs[1] = new size_t[8]{localDim[0]+cpuHaloWidth[0], 0, 0,
                                    cpuHaloWidth[1], cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
                                    right, 0};
-    remoteHaloSpecs[2] = new int[8]{0, localDim[1]+cpuHaloWidth[3], 0,
+    remoteHaloSpecs[2] = new size_t[8]{0, localDim[1]+cpuHaloWidth[3], 0,
                                    cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
                                    top, 3};
-    remoteHaloSpecs[3] = new int[8]{0, 0, 0,
+    remoteHaloSpecs[3] = new size_t[8]{0, 0, 0,
                                    cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[3], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
                                    bottom, 2};
-    remoteHaloSpecs[4] = new int[8]{0, 0, 0,
+    remoteHaloSpecs[4] = new size_t[8]{0, 0, 0,
                                    cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3], cpuHaloWidth[4],
                                    front, 5};
-    remoteHaloSpecs[5] = new int[8]{0, 0, localDim[2]+cpuHaloWidth[4],
+    remoteHaloSpecs[5] = new size_t[8]{0, 0, localDim[2]+cpuHaloWidth[4],
                                    cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3], cpuHaloWidth[5],
                                    back, 4};
 

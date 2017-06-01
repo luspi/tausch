@@ -18,10 +18,10 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-    int localDim = 5;
-    int loops = 1;
+    size_t localDim = 5;
+    size_t loops = 1;
     int printMpiRank = -1;
-    int cpuHaloWidth[2] = {1,1};
+    size_t cpuHaloWidth[2] = {1,1};
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {

@@ -8,7 +8,7 @@ extern "C" {
 
 #include "ctauschfloat.h"
 
-CTauschFloat *tausch_new_float(int *localDim, int numBuffers, int valuesPerPoint, MPI_Comm comm, TauschVersion version) {
+CTauschFloat *tausch_new_float(size_t *localDim, size_t numBuffers, size_t valuesPerPoint, MPI_Comm comm, TauschVersion version) {
 
     if(version != TAUSCH_1D && version != TAUSCH_2D && version != TAUSCH_3D) {
         std::cerr << "[CTauschFloat] ERROR: Invalid version specified: " << version << " - Abort..." << std::endl;
@@ -33,17 +33,17 @@ void tausch_delete_float(CTauschFloat *tC) {
     delete t;
 }
 
-void tausch_setCpuLocalHaloInfo_float(CTauschFloat *tC, int numHaloParts, int **haloSpecs) {
+void tausch_setCpuLocalHaloInfo_float(CTauschFloat *tC, size_t numHaloParts, size_t **haloSpecs) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
     t->setLocalHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_setCpuRemoteHaloInfo_float(CTauschFloat *tC, int numHaloParts, int **haloSpecs) {
+void tausch_setCpuRemoteHaloInfo_float(CTauschFloat *tC, size_t numHaloParts, size_t **haloSpecs) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
     t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_postReceiveCpu_float(CTauschFloat *tC, int id, int mpitag) {
+void tausch_postReceiveCpu_float(CTauschFloat *tC, size_t id, int mpitag) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
     t->postReceiveCpu(id, mpitag);
 }
@@ -53,32 +53,32 @@ void tausch_postAllReceivesCpu_float(CTauschFloat *tC, int *mpitag) {
     t->postAllReceivesCpu(mpitag);
 }
 
-void tausch_packNextSendBuffer_float(CTauschFloat *tC, int id, float *buf) {
+void tausch_packNextSendBuffer_float(CTauschFloat *tC, size_t id, float *buf) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
     t->packNextSendBufferCpu(id, buf);
 }
 
-void tausch_send_float(CTauschFloat *tC, int id, int mpitag) {
+void tausch_send_float(CTauschFloat *tC, size_t id, int mpitag) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
     t->sendCpu(id, mpitag);
 }
 
-void tausch_recv_float(CTauschFloat *tC, int id) {
+void tausch_recv_float(CTauschFloat *tC, size_t id) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
     t->recvCpu(id);
 }
 
-void tausch_unpackNextRecvBuffer_float(CTauschFloat *tC, int id, float *buf) {
+void tausch_unpackNextRecvBuffer_float(CTauschFloat *tC, size_t id, float *buf) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
     t->unpackNextRecvBufferCpu(id, buf);
 }
 
-void tausch_packAndSend_float(CTauschFloat *tC, int id, int mpitag, float *buf) {
+void tausch_packAndSend_float(CTauschFloat *tC, size_t id, int mpitag, float *buf) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
     t->packAndSendCpu(id, mpitag, buf);
 }
 
-void tausch_recvAndUnpack_float(CTauschFloat *tC, int id, float *buf) {
+void tausch_recvAndUnpack_float(CTauschFloat *tC, size_t id, float *buf) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
     t->recvAndUnpackCpu(id, buf);
 }
