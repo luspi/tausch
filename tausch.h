@@ -105,9 +105,9 @@ enum TauschDimensions { TAUSCH_X, TAUSCH_Y, TAUSCH_Z };
 #include "modules/tausch2d.h"
 #include "modules/tausch3d.h"
 
-#include "modules/ctauschdouble.h"
-#include "modules/ctauschfloat.h"
-#include "modules/ctauschint.h"
-#include "modules/ctauschunsignedint.h"
+#include "modules/ctausch/ctauschdouble.h"
+#include "modules/ctausch/ctauschfloat.h"
+#include "modules/ctausch/ctauschint.h"
+#include "modules/ctausch/ctauschunsignedint.h"
 
 #endif // TAUSCH_H
