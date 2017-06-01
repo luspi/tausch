@@ -79,13 +79,10 @@
  * 2. The width/height/depth of the halo region
  * 3. The receiving MPI rank (if region is required by other MPI rank) or the sending MPI rank (if region lives on other MPI rank is required by this
  * one)
- * 4. A unique id. This id needs to be unique amongst all the halo regions, but it must be matched with the same id in the corresponding set of halo
- * regions on the other MPI rank. This id is used as tag for the MPI messages, so any message sent by a processor with the specified id is received by
- * another processor using the same specified id.
  *
  * This set of halo regions needs to be specified twice: For the local halo regions and for the remote halo regions. Once this information is
  * specified, performing a halo exchange is very simple. Generally, the following four steps are necessary, though the first two (sending off local
- * halo data) or the last two (receiving rmeote halo data) could be optional if ther eis a usecase for which they are not required.
+ * halo data) or the last two (receiving rmeote halo data) could be optional should they not be required.
  * 1. Pack the a provided data buffer for a specific local halo region into a dedicated MPI send buffer.
  * 2. Send off the MPI send buffer for a specified local halo region.
  * 3. Received an incoming message for a specific remote halo region.

@@ -13,17 +13,17 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-    // The local dimensions of the domain
-    int localDim[2];
-    localDim[TAUSCH_X] = 100;
-    localDim[TAUSCH_Y] = 120;
-
     // The width of the halos along the four edges
     int cpuHaloWidth[4];
-    cpuHaloWidth[TAUSCH_LEFT] = 1;
-    cpuHaloWidth[TAUSCH_RIGHT] = 4;
-    cpuHaloWidth[TAUSCH_TOP] = 2;
-    cpuHaloWidth[TAUSCH_BOTTOM] = 1;
+    cpuHaloWidth[0] = 1;
+    cpuHaloWidth[1] = 4;
+    cpuHaloWidth[2] = 2;
+    cpuHaloWidth[3] = 1;
+
+    // The local dimensions of the domain, with the halowidths added on
+    int localDim[2];
+    localDim[TAUSCH_X] = 100 + cpuHaloWidth[0]+cpuHaloWidth[1];
+    localDim[TAUSCH_Y] = 120 + cpuHaloWidth[2]+cpuHaloWidth[3];
 
     // The layout of the MPI ranks. If mpiSize is a perfect square we take its square root for each dimension,
     // otherwise all MPI ranks are lined up in the x direction
@@ -44,10 +44,8 @@ int main(int argc, char** argv) {
 
     //. Here we will use two buffers that require a halo exchange
     int numBuffers = 2;
-    double *dat1 = new double[(localDim[TAUSCH_X] + cpuHaloWidth[TAUSCH_LEFT] + cpuHaloWidth[TAUSCH_RIGHT])*
-                              (localDim[TAUSCH_Y] + cpuHaloWidth[TAUSCH_TOP] + cpuHaloWidth[TAUSCH_BOTTOM])]{};
-    double *dat2 = new double[(localDim[TAUSCH_X] + cpuHaloWidth[TAUSCH_LEFT] + cpuHaloWidth[TAUSCH_RIGHT])*
-                              (localDim[TAUSCH_Y] + cpuHaloWidth[TAUSCH_TOP] + cpuHaloWidth[TAUSCH_BOTTOM])]{};
+    double *dat1 = new double[localDim[TAUSCH_X]*localDim[TAUSCH_Y]]{};
+    double *dat2 = new double[localDim[TAUSCH_X]*localDim[TAUSCH_Y]]{};
 
     // We have four halo regions, one across each of the four edges
     int **remoteHaloSpecs = new int*[1];
@@ -55,16 +53,16 @@ int main(int argc, char** argv) {
 
     // left edge (0) remote halo region: [x, y, w, h, receiver, tag]
     remoteHaloSpecs[0] = new int[6]{0, 0,
-                                    cpuHaloWidth[TAUSCH_LEFT], cpuHaloWidth[TAUSCH_BOTTOM]+localDim[TAUSCH_Y]+cpuHaloWidth[TAUSCH_TOP],
-                                    left, 0};
+                                    cpuHaloWidth[0], localDim[TAUSCH_Y],
+                                    left};
 
     // right edge (1) local halo region: [x, y, w, h, sender, tag]
     localHaloSpecs[0]  = new int[6]{localDim[TAUSCH_X], 0,
-                                    cpuHaloWidth[TAUSCH_LEFT], cpuHaloWidth[TAUSCH_BOTTOM]+localDim[TAUSCH_Y]+cpuHaloWidth[TAUSCH_TOP],
-                                    right, 0};
+                                    cpuHaloWidth[0], localDim[TAUSCH_Y],
+                                    right};
 
     // The Tausch object, using its double version. The pointer type is of type 'Tausch', although using Tausch2D directly would also be possible here
-    Tausch2D<double> *tausch = new Tausch2D<double>(localDim, cpuHaloWidth, numBuffers, 1);
+    Tausch2D<double> *tausch = new Tausch2D<double>(localDim, MPI_DOUBLE, numBuffers, 1);
 
     // Tell Tausch about the local and remote halo regions
     tausch->setLocalHaloInfoCpu(1, localHaloSpecs);
@@ -79,13 +77,16 @@ int main(int argc, char** argv) {
     // Start a timer
     auto t_start = std::chrono::steady_clock::now();
 
+    // We only send one message and receive one message, all with MPI tag 0
+    int mpitag = 0;
+
     // post the MPI receives
-    tausch->postReceivesCpu();
+    tausch->postAllReceivesCpu(&mpitag);
 
     // pack the right buffers and send them off
     tausch->packNextSendBufferCpu(0, dat1);
     tausch->packNextSendBufferCpu(0, dat2);
-    tausch->sendCpu(0);
+    tausch->sendCpu(0, mpitag);
 
     // receive the left buffers and unpack them
     tausch->recvCpu(0);
