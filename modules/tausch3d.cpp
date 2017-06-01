@@ -1,7 +1,7 @@
 #include "../tausch.h"
 #include "tausch3d.h"
 
-template <class real_t> Tausch3D<real_t>::Tausch3D(int *localDim, int *haloWidth, int numBuffers, int valuesPerPoint, MPI_Comm comm) {
+template <class real_t> Tausch3D<real_t>::Tausch3D(int *localDim, int *haloWidth, MPI_Datatype mpiDataType, int numBuffers, int valuesPerPoint, MPI_Comm comm) {
 
     MPI_Comm_dup(comm, &TAUSCH_COMM);
 
@@ -18,12 +18,7 @@ template <class real_t> Tausch3D<real_t>::Tausch3D(int *localDim, int *haloWidth
     this->numBuffers = numBuffers;
     this->valuesPerPoint = valuesPerPoint;
 
-    mpiDatatype = (std::is_same<real_t, float>::value ? MPI_FLOAT
-                        : (std::is_same<real_t, int>::value ? MPI_INT
-                        : (std::is_same<real_t, unsigned int>::value ? MPI_UNSIGNED
-                        : (std::is_same<real_t, long>::value ? MPI_LONG
-                        : (std::is_same<real_t, long long>::value ? MPI_LONG_LONG
-                        : (std::is_same<real_t, long double>::value ? MPI_LONG_DOUBLE : MPI_DOUBLE))))));
+    this->mpiDataType = mpiDataType;
 
 }
 
@@ -64,7 +59,7 @@ template <class real_t> void Tausch3D<real_t>::setLocalHaloInfoCpu(int numHaloPa
         int size = numBuffers*valuesPerPoint*haloSpecs[i][3]*haloSpecs[i][4]*haloSpecs[i][5];
 
         mpiSendBuffer[i] = new real_t[size]{};
-        MPI_Send_init(&mpiSendBuffer[i][0], size, mpiDatatype, haloSpecs[i][6], haloSpecs[i][7], TAUSCH_COMM, &mpiSendRequests[i]);
+        MPI_Send_init(&mpiSendBuffer[i][0], size, mpiDataType, haloSpecs[i][6], haloSpecs[i][7], TAUSCH_COMM, &mpiSendRequests[i]);
 
     }
 
@@ -87,7 +82,7 @@ template <class real_t> void Tausch3D<real_t>::setRemoteHaloInfoCpu(int numHaloP
         int size = numBuffers*valuesPerPoint*haloSpecs[i][3]*haloSpecs[i][4]*haloSpecs[i][5];
 
         mpiRecvBuffer[i] = new real_t[size]{};
-        MPI_Recv_init(&mpiRecvBuffer[i][0], size, mpiDatatype, haloSpecs[i][6], haloSpecs[i][7], TAUSCH_COMM, &mpiRecvRequests[i]);
+        MPI_Recv_init(&mpiRecvBuffer[i][0], size, mpiDataType, haloSpecs[i][6], haloSpecs[i][7], TAUSCH_COMM, &mpiRecvRequests[i]);
 
     }
 

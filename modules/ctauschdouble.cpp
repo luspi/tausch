@@ -16,11 +16,11 @@ CTauschDouble *tausch_new_double(int *localDim, int *haloWidth, int numBuffers, 
     Tausch<double> *t;
 
     if(version == TAUSCH_1D)
-        t = new Tausch1D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        t = new Tausch1D<double>(localDim, haloWidth, MPI_DOUBLE, numBuffers, valuesPerPoint, comm);
     else if(version == TAUSCH_2D)
-        t = new Tausch2D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        t = new Tausch2D<double>(localDim, haloWidth, MPI_DOUBLE, numBuffers, valuesPerPoint, comm);
     else if(version == TAUSCH_3D)
-        t = new Tausch3D<double>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        t = new Tausch3D<double>(localDim, haloWidth, MPI_DOUBLE, numBuffers, valuesPerPoint, comm);
 
     return reinterpret_cast<CTauschDouble*>(t);
 

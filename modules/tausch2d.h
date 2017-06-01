@@ -52,7 +52,7 @@ public:
      *  The MPI Communictor to be used. %Tausch2D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch2D working
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    Tausch2D(int *localDim, int *haloWidth, int numBuffers = 1, int valuesPerPoint = 1, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch2D(int *localDim, int *haloWidth, MPI_Datatype mpiDataType, int numBuffers = 1, int valuesPerPoint = 1, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * The destructor cleaning up all memory.
@@ -165,7 +165,7 @@ private:
     real_t **mpiSendBuffer;
     MPI_Request *mpiRecvRequests;
     MPI_Request *mpiSendRequests;
-    MPI_Datatype mpiDatatype;
+    MPI_Datatype mpiDataType;
 
     int *numBuffersPacked;
     int *numBuffersUnpacked;

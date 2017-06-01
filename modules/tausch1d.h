@@ -53,7 +53,7 @@ public:
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      *
      */
-    Tausch1D(int *localDim, int *haloWidth, int numBuffers = 1, int valuesPerPoint = 1, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch1D(int *localDim, int *haloWidth, MPI_Datatype mpiDataType, int numBuffers = 1, int valuesPerPoint = 1, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      *
@@ -190,7 +190,7 @@ private:
     real_t **mpiSendBuffer;
     MPI_Request *mpiRecvRequests;
     MPI_Request *mpiSendRequests;
-    MPI_Datatype mpiDatatype;
+    MPI_Datatype mpiDataType;
 
     int *numBuffersPacked;
     int *numBuffersUnpacked;

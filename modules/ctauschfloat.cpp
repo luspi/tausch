@@ -16,11 +16,11 @@ CTauschFloat *tausch_new_float(int *localDim, int *haloWidth, int numBuffers, in
     Tausch<float> *t;
 
     if(version == TAUSCH_1D)
-        t = new Tausch1D<float>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        t = new Tausch1D<float>(localDim, haloWidth, MPI_FLOAT, numBuffers, valuesPerPoint, comm);
     else if(version == TAUSCH_2D)
-        t = new Tausch2D<float>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        t = new Tausch2D<float>(localDim, haloWidth, MPI_FLOAT, numBuffers, valuesPerPoint, comm);
     else if(version == TAUSCH_3D)
-        t = new Tausch3D<float>(localDim, haloWidth, numBuffers, valuesPerPoint, comm);
+        t = new Tausch3D<float>(localDim, haloWidth, MPI_FLOAT, numBuffers, valuesPerPoint, comm);
 
     return reinterpret_cast<CTauschFloat*>(t);
 
