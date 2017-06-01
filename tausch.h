@@ -56,8 +56,9 @@
  * it can be packed, preserving the order in which they are packed.
  * - If there is one buffer that stores multiple values for each point consecutively (e.g., when storing a stencil) then they can also get sent as one
  * grouped message, assuming that each point has the same number of values stored.
- * - The use of templates allows %Tausch to be used for data of different types. The currently supported data types are: double, float, int, unsigned
- * int, long, long long, long double.
+ * - The use of templates allows %Tausch to be used for data of different types. Tausch supports most of the common C/C++ datatypes:
+ * char, char16_t, char32_t, wchar_t, signed char, short int, int, long, long long, unsigned char, unsigned short int, unsigned int, unsigned long,
+ * unsigned long long, float, double, long double, bool.
  * - A common base class amongst all three versions (1D, 2D, and 3D) containing virtual pointers to all functions in the API allows the user to choose
  * at runtime which version to use. Using virtual function pointers does not appear to cause any slowdown in the case of %Tausch.
  * - The buffers do not have to be the same throughout the lifetime of any %Tausch object. When packing a buffer, %Tausch requires a pointer to the
@@ -107,5 +108,6 @@ enum TauschDimensions { TAUSCH_X, TAUSCH_Y, TAUSCH_Z };
 #include "modules/ctauschdouble.h"
 #include "modules/ctauschfloat.h"
 #include "modules/ctauschint.h"
+#include "modules/ctauschunsignedint.h"
 
 #endif // TAUSCH_H
