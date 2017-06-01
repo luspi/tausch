@@ -53,14 +53,11 @@ template <class real_t> void Tausch2D<real_t>::setLocalHaloInfoCpu(int numHaloPa
 
     for(int i = 0; i < numHaloParts; ++i) {
 
-        localHaloSpecs[i] = new int[6];
-        for(int j = 0; j < 6; ++j)
+        localHaloSpecs[i] = new int[5];
+        for(int j = 0; j < 5; ++j)
             localHaloSpecs[i][j] = haloSpecs[i][j];
 
         mpiSendBuffer[i] = new real_t[numBuffers*valuesPerPoint*haloSpecs[i][2]*haloSpecs[i][3]]{};
-
-        int size = localHaloSpecs[i][2] * localHaloSpecs[i][3];
-        MPI_Send_init(&mpiSendBuffer[i][0], numBuffers*valuesPerPoint*size, mpiDataType, localHaloSpecs[i][4], haloSpecs[i][5], TAUSCH_COMM, &mpiSendRequests[i]);
 
     }
 
@@ -76,24 +73,27 @@ template <class real_t> void Tausch2D<real_t>::setRemoteHaloInfoCpu(int numHaloP
 
     for(int i = 0; i < numHaloParts; ++i) {
 
-        remoteHaloSpecs[i] = new int[6];
-        for(int j = 0; j < 6; ++j)
+        remoteHaloSpecs[i] = new int[5];
+        for(int j = 0; j < 5; ++j)
             remoteHaloSpecs[i][j] = haloSpecs[i][j];
 
         mpiRecvBuffer[i] = new real_t[numBuffers*valuesPerPoint*haloSpecs[i][2]*haloSpecs[i][3]]{};
-
-        int size = remoteHaloSpecs[i][2] * remoteHaloSpecs[i][3];
-        int sender = remoteHaloSpecs[i][4];
-        MPI_Recv_init(&mpiRecvBuffer[i][0], numBuffers*valuesPerPoint*size, mpiDataType, sender, haloSpecs[i][5], TAUSCH_COMM, &mpiRecvRequests[i]);
 
     }
 
 }
 
-template <class real_t> void Tausch2D<real_t>::postReceivesCpu() {
+template <class real_t> void Tausch2D<real_t>::postReceiveCpu(int id, int mpitag) {
 
-    for(int rem = 0; rem < remoteHaloNumParts; ++rem)
-        MPI_Start(&mpiRecvRequests[rem]);
+    MPI_Irecv(&mpiRecvBuffer[id][0], numBuffers*valuesPerPoint*remoteHaloSpecs[id][2]*remoteHaloSpecs[id][3], mpiDataType,
+              remoteHaloSpecs[id][4], mpitag, TAUSCH_COMM, &mpiRecvRequests[id]);
+
+}
+
+template <class real_t> void Tausch2D<real_t>::postAllReceivesCpu(int *mpitag) {
+
+    for(int id = 0; id < remoteHaloNumParts; ++id)
+        postReceiveCpu(id,mpitag[id]);
 
 }
 
@@ -113,7 +113,7 @@ template <class real_t> void Tausch2D<real_t>::packNextSendBufferCpu(int id, rea
 
 }
 
-template <class real_t> void Tausch2D<real_t>::sendCpu(int id) {
+template <class real_t> void Tausch2D<real_t>::sendCpu(int id, int mpitag) {
 
     if(numBuffersPacked[id] != numBuffers) {
         std::cerr << "[Tausch2D] ERROR: halo part " << id << " has " << numBuffersPacked[id] << " out of "
@@ -121,7 +121,8 @@ template <class real_t> void Tausch2D<real_t>::sendCpu(int id) {
         exit(1);
     }
 
-    MPI_Start(&mpiSendRequests[id]);
+    MPI_Isend(&mpiSendBuffer[id][0], numBuffers*valuesPerPoint*localHaloSpecs[id][2] * localHaloSpecs[id][3], mpiDataType, localHaloSpecs[id][4],
+              mpitag, TAUSCH_COMM, &mpiSendRequests[id]);
 
 }
 
@@ -143,9 +144,9 @@ template <class real_t> void Tausch2D<real_t>::unpackNextRecvBufferCpu(int id, r
 
 }
 
-template <class real_t> void Tausch2D<real_t>::packAndSendCpu(int id, real_t *buf) {
+template <class real_t> void Tausch2D<real_t>::packAndSendCpu(int id, int mpitag, real_t *buf) {
     packNextSendBufferCpu(id, buf);
-    sendCpu(id);
+    sendCpu(id, mpitag);
 }
 
 template <class real_t> void Tausch2D<real_t>::recvAndUnpackCpu(int id, real_t *buf) {

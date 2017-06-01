@@ -78,9 +78,8 @@ void tausch_delete_int(CTauschInt *tC);
  * \param numHaloParts
  *  How many different parts there are to the halo
  * \param haloSpecs
- *  The specification of the different halo parts. This is expected to be a an array of arrays of int's. Each array of int's contains 4, 6, or 8
- *  entries (depending on the dimensionality of the problem), the order of which will be preserved, and each halo region can be referenced later by
- *  its index in this array. The entries are:
+ *  The specification of the different halo parts. This is expected to be a nested array of int's, the order of which will be preserved,
+ *  and each halo region can be referenced later by its index in this array. Each nested array must contain the following 3, 5, or 7 entries:
  *   1. The starting x coordinate of the local region
  *   2. The starting y coordinate of the local region (if present)
  *   3. The starting z coordinate of the local region (if present)
@@ -88,7 +87,6 @@ void tausch_delete_int(CTauschInt *tC);
  *   5. The height of the region (if present)
  *   6. The depth of the region (if present)
  *   7. The receiving processor
- *   8. A unique id that matches the id for the corresponding local halo region of the sending MPI rank.
  *
  */
 void tausch_setCpuLocalHaloInfo_int(CTauschInt *tC, int numHaloParts, int **haloSpecs);
@@ -102,9 +100,8 @@ void tausch_setCpuLocalHaloInfo_int(CTauschInt *tC, int numHaloParts, int **halo
  * \param numHaloParts
  *  How many different parts there are to the halo
  * \param haloSpecs
- *  The specification of the different halo parts. This is expected to be a an array of arrays of int's. Each array of int's contains 4, 6, or 8
- *  entries (depending on the dimensionality of the problem), the order of which will be preserved, and each halo region can be referenced later by
- *  its index in this array. The entries ares:
+ *  The specification of the different halo parts. This is expected to be a nested array of int's, the order of which will be preserved,
+ *  and each halo region can be referenced later by its index in this array. Each nested array must contain the following 3, 5, or 7 entries:
  *   1. The starting x coordinate of the halo region
  *   2. The starting y coordinate of the halo region (if present)
  *   3. The starting z coordinate of the halo region (if present)
@@ -112,20 +109,35 @@ void tausch_setCpuLocalHaloInfo_int(CTauschInt *tC, int numHaloParts, int **halo
  *   5. The height of the halo region (if present)
  *   6. The depth of the halo region (if present)
  *   7. The sending processor
- *   8. A unique id that matches the id for the corresponding remote halo region of the receiving MPI rank.
  *
  */
 void tausch_setCpuRemoteHaloInfo_int(CTauschInt *tC, int numHaloParts, int **haloSpecs);
 
 /*!
  *
- * Post all MPI receives for the current MPI rank. This doesn't do anything else but call MPI_Start() and all MPI_Recv_init().
+ * Post the receive for the specified remote halo region of the current MPI rank. This doesn't do anything else but call MPI_Irecv().
  *
  * \param tC
- *  The CTauschInt object to operate on.
+ *  The CTauschUnsignedInt object to operate on.
+ * \param id
+ *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
+ * \param mpitag
+ *  The mpitag to be used for this MPI_Irecv().
  *
  */
-void tausch_postMpiReceives_int(CTauschInt *tC);
+void tausch_postReceiveCpu_int(CTauschInt *tC, int id, int mpitag);
+
+/*!
+ *
+ * Post all MPI receives for the current MPI rank. This doesn't do anything else but call MPI_Irecv() for each remote halo region.
+ *
+ * \param tC
+ *  The CTauschUnsignedInt object to operate on.
+ * \param mpitag
+ *  An array containing the MPI tags, one for each halo region.
+ *
+ */
+void tausch_postAllReceivesCpu_int(CTauschInt *tC, int *mpitag);
 
 /*!
  *
@@ -149,9 +161,11 @@ void tausch_packNextSendBuffer_int(CTauschInt *tC, int id, int *buf);
  *  The CTauschInt object to operate on.
  * \param id
  *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
+ * \param mpitag
+ *  The mpitag to be used for this MPI_Isend().
  *
  */
-void tausch_send_int(CTauschInt *tC, int id);
+void tausch_send_int(CTauschInt *tC, int id, int mpitag);
 
 /*!
  *
@@ -189,9 +203,11 @@ void tausch_unpackNextRecvBuffer_int(CTauschInt *tC, int id, int *buf);
  *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
  * \param buf
  *  The buffer from which the data is to be extracted according to the local halo specification.
+ * \param mpitag
+ *  The mpitag to be used for this MPI_Isend().
  *
  */
-void tausch_packAndSend_int(CTauschInt *tC, int id, int *buf);
+void tausch_packAndSend_int(CTauschInt *tC, int id, int mpitag, int *buf);
 
 /*!
  *

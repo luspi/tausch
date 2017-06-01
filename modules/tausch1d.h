@@ -72,12 +72,11 @@ public:
      * \param numHaloParts
      *  How many different parts there are to the halo
      * \param haloSpecs
-     *  The specification of the different halo parts. This is expected to be a an array of arrays of int's. Each array of int's contains 4 entries,
-     *  the order of which will be preserved, and each halo region can be referenced later by its index in this array. The 4 entries are:
+     *  The specification of the different halo parts. This is expected to be a nested array of int's, the order of which will be preserved,
+     *  and each halo region can be referenced later by its index in this array. Each nested array must contain the following 3 entries:
      *   1. The starting x coordinate of the local region
      *   2. The width of the region
      *   3. The receiving processor
-     *   4. A unique id that matches the id for the corresponding local halo region of the sending MPI rank.
      *
      */
     void setLocalHaloInfoCpu(int numHaloParts, int **haloSpecs);
@@ -89,22 +88,30 @@ public:
      * \param numHaloParts
      *  How many different parts there are to the halo
      * \param haloSpecs
-     *  The specification of the different halo parts. This is expected to be a an array of arrays of int's. Each array of int's contains 4 entries,
-     *  the order of which will be preserved, and each halo region can be referenced later by its index in this array. The 4 entries ares:
+     *  The specification of the different halo parts. This is expected to be a nested array of int's, the order of which will be preserved,
+     *  and each halo region can be referenced later by its index in this array. Each nested array must contain the following 3 entries:
      *   1. The starting x coordinate of the halo region
      *   2. The width of the halo region
      *   3. The sending processor
-     *   4. A unique id that matches the id for the corresponding remote halo region of the receiving MPI rank.
      *
      */
     void setRemoteHaloInfoCpu(int numHaloParts, int **haloSpecs);
 
     /*!
-     *
-     * Post all MPI receives for the current MPI rank. This doesn't do anything else but call MPI_Start() and all MPI_Recv_init().
-     *
+     * Post the receive for the specified remote halo region of the current MPI rank. This doesn't do anything else but call MPI_Irecv().
+     * \param id
+     *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setRemoteHaloInfo().
+     * \param mpitag
+     *  The mpitag to be used for this MPI_Irecv().
      */
-    void postReceivesCpu();
+    void postReceiveCpu(int id, int mpitag);
+
+    /*!
+     * Post all receives for the current MPI rank. This doesn't do anything else but call MPI_Irecv() for each remote halo region.
+     * \param mpitag
+     *  An array containing the MPI tags, one for each halo region.
+     */
+    void postAllReceivesCpu(int *mpitag);
 
     /*!
      *
@@ -124,9 +131,11 @@ public:
      *
      * \param id
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
+     * \param mpitag
+     *  The mpitag to be used for this MPI_Isend().
      *
      */
-    void sendCpu(int id);
+    void sendCpu(int id, int mpitag);
 
     /*!
      *
@@ -158,9 +167,11 @@ public:
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
+     * \param mpitag
+     *  The mpitag to be used for this MPI_Isend().
      *
      */
-    void packAndSendCpu(int id, real_t *buf);
+    void packAndSendCpu(int id, int mpitag, real_t *buf);
     /*!
      *
      * Shortcut function. If only one buffer is used, this will both receive the MPI message and unpack the received data into the provided buffer,

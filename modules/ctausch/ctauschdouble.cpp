@@ -41,9 +41,14 @@ void tausch_setCpuRemoteHaloInfo_double(CTauschDouble *tC, int numHaloParts, int
     t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_postMpiReceives_double(CTauschDouble *tC) {
+void tausch_postReceiveCpu_double(CTauschDouble *tC, int id, int mpitag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->postReceivesCpu();
+    t->postReceiveCpu(id, mpitag);
+}
+
+void tausch_postAllReceivesCpu_double(CTauschUnsignedInt *tC, int *mpitag) {
+    Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
+    t->postAllReceivesCpu(mpitag);
 }
 
 void tausch_packNextSendBuffer_double(CTauschDouble *tC, int id, double *buf) {
@@ -51,9 +56,9 @@ void tausch_packNextSendBuffer_double(CTauschDouble *tC, int id, double *buf) {
     t->packNextSendBufferCpu(id, buf);
 }
 
-void tausch_send_double(CTauschDouble *tC, int id) {
+void tausch_send_double(CTauschDouble *tC, int id, int mpitag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->sendCpu(id);
+    t->sendCpu(id, mpitag);
 }
 
 void tausch_recv_double(CTauschDouble *tC, int id) {
@@ -66,9 +71,9 @@ void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, int id, double *buf) 
     t->unpackNextRecvBufferCpu(id, buf);
 }
 
-void tausch_packAndSend_double(CTauschDouble *tC, int id, double *buf) {
+void tausch_packAndSend_double(CTauschDouble *tC, int id, int mpitag, double *buf) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->packAndSendCpu(id, buf);
+    t->packAndSendCpu(id, mpitag, buf);
 }
 
 void tausch_recvAndUnpack_double(CTauschDouble *tC, int id, double *buf) {

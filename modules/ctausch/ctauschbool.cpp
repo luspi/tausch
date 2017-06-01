@@ -41,9 +41,14 @@ void tausch_setCpuRemoteHaloInfo_bool(CTauschBool *tC, int numHaloParts, int **h
     t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_postMpiReceives_bool(CTauschBool *tC) {
+void tausch_postReceiveCpu_bool(CTauschBool *tC, int id, int mpitag) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
-    t->postReceivesCpu();
+    t->postReceiveCpu(id, mpitag);
+}
+
+void tausch_postAllReceivesCpu_bool(CTauschUnsignedInt *tC, int *mpitag) {
+    Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
+    t->postAllReceivesCpu(mpitag);
 }
 
 void tausch_packNextSendBuffer_bool(CTauschBool *tC, int id, bool *buf) {
@@ -51,9 +56,9 @@ void tausch_packNextSendBuffer_bool(CTauschBool *tC, int id, bool *buf) {
     t->packNextSendBufferCpu(id, buf);
 }
 
-void tausch_send_bool(CTauschBool *tC, int id) {
+void tausch_send_bool(CTauschBool *tC, int id, int mpitag) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
-    t->sendCpu(id);
+    t->sendCpu(id, mpitag);
 }
 
 void tausch_recv_bool(CTauschBool *tC, int id) {
@@ -66,9 +71,9 @@ void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, int id, bool *buf) {
     t->unpackNextRecvBufferCpu(id, buf);
 }
 
-void tausch_packAndSend_bool(CTauschBool *tC, int id, bool *buf) {
+void tausch_packAndSend_bool(CTauschBool *tC, int id, int mpitag, bool *buf) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
-    t->packAndSendCpu(id, buf);
+    t->packAndSendCpu(id, mpitag, buf);
 }
 
 void tausch_recvAndUnpack_bool(CTauschBool *tC, int id, bool *buf) {
