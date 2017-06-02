@@ -75,7 +75,7 @@ void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t id, bool *buf) {
 
 void tausch_packAndSend_bool(CTauschBool *tC, size_t id, int mpitag, bool *buf) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
-    t->packAndSendCpu(id, mpitag, buf);
+    t->packAndSendCpu(id, buf, mpitag);
 }
 
 void tausch_recvAndUnpack_bool(CTauschBool *tC, size_t id, bool *buf) {

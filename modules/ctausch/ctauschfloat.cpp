@@ -75,7 +75,7 @@ void tausch_unpackNextRecvBuffer_float(CTauschFloat *tC, size_t id, float *buf) 
 
 void tausch_packAndSend_float(CTauschFloat *tC, size_t id, int mpitag, float *buf) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
-    t->packAndSendCpu(id, mpitag, buf);
+    t->packAndSendCpu(id, buf, mpitag);
 }
 
 void tausch_recvAndUnpack_float(CTauschFloat *tC, size_t id, float *buf) {

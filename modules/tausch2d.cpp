@@ -37,6 +37,9 @@ template <class buf_t> Tausch2D<buf_t>::~Tausch2D() {
     delete[] numBuffersPacked;
     delete[] mpiRecvRequests;
     delete[] numBuffersUnpacked;
+
+    delete[] setupMpiRecv;
+    delete[] setupMpiSend;
 }
 
 template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoCpu(size_t numHaloParts, size_t **haloSpecs) {
@@ -46,6 +49,7 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoCpu(size_t numHaloP
     mpiSendBuffer = new buf_t*[numHaloParts];
     mpiSendRequests = new MPI_Request[numHaloParts];
     numBuffersPacked =  new size_t[numHaloParts]{};
+    setupMpiSend = new bool[numHaloParts];
 
     for(int i = 0; i < numHaloParts; ++i) {
 
@@ -54,6 +58,8 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoCpu(size_t numHaloP
             localHaloSpecs[i][j] = haloSpecs[i][j];
 
         mpiSendBuffer[i] = new buf_t[numBuffers*valuesPerPoint*haloSpecs[i][2]*haloSpecs[i][3]]{};
+
+        setupMpiSend[i] = false;
 
     }
 
@@ -66,6 +72,7 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCpu(size_t numHalo
     mpiRecvBuffer = new buf_t*[numHaloParts];
     mpiRecvRequests = new MPI_Request[numHaloParts];
     numBuffersUnpacked =  new size_t[numHaloParts]{};
+    setupMpiRecv = new bool[numHaloParts];
 
     for(int i = 0; i < numHaloParts; ++i) {
 
@@ -75,18 +82,39 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCpu(size_t numHalo
 
         mpiRecvBuffer[i] = new buf_t[numBuffers*valuesPerPoint*haloSpecs[i][2]*haloSpecs[i][3]]{};
 
+        setupMpiRecv[i] = false;
+
     }
 
 }
 
 template <class buf_t> void Tausch2D<buf_t>::postReceiveCpu(size_t id, int mpitag) {
 
-    MPI_Irecv(&mpiRecvBuffer[id][0], numBuffers*valuesPerPoint*remoteHaloSpecs[id][2]*remoteHaloSpecs[id][3], mpiDataType,
-              remoteHaloSpecs[id][4], mpitag, TAUSCH_COMM, &mpiRecvRequests[id]);
+    if(!setupMpiRecv[id]) {
+
+        if(mpitag == -1) {
+            std::cerr << "[Tausch2D] ERROR: MPI_Recv for halo region #" << id << " hasn't been posted before, missing mpitag... Abort!" << std::endl;
+            exit(1);
+        }
+
+        setupMpiRecv[id] = true;
+
+        MPI_Recv_init(&mpiRecvBuffer[id][0], numBuffers*valuesPerPoint*remoteHaloSpecs[id][2]*remoteHaloSpecs[id][3], mpiDataType,
+                      remoteHaloSpecs[id][4], mpitag, TAUSCH_COMM, &mpiRecvRequests[id]);
+
+    }
+
+    MPI_Start(&mpiRecvRequests[id]);
 
 }
 
 template <class buf_t> void Tausch2D<buf_t>::postAllReceivesCpu(int *mpitag) {
+
+    if(mpitag == nullptr) {
+        mpitag = new int[remoteHaloNumParts];
+        for(int id = 0; id < remoteHaloNumParts; ++id)
+            mpitag[id] = -1;
+    }
 
     for(int id = 0; id < remoteHaloNumParts; ++id)
         postReceiveCpu(id,mpitag[id]);
@@ -117,8 +145,21 @@ template <class buf_t> void Tausch2D<buf_t>::sendCpu(size_t id, int mpitag) {
         exit(1);
     }
 
-    MPI_Isend(&mpiSendBuffer[id][0], numBuffers*valuesPerPoint*localHaloSpecs[id][2] * localHaloSpecs[id][3], mpiDataType, localHaloSpecs[id][4],
-              mpitag, TAUSCH_COMM, &mpiSendRequests[id]);
+    if(!setupMpiSend[id]) {
+
+        if(mpitag == -1) {
+            std::cerr << "[Tausch2D] ERROR: MPI_Send for halo region #" << id << " hasn't been posted before, missing mpitag... Abort!" << std::endl;
+            exit(1);
+        }
+
+        setupMpiSend[id] = true;
+
+        MPI_Send_init(&mpiSendBuffer[id][0], numBuffers*valuesPerPoint*localHaloSpecs[id][2] * localHaloSpecs[id][3], mpiDataType, localHaloSpecs[id][4],
+                  mpitag, TAUSCH_COMM, &mpiSendRequests[id]);
+
+    }
+
+    MPI_Start(&mpiSendRequests[id]);
 
 }
 
@@ -140,7 +181,7 @@ template <class buf_t> void Tausch2D<buf_t>::unpackNextRecvBufferCpu(size_t id, 
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::packAndSendCpu(size_t id, int mpitag, buf_t *buf) {
+template <class buf_t> void Tausch2D<buf_t>::packAndSendCpu(size_t id, buf_t *buf, int mpitag) {
     packNextSendBufferCpu(id, buf);
     sendCpu(id, mpitag);
 }

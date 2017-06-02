@@ -105,20 +105,22 @@ public:
     void setRemoteHaloInfoCpu(size_t numHaloParts, size_t **haloSpecs);
 
     /*!
-     * Post the receive for the specified remote halo region of the current MPI rank. This doesn't do anything else but call MPI_Irecv().
+     * Post the receive for the specified remote halo region of the current MPI rank. This doesn't do anything else but post the MPI_Recv.
      * \param id
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setRemoteHaloInfo().
      * \param mpitag
-     *  The mpitag to be used for this MPI_Irecv().
+     *  The mpitag to be used for this MPI_Recv. This information only has to be specified the first time the MPI_Recv for the halo region with
+     *  the specified id is posted. Each subsequent call, the mpitag that was passed the very first call will be re-used.
      */
-    void postReceiveCpu(size_t id, int mpitag);
+    void postReceiveCpu(size_t id, int mpitag = -1);
 
     /*!
-     * Post all receives for the current MPI rank. This doesn't do anything else but call MPI_Irecv() for each remote halo region.
+     * Post all receives for the current MPI rank. This doesn't do anything else but post the MPI_Recv for each remote halo region.
      * \param mpitag
-     *  An array containing the MPI tags, one for each halo region.
+     *  An array containing the MPI tags, one for each halo region. This information only has to be specified the first time the MPI_Recvs are posted.
+     *  Each subsequent call, the mpitags that were passed the very first call will be re-used.
      */
-    void postAllReceivesCpu(int *mpitag);
+    void postAllReceivesCpu(int *mpitag = nullptr);
 
     /*!
      *
@@ -134,15 +136,16 @@ public:
 
     /*!
      *
-     * Sends off the send buffer for the specified halo region. This calls MPI_Start() on the respective MPI_Send_init().
+     * Sends off the send buffer for the specified halo region. This starts the respective MPI_Send.
      *
      * \param id
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
      * \param mpitag
-     *  The mpitag to be used for this MPI_Isend().
+     *  The mpitag to be used for this MPI_Send. This information only has to be specified the first time the MPI_Send for the halo region with
+     *  the specified id is started. Each subsequent call, the mpitag that was passed the very first call will be re-used.
      *
      */
-    void sendCpu(size_t id, int mpitag);
+    void sendCpu(size_t id, int mpitag = -1);
 
     /*!
      *
@@ -175,10 +178,11 @@ public:
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
      * \param mpitag
-     *  The mpitag to be used for this MPI_Isend().
+     *  The mpitag to be used for this MPI_Send. This information only has to be specified the first time the MPI_Send for the halo region with
+     *  the specified id is started. Each subsequent call, the mpitag that was passed the very first call will be re-used.
      *
      */
-    void packAndSendCpu(size_t id, int mpitag, buf_t *buf);
+    void packAndSendCpu(size_t id, buf_t *buf, int mpitag = -1);
     /*!
      *
      * Shortcut function. If only one buffer is used, this will both receive the MPI message and unpack the received data into the provided buffer,
@@ -215,6 +219,9 @@ private:
 
     size_t *numBuffersPacked;
     size_t *numBuffersUnpacked;
+
+    bool *setupMpiSend;
+    bool *setupMpiRecv;
 
 };
 

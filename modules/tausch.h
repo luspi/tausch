@@ -55,8 +55,8 @@ public:
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.
      */
-    virtual void postReceiveCpu(size_t id, int mpitag) = 0;
-    virtual void postAllReceivesCpu(int *mpitag) = 0;
+    virtual void postReceiveCpu(size_t id, int mpitag = -1) = 0;
+    virtual void postAllReceivesCpu(int *mpitag = nullptr) = 0;
     /*!
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.
@@ -72,7 +72,7 @@ public:
      * \param id
      *  The id of the local halo region.
      */
-    virtual void sendCpu(size_t id, int mpitag) = 0;
+    virtual void sendCpu(size_t id, int mpitag = -1) = 0;
     /*!
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.
@@ -97,7 +97,7 @@ public:
      * \param buf
      *  The buffer from where to extract the halo data from.
      */
-    virtual void packAndSendCpu(size_t id, int mpitag, buf_t *buf) = 0;
+    virtual void packAndSendCpu(size_t id, buf_t *buf, int mpitag = -1) = 0;
     /*!
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.

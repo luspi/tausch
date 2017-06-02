@@ -75,7 +75,7 @@ void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, size_t id, double *bu
 
 void tausch_packAndSend_double(CTauschDouble *tC, size_t id, int mpitag, double *buf) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->packAndSendCpu(id, mpitag, buf);
+    t->packAndSendCpu(id, buf, mpitag);
 }
 
 void tausch_recvAndUnpack_double(CTauschDouble *tC, size_t id, double *buf) {

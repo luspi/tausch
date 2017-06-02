@@ -75,7 +75,7 @@ void tausch_unpackNextRecvBuffer_unsignedint(CTauschUnsignedInt *tC, size_t id, 
 
 void tausch_packAndSend_unsignedint(CTauschUnsignedInt *tC, size_t id, int mpitag, unsigned int *buf) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->packAndSendCpu(id, mpitag, buf);
+    t->packAndSendCpu(id, buf, mpitag);
 }
 
 void tausch_recvAndUnpack_unsignedint(CTauschUnsignedInt *tC, size_t id, unsigned int *buf) {
