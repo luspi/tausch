@@ -47,11 +47,8 @@ typedef void* CTauschFloat;
  *
  * \param localDim
  *  Array of size 1 to 3 holding the dimension(s) of the local partition (not the global dimensions), with the x dimension being the first value, the
- *  y dimension (if present) being the second value, and the z dimension (if present) the final value.
- * \param haloWidth
- *  Array of size 2, 4, or 6 (depending on the dimensionality) containing the widths of the CPU-to-CPU halos, i.e., the inter-MPI halo. The order in
- *  which the halo widths are expected to be stored is: LEFT -> RIGHT -> TOP -> BOTTOM -> FRONT -> BACK. Depending on the dimensionality of the
- *  problem only a subset might be possible to be specified.
+ *  y dimension (if present) being the second value, and the z dimension (if present) the final value. Note: This dimension <b>DOES INCLUDE</b> the
+ *  halo widths!
  * \param numBuffers
  *  The number of buffers that will be used. If more than one, they are all combined into one message. All buffers will have to use the same
  *  discretisation! Typical value: 1.
