@@ -50,6 +50,11 @@
  *
  * \em Note: %Tausch requires C++11 support to work!
  *
+ * \section terminology Terminology
+ * For clarification, there are two types of halos that is referred to in the documentation and also the API itself:
+ * - <b>Local halo</b>: the region of the partition owned by the current processor that is requested by other processors as halo data
+ * - <b>Remote halo</b>: the halo required by the current processor for computations that lives on other processors
+ *
  * \section assumptions Assumptions
  * Only very few assumptions are made regarding how the overall domain is partitioned amongst MPI ranks and regarding how the GPU handles a
  * subpartition of the overall partition. The assumptions that are done can be put into two groups:
@@ -60,11 +65,6 @@
  * all the edges, each edge is treated seperately.
  * -# <b>GPU fully inside</b>: Any GPU partition (if available) lies fully inside the MPI partition and is not involved with any inter-MPI
  * communication. This restriction is planned to be removed in the future.
- *
- * \section terminology Terminology
- * For clarification, there are two types of halos that is referred to in the documentation and also the API itself:
- * - <b>Local halo</b>: the region of the partition owned by the current processor that is requested by other processors as halo data
- * - <b>Remote halo</b>: the halo required by the current processor for computations that lives on other processors
  *
  * \section possible What is possible
  * Due to making only very few assumption, %Tausch is very flexible and can be used for many different scenarios:
@@ -109,6 +109,34 @@
  * \includelineno samplecode.cpp
  *
  * This code can be compiled with: `mpic++ samplecode.cpp -ltausch -O3 -o sample`
+ *
+ * \section license License
+ *
+ * \code{.unparsed}
+ *
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2017, Lukas Spies
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * \endcode
  *
  */
 
