@@ -66,7 +66,7 @@ typedef void* CTauschDouble;
  *  Return the CTauschDouble object created with the specified configuration.
  *
  */
-CTauschDouble *tausch_new_double(size_t *localDim, size_t numBuffers, size_t valuesPerPoint, MPI_Comm comm, TauschVersion version);
+CTauschDouble *tausch_new_double(size_t *localDim, size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, TauschVersion version);
 
 /*!
  *

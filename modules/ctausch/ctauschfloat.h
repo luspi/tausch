@@ -66,7 +66,7 @@ typedef void* CTauschFloat;
  *  Return the CTauschFloat object created with the specified configuration.
  *
  */
-CTauschFloat *tausch_new_float(size_t *localDim, size_t numBuffers, size_t valuesPerPoint, MPI_Comm comm, TauschVersion version);
+CTauschFloat *tausch_new_float(size_t *localDim, size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, TauschVersion version);
 
 /*!
  *

@@ -1,7 +1,7 @@
 #include "tausch3d.h"
 
 template <class buf_t> Tausch3D<buf_t>::Tausch3D(size_t *localDim, MPI_Datatype mpiDataType,
-                                                   int numBuffers, int valuesPerPoint, MPI_Comm comm) {
+                                                   int numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm) {
 
     MPI_Comm_dup(comm, &TAUSCH_COMM);
 
@@ -13,7 +13,14 @@ template <class buf_t> Tausch3D<buf_t>::Tausch3D(size_t *localDim, MPI_Datatype 
         this->localDim[i] = localDim[i];
 
     this->numBuffers = numBuffers;
-    this->valuesPerPoint = valuesPerPoint;
+
+    this->valuesPerPointPerBuffer = new size_t[numBuffers];
+    if(valuesPerPointPerBuffer == nullptr)
+        for(int i = 0; i < numBuffers; ++i)
+            this->valuesPerPointPerBuffer[i] = 1;
+    else
+        for(int i = 0; i < numBuffers; ++i)
+            this->valuesPerPointPerBuffer[i] = valuesPerPointPerBuffer[i];
 
     this->mpiDataType = mpiDataType;
 
@@ -40,6 +47,8 @@ template <class buf_t> Tausch3D<buf_t>::~Tausch3D() {
 
     delete[] setupMpiRecv;
     delete[] setupMpiSend;
+
+    delete[] valuesPerPointPerBuffer;
 }
 
 template <class buf_t> void Tausch3D<buf_t>::setLocalHaloInfoCpu(size_t numHaloParts, size_t **haloSpecs) {
@@ -57,7 +66,11 @@ template <class buf_t> void Tausch3D<buf_t>::setLocalHaloInfoCpu(size_t numHaloP
         for(int j = 0; j < 7; ++j)
             localHaloSpecs[i][j] = haloSpecs[i][j];
 
-        mpiSendBuffer[i] = new buf_t[numBuffers*valuesPerPoint*haloSpecs[i][3]*haloSpecs[i][4]*haloSpecs[i][5]]{};
+        size_t bufsize = 0;
+        for(int n = 0; n < numBuffers; ++n)
+            bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i][3]*haloSpecs[i][4]*haloSpecs[i][5];
+
+        mpiSendBuffer[i] = new buf_t[bufsize]{};
 
         setupMpiSend[i] = false;
 
@@ -80,7 +93,11 @@ template <class buf_t> void Tausch3D<buf_t>::setRemoteHaloInfoCpu(size_t numHalo
         for(int j = 0; j < 7; ++j)
             remoteHaloSpecs[i][j] = haloSpecs[i][j];
 
-        mpiRecvBuffer[i] = new buf_t[numBuffers*valuesPerPoint*haloSpecs[i][3]*haloSpecs[i][4]*haloSpecs[i][5]]{};
+        size_t bufsize = 0;
+        for(int n = 0; n < numBuffers; ++n)
+            bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i][3]*haloSpecs[i][4]*haloSpecs[i][5];
+
+        mpiRecvBuffer[i] = new buf_t[bufsize]{};
 
         setupMpiRecv[i] = false;
 
@@ -99,7 +116,11 @@ template <class buf_t> void Tausch3D<buf_t>::postReceiveCpu(size_t id, int mpita
 
         setupMpiRecv[id] = true;
 
-        MPI_Recv_init(&mpiRecvBuffer[id][0], numBuffers*valuesPerPoint*remoteHaloSpecs[id][3]*remoteHaloSpecs[id][4]*remoteHaloSpecs[id][5],
+        size_t bufsize = 0;
+        for(int n = 0; n < numBuffers; ++n)
+            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecs[id][3]*remoteHaloSpecs[id][4]*remoteHaloSpecs[id][5];
+
+        MPI_Recv_init(&mpiRecvBuffer[id][0], bufsize,
                       mpiDataType, remoteHaloSpecs[id][6], mpitag, TAUSCH_COMM, &mpiRecvRequests[id]);
 
     }
@@ -131,8 +152,13 @@ template <class buf_t> void Tausch3D<buf_t>::packNextSendBufferCpu(size_t id, bu
         int index = (s/(localHaloSpecs[id][3]*localHaloSpecs[id][4]) + localHaloSpecs[id][2]) * localDim[TAUSCH_X] * localDim[TAUSCH_Y] +
                     ((s%(localHaloSpecs[id][3]*localHaloSpecs[id][4]))/localHaloSpecs[id][3] + localHaloSpecs[id][1]) * localDim[TAUSCH_X] +
                     s%localHaloSpecs[id][3] + localHaloSpecs[id][0];
-        for(int val = 0; val < valuesPerPoint; ++val)
-            mpiSendBuffer[id][numBuffersPacked[id]*valuesPerPoint*size + valuesPerPoint*s + val] = buf[valuesPerPoint*index + val];
+        for(int val = 0; val < valuesPerPointPerBuffer[numBuffersPacked[id]]; ++val) {
+            int offset = 0;
+            for(int b = 0; b < numBuffersPacked[id]; ++b)
+                offset += valuesPerPointPerBuffer[b]*size;
+            mpiSendBuffer[id][offset + valuesPerPointPerBuffer[numBuffersPacked[id]]*s + val] =
+                    buf[valuesPerPointPerBuffer[numBuffersPacked[id]]*index + val];
+        }
     }
     ++numBuffersPacked[id];
 
@@ -155,7 +181,11 @@ template <class buf_t> void Tausch3D<buf_t>::sendCpu(size_t id, int mpitag) {
 
         setupMpiSend[id] = true;
 
-        MPI_Send_init(&mpiSendBuffer[id][0], numBuffers*valuesPerPoint*localHaloSpecs[id][3]*localHaloSpecs[id][4]*localHaloSpecs[id][5],
+        size_t bufsize = 0;
+        for(int n = 0; n < numBuffers; ++n)
+            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecs[id][3]*localHaloSpecs[id][4]*localHaloSpecs[id][5];
+
+        MPI_Send_init(&mpiSendBuffer[id][0], bufsize,
                   mpiDataType, localHaloSpecs[id][6], mpitag, TAUSCH_COMM, &mpiSendRequests[id]);
 
     }
@@ -176,8 +206,13 @@ template <class buf_t> void Tausch3D<buf_t>::unpackNextRecvBufferCpu(size_t id, 
         int index = (s/(remoteHaloSpecs[id][3]*remoteHaloSpecs[id][4]) + remoteHaloSpecs[id][2]) * localDim[TAUSCH_X] * localDim[TAUSCH_Y] +
                     ((s%(remoteHaloSpecs[id][3]*remoteHaloSpecs[id][4]))/remoteHaloSpecs[id][3] + remoteHaloSpecs[id][1]) * localDim[TAUSCH_X] +
                     s%remoteHaloSpecs[id][3] + remoteHaloSpecs[id][0];
-        for(int val = 0; val < valuesPerPoint; ++val)
-            buf[valuesPerPoint*index + val] = mpiRecvBuffer[id][numBuffersUnpacked[id]*valuesPerPoint*size + valuesPerPoint*s + val];
+        for(int val = 0; val < valuesPerPointPerBuffer[numBuffersUnpacked[id]]; ++val) {
+            int offset = 0;
+            for(int b = 0; b < numBuffersUnpacked[id]; ++b)
+                offset += valuesPerPointPerBuffer[b]*size;
+            buf[valuesPerPointPerBuffer[numBuffersUnpacked[id]]*index + val] =
+                    mpiRecvBuffer[id][offset + valuesPerPointPerBuffer[numBuffersUnpacked[id]]*s + val];
+        }
     }
     ++numBuffersUnpacked[id];
 

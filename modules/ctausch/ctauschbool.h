@@ -66,7 +66,7 @@ typedef void* CTauschBool;
  *  Return the CTauschBool object created with the specified configuration.
  *
  */
-CTauschBool *tausch_new_bool(size_t *localDim, size_t numBuffers, size_t valuesPerPoint, MPI_Comm comm, TauschVersion version);
+CTauschBool *tausch_new_bool(size_t *localDim, size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, TauschVersion version);
 
 /*!
  *

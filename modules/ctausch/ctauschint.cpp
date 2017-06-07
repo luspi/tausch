@@ -8,7 +8,7 @@ extern "C" {
 
 #include "ctauschint.h"
 
-CTauschInt *tausch_new_int(size_t *localDim, size_t numBuffers, size_t valuesPerPoint, MPI_Comm comm, TauschVersion version) {
+CTauschInt *tausch_new_int(size_t *localDim, size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, TauschVersion version) {
 
     if(version != TAUSCH_1D && version != TAUSCH_2D && version != TAUSCH_3D) {
         std::cerr << "[CTauschInt] ERROR: Invalid version specified: " << version << " - Abort..." << std::endl;
@@ -18,11 +18,11 @@ CTauschInt *tausch_new_int(size_t *localDim, size_t numBuffers, size_t valuesPer
     Tausch<int> *t;
 
     if(version == TAUSCH_1D)
-        t = new Tausch1D<int>(localDim, MPI_INT, numBuffers, valuesPerPoint, comm);
+        t = new Tausch1D<int>(localDim, MPI_INT, numBuffers, valuesPerPointPerBuffer, comm);
     else if(version == TAUSCH_2D)
-        t = new Tausch2D<int>(localDim, MPI_INT, numBuffers, valuesPerPoint, comm);
+        t = new Tausch2D<int>(localDim, MPI_INT, numBuffers, valuesPerPointPerBuffer, comm);
     else if(version == TAUSCH_3D)
-        t = new Tausch3D<int>(localDim, MPI_INT, numBuffers, valuesPerPoint, comm);
+        t = new Tausch3D<int>(localDim, MPI_INT, numBuffers, valuesPerPointPerBuffer, comm);
 
     return reinterpret_cast<CTauschInt*>(t);
 

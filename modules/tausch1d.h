@@ -56,14 +56,14 @@ public:
      *  The number of buffers that will be used. If more than one, they are all combined into one message. All buffers will have to use the same
      *  discretisation! Default value: 1
      * \param valuesPerPoint
-     *  How many values are stored consecutively per point in the same buffer. All points will have to have the same number of values stored for them.
-     *  Default value: 1
+     *  How many values are stored consecutively per point in the same buffer. Each buffer can have different number of values stored per point. This
+     *  is expected to be an array of the same size as the number of buffers. If set to nullptr, all buffers are assumed to store 1 value per point.
      * \param comm
      *  The MPI Communictor to be used. %Tausch1D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch1D working
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      *
      */
-    Tausch1D(size_t *localDim, MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t valuesPerPoint = 1, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch1D(size_t *localDim, MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = nullptr, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      *
@@ -209,7 +209,7 @@ private:
     size_t **remoteHaloSpecs;
 
     size_t numBuffers;
-    size_t valuesPerPoint;
+    size_t *valuesPerPointPerBuffer;
 
     buf_t **mpiRecvBuffer;
     buf_t **mpiSendBuffer;
