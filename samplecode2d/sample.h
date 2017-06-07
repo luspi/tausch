@@ -27,7 +27,7 @@ private:
     size_t **remoteHaloSpecs;
     double *dat1, *dat2;
     size_t numBuffers;
-    size_t valuesPerPoint;
+    size_t valuesPerPoint[2];
 
     size_t left, right, top, bottom;
 

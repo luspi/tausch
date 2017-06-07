@@ -25,17 +25,18 @@ Sample::Sample(size_t *localDim, size_t loops, size_t *cpuHaloWidth, size_t *mpi
         top -= mpiSize;
 
     numBuffers = 2;
-    valuesPerPoint = 1;
-    dat1 = new double[valuesPerPoint*(localDim[0] + cpuHaloWidth[0] + cpuHaloWidth[1])*(localDim[1] + cpuHaloWidth[2] + cpuHaloWidth[3])]{};
-    dat2 = new double[valuesPerPoint*(localDim[0] + cpuHaloWidth[0] + cpuHaloWidth[1])*(localDim[1] + cpuHaloWidth[2] + cpuHaloWidth[3])]{};
+    valuesPerPoint[0] = 1;
+    valuesPerPoint[1] = 1;
+    dat1 = new double[valuesPerPoint[0]*(localDim[0] + cpuHaloWidth[0] + cpuHaloWidth[1])*(localDim[1] + cpuHaloWidth[2] + cpuHaloWidth[3])]{};
+    dat2 = new double[valuesPerPoint[1]*(localDim[0] + cpuHaloWidth[0] + cpuHaloWidth[1])*(localDim[1] + cpuHaloWidth[2] + cpuHaloWidth[3])]{};
     for(int j = 0; j < localDim[1]; ++j)
         for(int i = 0; i < localDim[0]; ++i) {
-            for(int val = 0; val < valuesPerPoint; ++val) {
-                dat1[valuesPerPoint*((j+cpuHaloWidth[3])*(localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i+cpuHaloWidth[0])+val] =
+            for(int val = 0; val < valuesPerPoint[0]; ++val)
+                dat1[valuesPerPoint[0]*((j+cpuHaloWidth[3])*(localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i+cpuHaloWidth[0])+val] =
                         (j*localDim[0]+i+1)*10+val;
-                dat2[valuesPerPoint*((j+cpuHaloWidth[3])*(localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i+cpuHaloWidth[0])+val] =
+            for(int val = 0; val < valuesPerPoint[1]; ++val)
+                dat2[valuesPerPoint[1]*((j+cpuHaloWidth[3])*(localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i+cpuHaloWidth[0])+val] =
                         (5+j*localDim[0]+i+1)*10+val;
-            }
         }
 
 
@@ -70,8 +71,8 @@ Sample::~Sample() {
     delete[] localHaloSpecs;
     delete[] remoteHaloSpecs;
     delete tausch;
-    delete dat1;
-    delete dat2;
+    delete[] dat1;
+    delete[] dat2;
 
 }
 
@@ -111,17 +112,17 @@ void Sample::launchCPU() {
 void Sample::print() {
 
     for(int j = localDim[1]+cpuHaloWidth[2]+cpuHaloWidth[3]-1; j >= 0; --j) {
-        for(int val = 0; val < valuesPerPoint; ++val) {
+        for(int val = 0; val < valuesPerPoint[0]; ++val) {
             for(int i = 0; i < localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]; ++i)
-                std::cout << std::setw(3) << dat1[valuesPerPoint*(j*(localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i) + val] << " ";
-            if(val != valuesPerPoint-1)
+                std::cout << std::setw(3) << dat1[valuesPerPoint[0]*(j*(localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i) + val] << " ";
+            if(val != valuesPerPoint[0]-1)
                 std::cout << "   ";
         }
         std::cout << "          ";
-        for(int val = 0; val < valuesPerPoint; ++val) {
+        for(int val = 0; val < valuesPerPoint[1]; ++val) {
             for(int i = 0; i < localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]; ++i)
-                std::cout << std::setw(3) << dat2[valuesPerPoint*(j*(localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i) + val] << " ";
-            if(val != valuesPerPoint-1)
+                std::cout << std::setw(3) << dat2[valuesPerPoint[1]*(j*(localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i) + val] << " ";
+            if(val != valuesPerPoint[1]-1)
                 std::cout << "   ";
         }
         std::cout << std::endl;
