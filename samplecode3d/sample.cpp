@@ -32,27 +32,28 @@ Sample::Sample(size_t *localDim, size_t loops, size_t *cpuHaloWidth, size_t *mpi
         back -= mpiSize;
 
     numBuffers = 2;
-    valuesPerPoint = 1;
-    dat1 = new double[valuesPerPoint*(localDim[0] + cpuHaloWidth[0] + cpuHaloWidth[1])*
+    valuesPerPoint[0] = 1;
+    valuesPerPoint[1] = 1;
+    dat1 = new double[valuesPerPoint[0]*(localDim[0] + cpuHaloWidth[0] + cpuHaloWidth[1])*
                                      (localDim[1] + cpuHaloWidth[2] + cpuHaloWidth[3])*
                                      (localDim[2] + cpuHaloWidth[4] + cpuHaloWidth[5])]{};
-    dat2 = new double[valuesPerPoint*(localDim[0] + cpuHaloWidth[0] + cpuHaloWidth[1])*
+    dat2 = new double[valuesPerPoint[1]*(localDim[0] + cpuHaloWidth[0] + cpuHaloWidth[1])*
                                      (localDim[1] + cpuHaloWidth[2] + cpuHaloWidth[3])*
                                      (localDim[2] + cpuHaloWidth[4] + cpuHaloWidth[5])]{};
 
     for(int k = 0; k < localDim[TAUSCH_Z]; ++k)
         for(int j = 0; j < localDim[TAUSCH_Y]; ++j)
             for(int i = 0; i < localDim[TAUSCH_X]; ++i) {
-                for(int val = 0; val < valuesPerPoint; ++val) {
-                    dat1[valuesPerPoint*((k+cpuHaloWidth[4])*(localDim[TAUSCH_X]+cpuHaloWidth[0]+cpuHaloWidth[1])*
+                for(int val = 0; val < valuesPerPoint[0]; ++val)
+                    dat1[valuesPerPoint[0]*((k+cpuHaloWidth[4])*(localDim[TAUSCH_X]+cpuHaloWidth[0]+cpuHaloWidth[1])*
                                          (localDim[TAUSCH_Y]+cpuHaloWidth[2]+cpuHaloWidth[3]) +
                                          (j+cpuHaloWidth[3])*(localDim[TAUSCH_X]+cpuHaloWidth[0]+cpuHaloWidth[1]) +
                                           i+cpuHaloWidth[0]) + val] = (k*localDim[TAUSCH_X]*localDim[TAUSCH_Y] + j*localDim[TAUSCH_X] + i + 1)*10+val;
-                    dat2[valuesPerPoint*((k+cpuHaloWidth[4])*(localDim[TAUSCH_X]+cpuHaloWidth[0]+cpuHaloWidth[1])*
+                for(int val = 0; val < valuesPerPoint[1]; ++val)
+                    dat2[valuesPerPoint[1]*((k+cpuHaloWidth[4])*(localDim[TAUSCH_X]+cpuHaloWidth[0]+cpuHaloWidth[1])*
                                          (localDim[TAUSCH_Y]+cpuHaloWidth[2]+cpuHaloWidth[3]) +
                                          (j+cpuHaloWidth[3])*(localDim[TAUSCH_X]+cpuHaloWidth[0]+cpuHaloWidth[1]) +
                                           i+cpuHaloWidth[0])+val] = (5+k*localDim[TAUSCH_X]*localDim[TAUSCH_Y] + j*localDim[TAUSCH_X] + i + 1)*10+val;
-                }
             }
 
     size_t tauschLocalDim[3] = {localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1],
@@ -61,47 +62,59 @@ Sample::Sample(size_t *localDim, size_t loops, size_t *cpuHaloWidth, size_t *mpi
     tausch = new Tausch3D<double>(tauschLocalDim, MPI_DOUBLE, numBuffers, valuesPerPoint);
 
     // These are the (up to) 4 remote halos that are needed by this rank
-    remoteHaloSpecs = new size_t*[6];
+    remoteHaloSpecs = new TauschHaloSpec[6];
     // These are the (up to) 4 local halos that are needed tobe sent by this rank
-    localHaloSpecs = new size_t*[6];
+    localHaloSpecs = new TauschHaloSpec[6];
 
-    localHaloSpecs[0] = new size_t[8]{cpuHaloWidth[0], 0, 0,
-                                   cpuHaloWidth[1], cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
-                                   left, 0};
-    localHaloSpecs[1] = new size_t[8]{localDim[0], 0, 0,
-                                   cpuHaloWidth[0], cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
-                                   right, 1};
-    localHaloSpecs[2] = new size_t[8]{0, localDim[1], 0,
-                                   cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[3], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
-                                   top, 2};
-    localHaloSpecs[3] = new size_t[8]{0, cpuHaloWidth[3], 0,
-                                   cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
-                                   bottom, 3};
-    localHaloSpecs[4] = new size_t[8]{0, 0, cpuHaloWidth[4],
-                                   cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3], cpuHaloWidth[5],
-                                   front, 4};
-    localHaloSpecs[5] = new size_t[8]{0, 0, localDim[2],
-                                   cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3], cpuHaloWidth[4],
-                                   back, 5};
+    localHaloSpecs[0].x = cpuHaloWidth[0]; localHaloSpecs[0].y = 0; localHaloSpecs[0].z = 0;
+    localHaloSpecs[0].width = cpuHaloWidth[1]; localHaloSpecs[0].height = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+    localHaloSpecs[0].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; localHaloSpecs[0].remoteMpiRank = left;
 
-    remoteHaloSpecs[0] = new size_t[8]{0, 0, 0,
-                                   cpuHaloWidth[0], cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
-                                   left, 1};
-    remoteHaloSpecs[1] = new size_t[8]{localDim[0]+cpuHaloWidth[0], 0, 0,
-                                   cpuHaloWidth[1], cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
-                                   right, 0};
-    remoteHaloSpecs[2] = new size_t[8]{0, localDim[1]+cpuHaloWidth[3], 0,
-                                   cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
-                                   top, 3};
-    remoteHaloSpecs[3] = new size_t[8]{0, 0, 0,
-                                   cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[3], cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5],
-                                   bottom, 2};
-    remoteHaloSpecs[4] = new size_t[8]{0, 0, 0,
-                                   cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3], cpuHaloWidth[4],
-                                   front, 5};
-    remoteHaloSpecs[5] = new size_t[8]{0, 0, localDim[2]+cpuHaloWidth[4],
-                                   cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3], cpuHaloWidth[5],
-                                   back, 4};
+    localHaloSpecs[1].x = localDim[0]; localHaloSpecs[1].y = 0; localHaloSpecs[1].z = 0;
+    localHaloSpecs[1].width = cpuHaloWidth[0]; localHaloSpecs[1].height = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+    localHaloSpecs[1].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; localHaloSpecs[1].remoteMpiRank = right;
+
+    localHaloSpecs[2].x = 0; localHaloSpecs[2].y = localDim[1]; localHaloSpecs[2].z = 0;
+    localHaloSpecs[2].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[2].height = cpuHaloWidth[3];
+    localHaloSpecs[2].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; localHaloSpecs[2].remoteMpiRank = top;
+
+    localHaloSpecs[3].x = 0; localHaloSpecs[3].y = cpuHaloWidth[3]; localHaloSpecs[3].z = 0;
+    localHaloSpecs[3].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[3].height = cpuHaloWidth[2];
+    localHaloSpecs[3].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; localHaloSpecs[3].remoteMpiRank = bottom;
+
+    localHaloSpecs[4].x = 0; localHaloSpecs[4].y = 0; localHaloSpecs[4].z = cpuHaloWidth[4];
+    localHaloSpecs[4].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[4].height = cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3];
+    localHaloSpecs[4].depth = cpuHaloWidth[5]; localHaloSpecs[4].remoteMpiRank = front;
+
+    localHaloSpecs[5].x = 0; localHaloSpecs[5].y = 0; localHaloSpecs[5].z = localDim[2];
+    localHaloSpecs[5].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[5].height = cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3];
+    localHaloSpecs[5].depth = cpuHaloWidth[4]; localHaloSpecs[5].remoteMpiRank = back;
+
+
+    remoteHaloSpecs[0].x = 0; remoteHaloSpecs[0].y = 0; remoteHaloSpecs[0].z = 0;
+    remoteHaloSpecs[0].width = cpuHaloWidth[0]; remoteHaloSpecs[0].height = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+    remoteHaloSpecs[0].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; remoteHaloSpecs[0].remoteMpiRank = left;
+
+    remoteHaloSpecs[1].x = localDim[0]+cpuHaloWidth[0]; remoteHaloSpecs[1].y = 0; remoteHaloSpecs[1].z = 0;
+    remoteHaloSpecs[1].width = cpuHaloWidth[1]; remoteHaloSpecs[1].height = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+    remoteHaloSpecs[1].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; remoteHaloSpecs[1].remoteMpiRank = right;
+
+    remoteHaloSpecs[2].x = 0; remoteHaloSpecs[2].y = localDim[1]+cpuHaloWidth[3]; remoteHaloSpecs[2].z = 0;
+    remoteHaloSpecs[2].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[2].height = cpuHaloWidth[2];
+    remoteHaloSpecs[2].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; remoteHaloSpecs[2].remoteMpiRank = top;
+
+    remoteHaloSpecs[3].x = 0; remoteHaloSpecs[3].y = 0; remoteHaloSpecs[3].z = 0;
+    remoteHaloSpecs[3].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[3].height = cpuHaloWidth[3];
+    remoteHaloSpecs[3].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; remoteHaloSpecs[3].remoteMpiRank = bottom;
+
+    remoteHaloSpecs[4].x = 0; remoteHaloSpecs[4].y = 0; remoteHaloSpecs[4].z = 0;
+    remoteHaloSpecs[4].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[4].height = cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3];
+    remoteHaloSpecs[4].depth = cpuHaloWidth[4]; remoteHaloSpecs[4].remoteMpiRank = front;
+
+    remoteHaloSpecs[5].x = 0; remoteHaloSpecs[5].y = 0; remoteHaloSpecs[5].z = localDim[2]+cpuHaloWidth[4];
+    remoteHaloSpecs[5].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[5].height = cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3];
+    remoteHaloSpecs[5].depth = cpuHaloWidth[5]; remoteHaloSpecs[5].remoteMpiRank = back;
+
 
     tausch->setLocalHaloInfoCpu(6, localHaloSpecs);
     tausch->setRemoteHaloInfoCpu(6, remoteHaloSpecs);
@@ -110,10 +123,6 @@ Sample::Sample(size_t *localDim, size_t loops, size_t *cpuHaloWidth, size_t *mpi
 
 Sample::~Sample() {
 
-    for(int i = 0; i < 6; ++i) {
-        delete[] localHaloSpecs[i];
-        delete[] remoteHaloSpecs[i];
-    }
     delete[] localHaloSpecs;
     delete[] remoteHaloSpecs;
     delete tausch;
@@ -197,21 +206,21 @@ void Sample::print() {
 
         for(int j = localDim[TAUSCH_Y]+cpuHaloWidth[2]+cpuHaloWidth[3]-1; j >= 0; --j) {
 
-            for(int val = 0; val < valuesPerPoint; ++val) {
+            for(int val = 0; val < valuesPerPoint[0]; ++val) {
                 for(int i = 0; i < localDim[TAUSCH_X]+cpuHaloWidth[0]+cpuHaloWidth[1]; ++i)
                     std::cout << std::setw(4) << dat1[z*(localDim[TAUSCH_X]+cpuHaloWidth[0]+cpuHaloWidth[1])*
                                                         (localDim[TAUSCH_Y]+cpuHaloWidth[2]+cpuHaloWidth[3]) +
                                                       j*(localDim[TAUSCH_X]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i] << " ";
-                if(val != valuesPerPoint-1)
+                if(val != valuesPerPoint[0]-1)
                     std::cout << "   ";
             }
             std::cout << "          ";
-            for(int val = 0; val < valuesPerPoint; ++val) {
+            for(int val = 0; val < valuesPerPoint[1]; ++val) {
                 for(int i = 0; i < localDim[TAUSCH_X]+cpuHaloWidth[0]+cpuHaloWidth[1]; ++i)
                     std::cout << std::setw(4) << dat2[z*(localDim[TAUSCH_X]+cpuHaloWidth[0]+cpuHaloWidth[1])*
                                                         (localDim[TAUSCH_Y]+cpuHaloWidth[2]+cpuHaloWidth[3]) +
                                                       j*(localDim[TAUSCH_X]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i] << " ";
-                if(val != valuesPerPoint-1)
+                if(val != valuesPerPoint[1]-1)
                     std::cout << "   ";
             }
             std::cout << std::endl;

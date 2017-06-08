@@ -18,28 +18,37 @@ Sample::Sample(size_t localDim, size_t loops, size_t *cpuHaloWidth) {
         right = 0;
 
     numBuffers = 2;
-    valuesPerPoint = 2;
-    dat1 = new double[valuesPerPoint*(localDim + cpuHaloWidth[0] + cpuHaloWidth[1])]{};
-    dat2 = new double[valuesPerPoint*(localDim + cpuHaloWidth[0] + cpuHaloWidth[1])]{};
+    valuesPerPoint[0] = 2; valuesPerPoint[1] = 2;
+    dat1 = new double[valuesPerPoint[0]*(localDim + cpuHaloWidth[0] + cpuHaloWidth[1])]{};
+    dat2 = new double[valuesPerPoint[1]*(localDim + cpuHaloWidth[0] + cpuHaloWidth[1])]{};
     for(int i = 0; i < localDim; ++i) {
-        for(int val = 0; val < valuesPerPoint; ++val) {
-            dat1[valuesPerPoint*(i+cpuHaloWidth[0])+val] = (i+1)*10+val;
-            dat2[valuesPerPoint*(i+cpuHaloWidth[0])+val] = (5+i+1)*10+val;
-        }
+        for(int val = 0; val < valuesPerPoint[0]; ++val)
+            dat1[valuesPerPoint[0]*(i+cpuHaloWidth[0])+val] = (i+1)*10+val;
+        for(int val = 0; val < valuesPerPoint[1]; ++val)
+            dat2[valuesPerPoint[1]*(i+cpuHaloWidth[0])+val] = (5+i+1)*10+val;
     }
 
     size_t tauschLocalDim = localDim+cpuHaloWidth[0]+cpuHaloWidth[1];
     tausch = new Tausch1D<double>(&tauschLocalDim, MPI_DOUBLE, numBuffers, valuesPerPoint);
 
     // These are the (up to) 4 remote halos that are needed by this rank
-    remoteHaloSpecs = new size_t*[2];
+    remoteHaloSpecs = new TauschHaloSpec[2];
     // These are the (up to) 4 local halos that are needed tobe sent by this rank
-    localHaloSpecs = new size_t*[2];
+    localHaloSpecs = new TauschHaloSpec[2];
 
-    localHaloSpecs[0] = new size_t[6]{cpuHaloWidth[0], cpuHaloWidth[1], left, 0};
-    remoteHaloSpecs[0] = new size_t[6]{0, cpuHaloWidth[0], left, 1};
-    localHaloSpecs[1] = new size_t[6]{localDim, cpuHaloWidth[0], right, 1};
-    remoteHaloSpecs[1] = new size_t[6]{cpuHaloWidth[0]+localDim, cpuHaloWidth[1], right, 0};
+    localHaloSpecs[0].x = cpuHaloWidth[0];
+    localHaloSpecs[0].width = cpuHaloWidth[1];
+    localHaloSpecs[0].remoteMpiRank = left;
+    remoteHaloSpecs[0].x = 0;
+    remoteHaloSpecs[0].width = cpuHaloWidth[0];
+    remoteHaloSpecs[0].remoteMpiRank = left;
+
+    localHaloSpecs[1].x = localDim;
+    localHaloSpecs[1].width = cpuHaloWidth[0];
+    localHaloSpecs[1].remoteMpiRank = right;
+    remoteHaloSpecs[1].x = cpuHaloWidth[0]+localDim;
+    remoteHaloSpecs[1].width = cpuHaloWidth[1];
+    remoteHaloSpecs[1].remoteMpiRank = right;
 
     tausch->setLocalHaloInfoCpu(2, localHaloSpecs);
     tausch->setRemoteHaloInfoCpu(2, remoteHaloSpecs);
@@ -48,10 +57,6 @@ Sample::Sample(size_t localDim, size_t loops, size_t *cpuHaloWidth) {
 
 Sample::~Sample() {
 
-    for(int i = 0; i < 2; ++i) {
-        delete[] localHaloSpecs[i];
-        delete[] remoteHaloSpecs[i];
-    }
     delete[] localHaloSpecs;
     delete[] remoteHaloSpecs;
     delete tausch;
@@ -91,17 +96,17 @@ void Sample::launchCPU() {
 
 void Sample::print() {
 
-    for(int val = 0; val < valuesPerPoint; ++val) {
+    for(int val = 0; val < valuesPerPoint[0]; ++val) {
         for(int i = 0; i < localDim+cpuHaloWidth[0]+cpuHaloWidth[1]; ++i)
-            std::cout << std::setw(3) << dat1[valuesPerPoint*i + val] << " ";
-        if(val != valuesPerPoint-1)
+            std::cout << std::setw(3) << dat1[valuesPerPoint[0]*i + val] << " ";
+        if(val != valuesPerPoint[0]-1)
             std::cout << "   ";
     }
     std::cout << "          ";
-    for(int val = 0; val < valuesPerPoint; ++val) {
+    for(int val = 0; val < valuesPerPoint[1]; ++val) {
         for(int i = 0; i < localDim+cpuHaloWidth[0]+cpuHaloWidth[1]; ++i)
-            std::cout << std::setw(3) << dat2[valuesPerPoint*i + val] << " ";
-        if(val != valuesPerPoint-1)
+            std::cout << std::setw(3) << dat2[valuesPerPoint[1]*i + val] << " ";
+        if(val != valuesPerPoint[1]-1)
             std::cout << "   ";
     }
     std::cout << std::endl;

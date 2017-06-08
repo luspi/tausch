@@ -22,11 +22,11 @@ private:
 
     Tausch<double> *tausch;
 
-    size_t **localHaloSpecs;
-    size_t **remoteHaloSpecs;
+    TauschHaloSpec *localHaloSpecs;
+    TauschHaloSpec *remoteHaloSpecs;
     double *dat1, *dat2;
     size_t numBuffers;
-    size_t valuesPerPoint;
+    size_t valuesPerPoint[2];
 
     size_t left, right, top, bottom;
 
