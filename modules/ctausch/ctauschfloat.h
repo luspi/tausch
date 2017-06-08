@@ -52,9 +52,9 @@ typedef void* CTauschFloat;
  * \param numBuffers
  *  The number of buffers that will be used. If more than one, they are all combined into one message. All buffers will have to use the same
  *  discretisation! Typical value: 1.
- * \param valuesPerPoint
- *  How many values are stored consecutively per point in the same buffer. All points will have to have the same number of values stored for them.
- *  Typical value: 1
+ * \param valuesPerPointPerBuffer
+ *  How many values are stored consecutively per point in the same buffer. Each buffer can have different number of values stored per point. This
+ *  is expected to be an array of the same size as the number of buffers. If set to NULL, all buffers are assumed to store 1 value per point.
  * \param comm
  *  The MPI Communictor to be used. %CTauschFloat will duplicate the communicator, thus it is safe to have multiple instances of %CTauschFloat working
  *  with the same communicator. By default, MPI_COMM_WORLD will be used.

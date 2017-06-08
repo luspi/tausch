@@ -18,11 +18,11 @@ CTauschUnsignedInt *tausch_new_unsignedint(size_t *localDim, size_t numBuffers, 
     Tausch<unsigned int> *t;
 
     if(version == TAUSCH_1D)
-        t = new Tausch1D<unsigned int>(localDim, MPI_DOUBLE, numBuffers, valuesPerPointPerBuffer, comm);
+        t = new Tausch1D<unsigned int>(localDim, MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
     else if(version == TAUSCH_2D)
-        t = new Tausch2D<unsigned int>(localDim, MPI_DOUBLE, numBuffers, valuesPerPointPerBuffer, comm);
+        t = new Tausch2D<unsigned int>(localDim, MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
     else if(version == TAUSCH_3D)
-        t = new Tausch3D<unsigned int>(localDim, MPI_DOUBLE, numBuffers, valuesPerPointPerBuffer, comm);
+        t = new Tausch3D<unsigned int>(localDim, MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
 
     return reinterpret_cast<CTauschUnsignedInt*>(t);
 
