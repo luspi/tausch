@@ -44,18 +44,37 @@ Sample::Sample(size_t *localDim, size_t loops, size_t *cpuHaloWidth, size_t *mpi
     tausch = new Tausch2D<double>(tauschLocalDim, MPI_DOUBLE, numBuffers, valuesPerPoint);
 
     // These are the (up to) 4 remote halos that are needed by this rank
-    remoteHaloSpecs = new size_t*[4];
+    remoteHaloSpecs = new TauschHaloSpec[4];
     // These are the (up to) 4 local halos that are needed tobe sent by this rank
-    localHaloSpecs = new size_t*[4];
+    localHaloSpecs = new TauschHaloSpec[4];
 
-    localHaloSpecs[0] = new size_t[6]{cpuHaloWidth[0], 0, cpuHaloWidth[1], cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2], left, 0};
-    remoteHaloSpecs[0] = new size_t[6]{0, 0, cpuHaloWidth[0], cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2], left, 1};
-    localHaloSpecs[1] = new size_t[6]{localDim[0], 0, cpuHaloWidth[0], cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2], right, 1};
-    remoteHaloSpecs[1] = new size_t[6]{cpuHaloWidth[0]+localDim[0], 0, cpuHaloWidth[1], cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2], right, 0};
-    localHaloSpecs[2] = new size_t[6]{0, localDim[1], cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[3], top, 2};
-    remoteHaloSpecs[2] = new size_t[6]{0, cpuHaloWidth[3]+localDim[1], cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2], top, 3};
-    localHaloSpecs[3] = new size_t[6]{0, cpuHaloWidth[3], cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[2], bottom, 3};
-    remoteHaloSpecs[3] = new size_t[6]{0, 0, cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1], cpuHaloWidth[3], bottom, 2};
+    localHaloSpecs[0].x = cpuHaloWidth[0]; localHaloSpecs[0].y = 0;
+    localHaloSpecs[0].width = cpuHaloWidth[1]; localHaloSpecs[0].height = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+    localHaloSpecs[0].remoteMpiRank = left;
+    remoteHaloSpecs[0].x = 0; remoteHaloSpecs[0].y = 0;
+    remoteHaloSpecs[0].width = cpuHaloWidth[0]; remoteHaloSpecs[0].height = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+    remoteHaloSpecs[0].remoteMpiRank = left;
+
+    localHaloSpecs[1].x = localDim[0]; localHaloSpecs[1].y = 0;
+    localHaloSpecs[1].width = cpuHaloWidth[0]; localHaloSpecs[1].height = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+    localHaloSpecs[1].remoteMpiRank = right;
+    remoteHaloSpecs[1].x = cpuHaloWidth[0]+localDim[0]; remoteHaloSpecs[1].y = 0;
+    remoteHaloSpecs[1].width = cpuHaloWidth[1]; remoteHaloSpecs[1].height = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+    remoteHaloSpecs[1].remoteMpiRank = right;
+
+    localHaloSpecs[2].x = 0; localHaloSpecs[2].y = localDim[1];
+    localHaloSpecs[2].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[2].height = cpuHaloWidth[3];
+    localHaloSpecs[2].remoteMpiRank = top;
+    remoteHaloSpecs[2].x = 0; remoteHaloSpecs[2].y = cpuHaloWidth[3]+localDim[1];
+    remoteHaloSpecs[2].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[2].height = cpuHaloWidth[2];
+    remoteHaloSpecs[2].remoteMpiRank = top;
+
+    localHaloSpecs[3].x = 0; localHaloSpecs[3].y = cpuHaloWidth[3];
+    localHaloSpecs[3].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[3].height = cpuHaloWidth[2];
+    localHaloSpecs[3].remoteMpiRank = bottom;
+    remoteHaloSpecs[3].x = 0; remoteHaloSpecs[3].y = 0;
+    remoteHaloSpecs[3].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[3].height = cpuHaloWidth[3];
+    remoteHaloSpecs[3].remoteMpiRank = bottom;
 
     tausch->setLocalHaloInfoCpu(4, localHaloSpecs);
     tausch->setRemoteHaloInfoCpu(4, remoteHaloSpecs);
@@ -64,10 +83,6 @@ Sample::Sample(size_t *localDim, size_t loops, size_t *cpuHaloWidth, size_t *mpi
 
 Sample::~Sample() {
 
-    for(int i = 0; i < 4; ++i) {
-        delete[] localHaloSpecs[i];
-        delete[] remoteHaloSpecs[i];
-    }
     delete[] localHaloSpecs;
     delete[] remoteHaloSpecs;
     delete tausch;
