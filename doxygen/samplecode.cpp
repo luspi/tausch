@@ -53,18 +53,22 @@ int main(int argc, char** argv) {
     double *dat2 = new double[localDim[TAUSCH_X]*localDim[TAUSCH_Y]]{};
 
     // We have four halo regions, one across each of the four edges
-    size_t **remoteHaloSpecs = new size_t*[1];
-    size_t **localHaloSpecs = new size_t*[1];
+    TauschHaloSpec *remoteHaloSpecs = new TauschHaloSpec[1];
+    TauschHaloSpec *localHaloSpecs = new TauschHaloSpec[1];
 
     // left edge (0) remote halo region: [x, y, w, h, receiver, tag]
-    remoteHaloSpecs[0] = new size_t[6]{0, 0,
-                                    cpuHaloWidth[0], localDim[TAUSCH_Y],
-                                    left};
+    remoteHaloSpecs[0].x = 0;
+    remoteHaloSpecs[0].y = 0;
+    remoteHaloSpecs[0].width = cpuHaloWidth[0];
+    remoteHaloSpecs[0].height = localDim[TAUSCH_Y];
+    remoteHaloSpecs[0].remoteMpiRank = left;
 
     // right edge (1) local halo region: [x, y, w, h, sender, tag]
-    localHaloSpecs[0]  = new size_t[6]{localDim[TAUSCH_X], 0,
-                                    cpuHaloWidth[0], localDim[TAUSCH_Y],
-                                    right};
+    localHaloSpecs[0].x = localDim[TAUSCH_X];
+    localHaloSpecs[0].y = 0;
+    localHaloSpecs[0].width = cpuHaloWidth[0];
+    localHaloSpecs[0].height = localDim[TAUSCH_Y];
+    localHaloSpecs[0].remoteMpiRank = right;
 
     // The Tausch object, using its double version. The pointer type is of type 'Tausch', although using Tausch2D directly would also be possible here
     Tausch<double> *tausch = new Tausch2D<double>(localDim, MPI_DOUBLE, numBuffers, nullptr);
@@ -110,8 +114,6 @@ int main(int argc, char** argv) {
         std::cout << "Required time: " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
 
     // Clean up memory
-    delete[] localHaloSpecs[0];
-    delete[] remoteHaloSpecs[0];
     delete[] localHaloSpecs;
     delete[] remoteHaloSpecs;
     delete[] dat1;
