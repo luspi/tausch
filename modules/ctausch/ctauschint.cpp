@@ -33,12 +33,12 @@ void tausch_delete_int(CTauschInt *tC) {
     delete t;
 }
 
-void tausch_setCpuLocalHaloInfo_int(CTauschInt *tC, size_t numHaloParts, size_t **haloSpecs) {
+void tausch_setCpuLocalHaloInfo_int(CTauschInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
     t->setLocalHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_setCpuRemoteHaloInfo_int(CTauschInt *tC, size_t numHaloParts, size_t **haloSpecs) {
+void tausch_setCpuRemoteHaloInfo_int(CTauschInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
     t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }

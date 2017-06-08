@@ -98,7 +98,7 @@ void tausch_delete_double(CTauschDouble *tC);
  *   7. The receiving processor
  *
  */
-void tausch_setCpuLocalHaloInfo_double(CTauschDouble *tC, size_t numHaloParts, size_t **haloSpecs);
+void tausch_setCpuLocalHaloInfo_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
 /*!
  *
@@ -120,7 +120,7 @@ void tausch_setCpuLocalHaloInfo_double(CTauschDouble *tC, size_t numHaloParts, s
  *   7. The sending processor
  *
  */
-void tausch_setCpuRemoteHaloInfo_double(CTauschDouble *tC, size_t numHaloParts, size_t **haloSpecs);
+void tausch_setCpuRemoteHaloInfo_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
 /*!
  *

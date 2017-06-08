@@ -98,7 +98,7 @@ void tausch_delete_unsignedint(CTauschUnsignedInt *tC);
  *   7. The receiving processor
  *
  */
-void tausch_setCpuLocalHaloInfo_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, size_t **haloSpecs);
+void tausch_setCpuLocalHaloInfo_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
 /*!
  *
@@ -120,7 +120,7 @@ void tausch_setCpuLocalHaloInfo_unsignedint(CTauschUnsignedInt *tC, size_t numHa
  *   7. The sending processor
  *
  */
-void tausch_setCpuRemoteHaloInfo_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, size_t **haloSpecs);
+void tausch_setCpuRemoteHaloInfo_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
 /*!
  *

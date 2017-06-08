@@ -20,6 +20,41 @@
 #endif
 
 /*!
+ * A struct simplifying the specification of halo regions.
+ */
+struct TauschHaloSpec {
+    /*!
+     * The starting x coordinate of the halo region.
+     */
+    size_t x;
+    /*!
+     * The starting y coordinate of the halo region.
+     */
+    size_t y;
+    /*!
+     * The starting z coordinate of the halo region.
+     */
+    size_t z;
+    /*!
+     * The width of the halo region.
+     */
+    size_t width;
+    /*!
+     * The height of the halo region.
+     */
+    size_t height;
+    /*!
+     * The depth of the halo region.
+     */
+    size_t depth;
+    /*!
+     * The remote MPI rank associated with this halo region. This is either the sending or receiving MPI rank, depending on if the halo region
+     * specifies a local or remote halo.
+     */
+    int remoteMpiRank;
+};
+
+/*!
  *
  * \internal
  *
@@ -41,7 +76,7 @@ public:
      * \param haloSpecs
      *  The specifications of the local halo regions.
      */
-    virtual void setLocalHaloInfoCpu(size_t numHaloParts, size_t **haloSpecs) = 0;
+    virtual void setLocalHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
     /*!
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.
@@ -50,7 +85,7 @@ public:
      * \param haloSpecs
      *  The specifications of the remote halo regions.
      */
-    virtual void setRemoteHaloInfoCpu(size_t numHaloParts, size_t **haloSpecs) = 0;
+    virtual void setRemoteHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
     /*!
      * Virtual member pointing to respective function of Tausch1D, Tausch2D, or Tausch3D. More details can be found in the documentation for the
      * respective class.

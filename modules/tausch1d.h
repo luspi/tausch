@@ -79,14 +79,16 @@ public:
      * \param numHaloParts
      *  How many different parts there are to the halo
      * \param haloSpecs
-     *  The specification of the different halo parts. This is expected to be a nested array of int's, the order of which will be preserved,
-     *  and each halo region can be referenced later by its index in this array. Each nested array must contain the following 3 entries:
-     *   1. The starting x coordinate of the local region
-     *   2. The width of the region
-     *   3. The receiving processor
+     *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
+     *  entries. %Tausch2D expects the following 5 variables to be set:
+     *  variable | description
+     *  :-------: | -------
+     *   x | The starting x coordinate of the halo region
+     *   width | The width of the halo region
+     *   remoteMpiRank | The receiving processor
      *
      */
-    void setLocalHaloInfoCpu(size_t numHaloParts, size_t **haloSpecs);
+    void setLocalHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
     /*!
      *
@@ -95,14 +97,16 @@ public:
      * \param numHaloParts
      *  How many different parts there are to the halo
      * \param haloSpecs
-     *  The specification of the different halo parts. This is expected to be a nested array of int's, the order of which will be preserved,
-     *  and each halo region can be referenced later by its index in this array. Each nested array must contain the following 3 entries:
-     *   1. The starting x coordinate of the halo region
-     *   2. The width of the halo region
-     *   3. The sending processor
+     *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
+     *  entries. %Tausch1D expects the following 3 variables to be set:
+     *  variable | description
+     *  :-------: | -------
+     *   x | The starting x coordinate of the halo region
+     *   width | The width of the halo region
+     *   remoteMpiRank | The sending processor
      *
      */
-    void setRemoteHaloInfoCpu(size_t numHaloParts, size_t **haloSpecs);
+    void setRemoteHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
     /*!
      * Post the receive for the specified remote halo region of the current MPI rank. This doesn't do anything else but post the MPI_Recv.
@@ -204,9 +208,9 @@ private:
     int mpiRank, mpiSize;
 
     size_t localHaloNumParts;
-    size_t **localHaloSpecs;
+    TauschHaloSpec *localHaloSpecs;
     size_t remoteHaloNumParts;
-    size_t **remoteHaloSpecs;
+    TauschHaloSpec *remoteHaloSpecs;
 
     size_t numBuffers;
     size_t *valuesPerPointPerBuffer;

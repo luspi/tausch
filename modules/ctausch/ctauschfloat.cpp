@@ -33,12 +33,12 @@ void tausch_delete_float(CTauschFloat *tC) {
     delete t;
 }
 
-void tausch_setCpuLocalHaloInfo_float(CTauschFloat *tC, size_t numHaloParts, size_t **haloSpecs) {
+void tausch_setCpuLocalHaloInfo_float(CTauschFloat *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
     t->setLocalHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_setCpuRemoteHaloInfo_float(CTauschFloat *tC, size_t numHaloParts, size_t **haloSpecs) {
+void tausch_setCpuRemoteHaloInfo_float(CTauschFloat *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
     t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }
