@@ -279,6 +279,7 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCpuForGpu(size_t n
     remoteHaloNumPartsCpuForGpu = numHaloParts;
     remoteHaloSpecsCpuForGpu = new TauschHaloSpec[numHaloParts];
     gpuToCpuRecvBuffer = new buf_t*[numHaloParts];
+    numBuffersUnpackedGpuToCpu = new size_t[numHaloParts];
 
     for(int i = 0; i < numHaloParts; ++i) {
 
@@ -288,6 +289,8 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCpuForGpu(size_t n
         remoteHaloSpecsCpuForGpu[i].height = haloSpecs[i].height;
         remoteHaloSpecsCpuForGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
         remoteHaloSpecsCpuForGpu[i].gpu = haloSpecs[i].gpu;
+
+        numBuffersUnpackedGpuToCpu[i] = 0;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
@@ -307,8 +310,13 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGpu(size_t numHaloP
     try {
         cl_gpuToCpuSendBuffer = new cl::Buffer[numHaloParts];
         cl_localHaloSpecsGpu = new cl::Buffer[numHaloParts];
+        cl_numBuffersPackedGpuToCpu = new cl::Buffer[numHaloParts];
+        for(int n = 0; n < numHaloParts; ++n) {
+            cl_numBuffersPackedGpuToCpu[n] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, sizeof(size_t));
+            cl_queue.enqueueFillBuffer(cl_numBuffersPackedGpuToCpu[n], 0, 0, sizeof(size_t));
+        }
     } catch(cl::Error error) {
-        std::cerr << "Tausch2D :: setLocalHaloInfo() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+        std::cerr << "Tausch2D :: setLocalHaloInfoGpu() (1) :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
     }
 
@@ -329,10 +337,10 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGpu(size_t numHaloP
         size_t tmpHaloSpecs[4] = {haloSpecs[i].x, haloSpecs[i].y, haloSpecs[i].width, haloSpecs[i].height};
 
         try {
-            cl_gpuToCpuSendBuffer[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, bufsize*sizeof(double));
+            cl_gpuToCpuSendBuffer[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, bufsize*sizeof(buf_t));
             cl_localHaloSpecsGpu[i] = cl::Buffer(cl_context, &tmpHaloSpecs[0], (&tmpHaloSpecs[3])+1, true);
         } catch(cl::Error error) {
-            std::cerr << "Tausch2D :: setLocalHaloInfo() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+            std::cerr << "Tausch2D :: setLocalHaloInfoGpu() (2) :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
             exit(1);
         }
 
@@ -387,9 +395,6 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoGpu(size_t numHalo
 
 template <class buf_t> void Tausch2D<buf_t>::packNextSendBufferCpuToGpu(size_t id, buf_t *buf) {
 
-    if(!localHaloSpecsCpuForGpu[id].gpu)
-        std::cout << "Tausch2D :: Warning: Using non-GPU halo for GPU halo exchange..." << std::endl;
-
     int size = localHaloSpecsCpuForGpu[id].width * localHaloSpecsCpuForGpu[id].height;
     for(int s = 0; s < size; ++s) {
         int index = (s/localHaloSpecsCpuForGpu[id].width + localHaloSpecsCpuForGpu[id].y)*localDim[TAUSCH_X] +
@@ -405,9 +410,58 @@ template <class buf_t> void Tausch2D<buf_t>::packNextSendBufferCpuToGpu(size_t i
 
 }
 
+template <class buf_t> void Tausch2D<buf_t>::packNextSendBufferGpuToCpu(size_t id, cl::Buffer buf) {
+
+    try {
+
+        auto kernel_packNextSendBuffer = cl::make_kernel<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer>
+                                                    (cl_programs, "packNextSendBuffer");
+
+        size_t bufsize = 0;
+        for(int n = 0; n < numBuffers; ++n)
+            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsGpu[id].width*localHaloSpecsGpu[id].height;
+
+        int globalsize = (bufsize/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+
+        kernel_packNextSendBuffer(cl::EnqueueArgs(cl_queue, cl::NDRange(globalsize), cl::NDRange(cl_kernelLocalSize)),
+                                  cl_gpuDim, cl_localHaloSpecsGpu[id], cl_valuesPerPointPerBuffer,
+                                  cl_numBuffersPackedGpuToCpu[id], cl_gpuToCpuSendBuffer[id], buf);
+
+        auto kernel_inc = cl::make_kernel<cl::Buffer>(cl_programs, "incrementBuffer");
+        kernel_inc(cl::EnqueueArgs(cl_queue, cl::NDRange(1), cl::NDRange(1)), cl_numBuffersPackedGpuToCpu[id]);
+
+    } catch(cl::Error error) {
+        std::cerr << "Tausch2D :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
+
+}
+
 template <class buf_t> void Tausch2D<buf_t>::sendCpuToGpu(size_t id) {
     numBuffersPackedCpuToGpu[id] = 0;
     syncCpuAndGpu();
+}
+
+template <class buf_t> void Tausch2D<buf_t>::sendGpuToCpu(size_t id) {
+
+    try {
+
+        size_t bufsize = 0;
+        for(int n = 0; n < numBuffers; ++n)
+            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsCpuForGpu[id].width*remoteHaloSpecsCpuForGpu[id].height;
+
+        buf_t *tmp = new buf_t[bufsize];
+        cl::copy(cl_queue, cl_gpuToCpuSendBuffer[id], &tmp[0], &tmp[bufsize]);
+        for(int i = 0; i < bufsize; ++i)
+            gpuToCpuSendBuffer[id][i].store(tmp[i]);
+
+    } catch(cl::Error error) {
+        std::cerr << "Tausch2D :: sendGpuToCpu() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
+
+    syncCpuAndGpu();
+
 }
 
 template <class buf_t> void Tausch2D<buf_t>::recvCpuToGpu(size_t id) {
@@ -428,6 +482,30 @@ template <class buf_t> void Tausch2D<buf_t>::recvCpuToGpu(size_t id) {
         std::cerr << "Tausch2D :: recvCpuToGpu() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
     }
+
+}
+
+template <class buf_t> void Tausch2D<buf_t>::recvGpuToCpu(size_t id) {
+
+    syncCpuAndGpu();
+    numBuffersUnpackedGpuToCpu[id] = 0;
+
+}
+
+template <class buf_t> void Tausch2D<buf_t>::unpackNextRecvBufferGpuToCpu(size_t id, buf_t *buf) {
+
+    int size = remoteHaloSpecsCpuForGpu[id].width * remoteHaloSpecsCpuForGpu[id].height;
+    for(int s = 0; s < size; ++s) {
+        int index = (s/remoteHaloSpecsCpuForGpu[id].width + remoteHaloSpecsCpuForGpu[id].y)*localDim[TAUSCH_X] +
+                    s%remoteHaloSpecsCpuForGpu[id].width +remoteHaloSpecsCpuForGpu[id].x;
+        for(int val = 0; val < valuesPerPointPerBuffer[numBuffersUnpackedGpuToCpu[id]]; ++val) {
+            int offset = 0;
+            for(int b = 0; b < numBuffersUnpackedGpuToCpu[id]; ++b)
+                offset += valuesPerPointPerBuffer[b]*size;
+            buf[valuesPerPointPerBuffer[numBuffersUnpackedGpuToCpu[id]]*index + val] = gpuToCpuSendBuffer[id][offset + valuesPerPointPerBuffer[numBuffersUnpackedGpuToCpu[id]]*s + val].load();
+        }
+    }
+    ++numBuffersUnpackedGpuToCpu[id];
 
 }
 
@@ -563,6 +641,14 @@ template <class buf_t> void Tausch2D<buf_t>::compileKernels() {
     try {
         cl_programs = cl::Program(cl_context, oclstr, false);
         cl_programs.build();
+        try {
+            std::string log = cl_programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(cl_defaultDevice);
+            std::cout << std::endl << " ******************** " << std::endl << " ** BUILD LOG" << std::endl
+                      << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** "
+                      << std::endl << std::endl;
+        } catch(cl::Error err) {
+            std::cout << "Tausch2D :: compileKernels() :: getBuildInfo :: OpenCL exception caught: " << err.what() << " (" << err.err() << ")" << std::endl;
+        }
     } catch(cl::Error error) {
         std::cout << "Tausch2D :: compileKernels() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         if(error.err() == -11) {

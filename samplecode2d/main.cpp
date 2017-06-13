@@ -26,6 +26,7 @@ int main(int argc, char** argv) {
     int printMpiRank = -1;
     size_t cpuHaloWidth[4] = {1,1,1,1};
     size_t gpuHaloWidth[4] = {1,1,1,1};
+    size_t cpuForGpuHaloWidth[4] = {1,1,1,1};
     bool gpu = true;
 
     if(argc > 1) {
@@ -101,6 +102,30 @@ int main(int argc, char** argv) {
                     str << arg.substr(last);
                     str >> gpuHaloWidth[3];
                 }
+            } else if(argv[i] == std::string("-cghalo") && i < argc-1) {
+                std::string arg(argv[++i]);
+                size_t last = 0;
+                size_t next = 0;
+                int count = 0;
+                while((next = arg.find(",", last)) != std::string::npos && count < 3) {
+                    std::stringstream str;
+                    str << arg.substr(last, next-last);
+                    str >> cpuForGpuHaloWidth[count];
+                    last = next + 1;
+                    ++count;
+                }
+                if(count != 3) {
+                    int tmpHalo = 0;
+                    std::stringstream str;
+                    str << arg;
+                    str >> tmpHalo;
+                    for(int i = 0; i < 4; ++i)
+                        cpuForGpuHaloWidth[i] = tmpHalo;
+                } else {
+                    std::stringstream str;
+                    str << arg.substr(last);
+                    str >> cpuForGpuHaloWidth[3];
+                }
             } else if(argv[i] == std::string("-cpu"))
                 gpu = false;
         }
@@ -109,18 +134,19 @@ int main(int argc, char** argv) {
     if(mpiRank == 0) {
 
         std::cout << std::endl
-                  << "localDim    = " << localDim[0] << "/" << localDim[1] << std::endl
-                  << "gpuDim      = " << gpuDim[0] << "/" << gpuDim[1] << std::endl
-                  << "mpiNum      = " << mpiNum[0] << "/" << mpiNum[1] << std::endl
-                  << "loops       = " << loops << std::endl
-                  << "CPU halo    = " << cpuHaloWidth[0] << "/" << cpuHaloWidth[1] << "/" << cpuHaloWidth[2] << "/" << cpuHaloWidth[3] << std::endl
-                  << "GPU halo    = " << gpuHaloWidth[0] << "/" << gpuHaloWidth[1] << "/" << gpuHaloWidth[2] << "/" << gpuHaloWidth[3] << std::endl
-                  << "Version     = " << (gpu ? "Hybrid" : "CPU_only")
+                  << "localDim      = " << localDim[0] << "/" << localDim[1] << std::endl
+                  << "gpuDim        = " << gpuDim[0] << "/" << gpuDim[1] << std::endl
+                  << "mpiNum        = " << mpiNum[0] << "/" << mpiNum[1] << std::endl
+                  << "loops         = " << loops << std::endl
+                  << "CPU halo      = " << cpuHaloWidth[0] << "/" << cpuHaloWidth[1] << "/" << cpuHaloWidth[2] << "/" << cpuHaloWidth[3] << std::endl
+                  << "GPU halo      = " << gpuHaloWidth[0] << "/" << gpuHaloWidth[1] << "/" << gpuHaloWidth[2] << "/" << gpuHaloWidth[3] << std::endl
+                  << "CPU->GPU halo = " << cpuForGpuHaloWidth[0] << "/" << cpuForGpuHaloWidth[1] << "/" << cpuForGpuHaloWidth[2] << "/" << cpuForGpuHaloWidth[3] << std::endl
+                  << "Version       = " << (gpu ? "Hybrid" : "CPU_only")
                   << std::endl;
 
     }
 
-    Sample sample(localDim, gpuDim, loops, cpuHaloWidth, gpuHaloWidth, mpiNum, gpu);
+    Sample sample(localDim, gpuDim, loops, cpuHaloWidth, gpuHaloWidth, cpuForGpuHaloWidth, mpiNum, gpu);
 
     if(mpiRank == printMpiRank) {
         std::cout << "-------------------------------" << std::endl;

@@ -186,14 +186,23 @@ public:
 #ifdef TAUSCH_OPENCL
 
     void enableOpenCL(size_t *gpuDim, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
+
     void setLocalHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setRemoteHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setLocalHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setRemoteHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+
     void packNextSendBufferCpuToGpu(size_t id, buf_t *buf);
+    void packNextSendBufferGpuToCpu(size_t id, cl::Buffer buf);
+
     void sendCpuToGpu(size_t id);
+    void sendGpuToCpu(size_t id);
+
     void recvCpuToGpu(size_t id);
+    void recvGpuToCpu(size_t id);
+
     void unpackNextRecvBufferCpuToGpu(size_t id, cl::Buffer buf);
+    void unpackNextRecvBufferGpuToCpu(size_t id, buf_t *buf);
 
     cl::Context getOpenCLContext() { return cl_context; }
     cl::CommandQueue getOpenCLQueue() { return cl_queue; }
@@ -257,6 +266,9 @@ private:
 
     size_t *numBuffersPackedCpuToGpu;
     cl::Buffer *cl_numBuffersUnpackedCpuToGpu;
+
+    cl::Buffer *cl_numBuffersPackedGpuToCpu;
+    size_t *numBuffersUnpackedGpuToCpu;
 
     cl::Buffer cl_valuesPerPointPerBuffer;
 
