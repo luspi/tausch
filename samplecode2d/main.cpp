@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
                   << "mpiNum        = " << mpiNum[0] << "/" << mpiNum[1] << std::endl
                   << "loops         = " << loops << std::endl
                   << "CPU halo      = " << cpuHaloWidth[0] << "/" << cpuHaloWidth[1] << "/" << cpuHaloWidth[2] << "/" << cpuHaloWidth[3] << std::endl
-                  << "GPU halo      = " << gpuHaloWidth[0] << "/" << gpuHaloWidth[1] << "/" << gpuHaloWidth[2] << "/" << gpuHaloWidth[3] << std::endl
+                  << "GPU->GPU halo      = " << gpuHaloWidth[0] << "/" << gpuHaloWidth[1] << "/" << gpuHaloWidth[2] << "/" << gpuHaloWidth[3] << std::endl
                   << "CPU->GPU halo = " << cpuForGpuHaloWidth[0] << "/" << cpuForGpuHaloWidth[1] << "/" << cpuForGpuHaloWidth[2] << "/" << cpuForGpuHaloWidth[3] << std::endl
                   << "Version       = " << (gpu ? "Hybrid" : "CPU_only")
                   << std::endl;

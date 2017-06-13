@@ -263,7 +263,6 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoCpuForGpu(size_t nu
         localHaloSpecsCpuForGpu[i].width = haloSpecs[i].width;
         localHaloSpecsCpuForGpu[i].height = haloSpecs[i].height;
         localHaloSpecsCpuForGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
-        localHaloSpecsCpuForGpu[i].gpu = haloSpecs[i].gpu;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
@@ -288,7 +287,6 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCpuForGpu(size_t n
         remoteHaloSpecsCpuForGpu[i].width = haloSpecs[i].width;
         remoteHaloSpecsCpuForGpu[i].height = haloSpecs[i].height;
         remoteHaloSpecsCpuForGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
-        remoteHaloSpecsCpuForGpu[i].gpu = haloSpecs[i].gpu;
 
         numBuffersUnpackedGpuToCpu[i] = 0;
 
@@ -327,7 +325,6 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGpu(size_t numHaloP
         localHaloSpecsGpu[i].width = haloSpecs[i].width;
         localHaloSpecsGpu[i].height = haloSpecs[i].height;
         localHaloSpecsGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
-        localHaloSpecsGpu[i].gpu = haloSpecs[i].gpu;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
@@ -372,7 +369,6 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoGpu(size_t numHalo
         remoteHaloSpecsGpu[i].width = haloSpecs[i].width;
         remoteHaloSpecsGpu[i].height = haloSpecs[i].height;
         remoteHaloSpecsGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
-        remoteHaloSpecsGpu[i].gpu = haloSpecs[i].gpu;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)

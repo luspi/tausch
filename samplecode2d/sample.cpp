@@ -135,49 +135,41 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
         remoteHaloSpecsCpuForGpu[0].y = (localDim[1]-gpuDim[1])/2+cpuHaloWidth[3];
         remoteHaloSpecsCpuForGpu[0].width = cpuForGpuHaloWidth[0];
         remoteHaloSpecsCpuForGpu[0].height = gpuDim[1];
-        remoteHaloSpecsCpuForGpu[0].gpu = true;
 
         remoteHaloSpecsCpuForGpu[1].x = (localDim[0]-gpuDim[0])/2+cpuHaloWidth[0]+gpuDim[0]-cpuForGpuHaloWidth[1];
         remoteHaloSpecsCpuForGpu[1].y = (localDim[1]-gpuDim[1])/2+cpuHaloWidth[3];
         remoteHaloSpecsCpuForGpu[1].width = cpuForGpuHaloWidth[1];
         remoteHaloSpecsCpuForGpu[1].height = gpuDim[1];
-        remoteHaloSpecsCpuForGpu[1].gpu = true;
 
         remoteHaloSpecsCpuForGpu[2].x = (localDim[0]-gpuDim[0])/2+cpuHaloWidth[0]+cpuForGpuHaloWidth[0];
         remoteHaloSpecsCpuForGpu[2].y = (localDim[1]-gpuDim[1])/2+cpuHaloWidth[3]+gpuDim[1]-cpuForGpuHaloWidth[2];
         remoteHaloSpecsCpuForGpu[2].width = gpuDim[0]-cpuForGpuHaloWidth[0]-cpuForGpuHaloWidth[1];
         remoteHaloSpecsCpuForGpu[2].height = cpuForGpuHaloWidth[2];
-        remoteHaloSpecsCpuForGpu[2].gpu = true;
 
         remoteHaloSpecsCpuForGpu[3].x = (localDim[0]-gpuDim[0])/2+cpuHaloWidth[0]+cpuForGpuHaloWidth[0];
         remoteHaloSpecsCpuForGpu[3].y = (localDim[1]-gpuDim[1])/2+cpuHaloWidth[3];
         remoteHaloSpecsCpuForGpu[3].width = gpuDim[0]-cpuForGpuHaloWidth[0]-cpuForGpuHaloWidth[1];
         remoteHaloSpecsCpuForGpu[3].height = cpuForGpuHaloWidth[3];
-        remoteHaloSpecsCpuForGpu[3].gpu = true;
 
         localHaloSpecsCpuForGpu[0].x = (localDim[0]-gpuDim[0])/2+cpuHaloWidth[0]-gpuHaloWidth[0];
         localHaloSpecsCpuForGpu[0].y = (localDim[1]-gpuDim[1])/2+cpuHaloWidth[3]-gpuHaloWidth[3];
         localHaloSpecsCpuForGpu[0].width = gpuHaloWidth[0];
         localHaloSpecsCpuForGpu[0].height = gpuDim[1]+gpuHaloWidth[2]+gpuHaloWidth[3];
-        localHaloSpecsCpuForGpu[0].gpu = true;
 
         localHaloSpecsCpuForGpu[1].x = (localDim[0]-gpuDim[0])/2+cpuHaloWidth[0]+gpuDim[0];
         localHaloSpecsCpuForGpu[1].y = (localDim[1]-gpuDim[1])/2+cpuHaloWidth[3]-gpuHaloWidth[3];
         localHaloSpecsCpuForGpu[1].width = gpuHaloWidth[1];
         localHaloSpecsCpuForGpu[1].height = gpuDim[1]+gpuHaloWidth[2]+gpuHaloWidth[3];
-        localHaloSpecsCpuForGpu[1].gpu = true;
 
         localHaloSpecsCpuForGpu[2].x = (localDim[0]-gpuDim[0])/2+cpuHaloWidth[0]-gpuHaloWidth[0];
         localHaloSpecsCpuForGpu[2].y = (localDim[1]-gpuDim[1])/2+cpuHaloWidth[3]+gpuDim[1];
         localHaloSpecsCpuForGpu[2].width = gpuDim[0]+gpuHaloWidth[0]+gpuHaloWidth[1];
         localHaloSpecsCpuForGpu[2].height = gpuHaloWidth[2];
-        localHaloSpecsCpuForGpu[2].gpu = true;
 
         localHaloSpecsCpuForGpu[3].x = (localDim[0]-gpuDim[0])/2+cpuHaloWidth[0]-gpuHaloWidth[0];
         localHaloSpecsCpuForGpu[3].y = (localDim[1]-gpuDim[1])/2+cpuHaloWidth[3]-gpuHaloWidth[3];
         localHaloSpecsCpuForGpu[3].width = gpuDim[0]+gpuHaloWidth[0]+gpuHaloWidth[1];
         localHaloSpecsCpuForGpu[3].height = gpuHaloWidth[3];
-        localHaloSpecsCpuForGpu[3].gpu = true;
 
         tausch->setLocalHaloInfoCpuForGpu(4, localHaloSpecsCpuForGpu);
         tausch->setRemoteHaloInfoCpuForGpu(4, remoteHaloSpecsCpuForGpu);
@@ -189,49 +181,41 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
         localHaloSpecsGpu[0].y = gpuHaloWidth[3];
         localHaloSpecsGpu[0].width = cpuForGpuHaloWidth[0];
         localHaloSpecsGpu[0].height = gpuDim[1];
-        localHaloSpecsGpu[0].gpu = true;
 
         localHaloSpecsGpu[1].x = gpuDim[0]+gpuHaloWidth[0]-cpuForGpuHaloWidth[1];
         localHaloSpecsGpu[1].y = gpuHaloWidth[3];
         localHaloSpecsGpu[1].width = cpuForGpuHaloWidth[1];
         localHaloSpecsGpu[1].height = gpuDim[1];
-        localHaloSpecsGpu[1].gpu = true;
 
         localHaloSpecsGpu[2].x = gpuHaloWidth[0]+cpuForGpuHaloWidth[0];
         localHaloSpecsGpu[2].y = gpuDim[1]+gpuHaloWidth[3]-cpuForGpuHaloWidth[2];
         localHaloSpecsGpu[2].width = gpuDim[0] - cpuForGpuHaloWidth[0] - cpuForGpuHaloWidth[1];
         localHaloSpecsGpu[2].height = cpuForGpuHaloWidth[2];
-        localHaloSpecsGpu[2].gpu = true;
 
         localHaloSpecsGpu[3].x = gpuHaloWidth[0]+cpuForGpuHaloWidth[0];
         localHaloSpecsGpu[3].y = gpuHaloWidth[3];
         localHaloSpecsGpu[3].width = gpuDim[0] - cpuForGpuHaloWidth[0] - cpuForGpuHaloWidth[1];
         localHaloSpecsGpu[3].height = cpuForGpuHaloWidth[3];
-        localHaloSpecsGpu[3].gpu = true;
 
         remoteHaloSpecsGpu[0].x = 0;
         remoteHaloSpecsGpu[0].y = 0;
         remoteHaloSpecsGpu[0].width = gpuHaloWidth[0];
         remoteHaloSpecsGpu[0].height = gpuDim[1] + gpuHaloWidth[2]+gpuHaloWidth[3];
-        remoteHaloSpecsGpu[0].gpu = true;
 
         remoteHaloSpecsGpu[1].x = gpuDim[0]+gpuHaloWidth[0];
         remoteHaloSpecsGpu[1].y = 0;
         remoteHaloSpecsGpu[1].width = gpuHaloWidth[1];
         remoteHaloSpecsGpu[1].height = gpuDim[1] + gpuHaloWidth[2]+gpuHaloWidth[3];
-        remoteHaloSpecsGpu[1].gpu = true;
 
         remoteHaloSpecsGpu[2].x = 0;
         remoteHaloSpecsGpu[2].y = gpuDim[1]+gpuHaloWidth[3];
         remoteHaloSpecsGpu[2].width = gpuDim[0] + gpuHaloWidth[0]+gpuHaloWidth[1];
         remoteHaloSpecsGpu[2].height = gpuHaloWidth[2];
-        remoteHaloSpecsGpu[2].gpu = true;
 
         remoteHaloSpecsGpu[3].x = 0;
         remoteHaloSpecsGpu[3].y = 0;
         remoteHaloSpecsGpu[3].width = gpuDim[0] + gpuHaloWidth[0]+gpuHaloWidth[1];
         remoteHaloSpecsGpu[3].height = gpuHaloWidth[3];
-        remoteHaloSpecsGpu[3].gpu = true;
 
         tausch->setLocalHaloInfoGpu(4, localHaloSpecsGpu);
         tausch->setRemoteHaloInfoGpu(4, remoteHaloSpecsGpu);

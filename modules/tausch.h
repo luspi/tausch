@@ -22,7 +22,7 @@
  * A struct simplifying the specification of halo regions.
  */
 struct TauschHaloSpec {
-    TauschHaloSpec() : x(0), y(0), z(0), width(0), height(0), depth(0), remoteMpiRank(0), gpu(false) {}
+    TauschHaloSpec() : x(0), y(0), z(0), width(0), height(0), depth(0), remoteMpiRank(0) {}
     /*!
      * The starting x coordinate of the halo region.
      */
@@ -52,7 +52,6 @@ struct TauschHaloSpec {
      * specifies a local or remote halo.
      */
     int remoteMpiRank;
-    bool gpu;
 };
 
 /*!
