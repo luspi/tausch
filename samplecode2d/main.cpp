@@ -2,6 +2,7 @@
 #include <cmath>
 #include <sstream>
 #include <chrono>
+#include <future>
 
 int main(int argc, char** argv) {
 
@@ -19,10 +20,13 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
     size_t localDim[2] = {5, 5};
+    size_t gpuDim[2] = {3, 3};
     size_t mpiNum[2] = {(size_t)std::sqrt(mpiSize), (size_t)std::sqrt(mpiSize)};
     size_t loops = 1;
     int printMpiRank = -1;
     size_t cpuHaloWidth[4] = {1,1,1,1};
+    size_t gpuHaloWidth[4] = {1,1,1,1};
+    bool gpu = true;
 
     if(argc > 1) {
         for(int i = 1; i < argc; ++i) {
@@ -34,6 +38,13 @@ int main(int argc, char** argv) {
             else if(argv[i] == std::string("-xy") && i < argc-1) {
                 localDim[0] = atoi(argv[++i]);
                 localDim[1] = localDim[0];
+            } if(argv[i] == std::string("-gx") && i < argc-1)
+                gpuDim[0] = atoi(argv[++i]);
+            else if(argv[i] == std::string("-gy") && i < argc-1)
+                gpuDim[1] = atoi(argv[++i]);
+            else if(argv[i] == std::string("-gxy") && i < argc-1) {
+                gpuDim[0] = atoi(argv[++i]);
+                gpuDim[1] = gpuDim[0];
             } else if(argv[i] == std::string("-mpix") && i < argc-1)
                 mpiNum[0] = atoi(argv[++i]);
             else if(argv[i] == std::string("-mpiy") && i < argc-1)
@@ -66,46 +77,82 @@ int main(int argc, char** argv) {
                     str << arg.substr(last);
                     str >> cpuHaloWidth[3];
                 }
-            }
+            } else if(argv[i] == std::string("-ghalo") && i < argc-1) {
+                std::string arg(argv[++i]);
+                size_t last = 0;
+                size_t next = 0;
+                int count = 0;
+                while((next = arg.find(",", last)) != std::string::npos && count < 3) {
+                    std::stringstream str;
+                    str << arg.substr(last, next-last);
+                    str >> gpuHaloWidth[count];
+                    last = next + 1;
+                    ++count;
+                }
+                if(count != 3) {
+                    int tmpHalo = 0;
+                    std::stringstream str;
+                    str << arg;
+                    str >> tmpHalo;
+                    for(int i = 0; i < 4; ++i)
+                        gpuHaloWidth[i] = tmpHalo;
+                } else {
+                    std::stringstream str;
+                    str << arg.substr(last);
+                    str >> gpuHaloWidth[3];
+                }
+            } else if(argv[i] == std::string("-cpu"))
+                gpu = false;
         }
     }
 
     if(mpiRank == 0) {
 
         std::cout << std::endl
-                  << "localDim      = " << localDim[0] << "/" << localDim[1] << std::endl
-                  << "mpiNum        = " << mpiNum[0] << "/" << mpiNum[1] << std::endl
-                  << "loops         = " << loops << std::endl
-                  << "CPU halo      = " << cpuHaloWidth[0] << "/" << cpuHaloWidth[1] << "/" << cpuHaloWidth[2] << "/" << cpuHaloWidth[3] << std::endl
+                  << "localDim    = " << localDim[0] << "/" << localDim[1] << std::endl
+                  << "gpuDim      = " << gpuDim[0] << "/" << gpuDim[1] << std::endl
+                  << "mpiNum      = " << mpiNum[0] << "/" << mpiNum[1] << std::endl
+                  << "loops       = " << loops << std::endl
+                  << "CPU halo    = " << cpuHaloWidth[0] << "/" << cpuHaloWidth[1] << "/" << cpuHaloWidth[2] << "/" << cpuHaloWidth[3] << std::endl
+                  << "GPU halo    = " << gpuHaloWidth[0] << "/" << gpuHaloWidth[1] << "/" << gpuHaloWidth[2] << "/" << gpuHaloWidth[3] << std::endl
+                  << "Version     = " << (gpu ? "Hybrid" : "CPU_only")
                   << std::endl;
 
     }
 
-    Sample sample(localDim, loops, cpuHaloWidth, mpiNum);
+    Sample sample(localDim, gpuDim, loops, cpuHaloWidth, gpuHaloWidth, mpiNum, gpu);
 
     if(mpiRank == printMpiRank) {
         std::cout << "-------------------------------" << std::endl;
         std::cout << "-------------------------------" << std::endl;
         std::cout << "CPU region BEFORE" << std::endl;
         std::cout << "-------------------------------" << std::endl;
-        sample.print();
+        sample.printCPU();
         std::cout << "-------------------------------" << std::endl;
+        if(gpu) {
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "GPU region BEFORE" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            sample.printGPU();
+            std::cout << "-------------------------------" << std::endl;
+        }
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
     auto t_start = std::chrono::steady_clock::now();
 
-//    if(!cpuonly) {
+    if(gpu) {
 
-//        std::future<void> thrdGPU(std::async(std::launch::async, &Sample::launchGPU, &sample));
-//        sample.launchCPU();
-//        thrdGPU.wait();
+        std::future<void> thrdGPU(std::async(std::launch::async, &Sample::launchGPU, &sample));
+        sample.launchCPU();
+        thrdGPU.wait();
 
-//    } else {
+    } else {
 
         sample.launchCPU();
 
-//    }
+    }
 
     MPI_Barrier(MPI_COMM_WORLD);
     auto t_end = std::chrono::steady_clock::now();
@@ -115,8 +162,16 @@ int main(int argc, char** argv) {
         std::cout << "-------------------------------" << std::endl;
         std::cout << "CPU region AFTER" << std::endl;
         std::cout << "-------------------------------" << std::endl;
-        sample.print();
+        sample.printCPU();
         std::cout << "-------------------------------" << std::endl;
+        if(gpu) {
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "GPU region AFTER" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            sample.printGPU();
+            std::cout << "-------------------------------" << std::endl;
+        }
     }
 
     MPI_Barrier(MPI_COMM_WORLD);

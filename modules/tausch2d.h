@@ -16,6 +16,13 @@
 #include "tausch.h"
 #include <mpi.h>
 #include <iostream>
+#include <fstream>
+#include <atomic>
+
+#ifdef TAUSCH_OPENCL
+#define __CL_ENABLE_EXCEPTIONS
+#include <CL/cl.hpp>
+#endif
 
 #ifndef TAUSCH_DIMENSIONS
 #define TAUSCH_DIMENSIONS
@@ -176,6 +183,23 @@ public:
      */
     void recvAndUnpackCpu(size_t id, buf_t *buf);
 
+#ifdef TAUSCH_OPENCL
+
+    void enableOpenCL(size_t *gpuDim, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
+    void setLocalHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setRemoteHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setLocalHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setRemoteHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void packNextSendBufferCpuToGpu(size_t id, buf_t *buf);
+    void sendCpuToGpu(size_t id);
+    void recvCpuToGpu(size_t id);
+    void unpackNextRecvBufferCpuToGpu(size_t id, cl::Buffer buf);
+
+    cl::Context getOpenCLContext() { return cl_context; }
+    cl::CommandQueue getOpenCLQueue() { return cl_queue; }
+
+#endif
+
 private:
 
     size_t localDim[2];
@@ -202,6 +226,57 @@ private:
 
     bool *setupMpiSend;
     bool *setupMpiRecv;
+
+#ifdef TAUSCH_OPENCL
+
+    size_t gpuDim[2];
+    cl::Buffer cl_gpuDim;
+
+    std::atomic<buf_t> **cpuToGpuSendBuffer;
+    std::atomic<buf_t> **gpuToCpuSendBuffer;
+    buf_t **cpuToGpuRecvBuffer;
+    buf_t **gpuToCpuRecvBuffer;
+    cl::Buffer *cl_gpuToCpuSendBuffer;
+    cl::Buffer *cl_cpuToGpuRecvBuffer;
+
+    // gpu def
+    size_t localHaloNumPartsGpu;
+    TauschHaloSpec *localHaloSpecsGpu;
+    cl::Buffer *cl_localHaloSpecsGpu;
+    size_t remoteHaloNumPartsGpu;
+    TauschHaloSpec *remoteHaloSpecsGpu;
+    cl::Buffer *cl_remoteHaloSpecsGpu;
+    // cpu def
+    size_t localHaloNumPartsCpuForGpu;
+    TauschHaloSpec *localHaloSpecsCpuForGpu;
+    cl::Buffer *cl_localHaloSpecsCpuForGpu;
+    size_t remoteHaloNumPartsCpuForGpu;
+    TauschHaloSpec *remoteHaloSpecsCpuForGpu;
+    cl::Buffer *cl_remoteHaloSpecsCpuForGpu;
+
+
+    size_t *numBuffersPackedCpuToGpu;
+    cl::Buffer *cl_numBuffersUnpackedCpuToGpu;
+
+    cl::Buffer cl_valuesPerPointPerBuffer;
+
+    cl::Device cl_defaultDevice;
+    cl::Context cl_context;
+    cl::CommandQueue cl_queue;
+    cl::Platform cl_platform;
+    cl::Program cl_programs;
+
+    void setupOpenCL(bool giveOpenCLDeviceName);
+    void compileKernels();
+    void syncCpuAndGpu();
+
+    bool blockingSyncCpuGpu;
+    int cl_kernelLocalSize;
+
+    std::atomic<int> sync_counter[2];
+    std::atomic<int> sync_lock[2];
+
+#endif
 
 };
 
