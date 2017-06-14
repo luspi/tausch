@@ -95,7 +95,7 @@ public:
     /*!
      * Set the info about all remote halos that are needed by this MPI rank.
      * \param numHaloParts
-     *  How many different parts there are to the halo
+     *  How many different parts there are to the halo.
      * \param haloSpecs
      *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
      *  entries. %Tausch2D expects the following 5 variables to be set:
@@ -185,26 +185,174 @@ public:
 
 #ifdef TAUSCH_OPENCL
 
+    /*! \name Public Member Functions (GPU/OpenCL)
+     * All member functions relating to GPUs and OpenCL. <b>Note:</b> These are only available if %Tausch2D was compiled with OpenCL support!
+     */
+
+    /*!
+     * Enables the support of GPUs. This has to be called before any of the GPU/OpenCL functions are called, as it sets up a few things that are
+     * necessary later-on, mainly setting up an OpenCL environment that is then used by %Tausch2D and that can also be used by the user through some
+     * accessor functions.
+     * \param gpuDim
+     *  Array of size 2 holding the dimensions of the gpu partition, with the x dimension being the first value and the
+     *  y dimension being the second one. Note: These dimensions <b>DO INCLUDE</b> the halo widths!
+     * \param blockingSyncCpuGpu
+     *  If the CPU and the GPU part are running in the <i>same</i> thread, then this has to be set to false, otherwise %Tausch2D will reach a
+     *  deadlock. If, however, both parts run in the same thread, then setting this to true automatically takes care of making sure that halo data
+     *  is not read by the other thread before it is completley written. This can also be handled manually by the user, in that case this boolean
+     *  should be set to false.
+     * \param clLocalWorkgroupSize
+     *  The local workgroup size used by OpenCL. This is typically a multiple of 32, the optimal value depends on the underlying hardware.
+     * \param giveOpenCLDeviceName
+     *  If this is set to true, then %Tausch2D will print the name of the OpenCL device that it is using.
+     */
     void enableOpenCL(size_t *gpuDim, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
 
+    /*!
+     * Set the info about all local CPU halos that need to be sent to the GPU partition. Note that the <i>remoteMpiRank</i> field of TauschHaloSpec
+     * does <b>not</b> need to be set as the data is not sent through MPI!
+     * \param numHaloParts
+     *  How many different parts there are to the halo.
+     * \param haloSpecs
+     *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
+     *  entries. %Tausch2D expects the following 4 variables to be set:
+     *  variable | description
+     *  :-------: | -------
+     *   x | The starting x coordinate of the halo region
+     *   y | The starting y coordinate of the halo region
+     *   width | The width of the halo region
+     *   height | The height of the halo region
+     */
     void setLocalHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+
+    /*!
+     * Set the info about all remote CPU halos that live on the GPU and that are needed by the CPU of this partition.  Note that the
+     * <i>remoteMpiRank</i> field of TauschHaloSpec does <b>not</b> need to be set as the data is not sent through MPI!
+     * \param numHaloParts
+     *  How many different parts there are to the halo.
+     * \param haloSpecs
+     *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
+     *  entries. %Tausch2D expects the following 4 variables to be set:
+     *  variable | description
+     *  :-------: | -------
+     *   x | The starting x coordinate of the halo region
+     *   y | The starting y coordinate of the halo region
+     *   width | The width of the halo region
+     *   height | The height of the halo region
+     */
     void setRemoteHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
-    void setLocalHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
-    void setRemoteHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
+    /*!
+     * This packs the next buffer to be sent. This has to be called as many times as there are buffers before sending the message.
+     * \param id
+     *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfoCpuForGpu().
+     * \param buf
+     *  The buffer from which the data is to be extracted according to the local halo specification.
+     */
     void packNextSendBufferCpuToGpu(size_t id, buf_t *buf);
-    void packNextSendBufferGpuToCpu(size_t id, cl::Buffer buf);
 
+    /*!
+     * Sends off the send buffer for the specified halo region. This does <b>NOT</b> use MPI, but takes advantage of shared memory.
+     * \param id
+     *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfoCpuForGpu().
+     */
     void sendCpuToGpu(size_t id);
-    void sendGpuToCpu(size_t id);
 
-    void recvCpuToGpu(size_t id);
+    /*!
+     * Makes sure that writing the remote halo data to shared memory has completed for the specified halo id. It does not do anything with
+     * that message!
+     * \param id
+     *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfoCpuForGpu().
+     */
     void recvGpuToCpu(size_t id);
 
-    void unpackNextRecvBufferCpuToGpu(size_t id, cl::Buffer buf);
+    /*!
+     * This unpacks the next halo from the data in shared memory into the provided buffer. This has to be called as many times as there are buffers.
+     * \param id
+     *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfoCpuForGpu().
+     * \param[out] buf
+     *  The buffer to which the extracted data is to be written to according to the remote halo specification
+     */
     void unpackNextRecvBufferGpuToCpu(size_t id, buf_t *buf);
 
+    /*!
+     * Set the info about all local GPU halos that need to be sent to the surrounding CPU partition. Note that the <i>remoteMpiRank</i> field of TauschHaloSpec
+     * does <b>not</b> need to be set as the data is not sent through MPI!
+     * \param numHaloParts
+     *  How many different parts there are to the halo.
+     * \param haloSpecs
+     *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
+     *  entries. %Tausch2D expects the following 4 variables to be set:
+     *  variable | description
+     *  :-------: | -------
+     *   x | The starting x coordinate of the halo region
+     *   y | The starting y coordinate of the halo region
+     *   width | The width of the halo region
+     *   height | The height of the halo region
+     */
+    void setLocalHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+
+    /*!
+     * Set the info about all remote CPU halos that live on the GPU and that are needed by the CPU of this partition.  Note that the
+     * <i>remoteMpiRank</i> field of TauschHaloSpec does <b>not</b> need to be set as the data is not sent through MPI!
+     * \param numHaloParts
+     *  How many different parts there are to the halo.
+     * \param haloSpecs
+     *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
+     *  entries. %Tausch2D expects the following 4 variables to be set:
+     *  variable | description
+     *  :-------: | -------
+     *   x | The starting x coordinate of the halo region
+     *   y | The starting y coordinate of the halo region
+     *   width | The width of the halo region
+     *   height | The height of the halo region
+     */
+    void setRemoteHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+
+    /*!
+     * This packs the next buffer to be sent. This has to be called as many times as there are buffers before sending the message.
+     * \param id
+     *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfoGpu().
+     * \param buf
+     *  The buffer from which the data is to be extracted according to the local halo specification.
+     */
+    void packNextSendBufferGpuToCpu(size_t id, cl::Buffer buf);
+
+    /*!
+     * Sends off the send buffer for the specified halo region. This does <b>NOT</b> use MPI, but takes advantage of shared memory.
+     * \param id
+     *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfoGpu().
+     */
+    void sendGpuToCpu(size_t id);
+    /*!
+     * Makes sure that writing the remote halo data to shared memory has completed for the specified halo id. It does not do anything with
+     * that message!
+     * \param id
+     *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfoGpu().
+     */
+    void recvCpuToGpu(size_t id);
+    /*!
+     * This unpacks the next halo from the data in shared memory into the provided buffer. This has to be called as many times as there are buffers.
+     * \param id
+     *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfoGpu().
+     * \param[out] buf
+     *  The buffer to which the extracted data is to be written to according to the remote halo specification
+     */
+    void unpackNextRecvBufferCpuToGpu(size_t id, cl::Buffer buf);
+
+    /*!
+     * This provides an access to the OpenCL Context object, that is used internally by %Tausch2D. It allows the user to 'piggyback' onto the OpenCL
+     * environment set up by %Tausch2D.
+     * \return
+     *  The OpenCL Context object.
+     */
     cl::Context getOpenCLContext() { return cl_context; }
+    /*!
+     * This provides an access to the OpenCL CommandQueue object, that is used internally by %Tausch2D. It allows the user to 'piggyback' onto the
+     * OpenCL environment set up by %Tausch2D.
+     * \return
+     *  The OpenCL CommandQueue object.
+     */
     cl::CommandQueue getOpenCLQueue() { return cl_queue; }
 
 #endif
