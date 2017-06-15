@@ -18,7 +18,7 @@ Sample::Sample(size_t localDim, size_t loops, size_t *cpuHaloWidth) {
         right = 0;
 
     numBuffers = 2;
-    valuesPerPoint[0] = 2; valuesPerPoint[1] = 2;
+    valuesPerPoint[0] = 1; valuesPerPoint[1] = 1;
     dat1 = new double[valuesPerPoint[0]*(localDim + cpuHaloWidth[0] + cpuHaloWidth[1])]{};
     dat2 = new double[valuesPerPoint[1]*(localDim + cpuHaloWidth[0] + cpuHaloWidth[1])]{};
     for(int i = 0; i < localDim; ++i) {
@@ -29,25 +29,30 @@ Sample::Sample(size_t localDim, size_t loops, size_t *cpuHaloWidth) {
     }
 
     size_t tauschLocalDim = localDim+cpuHaloWidth[0]+cpuHaloWidth[1];
-    tausch = new Tausch1D<double>(&tauschLocalDim, MPI_DOUBLE, numBuffers, valuesPerPoint);
+    tausch = new Tausch1D<double>(MPI_DOUBLE, numBuffers, valuesPerPoint);
 
     // These are the (up to) 4 remote halos that are needed by this rank
     remoteHaloSpecs = new TauschHaloSpec[2];
     // These are the (up to) 4 local halos that are needed tobe sent by this rank
     localHaloSpecs = new TauschHaloSpec[2];
 
-    localHaloSpecs[0].x = cpuHaloWidth[0];
-    localHaloSpecs[0].width = cpuHaloWidth[1];
+    localHaloSpecs[0].bufferWidth = localDim+cpuHaloWidth[0]+cpuHaloWidth[1];
+    localHaloSpecs[0].haloX = cpuHaloWidth[0];
+    localHaloSpecs[0].haloWidth = cpuHaloWidth[1];
     localHaloSpecs[0].remoteMpiRank = left;
-    remoteHaloSpecs[0].x = 0;
-    remoteHaloSpecs[0].width = cpuHaloWidth[0];
+    remoteHaloSpecs[0].bufferWidth = localDim+cpuHaloWidth[0]+cpuHaloWidth[1];
+    remoteHaloSpecs[0].haloX = 0;
+    remoteHaloSpecs[0].haloWidth = cpuHaloWidth[0];
     remoteHaloSpecs[0].remoteMpiRank = left;
 
-    localHaloSpecs[1].x = localDim;
-    localHaloSpecs[1].width = cpuHaloWidth[0];
+
+    localHaloSpecs[1].bufferWidth = localDim+cpuHaloWidth[0]+cpuHaloWidth[1];
+    localHaloSpecs[1].haloX = localDim;
+    localHaloSpecs[1].haloWidth = cpuHaloWidth[0];
     localHaloSpecs[1].remoteMpiRank = right;
-    remoteHaloSpecs[1].x = cpuHaloWidth[0]+localDim;
-    remoteHaloSpecs[1].width = cpuHaloWidth[1];
+    remoteHaloSpecs[1].bufferWidth = localDim+cpuHaloWidth[0]+cpuHaloWidth[1];
+    remoteHaloSpecs[1].haloX = cpuHaloWidth[0]+localDim;
+    remoteHaloSpecs[1].haloWidth = cpuHaloWidth[1];
     remoteHaloSpecs[1].remoteMpiRank = right;
 
     tausch->setLocalHaloInfoCpu(2, localHaloSpecs);

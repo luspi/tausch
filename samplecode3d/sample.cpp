@@ -59,61 +59,73 @@ Sample::Sample(size_t *localDim, size_t loops, size_t *cpuHaloWidth, size_t *mpi
     size_t tauschLocalDim[3] = {localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1],
                                 localDim[1]+cpuHaloWidth[2]+cpuHaloWidth[3],
                                 localDim[2]+cpuHaloWidth[4]+cpuHaloWidth[5]};
-    tausch = new Tausch3D<double>(tauschLocalDim, MPI_DOUBLE, numBuffers, valuesPerPoint);
+    tausch = new Tausch3D<double>(MPI_DOUBLE, numBuffers, valuesPerPoint);
 
     // These are the (up to) 4 remote halos that are needed by this rank
     remoteHaloSpecs = new TauschHaloSpec[6];
     // These are the (up to) 4 local halos that are needed tobe sent by this rank
     localHaloSpecs = new TauschHaloSpec[6];
 
-    localHaloSpecs[0].x = cpuHaloWidth[0]; localHaloSpecs[0].y = 0; localHaloSpecs[0].z = 0;
-    localHaloSpecs[0].width = cpuHaloWidth[1]; localHaloSpecs[0].height = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
-    localHaloSpecs[0].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; localHaloSpecs[0].remoteMpiRank = left;
+    localHaloSpecs[0].bufferWidth = tauschLocalDim[0]; localHaloSpecs[0].bufferHeight = tauschLocalDim[1]; localHaloSpecs[0].bufferDepth = tauschLocalDim[2];
+    localHaloSpecs[0].haloX = cpuHaloWidth[0]; localHaloSpecs[0].haloY = 0; localHaloSpecs[0].haloZ = 0;
+    localHaloSpecs[0].haloWidth = cpuHaloWidth[1]; localHaloSpecs[0].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+    localHaloSpecs[0].haloDepth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; localHaloSpecs[0].remoteMpiRank = left;
 
-    localHaloSpecs[1].x = localDim[0]; localHaloSpecs[1].y = 0; localHaloSpecs[1].z = 0;
-    localHaloSpecs[1].width = cpuHaloWidth[0]; localHaloSpecs[1].height = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
-    localHaloSpecs[1].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; localHaloSpecs[1].remoteMpiRank = right;
+    localHaloSpecs[1].bufferWidth = tauschLocalDim[0]; localHaloSpecs[1].bufferHeight = tauschLocalDim[1]; localHaloSpecs[1].bufferDepth = tauschLocalDim[2];
+    localHaloSpecs[1].haloX = localDim[0]; localHaloSpecs[1].haloY = 0; localHaloSpecs[1].haloZ = 0;
+    localHaloSpecs[1].haloWidth = cpuHaloWidth[0]; localHaloSpecs[1].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+    localHaloSpecs[1].haloDepth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; localHaloSpecs[1].remoteMpiRank = right;
 
-    localHaloSpecs[2].x = 0; localHaloSpecs[2].y = localDim[1]; localHaloSpecs[2].z = 0;
-    localHaloSpecs[2].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[2].height = cpuHaloWidth[3];
-    localHaloSpecs[2].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; localHaloSpecs[2].remoteMpiRank = top;
+    localHaloSpecs[2].bufferWidth = tauschLocalDim[0]; localHaloSpecs[2].bufferHeight = tauschLocalDim[1]; localHaloSpecs[2].bufferDepth = tauschLocalDim[2];
+    localHaloSpecs[2].haloX = 0; localHaloSpecs[2].haloY = localDim[1]; localHaloSpecs[2].haloZ = 0;
+    localHaloSpecs[2].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[2].haloHeight = cpuHaloWidth[3];
+    localHaloSpecs[2].haloDepth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; localHaloSpecs[2].remoteMpiRank = top;
 
-    localHaloSpecs[3].x = 0; localHaloSpecs[3].y = cpuHaloWidth[3]; localHaloSpecs[3].z = 0;
-    localHaloSpecs[3].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[3].height = cpuHaloWidth[2];
-    localHaloSpecs[3].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; localHaloSpecs[3].remoteMpiRank = bottom;
+    localHaloSpecs[3].bufferWidth = tauschLocalDim[0]; localHaloSpecs[3].bufferHeight = tauschLocalDim[1]; localHaloSpecs[3].bufferDepth = tauschLocalDim[2];
+    localHaloSpecs[3].haloX = 0; localHaloSpecs[3].haloY = cpuHaloWidth[3]; localHaloSpecs[3].haloZ = 0;
+    localHaloSpecs[3].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[3].haloHeight = cpuHaloWidth[2];
+    localHaloSpecs[3].haloDepth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; localHaloSpecs[3].remoteMpiRank = bottom;
 
-    localHaloSpecs[4].x = 0; localHaloSpecs[4].y = 0; localHaloSpecs[4].z = cpuHaloWidth[4];
-    localHaloSpecs[4].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[4].height = cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3];
-    localHaloSpecs[4].depth = cpuHaloWidth[5]; localHaloSpecs[4].remoteMpiRank = front;
+    localHaloSpecs[4].bufferWidth = tauschLocalDim[0]; localHaloSpecs[4].bufferHeight = tauschLocalDim[1]; localHaloSpecs[4].bufferDepth = tauschLocalDim[2];
+    localHaloSpecs[4].haloX = 0; localHaloSpecs[4].haloY = 0; localHaloSpecs[4].haloZ = cpuHaloWidth[4];
+    localHaloSpecs[4].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[4].haloHeight = cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3];
+    localHaloSpecs[4].haloDepth = cpuHaloWidth[5]; localHaloSpecs[4].remoteMpiRank = front;
 
-    localHaloSpecs[5].x = 0; localHaloSpecs[5].y = 0; localHaloSpecs[5].z = localDim[2];
-    localHaloSpecs[5].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[5].height = cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3];
-    localHaloSpecs[5].depth = cpuHaloWidth[4]; localHaloSpecs[5].remoteMpiRank = back;
+    localHaloSpecs[5].bufferWidth = tauschLocalDim[0]; localHaloSpecs[5].bufferHeight = tauschLocalDim[1]; localHaloSpecs[5].bufferDepth = tauschLocalDim[2];
+    localHaloSpecs[5].haloX = 0; localHaloSpecs[5].haloY = 0; localHaloSpecs[5].haloZ = localDim[2];
+    localHaloSpecs[5].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecs[5].haloHeight = cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3];
+    localHaloSpecs[5].haloDepth = cpuHaloWidth[4]; localHaloSpecs[5].remoteMpiRank = back;
 
 
-    remoteHaloSpecs[0].x = 0; remoteHaloSpecs[0].y = 0; remoteHaloSpecs[0].z = 0;
-    remoteHaloSpecs[0].width = cpuHaloWidth[0]; remoteHaloSpecs[0].height = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
-    remoteHaloSpecs[0].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; remoteHaloSpecs[0].remoteMpiRank = left;
+    remoteHaloSpecs[0].bufferWidth = tauschLocalDim[0]; remoteHaloSpecs[0].bufferHeight = tauschLocalDim[1]; remoteHaloSpecs[0].bufferDepth = tauschLocalDim[2];
+    remoteHaloSpecs[0].haloX = 0; remoteHaloSpecs[0].haloY = 0; remoteHaloSpecs[0].haloZ = 0;
+    remoteHaloSpecs[0].haloWidth = cpuHaloWidth[0]; remoteHaloSpecs[0].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+    remoteHaloSpecs[0].haloDepth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; remoteHaloSpecs[0].remoteMpiRank = left;
 
-    remoteHaloSpecs[1].x = localDim[0]+cpuHaloWidth[0]; remoteHaloSpecs[1].y = 0; remoteHaloSpecs[1].z = 0;
-    remoteHaloSpecs[1].width = cpuHaloWidth[1]; remoteHaloSpecs[1].height = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
-    remoteHaloSpecs[1].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; remoteHaloSpecs[1].remoteMpiRank = right;
+    remoteHaloSpecs[1].bufferWidth = tauschLocalDim[0]; remoteHaloSpecs[1].bufferHeight = tauschLocalDim[1]; remoteHaloSpecs[1].bufferDepth = tauschLocalDim[2];
+    remoteHaloSpecs[1].haloX = localDim[0]+cpuHaloWidth[0]; remoteHaloSpecs[1].haloY = 0; remoteHaloSpecs[1].haloZ = 0;
+    remoteHaloSpecs[1].haloWidth = cpuHaloWidth[1]; remoteHaloSpecs[1].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+    remoteHaloSpecs[1].haloDepth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; remoteHaloSpecs[1].remoteMpiRank = right;
 
-    remoteHaloSpecs[2].x = 0; remoteHaloSpecs[2].y = localDim[1]+cpuHaloWidth[3]; remoteHaloSpecs[2].z = 0;
-    remoteHaloSpecs[2].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[2].height = cpuHaloWidth[2];
-    remoteHaloSpecs[2].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; remoteHaloSpecs[2].remoteMpiRank = top;
+    remoteHaloSpecs[2].bufferWidth = tauschLocalDim[0]; remoteHaloSpecs[2].bufferHeight = tauschLocalDim[1]; remoteHaloSpecs[2].bufferDepth = tauschLocalDim[2];
+    remoteHaloSpecs[2].haloX = 0; remoteHaloSpecs[2].haloY = localDim[1]+cpuHaloWidth[3]; remoteHaloSpecs[2].haloZ = 0;
+    remoteHaloSpecs[2].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[2].haloHeight = cpuHaloWidth[2];
+    remoteHaloSpecs[2].haloDepth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; remoteHaloSpecs[2].remoteMpiRank = top;
 
-    remoteHaloSpecs[3].x = 0; remoteHaloSpecs[3].y = 0; remoteHaloSpecs[3].z = 0;
-    remoteHaloSpecs[3].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[3].height = cpuHaloWidth[3];
-    remoteHaloSpecs[3].depth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; remoteHaloSpecs[3].remoteMpiRank = bottom;
+    remoteHaloSpecs[3].bufferWidth = tauschLocalDim[0]; remoteHaloSpecs[3].bufferHeight = tauschLocalDim[1]; remoteHaloSpecs[3].bufferDepth = tauschLocalDim[2];
+    remoteHaloSpecs[3].haloX = 0; remoteHaloSpecs[3].haloY = 0; remoteHaloSpecs[3].haloZ = 0;
+    remoteHaloSpecs[3].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[3].haloHeight = cpuHaloWidth[3];
+    remoteHaloSpecs[3].haloDepth = cpuHaloWidth[4]+localDim[2]+cpuHaloWidth[5]; remoteHaloSpecs[3].remoteMpiRank = bottom;
 
-    remoteHaloSpecs[4].x = 0; remoteHaloSpecs[4].y = 0; remoteHaloSpecs[4].z = 0;
-    remoteHaloSpecs[4].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[4].height = cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3];
-    remoteHaloSpecs[4].depth = cpuHaloWidth[4]; remoteHaloSpecs[4].remoteMpiRank = front;
+    remoteHaloSpecs[4].bufferWidth = tauschLocalDim[0]; remoteHaloSpecs[4].bufferHeight = tauschLocalDim[1]; remoteHaloSpecs[4].bufferDepth = tauschLocalDim[2];
+    remoteHaloSpecs[4].haloX = 0; remoteHaloSpecs[4].haloY = 0; remoteHaloSpecs[4].haloZ = 0;
+    remoteHaloSpecs[4].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[4].haloHeight = cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3];
+    remoteHaloSpecs[4].haloDepth = cpuHaloWidth[4]; remoteHaloSpecs[4].remoteMpiRank = front;
 
-    remoteHaloSpecs[5].x = 0; remoteHaloSpecs[5].y = 0; remoteHaloSpecs[5].z = localDim[2]+cpuHaloWidth[4];
-    remoteHaloSpecs[5].width = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[5].height = cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3];
-    remoteHaloSpecs[5].depth = cpuHaloWidth[5]; remoteHaloSpecs[5].remoteMpiRank = back;
+    remoteHaloSpecs[5].bufferWidth = tauschLocalDim[0]; remoteHaloSpecs[5].bufferHeight = tauschLocalDim[1]; remoteHaloSpecs[5].bufferDepth = tauschLocalDim[2];
+    remoteHaloSpecs[5].haloX = 0; remoteHaloSpecs[5].haloY = 0; remoteHaloSpecs[5].haloZ = localDim[2]+cpuHaloWidth[4];
+    remoteHaloSpecs[5].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecs[5].haloHeight = cpuHaloWidth[2]+localDim[1]+cpuHaloWidth[3];
+    remoteHaloSpecs[5].haloDepth = cpuHaloWidth[5]; remoteHaloSpecs[5].remoteMpiRank = back;
 
 
     tausch->setLocalHaloInfoCpu(6, localHaloSpecs);
