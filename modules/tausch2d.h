@@ -68,7 +68,7 @@ public:
      *  The MPI Communictor to be used. %Tausch2D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch2D working
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    Tausch2D(size_t *localDim, MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = nullptr, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch2D(MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = nullptr, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * The destructor cleaning up all memory.
@@ -210,7 +210,7 @@ public:
      * \param giveOpenCLDeviceName
      *  If this is set to true, then %Tausch2D will print the name of the OpenCL device that it is using.
      */
-    void enableOpenCL(size_t *gpuDim, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
+    void enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName, bool showOpenCLBuildLog);
 
     /*!
      * This provides an access to the OpenCL Context object, that is used internally by %Tausch2D. It allows the user to 'piggyback' onto the OpenCL
@@ -381,8 +381,6 @@ public:
 
 private:
 
-    size_t localDim[2];
-
     MPI_Comm TAUSCH_COMM;
     int mpiRank, mpiSize;
 
@@ -407,9 +405,6 @@ private:
     bool *setupMpiRecv;
 
 #ifdef TAUSCH_OPENCL
-
-    size_t gpuDim[2];
-    cl::Buffer cl_gpuDim;
 
     std::atomic<buf_t> **cpuToGpuSendBuffer;
     std::atomic<buf_t> **gpuToCpuSendBuffer;
@@ -454,6 +449,7 @@ private:
 
     bool blockingSyncCpuGpu;
     int cl_kernelLocalSize;
+    bool showOpenCLBuildLog;
 
     std::atomic<int> sync_counter[2];
     std::atomic<int> sync_lock[2];

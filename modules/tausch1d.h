@@ -80,7 +80,7 @@ public:
      *  How many different parts there are to the halo
      * \param haloSpecs
      *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
-     *  entries. %Tausch2D expects the following 5 variables to be set:
+     *  entries. %Tausch1D expects the following 5 variables to be set:
      *  variable | description
      *  :-------: | -------
      *   x | The starting x coordinate of the halo region

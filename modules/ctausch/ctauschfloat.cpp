@@ -20,7 +20,7 @@ CTauschFloat *tausch_new_float(size_t *localDim, size_t numBuffers, size_t *valu
     if(version == TAUSCH_1D)
         t = new Tausch1D<float>(localDim, MPI_FLOAT, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
     else if(version == TAUSCH_2D)
-        t = new Tausch2D<float>(localDim, MPI_FLOAT, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
+        t = new Tausch2D<float>(MPI_FLOAT, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
     else if(version == TAUSCH_3D)
         t = new Tausch3D<float>(localDim, MPI_FLOAT, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
 

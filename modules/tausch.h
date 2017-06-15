@@ -22,31 +22,37 @@
  * A struct simplifying the specification of halo regions.
  */
 struct TauschHaloSpec {
-    TauschHaloSpec() : x(0), y(0), z(0), width(0), height(0), depth(0), remoteMpiRank(0) {}
+    TauschHaloSpec() : bufferWidth(0), bufferHeight(0), bufferDepth(0),
+                       haloX(0), haloY(0), haloZ(0),
+                       haloWidth(0), haloHeight(0), haloDepth(0),
+                       remoteMpiRank(0) {}
+    size_t bufferWidth;
+    size_t bufferHeight;
+    size_t bufferDepth;
     /*!
      * The starting x coordinate of the halo region.
      */
-    size_t x;
+    size_t haloX;
     /*!
      * The starting y coordinate of the halo region.
      */
-    size_t y;
+    size_t haloY;
     /*!
      * The starting z coordinate of the halo region.
      */
-    size_t z;
+    size_t haloZ;
     /*!
      * The width of the halo region.
      */
-    size_t width;
+    size_t haloWidth;
     /*!
      * The height of the halo region.
      */
-    size_t height;
+    size_t haloHeight;
     /*!
      * The depth of the halo region.
      */
-    size_t depth;
+    size_t haloDepth;
     /*!
      * The remote MPI rank associated with this halo region. This is either the sending or receiving MPI rank, depending on if the halo region
      * specifies a local or remote halo.

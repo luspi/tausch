@@ -58,17 +58,17 @@ template <class buf_t> void Tausch3D<buf_t>::setLocalHaloInfoCpu(size_t numHaloP
 
     for(int i = 0; i < numHaloParts; ++i) {
 
-        localHaloSpecs[i].x = haloSpecs[i].x;
-        localHaloSpecs[i].y = haloSpecs[i].y;
-        localHaloSpecs[i].z = haloSpecs[i].z;
-        localHaloSpecs[i].width = haloSpecs[i].width;
-        localHaloSpecs[i].height = haloSpecs[i].height;
-        localHaloSpecs[i].depth = haloSpecs[i].depth;
+        localHaloSpecs[i].haloX = haloSpecs[i].haloX;
+        localHaloSpecs[i].haloY = haloSpecs[i].haloY;
+        localHaloSpecs[i].haloZ = haloSpecs[i].haloZ;
+        localHaloSpecs[i].haloWidth = haloSpecs[i].haloWidth;
+        localHaloSpecs[i].haloHeight = haloSpecs[i].haloHeight;
+        localHaloSpecs[i].haloDepth = haloSpecs[i].haloDepth;
         localHaloSpecs[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].width*haloSpecs[i].height*haloSpecs[i].depth;
+            bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight*haloSpecs[i].haloDepth;
 
         mpiSendBuffer[i] = new buf_t[bufsize]{};
 
@@ -89,17 +89,17 @@ template <class buf_t> void Tausch3D<buf_t>::setRemoteHaloInfoCpu(size_t numHalo
 
     for(int i = 0; i < numHaloParts; ++i) {
 
-        remoteHaloSpecs[i].x = haloSpecs[i].x;
-        remoteHaloSpecs[i].y = haloSpecs[i].y;
-        remoteHaloSpecs[i].z = haloSpecs[i].z;
-        remoteHaloSpecs[i].width = haloSpecs[i].width;
-        remoteHaloSpecs[i].height = haloSpecs[i].height;
-        remoteHaloSpecs[i].depth = haloSpecs[i].depth;
+        remoteHaloSpecs[i].haloX = haloSpecs[i].haloX;
+        remoteHaloSpecs[i].haloY = haloSpecs[i].haloY;
+        remoteHaloSpecs[i].haloZ = haloSpecs[i].haloZ;
+        remoteHaloSpecs[i].haloWidth = haloSpecs[i].haloWidth;
+        remoteHaloSpecs[i].haloHeight = haloSpecs[i].haloHeight;
+        remoteHaloSpecs[i].haloDepth = haloSpecs[i].haloDepth;
         remoteHaloSpecs[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].width*haloSpecs[i].height*haloSpecs[i].depth;
+            bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight*haloSpecs[i].haloDepth;
 
         mpiRecvBuffer[i] = new buf_t[bufsize]{};
 
@@ -122,7 +122,7 @@ template <class buf_t> void Tausch3D<buf_t>::postReceiveCpu(size_t id, int mpita
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecs[id].width*remoteHaloSpecs[id].height*remoteHaloSpecs[id].depth;
+            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecs[id].haloWidth*remoteHaloSpecs[id].haloHeight*remoteHaloSpecs[id].haloDepth;
 
         MPI_Recv_init(&mpiRecvBuffer[id][0], bufsize,
                       mpiDataType, remoteHaloSpecs[id].remoteMpiRank, mpitag, TAUSCH_COMM, &mpiRecvRequests[id]);
@@ -151,11 +151,11 @@ template <class buf_t> void Tausch3D<buf_t>::packNextSendBufferCpu(size_t id, bu
     if(numBuffersPacked[id] == numBuffers)
         numBuffersPacked[id] = 0;
 
-    int size = localHaloSpecs[id].width * localHaloSpecs[id].height * localHaloSpecs[id].depth;
+    int size = localHaloSpecs[id].haloWidth * localHaloSpecs[id].haloHeight * localHaloSpecs[id].haloDepth;
     for(int s = 0; s < size; ++s) {
-        int index = (s/(localHaloSpecs[id].width*localHaloSpecs[id].height) + localHaloSpecs[id].z) * localDim[TAUSCH_X] * localDim[TAUSCH_Y] +
-                    ((s%(localHaloSpecs[id].width*localHaloSpecs[id].height))/localHaloSpecs[id].width + localHaloSpecs[id].y) * localDim[TAUSCH_X] +
-                    s%localHaloSpecs[id].width + localHaloSpecs[id].x;
+        int index = (s/(localHaloSpecs[id].haloWidth*localHaloSpecs[id].haloHeight) + localHaloSpecs[id].haloZ) * localDim[TAUSCH_X] * localDim[TAUSCH_Y] +
+                    ((s%(localHaloSpecs[id].haloWidth*localHaloSpecs[id].haloHeight))/localHaloSpecs[id].haloWidth + localHaloSpecs[id].haloY) * localDim[TAUSCH_X] +
+                    s%localHaloSpecs[id].haloWidth + localHaloSpecs[id].haloX;
         for(int val = 0; val < valuesPerPointPerBuffer[numBuffersPacked[id]]; ++val) {
             int offset = 0;
             for(int b = 0; b < numBuffersPacked[id]; ++b)
@@ -187,7 +187,7 @@ template <class buf_t> void Tausch3D<buf_t>::sendCpu(size_t id, int mpitag) {
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecs[id].width*localHaloSpecs[id].height*localHaloSpecs[id].depth;
+            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecs[id].haloWidth*localHaloSpecs[id].haloHeight*localHaloSpecs[id].haloDepth;
 
         MPI_Send_init(&mpiSendBuffer[id][0], bufsize,
                   mpiDataType, localHaloSpecs[id].remoteMpiRank, mpitag, TAUSCH_COMM, &mpiSendRequests[id]);
@@ -205,11 +205,11 @@ template <class buf_t> void Tausch3D<buf_t>::recvCpu(size_t id) {
 
 template <class buf_t> void Tausch3D<buf_t>::unpackNextRecvBufferCpu(size_t id, buf_t *buf) {
 
-    int size = remoteHaloSpecs[id].width * remoteHaloSpecs[id].height * remoteHaloSpecs[id].depth;
+    int size = remoteHaloSpecs[id].haloWidth * remoteHaloSpecs[id].haloHeight * remoteHaloSpecs[id].haloDepth;
     for(int s = 0; s < size; ++s) {
-        int index = (s/(remoteHaloSpecs[id].width*remoteHaloSpecs[id].height) + remoteHaloSpecs[id].z) * localDim[TAUSCH_X] * localDim[TAUSCH_Y] +
-                    ((s%(remoteHaloSpecs[id].width*remoteHaloSpecs[id].height))/remoteHaloSpecs[id].width + remoteHaloSpecs[id].y) * localDim[TAUSCH_X] +
-                    s%remoteHaloSpecs[id].width + remoteHaloSpecs[id].x;
+        int index = (s/(remoteHaloSpecs[id].haloWidth*remoteHaloSpecs[id].haloHeight) + remoteHaloSpecs[id].haloZ) * localDim[TAUSCH_X] * localDim[TAUSCH_Y] +
+                    ((s%(remoteHaloSpecs[id].haloWidth*remoteHaloSpecs[id].haloHeight))/remoteHaloSpecs[id].haloWidth + remoteHaloSpecs[id].haloY) * localDim[TAUSCH_X] +
+                    s%remoteHaloSpecs[id].haloWidth + remoteHaloSpecs[id].haloX;
         for(int val = 0; val < valuesPerPointPerBuffer[numBuffersUnpacked[id]]; ++val) {
             int offset = 0;
             for(int b = 0; b < numBuffersUnpacked[id]; ++b)
