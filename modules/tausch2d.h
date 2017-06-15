@@ -185,9 +185,13 @@ public:
 
 #ifdef TAUSCH_OPENCL
 
-    /*! \name Public Member Functions (GPU/OpenCL)
-     * All member functions relating to GPUs and OpenCL. <b>Note:</b> These are only available if %Tausch2D was compiled with OpenCL support!
+
+    /*! \name Public Member Functions (OpenCL)
+     * Alll member functions relating to GPUs and OpenCL in general. <b>Note:</b> These are only available if %Tausch2D was compiled
+     * with OpenCL support!
      */
+
+    ///@{
 
     /*!
      * Enables the support of GPUs. This has to be called before any of the GPU/OpenCL functions are called, as it sets up a few things that are
@@ -207,6 +211,30 @@ public:
      *  If this is set to true, then %Tausch2D will print the name of the OpenCL device that it is using.
      */
     void enableOpenCL(size_t *gpuDim, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName);
+
+    /*!
+     * This provides an access to the OpenCL Context object, that is used internally by %Tausch2D. It allows the user to 'piggyback' onto the OpenCL
+     * environment set up by %Tausch2D.
+     * \return
+     *  The OpenCL Context object.
+     */
+    cl::Context getOpenCLContext() { return cl_context; }
+    /*!
+     * This provides an access to the OpenCL CommandQueue object, that is used internally by %Tausch2D. It allows the user to 'piggyback' onto the
+     * OpenCL environment set up by %Tausch2D.
+     * \return
+     *  The OpenCL CommandQueue object.
+     */
+    cl::CommandQueue getOpenCLQueue() { return cl_queue; }
+
+    ///@}
+
+    /*! \name Public Member Functions (CPU -> GPU)
+     * All member functions about communicating halo data between the CPU and GPU - CPU side of things. <b>Note:</b> These are only available if
+     * %Tausch2D was compiled with OpenCL support!
+     */
+
+    ///@{
 
     /*!
      * Set the info about all local CPU halos that need to be sent to the GPU partition. Note that the <i>remoteMpiRank</i> field of TauschHaloSpec
@@ -275,6 +303,14 @@ public:
      */
     void unpackNextRecvBufferGpuToCpu(size_t id, buf_t *buf);
 
+    ///@}
+
+    /*! \name Public Member Functions (GPU -> CPU)
+     * All member functions about communicating halo data between the CPU and GPU - GPU side of things. <b>Note:</b> These are only available if
+     * %Tausch2D was compiled with OpenCL support!
+     */
+    //!@{
+
     /*!
      * Set the info about all local GPU halos that need to be sent to the surrounding CPU partition. Note that the <i>remoteMpiRank</i> field of TauschHaloSpec
      * does <b>not</b> need to be set as the data is not sent through MPI!
@@ -339,21 +375,7 @@ public:
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
     void unpackNextRecvBufferCpuToGpu(size_t id, cl::Buffer buf);
-
-    /*!
-     * This provides an access to the OpenCL Context object, that is used internally by %Tausch2D. It allows the user to 'piggyback' onto the OpenCL
-     * environment set up by %Tausch2D.
-     * \return
-     *  The OpenCL Context object.
-     */
-    cl::Context getOpenCLContext() { return cl_context; }
-    /*!
-     * This provides an access to the OpenCL CommandQueue object, that is used internally by %Tausch2D. It allows the user to 'piggyback' onto the
-     * OpenCL environment set up by %Tausch2D.
-     * \return
-     *  The OpenCL CommandQueue object.
-     */
-    cl::CommandQueue getOpenCLQueue() { return cl_queue; }
+    //!@}
 
 #endif
 

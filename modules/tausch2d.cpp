@@ -241,7 +241,7 @@ template <class buf_t> void Tausch2D<buf_t>::enableOpenCL(size_t *gpuDim, bool b
 
     try {
         cl_valuesPerPointPerBuffer = cl::Buffer(cl_context, &valuesPerPointPerBuffer[0], &valuesPerPointPerBuffer[numBuffers], true);
-        cl_gpuDim = cl::Buffer(cl_context, &gpuDim[0], (&gpuDim[1])+1, true);
+        cl_gpuDim = cl::Buffer(cl_context, &gpuDim[0], &gpuDim[2], true);
     } catch(cl::Error error) {
         std::cerr << "Tausch2D :: enableOpenCL() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
@@ -335,7 +335,7 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGpu(size_t numHaloP
 
         try {
             cl_gpuToCpuSendBuffer[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, bufsize*sizeof(buf_t));
-            cl_localHaloSpecsGpu[i] = cl::Buffer(cl_context, &tmpHaloSpecs[0], (&tmpHaloSpecs[3])+1, true);
+            cl_localHaloSpecsGpu[i] = cl::Buffer(cl_context, &tmpHaloSpecs[0], &tmpHaloSpecs[4], true);
         } catch(cl::Error error) {
             std::cerr << "Tausch2D :: setLocalHaloInfoGpu() (2) :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
             exit(1);
@@ -379,7 +379,7 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoGpu(size_t numHalo
 
         try {
             cl_cpuToGpuRecvBuffer[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, bufsize*sizeof(double));
-            cl_remoteHaloSpecsGpu[i] = cl::Buffer(cl_context, &tmpHaloSpecs[0], (&tmpHaloSpecs[3])+1, true);
+            cl_remoteHaloSpecsGpu[i] = cl::Buffer(cl_context, &tmpHaloSpecs[0], &tmpHaloSpecs[4], true);
         } catch(cl::Error error) {
             std::cerr << "Tausch2D :: setRemoteHaloInfo() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
             exit(1);
@@ -472,7 +472,7 @@ template <class buf_t> void Tausch2D<buf_t>::recvCpuToGpu(size_t id) {
         cpuToGpuRecvBuffer[id][j] = cpuToGpuSendBuffer[id][j].load();
 
     try {
-        cl_cpuToGpuRecvBuffer[id] = cl::Buffer(cl_context, &cpuToGpuRecvBuffer[id][0], (&cpuToGpuRecvBuffer[id][bufsize-1])+1, false);
+        cl_cpuToGpuRecvBuffer[id] = cl::Buffer(cl_context, &cpuToGpuRecvBuffer[id][0], &cpuToGpuRecvBuffer[id][bufsize], false);
         cl_queue.enqueueFillBuffer(cl_numBuffersUnpackedCpuToGpu[id], 0, 0, sizeof(double));
     } catch(cl::Error error) {
         std::cerr << "Tausch2D :: recvCpuToGpu() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -623,16 +623,58 @@ template <class buf_t> void Tausch2D<buf_t>::setupOpenCL(bool giveOpenCLDeviceNa
 
 template <class buf_t> void Tausch2D<buf_t>::compileKernels() {
 
-    std::string oclstr = "";
-    std::ifstream file;
-    file.open("../../kernel.cl", std::ios::in);
-    if(!file.is_open())
-        std::cout << "error opening kernel file..." << std::endl;
-    std::string str;
-    while (std::getline(file, str)) {
-        oclstr += str + "\n";
+    std::string oclstr = R"d(
+
+kernel void packNextSendBuffer(global const int * restrict const gpuDim, global const size_t * restrict const haloSpecs,
+                               global const size_t * restrict const valuesPerPointPerBuffer, global int * restrict const numBuffersPacked,
+                               global double * restrict const haloBuffer, global const double * restrict const buffer) {
+
+    const int current = get_global_id(0);
+
+    int maxSize = haloSpecs[2]*haloSpecs[3];
+
+    if(current >= maxSize) return;
+
+    int index = (current/haloSpecs[2] + haloSpecs[1])*gpuDim[0] +
+                 current%haloSpecs[2] + haloSpecs[0];
+
+    for(int val = 0; val < valuesPerPointPerBuffer[*numBuffersPacked]; ++val) {
+        int offset = 0;
+        for(int b = 0; b < *numBuffersPacked; ++b)
+            offset += valuesPerPointPerBuffer[b]*maxSize;
+        haloBuffer[offset + valuesPerPointPerBuffer[*numBuffersPacked]*current + val] = buffer[valuesPerPointPerBuffer[*numBuffersPacked]*index + val];
     }
-    file.close();
+
+}
+
+kernel void unpackNextRecvBuffer(global const int * restrict const gpuDim, global const size_t * restrict const haloSpecs,
+                                 global const size_t * restrict const valuesPerPointPerBuffer, global int * restrict const numBuffersUnpacked,
+                                 global const double * restrict const haloBuffer, global double * restrict const buffer) {
+
+    const int current = get_global_id(0);
+
+    int maxSize = haloSpecs[2]*haloSpecs[3];
+
+    if(current >= maxSize) return;
+
+    int index = (current/haloSpecs[2] + haloSpecs[1])*gpuDim[0] +
+                 current%haloSpecs[2] + haloSpecs[0];
+
+    for(int val = 0; val < valuesPerPointPerBuffer[*numBuffersUnpacked]; ++val) {
+        int offset = 0;
+        for(int b = 0; b < *numBuffersUnpacked; ++b)
+            offset += valuesPerPointPerBuffer[b]*maxSize;
+        buffer[valuesPerPointPerBuffer[*numBuffersUnpacked]*index + val] =
+                haloBuffer[offset + valuesPerPointPerBuffer[*numBuffersUnpacked]*current + val];
+    }
+
+}
+
+kernel void incrementBuffer(global int * restrict const buffer) {
+    if(get_global_id(0) > 0) return;
+    *buffer += 1;
+}
+        )d";
 
     try {
         cl_programs = cl::Program(cl_context, oclstr, false);
