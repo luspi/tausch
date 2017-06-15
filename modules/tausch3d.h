@@ -46,9 +46,6 @@ public:
     /*!
      * The constructor, initiating the 3D Tausch object.
      *
-     * \param localDim
-     *  Array of size 3 holding the dimensions of the local partition (not the global dimensions), with the x dimension being the first value, the
-     *  y dimension being the second one, and the z dimension being the last one. Note: These dimensions <b>DO INCLUDE</b> the halo widths!
      * \param mpiDataType
      *  The MPI_Datatype corresponding to the datatype used for the template.
      * \param numBuffers
@@ -61,7 +58,7 @@ public:
      *  The MPI Communictor to be used. %Tausch3D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch3D working
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      */
-    Tausch3D(size_t *localDim, MPI_Datatype mpiDataType, int numBuffers = 1, size_t *valuesPerPointPerBuffer = nullptr, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch3D(MPI_Datatype mpiDataType, int numBuffers = 1, size_t *valuesPerPointPerBuffer = nullptr, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * The destructor cleaning up all memory.
@@ -183,8 +180,6 @@ public:
     void recvAndUnpackCpu(size_t id, buf_t *buf);
 
 private:
-
-    size_t localDim[3];
 
     MPI_Comm TAUSCH_COMM;
     int mpiRank, mpiSize;

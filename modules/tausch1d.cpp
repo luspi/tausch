@@ -1,6 +1,6 @@
 #include "tausch1d.h"
 
-template <class buf_t> Tausch1D<buf_t>::Tausch1D(size_t *localDim, MPI_Datatype mpiDataType,
+template <class buf_t> Tausch1D<buf_t>::Tausch1D(MPI_Datatype mpiDataType,
                                                    size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm) {
 
     MPI_Comm_dup(comm, &TAUSCH_COMM);
@@ -8,8 +8,6 @@ template <class buf_t> Tausch1D<buf_t>::Tausch1D(size_t *localDim, MPI_Datatype 
     // get MPI info
     MPI_Comm_rank(TAUSCH_COMM, &mpiRank);
     MPI_Comm_size(TAUSCH_COMM, &mpiSize);
-
-    this->localDim = localDim[0];
 
     this->numBuffers = numBuffers;
 
@@ -58,6 +56,7 @@ template <class buf_t> void Tausch1D<buf_t>::setLocalHaloInfoCpu(size_t numHaloP
 
     for(int i = 0; i < numHaloParts; ++i) {
 
+        localHaloSpecs[i].bufferWidth = haloSpecs[i].bufferWidth;
         localHaloSpecs[i].haloX = haloSpecs[i].haloX;
         localHaloSpecs[i].haloWidth = haloSpecs[i].haloWidth;
         localHaloSpecs[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
@@ -83,6 +82,7 @@ template <class buf_t> void Tausch1D<buf_t>::setRemoteHaloInfoCpu(size_t numHalo
 
     for(int i = 0; i < numHaloParts; ++i) {
 
+        remoteHaloSpecs[i].bufferWidth = haloSpecs[i].bufferWidth;
         remoteHaloSpecs[i].haloX = haloSpecs[i].haloX;
         remoteHaloSpecs[i].haloWidth = haloSpecs[i].haloWidth;
         remoteHaloSpecs[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;

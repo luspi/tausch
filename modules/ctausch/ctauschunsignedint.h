@@ -45,10 +45,6 @@ typedef void* CTauschUnsignedInt;
  *
  * Create and return a new CTauschUnsignedInt object using the datatype unsigned int.
  *
- * \param localDim
- *  Array of size 1 to 3 holding the dimension(s) of the local partition (not the global dimensions), with the x dimension being the first value, the
- *  y dimension (if present) being the second value, and the z dimension (if present) the final value. Note: This dimension <b>DOES INCLUDE</b> the
- *  halo widths!
  * \param numBuffers
  *  The number of buffers that will be used. If more than one, they are all combined into one message. All buffers will have to use the same
  *  discretisation! Typical value: 1.
@@ -66,7 +62,7 @@ typedef void* CTauschUnsignedInt;
  *  Return the CTauschUnsignedInt object created with the specified configuration.
  *
  */
-CTauschUnsignedInt *tausch_new_unsignedint(size_t *localDim, size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, TauschVersion version);
+CTauschUnsignedInt *tausch_new_unsignedint(size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, TauschVersion version);
 
 /*!
  *

@@ -45,10 +45,6 @@ typedef void* CTauschDouble;
  *
  * Create and return a new CTauschDouble object using the datatype double.
  *
- * \param localDim
- *  Array of size 1 to 3 holding the dimension(s) of the local partition (not the global dimensions), with the x dimension being the first value, the
- *  y dimension (if present) being the second value, and the z dimension (if present) the final value. Note: This dimension <b>DOES INCLUDE</b> the
- *  halo widths!
  * \param numBuffers
  *  The number of buffers that will be used. If more than one, they are all combined into one message. All buffers will have to use the same
  *  discretisation! Typical value: 1.
@@ -66,7 +62,7 @@ typedef void* CTauschDouble;
  *  Return the CTauschDouble object created with the specified configuration.
  *
  */
-CTauschDouble *tausch_new_double(size_t *localDim, size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, TauschVersion version);
+CTauschDouble *tausch_new_double(size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, TauschVersion version);
 
 /*!
  *

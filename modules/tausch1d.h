@@ -47,9 +47,6 @@ public:
      *
      * The constructor, initiating the 1D Tausch object.
      *
-     * \param localDim
-     *  Array of size 1 holding the x dimension of the local partition (not the global dimensions). Note: This dimension <b>DOES INCLUDE</b> the halo
-     *  widths!
      * \param mpiDataType
      *  The MPI_Datatype corresponding to the datatype used for the template.
      * \param numBuffers
@@ -63,7 +60,7 @@ public:
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      *
      */
-    Tausch1D(size_t *localDim, MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = nullptr, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch1D(MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = nullptr, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      *

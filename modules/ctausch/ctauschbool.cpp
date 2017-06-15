@@ -8,7 +8,7 @@ extern "C" {
 
 #include "ctauschbool.h"
 
-CTauschBool *tausch_new_bool(size_t *localDim, size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, TauschVersion version) {
+CTauschBool *tausch_new_bool(size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, TauschVersion version) {
 
     if(version != TAUSCH_1D && version != TAUSCH_2D && version != TAUSCH_3D) {
         std::cerr << "[CTauschBool] ERROR: Invalid version specified: " << version << " - Abort..." << std::endl;
@@ -18,11 +18,11 @@ CTauschBool *tausch_new_bool(size_t *localDim, size_t numBuffers, size_t *values
     Tausch<bool> *t;
 
     if(version == TAUSCH_1D)
-        t = new Tausch1D<bool>(localDim, MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
+        t = new Tausch1D<bool>(MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
     else if(version == TAUSCH_2D)
         t = new Tausch2D<bool>(MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
     else if(version == TAUSCH_3D)
-        t = new Tausch3D<bool>(localDim, MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
+        t = new Tausch3D<bool>(MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
 
     return reinterpret_cast<CTauschBool*>(t);
 
