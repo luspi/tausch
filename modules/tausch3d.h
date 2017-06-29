@@ -130,7 +130,7 @@ public:
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
      */
-    void packNextSendBufferCpu(size_t id, buf_t *buf);
+    void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf);
 
     /*!
      * Sends off the send buffer for the specified halo region. This starts the respective MPI_Send.
@@ -156,7 +156,7 @@ public:
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
-    void unpackNextRecvBufferCpu(size_t id, buf_t *buf);
+    void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf);
 
     /*!
      * Shortcut function. If only one buffer is used, this will both pack the data out of the provided buffer and send it off, all with one call.
@@ -168,7 +168,7 @@ public:
      *  The mpitag to be used for this MPI_Send. This information only has to be specified the first time the MPI_Send for the halo region with
      *  the specified id is started. Each subsequent call, the mpitag that was passed the very first call will be re-used.
      */
-    void packAndSendCpu(size_t id, buf_t *buf, int mpitag = -1);
+    void packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, int mpitag = -1);
     /*!
      * Shortcut function. If only one buffer is used, this will both receive the MPI message and unpack the received data into the provided buffer,
      * all with one call.
@@ -177,7 +177,7 @@ public:
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
-    void recvAndUnpackCpu(size_t id, buf_t *buf);
+    void recvAndUnpackCpu(size_t haloId, size_t bufferId, buf_t *buf);
 
 private:
 
@@ -197,9 +197,6 @@ private:
     MPI_Request *mpiRecvRequests;
     MPI_Request *mpiSendRequests;
     MPI_Datatype mpiDataType;
-
-    size_t *numBuffersPacked;
-    size_t *numBuffersUnpacked;
 
     bool *setupMpiSend;
     bool *setupMpiRecv;

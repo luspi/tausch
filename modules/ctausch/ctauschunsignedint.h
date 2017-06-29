@@ -156,7 +156,7 @@ void tausch_postAllReceivesCpu_unsignedint(CTauschUnsignedInt *tC, int *mpitag);
  *  The buffer from which the data is to be extracted according to the local halo specification.
  *
  */
-void tausch_packNextSendBuffer_unsignedint(CTauschUnsignedInt *tC, size_t id, unsigned int *buf);
+void tausch_packNextSendBuffer_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf);
 
 /*!
  *
@@ -196,7 +196,7 @@ void tausch_recv_unsignedint(CTauschUnsignedInt *tC, size_t id);
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
  *
  */
-void tausch_unpackNextRecvBuffer_unsignedint(CTauschUnsignedInt *tC, size_t id, unsigned int *buf);
+void tausch_unpackNextRecvBuffer_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf);
 
 /*!
  *
@@ -212,7 +212,7 @@ void tausch_unpackNextRecvBuffer_unsignedint(CTauschUnsignedInt *tC, size_t id, 
  *  The mpitag to be used for this MPI_Isend().
  *
  */
-void tausch_packAndSend_unsignedint(CTauschUnsignedInt *tC, size_t id, int mpitag, unsigned int *buf);
+void tausch_packAndSend_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, int mpitag, unsigned int *buf);
 
 /*!
  *
@@ -227,7 +227,7 @@ void tausch_packAndSend_unsignedint(CTauschUnsignedInt *tC, size_t id, int mpita
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
  *
  */
-void tausch_recvAndUnpack_unsignedint(CTauschUnsignedInt *tC, size_t id, unsigned int *buf);
+void tausch_recvAndUnpack_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf);
 
 #ifdef __cplusplus
 }

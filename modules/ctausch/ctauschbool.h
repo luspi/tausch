@@ -156,7 +156,7 @@ void tausch_postAllReceivesCpu_bool(CTauschBool *tC, int *mpitag);
  *  The buffer from which the data is to be extracted according to the local halo specification.
  *
  */
-void tausch_packNextSendBuffer_bool(CTauschBool *tC, size_t id, bool *buf);
+void tausch_packNextSendBuffer_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf);
 
 /*!
  *
@@ -196,7 +196,7 @@ void tausch_recv_bool(CTauschBool *tC, size_t id);
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
  *
  */
-void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t id, bool *buf);
+void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf);
 
 /*!
  *
@@ -212,7 +212,7 @@ void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t id, bool *buf);
  *  The mpitag to be used for this MPI_Isend().
  *
  */
-void tausch_packAndSend_bool(CTauschBool *tC, size_t id, int mpitag, bool *buf);
+void tausch_packAndSend_bool(CTauschBool *tC, size_t haloId, size_t bufferId, int mpitag, bool *buf);
 
 /*!
  *
@@ -227,7 +227,7 @@ void tausch_packAndSend_bool(CTauschBool *tC, size_t id, int mpitag, bool *buf);
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
  *
  */
-void tausch_recvAndUnpack_bool(CTauschBool *tC, size_t id, bool *buf);
+void tausch_recvAndUnpack_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf);
 
 #ifdef __cplusplus
 }
