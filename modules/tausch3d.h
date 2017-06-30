@@ -134,8 +134,8 @@ public:
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
      * \param region
-     *  Specification of the area of the current halo that is to be packed. This is specified relativce to the current halo, i.e., (x,y) = (0,0) is
-     *  the bottom left corner of the halo region. %Tausch3D expects the following variables to be set:
+     *  Specification of the area of the current halo that is to be packed. This is specified relativce to the current halo, i.e., (x,y,z) = (0,0,0)
+     *  is the bottom left corner of the halo region. %Tausch3D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
      *   startX | The starting x coordinate of the region to be packed
@@ -198,8 +198,8 @@ public:
      *  The mpitag to be used for this MPI_Send. This information only has to be specified the first time the MPI_Send for the halo region with
      *  the specified id is started. Each subsequent call, the mpitag that was passed the very first call will be re-used.
      * \param region
-     *  Specification of the area of the current halo that is to be packed. This is specified relativce to the current halo, i.e., (x,y) = (0,0) is
-     *  the bottom left corner of the halo region. %Tausch3D expects the following variables to be set:
+     *  Specification of the area of the current halo that is to be packed. This is specified relativce to the current halo, i.e., (x,y,z) = (0,0,0)
+     *  is the bottom left corner of the halo region. %Tausch3D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
      *   startX | The starting x coordinate of the region to be packed
