@@ -279,7 +279,7 @@ public:
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
      */
-    void packNextSendBufferCpuToGpu(size_t id, buf_t *buf);
+    void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf);
 
     /*!
      * Sends off the send buffer for the specified halo region. This does <b>NOT</b> use MPI, but takes advantage of shared memory.
@@ -303,7 +303,7 @@ public:
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
-    void unpackNextRecvBufferGpuToCpu(size_t id, buf_t *buf);
+    void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf);
 
     ///@}
 
@@ -354,7 +354,7 @@ public:
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
      */
-    void packNextSendBufferGpuToCpu(size_t id, cl::Buffer buf);
+    void packSendBufferGpuToCpu(size_t haloId, size_t bufferId, cl::Buffer buf);
 
     /*!
      * Sends off the send buffer for the specified halo region. This does <b>NOT</b> use MPI, but takes advantage of shared memory.
@@ -376,7 +376,7 @@ public:
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
-    void unpackNextRecvBufferCpuToGpu(size_t id, cl::Buffer buf);
+    void unpackRecvBufferCpuToGpu(size_t haloId, size_t bufferId, cl::Buffer buf);
     //!@}
 
 #endif
@@ -428,12 +428,6 @@ private:
     cl::Buffer *cl_remoteHaloSpecsCpuForGpu;
 
 
-    size_t *numBuffersPackedCpuToGpu;
-    cl::Buffer *cl_numBuffersUnpackedCpuToGpu;
-
-    cl::Buffer *cl_numBuffersPackedGpuToCpu;
-    size_t *numBuffersUnpackedGpuToCpu;
-
     cl::Buffer cl_valuesPerPointPerBuffer;
 
     cl::Device cl_defaultDevice;
@@ -445,6 +439,8 @@ private:
     void setupOpenCL(bool giveOpenCLDeviceName);
     void compileKernels();
     void syncCpuAndGpu();
+
+    int obtainRemoteId(int msgtag);
 
     bool blockingSyncCpuGpu;
     int cl_kernelLocalSize;

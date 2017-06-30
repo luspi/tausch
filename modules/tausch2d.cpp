@@ -255,7 +255,6 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoCpuForGpu(size_t nu
     localHaloNumPartsCpuForGpu = numHaloParts;
     localHaloSpecsCpuForGpu = new TauschHaloSpec[numHaloParts];
     cpuToGpuSendBuffer = new std::atomic<buf_t>*[numHaloParts];
-    numBuffersPackedCpuToGpu =  new size_t[numHaloParts]{};
     msgtagsCpuToGpu = new std::atomic<int>[numHaloParts]{};
 
     for(int i = 0; i < numHaloParts; ++i) {
@@ -282,7 +281,6 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCpuForGpu(size_t n
     remoteHaloNumPartsCpuForGpu = numHaloParts;
     remoteHaloSpecsCpuForGpu = new TauschHaloSpec[numHaloParts];
     gpuToCpuRecvBuffer = new buf_t*[numHaloParts];
-    numBuffersUnpackedGpuToCpu = new size_t[numHaloParts];
 
     for(int i = 0; i < numHaloParts; ++i) {
 
@@ -293,8 +291,6 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCpuForGpu(size_t n
         remoteHaloSpecsCpuForGpu[i].haloWidth = haloSpecs[i].haloWidth;
         remoteHaloSpecsCpuForGpu[i].haloHeight = haloSpecs[i].haloHeight;
         remoteHaloSpecsCpuForGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
-
-        numBuffersUnpackedGpuToCpu[i] = 0;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
@@ -315,11 +311,6 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGpu(size_t numHaloP
     try {
         cl_gpuToCpuSendBuffer = new cl::Buffer[numHaloParts];
         cl_localHaloSpecsGpu = new cl::Buffer[numHaloParts];
-        cl_numBuffersPackedGpuToCpu = new cl::Buffer[numHaloParts];
-        for(int n = 0; n < numHaloParts; ++n) {
-            cl_numBuffersPackedGpuToCpu[n] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, sizeof(size_t));
-            cl_queue.enqueueFillBuffer(cl_numBuffersPackedGpuToCpu[n], 0, 0, sizeof(size_t));
-        }
     } catch(cl::Error error) {
         std::cerr << "Tausch2D :: setLocalHaloInfoGpu() (1) :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
@@ -362,9 +353,6 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoGpu(size_t numHalo
 
     try {
         cl_cpuToGpuRecvBuffer = new cl::Buffer[remoteHaloNumPartsGpu];
-        cl_numBuffersUnpackedCpuToGpu = new cl::Buffer[remoteHaloNumPartsGpu];
-        for(int i = 0; i < remoteHaloNumPartsGpu; ++i)
-            cl_numBuffersUnpackedCpuToGpu[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, sizeof(double));
         cl_remoteHaloSpecsGpu = new cl::Buffer[numHaloParts];
     } catch(cl::Error error) {
         std::cerr << "Tausch2D :: enableOpenCL() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -400,42 +388,40 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoGpu(size_t numHalo
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::packNextSendBufferCpuToGpu(size_t id, buf_t *buf) {
+template <class buf_t> void Tausch2D<buf_t>::packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf) {
 
-    int size = localHaloSpecsCpuForGpu[id].haloWidth * localHaloSpecsCpuForGpu[id].haloHeight;
+    int size = localHaloSpecsCpuForGpu[haloId].haloWidth * localHaloSpecsCpuForGpu[haloId].haloHeight;
     for(int s = 0; s < size; ++s) {
-        int index = (s/localHaloSpecsCpuForGpu[id].haloWidth + localHaloSpecsCpuForGpu[id].haloY)*localHaloSpecsCpuForGpu[id].bufferWidth+
-                    s%localHaloSpecsCpuForGpu[id].haloWidth +localHaloSpecsCpuForGpu[id].haloX;
-        for(int val = 0; val < valuesPerPointPerBuffer[numBuffersPackedCpuToGpu[id]]; ++val) {
+        int index = (s/localHaloSpecsCpuForGpu[haloId].haloWidth + localHaloSpecsCpuForGpu[haloId].haloY)*localHaloSpecsCpuForGpu[haloId].bufferWidth+
+                    s%localHaloSpecsCpuForGpu[haloId].haloWidth +localHaloSpecsCpuForGpu[haloId].haloX;
+        for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
-            for(int b = 0; b < numBuffersPackedCpuToGpu[id]; ++b)
+            for(int b = 0; b < bufferId; ++b)
                 offset += valuesPerPointPerBuffer[b]*size;
-            cpuToGpuSendBuffer[id][offset + valuesPerPointPerBuffer[numBuffersPackedCpuToGpu[id]]*s + val].store(buf[valuesPerPointPerBuffer[numBuffersPackedCpuToGpu[id]]*index + val]);
+            cpuToGpuSendBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*s + val].store(buf[valuesPerPointPerBuffer[bufferId]*index + val]);
         }
     }
-    ++numBuffersPackedCpuToGpu[id];
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::packNextSendBufferGpuToCpu(size_t id, cl::Buffer buf) {
+template <class buf_t> void Tausch2D<buf_t>::packSendBufferGpuToCpu(size_t haloId, size_t bufferId, cl::Buffer buf) {
 
     try {
 
         auto kernel_packNextSendBuffer = cl::make_kernel<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer>
-                                                    (cl_programs, "packNextSendBuffer");
+                                                    (cl_programs, "packSendBuffer");
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsGpu[id].haloWidth*localHaloSpecsGpu[id].haloHeight;
+            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsGpu[haloId].haloWidth*localHaloSpecsGpu[haloId].haloHeight;
 
         int globalsize = (bufsize/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
-        kernel_packNextSendBuffer(cl::EnqueueArgs(cl_queue, cl::NDRange(globalsize), cl::NDRange(cl_kernelLocalSize)),
-                                  cl_localHaloSpecsGpu[id], cl_valuesPerPointPerBuffer,
-                                  cl_numBuffersPackedGpuToCpu[id], cl_gpuToCpuSendBuffer[id], buf);
+        cl::Buffer cl_bufferId(cl_context, &bufferId, (&bufferId)+1, true);
 
-        auto kernel_inc = cl::make_kernel<cl::Buffer>(cl_programs, "incrementBuffer");
-        kernel_inc(cl::EnqueueArgs(cl_queue, cl::NDRange(1), cl::NDRange(1)), cl_numBuffersPackedGpuToCpu[id]);
+        kernel_packNextSendBuffer(cl::EnqueueArgs(cl_queue, cl::NDRange(globalsize), cl::NDRange(cl_kernelLocalSize)),
+                                  cl_localHaloSpecsGpu[haloId], cl_valuesPerPointPerBuffer,
+                                  cl_bufferId, cl_gpuToCpuSendBuffer[haloId], buf);
 
     } catch(cl::Error error) {
         std::cerr << "Tausch2D :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
@@ -445,7 +431,6 @@ template <class buf_t> void Tausch2D<buf_t>::packNextSendBufferGpuToCpu(size_t i
 }
 
 template <class buf_t> void Tausch2D<buf_t>::sendCpuToGpu(size_t id, int msgtag) {
-    numBuffersPackedCpuToGpu[id] = 0;
     msgtagsCpuToGpu[id].store(msgtag);
     syncCpuAndGpu();
 }
@@ -476,15 +461,9 @@ template <class buf_t> void Tausch2D<buf_t>::sendGpuToCpu(size_t id, int msgtag)
 
 template <class buf_t> void Tausch2D<buf_t>::recvCpuToGpu(size_t id, int msgtag) {
 
-    int remoteid = 0;
-    for(int j = 0; j < remoteHaloNumPartsGpu; ++j) {
-        if(msgtagsCpuToGpu[j].load() == msgtag) {
-            remoteid = j;
-            break;
-        }
-    }
-
     syncCpuAndGpu();
+
+    int remoteid = obtainRemoteId(msgtag);
 
     size_t bufsize = 0;
     for(int n = 0; n < numBuffers; ++n)
@@ -495,7 +474,6 @@ template <class buf_t> void Tausch2D<buf_t>::recvCpuToGpu(size_t id, int msgtag)
 
     try {
         cl_cpuToGpuRecvBuffer[id] = cl::Buffer(cl_context, &cpuToGpuRecvBuffer[id][0], &cpuToGpuRecvBuffer[id][bufsize], false);
-        cl_queue.enqueueFillBuffer(cl_numBuffersUnpackedCpuToGpu[id], 0, 0, sizeof(double));
     } catch(cl::Error error) {
         std::cerr << "Tausch2D :: recvCpuToGpu() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
@@ -505,13 +483,9 @@ template <class buf_t> void Tausch2D<buf_t>::recvCpuToGpu(size_t id, int msgtag)
 
 template <class buf_t> void Tausch2D<buf_t>::recvGpuToCpu(size_t id, int msgtag) {
 
-    int remoteid = 0;
-    for(int j = 0; j < remoteHaloNumPartsCpuForGpu; ++j) {
-        if(msgtagsCpuToGpu[j].load() == msgtag) {
-            remoteid = j;
-            break;
-        }
-    }
+    syncCpuAndGpu();
+
+    int remoteid = obtainRemoteId(msgtag);
 
     size_t bufsize = 0;
     for(int n = 0; n < numBuffers; ++n)
@@ -519,49 +493,44 @@ template <class buf_t> void Tausch2D<buf_t>::recvGpuToCpu(size_t id, int msgtag)
     for(int i = 0; i < bufsize; ++i)
         gpuToCpuRecvBuffer[id][i] = gpuToCpuSendBuffer[remoteid][i].load();
 
-    syncCpuAndGpu();
-    numBuffersUnpackedGpuToCpu[id] = 0;
-
 }
 
-template <class buf_t> void Tausch2D<buf_t>::unpackNextRecvBufferGpuToCpu(size_t id, buf_t *buf) {
+template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf) {
 
-    int size = remoteHaloSpecsCpuForGpu[id].haloWidth * remoteHaloSpecsCpuForGpu[id].haloHeight;
+    int size = remoteHaloSpecsCpuForGpu[haloId].haloWidth * remoteHaloSpecsCpuForGpu[haloId].haloHeight;
     for(int s = 0; s < size; ++s) {
-        int index = (s/remoteHaloSpecsCpuForGpu[id].haloWidth + remoteHaloSpecsCpuForGpu[id].haloY)*remoteHaloSpecsCpuForGpu[id].bufferWidth +
-                    s%remoteHaloSpecsCpuForGpu[id].haloWidth +remoteHaloSpecsCpuForGpu[id].haloX;
-        for(int val = 0; val < valuesPerPointPerBuffer[numBuffersUnpackedGpuToCpu[id]]; ++val) {
+        int index = (s/remoteHaloSpecsCpuForGpu[haloId].haloWidth + remoteHaloSpecsCpuForGpu[haloId].haloY)*remoteHaloSpecsCpuForGpu[haloId].bufferWidth +
+                    s%remoteHaloSpecsCpuForGpu[haloId].haloWidth +remoteHaloSpecsCpuForGpu[haloId].haloX;
+        for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
-            for(int b = 0; b < numBuffersUnpackedGpuToCpu[id]; ++b)
+            for(int b = 0; b < bufferId; ++b)
                 offset += valuesPerPointPerBuffer[b]*size;
-            buf[valuesPerPointPerBuffer[numBuffersUnpackedGpuToCpu[id]]*index + val] = gpuToCpuRecvBuffer[id][offset + valuesPerPointPerBuffer[numBuffersUnpackedGpuToCpu[id]]*s + val];
+            buf[valuesPerPointPerBuffer[bufferId]*index + val] = gpuToCpuRecvBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*s + val];
         }
     }
-    ++numBuffersUnpackedGpuToCpu[id];
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::unpackNextRecvBufferCpuToGpu(size_t id, cl::Buffer buf) {
+template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCpuToGpu(size_t haloId, size_t bufferId, cl::Buffer buf) {
 
     try {
         auto kernel_unpackRecvBuffer = cl::make_kernel<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer>
-                                                (cl_programs, "unpackNextRecvBuffer");
+                                                (cl_programs, "unpackRecvBuffer");
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsGpu[id].haloWidth*remoteHaloSpecsGpu[id].haloHeight;
+            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsGpu[haloId].haloWidth*remoteHaloSpecsGpu[haloId].haloHeight;
 
         int globalsize = (bufsize/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
-        kernel_unpackRecvBuffer(cl::EnqueueArgs(cl_queue, cl::NDRange(globalsize), cl::NDRange(cl_kernelLocalSize)),
-                                cl_remoteHaloSpecsGpu[id], cl_valuesPerPointPerBuffer,
-                                cl_numBuffersUnpackedCpuToGpu[id], cl_cpuToGpuRecvBuffer[id], buf);
+        cl::Buffer cl_bufferId(cl_context, &bufferId, (&bufferId)+1, true);
 
-        auto kernel_inc = cl::make_kernel<cl::Buffer>(cl_programs, "incrementBuffer");
-        kernel_inc(cl::EnqueueArgs(cl_queue, cl::NDRange(1), cl::NDRange(1)), cl_numBuffersUnpackedCpuToGpu[id]);
+        kernel_unpackRecvBuffer(cl::EnqueueArgs(cl_queue, cl::NDRange(globalsize), cl::NDRange(cl_kernelLocalSize)),
+                                cl_remoteHaloSpecsGpu[haloId], cl_valuesPerPointPerBuffer, cl_bufferId,
+                                cl_cpuToGpuRecvBuffer[haloId], buf);
 
     } catch(cl::Error error) {
-        std::cerr << "Tausch2D :: unpackNextRecvBufferCpuToGpu() :: OpenCL exception caught: " << error.what()
+        std::cerr << "Tausch2D :: unpackRecvBufferCpuToGpu() :: OpenCL exception caught: " << error.what()
                   << " (" << error.err() << ")" << std::endl;
         exit(1);
     }
@@ -584,6 +553,14 @@ template <class buf_t> void Tausch2D<buf_t>::syncCpuAndGpu() {
 
     }
 
+}
+
+template <class buf_t> int Tausch2D<buf_t>::obtainRemoteId(int msgtag) {
+    for(int j = 0; j < remoteHaloNumPartsCpuForGpu; ++j) {
+        if(msgtagsCpuToGpu[j].load() == msgtag)
+            return j;
+    }
+    return 0;
 }
 
 template <class buf_t> void Tausch2D<buf_t>::setupOpenCL(bool giveOpenCLDeviceName) {
@@ -659,33 +636,10 @@ template <class buf_t> void Tausch2D<buf_t>::setupOpenCL(bool giveOpenCLDeviceNa
 
 template <class buf_t> void Tausch2D<buf_t>::compileKernels() {
 
-    std::string oclstr = R"d(
-
-kernel void packNextSendBuffer(global const size_t * restrict const haloSpecs,
-                               global const size_t * restrict const valuesPerPointPerBuffer, global int * restrict const numBuffersPacked,
-                               global double * restrict const haloBuffer, global const double * restrict const buffer) {
-
-    const int current = get_global_id(0);
-
-    int maxSize = haloSpecs[2]*haloSpecs[3];
-
-    if(current >= maxSize) return;
-
-    int index = (current/haloSpecs[2] + haloSpecs[1])*haloSpecs[4] +
-                 current%haloSpecs[2] + haloSpecs[0];
-
-    for(int val = 0; val < valuesPerPointPerBuffer[*numBuffersPacked]; ++val) {
-        int offset = 0;
-        for(int b = 0; b < *numBuffersPacked; ++b)
-            offset += valuesPerPointPerBuffer[b]*maxSize;
-        haloBuffer[offset + valuesPerPointPerBuffer[*numBuffersPacked]*current + val] = buffer[valuesPerPointPerBuffer[*numBuffersPacked]*index + val];
-    }
-
-}
-
-kernel void unpackNextRecvBuffer(global const size_t * restrict const haloSpecs,
-                                 global const size_t * restrict const valuesPerPointPerBuffer, global int * restrict const numBuffersUnpacked,
-                                 global const double * restrict const haloBuffer, global double * restrict const buffer) {
+  std::string oclstr = R"d(
+kernel void packSendBuffer(global const size_t * restrict const haloSpecs,
+                           global const size_t * restrict const valuesPerPointPerBuffer, global int * restrict const bufferId,
+                           global double * restrict const haloBuffer, global const double * restrict const buffer) {
 
     const int current = get_global_id(0);
 
@@ -696,21 +650,38 @@ kernel void unpackNextRecvBuffer(global const size_t * restrict const haloSpecs,
     int index = (current/haloSpecs[2] + haloSpecs[1])*haloSpecs[4] +
                  current%haloSpecs[2] + haloSpecs[0];
 
-    for(int val = 0; val < valuesPerPointPerBuffer[*numBuffersUnpacked]; ++val) {
+    for(int val = 0; val < valuesPerPointPerBuffer[*bufferId]; ++val) {
         int offset = 0;
-        for(int b = 0; b < *numBuffersUnpacked; ++b)
+        for(int b = 0; b < *bufferId; ++b)
             offset += valuesPerPointPerBuffer[b]*maxSize;
-        buffer[valuesPerPointPerBuffer[*numBuffersUnpacked]*index + val] =
-                haloBuffer[offset + valuesPerPointPerBuffer[*numBuffersUnpacked]*current + val];
+        haloBuffer[offset+ valuesPerPointPerBuffer[*bufferId]*current + val] = buffer[valuesPerPointPerBuffer[*bufferId]*index + val];
     }
 
 }
 
-kernel void incrementBuffer(global int * restrict const buffer) {
-    if(get_global_id(0) > 0) return;
-    *buffer += 1;
+kernel void unpackRecvBuffer(global const size_t * restrict const haloSpecs,
+                             global const size_t * restrict const valuesPerPointPerBuffer, global int * restrict const bufferId,
+                             global const double * restrict const haloBuffer, global double * restrict const buffer) {
+
+    const int current = get_global_id(0);
+
+    int maxSize = haloSpecs[2]*haloSpecs[3];
+
+    if(current >= maxSize) return;
+
+    int index = (current/haloSpecs[2] + haloSpecs[1])*haloSpecs[4] +
+                 current%haloSpecs[2] + haloSpecs[0];
+
+    for(int val = 0; val < valuesPerPointPerBuffer[*bufferId]; ++val) {
+        int offset = 0;
+        for(int b = 0; b < *bufferId; ++b)
+            offset += valuesPerPointPerBuffer[b]*maxSize;
+        buffer[valuesPerPointPerBuffer[*bufferId]*index + val] =
+                haloBuffer[offset + valuesPerPointPerBuffer[*bufferId]*current + val];
+    }
+
 }
-        )d";
+      )d";
 
     try {
         cl_programs = cl::Program(cl_context, oclstr, false);
@@ -738,7 +709,6 @@ kernel void incrementBuffer(global int * restrict const buffer) {
             }
         }
     }
-
 
 }
 
