@@ -83,10 +83,12 @@ public:
     virtual void postReceiveCpu(size_t id, int mpitag = -1) = 0;
     virtual void postAllReceivesCpu(int *mpitag = nullptr) = 0;
     virtual void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) = 0;
+    virtual void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
     virtual void sendCpu(size_t id, int mpitag = -1) = 0;
     virtual void recvCpu(size_t id) = 0;
     virtual void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
     virtual void packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region, int mpitag = -1) = 0;
+    virtual void packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, int mpitag = -1) = 0;
     virtual void recvAndUnpackCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
 
 };

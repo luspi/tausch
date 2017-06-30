@@ -163,6 +163,17 @@ template <class buf_t> void Tausch3D<buf_t>::packSendBufferCpu(size_t haloId, si
 
 }
 
+template <class buf_t> void Tausch3D<buf_t>::packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) {
+    TauschPackRegion region;
+    region.startX = 0;
+    region.startY = 0;
+    region.startZ = 0;
+    region.width = localHaloSpecs[haloId].haloWidth;
+    region.height = localHaloSpecs[haloId].haloHeight;
+    region.depth = localHaloSpecs[haloId].haloDepth;
+    packSendBufferCpu(haloId, bufferId, buf, region);
+}
+
 template <class buf_t> void Tausch3D<buf_t>::sendCpu(size_t id, int mpitag) {
 
 
@@ -211,6 +222,18 @@ template <class buf_t> void Tausch3D<buf_t>::unpackRecvBufferCpu(size_t haloId, 
 }
 
 template <class buf_t> void Tausch3D<buf_t>::packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region, int mpitag) {
+    packSendBufferCpu(haloId, bufferId, buf, region);
+    sendCpu(haloId, mpitag);
+}
+
+template <class buf_t> void Tausch3D<buf_t>::packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, int mpitag) {
+    TauschPackRegion region;
+    region.startX = 0;
+    region.startY = 0;
+    region.startZ = 0;
+    region.width = localHaloSpecs[haloId].haloWidth;
+    region.height = localHaloSpecs[haloId].haloHeight;
+    region.depth = localHaloSpecs[haloId].haloDepth;
     packSendBufferCpu(haloId, bufferId, buf, region);
     sendCpu(haloId, mpitag);
 }
