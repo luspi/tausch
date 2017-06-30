@@ -43,9 +43,9 @@ void tausch_setCpuRemoteHaloInfo_int(CTauschInt *tC, size_t numHaloParts, Tausch
     t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_postReceiveCpu_int(CTauschInt *tC, size_t id, int mpitag) {
+void tausch_postReceiveCpu_int(CTauschInt *tC, size_t haloId, int mpitag) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
-    t->postReceiveCpu(id, mpitag);
+    t->postReceiveCpu(haloId, mpitag);
 }
 
 void tausch_postAllReceivesCpu_int(CTauschInt *tC, int *mpitag) {
@@ -58,14 +58,14 @@ void tausch_packNextSendBuffer_int(CTauschInt *tC, size_t haloId, size_t bufferI
     t->packSendBufferCpu(haloId, bufferId, buf, region);
 }
 
-void tausch_send_int(CTauschInt *tC, size_t id, int mpitag) {
+void tausch_send_int(CTauschInt *tC, size_t haloId, int mpitag) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
-    t->sendCpu(id, mpitag);
+    t->sendCpu(haloId, mpitag);
 }
 
-void tausch_recv_int(CTauschInt *tC, size_t id) {
+void tausch_recv_int(CTauschInt *tC, size_t haloId) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
-    t->recvCpu(id);
+    t->recvCpu(haloId);
 }
 
 void tausch_unpackNextRecvBuffer_int(CTauschInt *tC, size_t haloId, size_t bufferId, int *buf) {
@@ -73,14 +73,14 @@ void tausch_unpackNextRecvBuffer_int(CTauschInt *tC, size_t haloId, size_t buffe
     t->unpackRecvBufferCpu(haloId, bufferId, buf);
 }
 
-void tausch_packAndSend_int(CTauschInt *tC, size_t haloId, size_t bufferId, int mpitag, int *buf, TauschPackRegion region) {
+void tausch_packAndSend_int(CTauschInt *tC, size_t haloId, int *buf, TauschPackRegion region, int mpitag) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
-    t->packAndSendCpu(haloId, bufferId, buf, region, mpitag);
+    t->packAndSendCpu(haloId, buf, region, mpitag);
 }
 
-void tausch_recvAndUnpack_int(CTauschInt *tC, size_t haloId, size_t bufferId, int *buf) {
+void tausch_recvAndUnpack_int(CTauschInt *tC, size_t haloId, int *buf) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
-    t->recvAndUnpackCpu(haloId, bufferId, buf);
+    t->recvAndUnpackCpu(haloId, buf);
 }
 
 

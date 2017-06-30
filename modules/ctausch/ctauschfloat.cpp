@@ -43,9 +43,9 @@ void tausch_setCpuRemoteHaloInfo_float(CTauschFloat *tC, size_t numHaloParts, Ta
     t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_postReceiveCpu_float(CTauschFloat *tC, size_t id, int mpitag) {
+void tausch_postReceiveCpu_float(CTauschFloat *tC, size_t haloId, int mpitag) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
-    t->postReceiveCpu(id, mpitag);
+    t->postReceiveCpu(haloId, mpitag);
 }
 
 void tausch_postAllReceivesCpu_float(CTauschFloat *tC, int *mpitag) {
@@ -58,14 +58,14 @@ void tausch_packNextSendBuffer_float(CTauschFloat *tC, size_t haloId, size_t buf
     t->packSendBufferCpu(haloId, bufferId, buf, region);
 }
 
-void tausch_send_float(CTauschFloat *tC, size_t id, int mpitag) {
+void tausch_send_float(CTauschFloat *tC, size_t haloId, int mpitag) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
-    t->sendCpu(id, mpitag);
+    t->sendCpu(haloId, mpitag);
 }
 
-void tausch_recv_float(CTauschFloat *tC, size_t id) {
+void tausch_recv_float(CTauschFloat *tC, size_t haloId) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
-    t->recvCpu(id);
+    t->recvCpu(haloId);
 }
 
 void tausch_unpackNextRecvBuffer_float(CTauschFloat *tC, size_t haloId, size_t bufferId, float *buf) {
@@ -73,14 +73,14 @@ void tausch_unpackNextRecvBuffer_float(CTauschFloat *tC, size_t haloId, size_t b
     t->unpackRecvBufferCpu(haloId, bufferId, buf);
 }
 
-void tausch_packAndSend_float(CTauschFloat *tC, size_t haloId, size_t bufferId, int mpitag, float *buf, TauschPackRegion region) {
+void tausch_packAndSend_float(CTauschFloat *tC, size_t haloId, float *buf, TauschPackRegion region, int mpitag) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
-    t->packAndSendCpu(haloId, bufferId, buf, region, mpitag);
+    t->packAndSendCpu(haloId, buf, region, mpitag);
 }
 
-void tausch_recvAndUnpack_float(CTauschFloat *tC, size_t haloId, size_t bufferId, float *buf) {
+void tausch_recvAndUnpack_float(CTauschFloat *tC, size_t haloId, float *buf) {
     Tausch<float> *t = reinterpret_cast<Tausch<float>*>(tC);
-    t->recvAndUnpackCpu(haloId, bufferId, buf);
+    t->recvAndUnpackCpu(haloId, buf);
 }
 
 

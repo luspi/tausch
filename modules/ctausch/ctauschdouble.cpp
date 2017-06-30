@@ -43,9 +43,9 @@ void tausch_setCpuRemoteHaloInfo_double(CTauschDouble *tC, size_t numHaloParts, 
     t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_postReceiveCpu_double(CTauschDouble *tC, size_t id, int mpitag) {
+void tausch_postReceiveCpu_double(CTauschDouble *tC, size_t haloId, int mpitag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->postReceiveCpu(id, mpitag);
+    t->postReceiveCpu(haloId, mpitag);
 }
 
 void tausch_postAllReceivesCpu_double(CTauschDouble *tC, int *mpitag) {
@@ -58,14 +58,14 @@ void tausch_packNextSendBuffer_double(CTauschDouble *tC, size_t haloId, size_t b
     t->packSendBufferCpu(haloId, bufferId, buf, region);
 }
 
-void tausch_send_double(CTauschDouble *tC, size_t id, int mpitag) {
+void tausch_send_double(CTauschDouble *tC, size_t haloId, int mpitag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->sendCpu(id, mpitag);
+    t->sendCpu(haloId, mpitag);
 }
 
-void tausch_recv_double(CTauschDouble *tC, size_t id) {
+void tausch_recv_double(CTauschDouble *tC, size_t haloId) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->recvCpu(id);
+    t->recvCpu(haloId);
 }
 
 void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf) {
@@ -73,14 +73,14 @@ void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, size_t haloId, size_t
     t->unpackRecvBufferCpu(haloId, bufferId, buf);
 }
 
-void tausch_packAndSend_double(CTauschDouble *tC, size_t haloId, size_t bufferId, int mpitag, double *buf, TauschPackRegion region) {
+void tausch_packAndSend_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region, int mpitag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->packAndSendCpu(haloId, bufferId, buf, region, mpitag);
+    t->packAndSendCpu(haloId, buf, region, mpitag);
 }
 
-void tausch_recvAndUnpack_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf) {
+void tausch_recvAndUnpack_double(CTauschDouble *tC, size_t haloId, double *buf) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->recvAndUnpackCpu(haloId, bufferId, buf);
+    t->recvAndUnpackCpu(haloId, buf);
 }
 
 

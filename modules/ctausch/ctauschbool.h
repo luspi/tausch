@@ -83,8 +83,8 @@ void tausch_delete_bool(CTauschBool *tC);
  * \param numHaloParts
  *  How many different parts there are to the halo
  * \param haloSpecs
- *  The specification of the different halo parts. This is expected to be a nested array of int's, the order of which will be preserved,
- *  and each halo region can be referenced later by its index in this array. Each nested array must contain the following 3, 5, or 7 entries:
+ *  The specification of the different halo parts. This is expected to be a pointer of structs, and each halo region can be referenced later by its
+ *  index in this pointer. Each struct must have specified the following 3, 5, or 7 entries:
  *   1. The starting x coordinate of the local region
  *   2. The starting y coordinate of the local region (if present)
  *   3. The starting z coordinate of the local region (if present)
@@ -105,8 +105,8 @@ void tausch_setCpuLocalHaloInfo_bool(CTauschBool *tC, size_t numHaloParts, Tausc
  * \param numHaloParts
  *  How many different parts there are to the halo
  * \param haloSpecs
- *  The specification of the different halo parts. This is expected to be a nested array of int's, the order of which will be preserved,
- *  and each halo region can be referenced later by its index in this array. Each nested array must contain the following 3, 5, or 7 entries:
+ *  The specification of the different halo parts. This is expected to be a pointer of structs, and each halo region can be referenced later by its
+ *  index in this pointer. Each struct must have specified the following 3, 5, or 7 entries:
  *   1. The starting x coordinate of the halo region
  *   2. The starting y coordinate of the halo region (if present)
  *   3. The starting z coordinate of the halo region (if present)
@@ -124,13 +124,13 @@ void tausch_setCpuRemoteHaloInfo_bool(CTauschBool *tC, size_t numHaloParts, Taus
  *
  * \param tC
  *  The CTauschUnsignedInt object to operate on.
- * \param id
+ * \param haloId
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  * \param mpitag
  *  The mpitag to be used for this MPI_Irecv().
  *
  */
-void tausch_postReceiveCpu_bool(CTauschBool *tC, size_t id, int mpitag);
+void tausch_postReceiveCpu_bool(CTauschBool *tC, size_t haloId, int mpitag);
 
 /*!
  *
@@ -150,10 +150,24 @@ void tausch_postAllReceivesCpu_bool(CTauschBool *tC, int *mpitag);
  *
  * \param tC
  *  The CTauschBool object to operate on.
- * \param id
+ * \param haloId
  *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
+ * \param bufferId
+ *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
+ *  The numbering of the buffers has to start with 0!
  * \param buf
  *  The buffer from which the data is to be extracted according to the local halo specification.
+ * \param region
+ *  The specification of the region of the halo parts to be packed. This is expected to be a pointer of structs, and each halo region can be
+ *  referenced later by its index in this pointer. Each struct must have specified the following 3, 5, or 7 entries:
+ *  variable | description
+ *  :-------: | -------
+ *   startX | The starting x coordinate of the region to be packed
+ *   startY | The starting y coordinate of the region to be packed (if present)
+ *   startZ | The starting z coordinate of the region to be packed (if present)
+ *   width | The width of the region to be packed
+ *   height | The height of the region to be packed (if present)
+ *   depth | The depth of the region to be packed (if present)
  *
  */
 void tausch_packNextSendBuffer_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf, TauschPackRegion region);
@@ -164,13 +178,13 @@ void tausch_packNextSendBuffer_bool(CTauschBool *tC, size_t haloId, size_t buffe
  *
  * \param tC
  *  The CTauschBool object to operate on.
- * \param id
+ * \param haloId
  *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
  * \param mpitag
  *  The mpitag to be used for this MPI_Isend().
  *
  */
-void tausch_send_bool(CTauschBool *tC, size_t id, int mpitag);
+void tausch_send_bool(CTauschBool *tC, size_t haloId, int mpitag);
 
 /*!
  *
@@ -178,11 +192,11 @@ void tausch_send_bool(CTauschBool *tC, size_t id, int mpitag);
  *
  * \param tC
  *  The CTauschBool object to operate on.
- * \param id
+ * \param haloId
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  *
  */
-void tausch_recv_bool(CTauschBool *tC, size_t id);
+void tausch_recv_bool(CTauschBool *tC, size_t haloId);
 
 /*!
  *
@@ -190,8 +204,11 @@ void tausch_recv_bool(CTauschBool *tC, size_t id);
  *
  * \param tC
  *  The CTauschBool object to operate on.
- * \param id
+ * \param haloId
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
+ * \param bufferId
+ *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
+ *  The numbering of the buffers has to start with 0!
  * \param buf
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
  *
@@ -204,15 +221,26 @@ void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t haloId, size_t buf
  *
  * \param tC
  *  The CTauschBool object to operate on.
- * \param id
+ * \param haloId
  *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
  * \param buf
  *  The buffer from which the data is to be extracted according to the local halo specification.
  * \param mpitag
  *  The mpitag to be used for this MPI_Isend().
+ * \param region
+ *  The specification of the region of the halo parts to be packed. This is expected to be a pointer of structs, and each halo region can be
+ *  referenced later by its index in this pointer. Each struct must have specified the following 3, 5, or 7 entries:
+ *  variable | description
+ *  :-------: | -------
+ *   startX | The starting x coordinate of the region to be packed
+ *   startY | The starting y coordinate of the region to be packed (if present)
+ *   startZ | The starting z coordinate of the region to be packed (if present)
+ *   width | The width of the region to be packed
+ *   height | The height of the region to be packed (if present)
+ *   depth | The depth of the region to be packed (if present)
  *
  */
-void tausch_packAndSend_bool(CTauschBool *tC, size_t haloId, size_t bufferId, int mpitag, bool *buf, TauschPackRegion region);
+void tausch_packAndSend_bool(CTauschBool *tC, size_t haloId, bool *buf, TauschPackRegion region, int mpitag);
 
 /*!
  *
@@ -221,13 +249,13 @@ void tausch_packAndSend_bool(CTauschBool *tC, size_t haloId, size_t bufferId, in
  *
  * \param tC
  *  The CTauschBool object to operate on.
- * \param id
+ * \param haloId
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  * \param buf
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
  *
  */
-void tausch_recvAndUnpack_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf);
+void tausch_recvAndUnpack_bool(CTauschBool *tC, size_t haloId, bool *buf);
 
 #ifdef __cplusplus
 }

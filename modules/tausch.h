@@ -26,8 +26,17 @@ struct TauschHaloSpec {
                        haloX(0), haloY(0), haloZ(0),
                        haloWidth(0), haloHeight(0), haloDepth(0),
                        remoteMpiRank(0) {}
+    /*!
+     * The width of the underlying buffer.
+     */
     size_t bufferWidth;
+    /*!
+     * The height of the underlying buffer.
+     */
     size_t bufferHeight;
+    /*!
+     * The depth of the underlying buffer.
+     */
     size_t bufferDepth;
     /*!
      * The starting x coordinate of the halo region.
@@ -60,12 +69,33 @@ struct TauschHaloSpec {
     int remoteMpiRank;
 };
 
+/*!
+ * A struct for specifying which region of a halo area to pack.
+ */
 struct TauschPackRegion {
+    /*!
+     * The starting x coordinate of the region, relative to the halo area.
+     */
     size_t startX;
+    /*!
+     * The starting y coordinate of the region, relative to the halo area.
+     */
     size_t startY;
+    /*!
+     * The starting z coordinate of the region, relative to the halo area.
+     */
     size_t startZ;
+    /*!
+     * The width of the region.
+     */
     size_t width;
+    /*!
+     * The height of the region.
+     */
     size_t height;
+    /*!
+     * The depth of the region.
+     */
     size_t depth;
 };
 
@@ -80,16 +110,16 @@ public:
     virtual ~Tausch() {}
     virtual void setLocalHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
     virtual void setRemoteHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
-    virtual void postReceiveCpu(size_t id, int mpitag = -1) = 0;
+    virtual void postReceiveCpu(size_t haloId, int mpitag = -1) = 0;
     virtual void postAllReceivesCpu(int *mpitag = nullptr) = 0;
     virtual void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) = 0;
     virtual void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
-    virtual void sendCpu(size_t id, int mpitag = -1) = 0;
-    virtual void recvCpu(size_t id) = 0;
+    virtual void sendCpu(size_t haloId, int mpitag = -1) = 0;
+    virtual void recvCpu(size_t haloId) = 0;
     virtual void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
-    virtual void packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region, int mpitag = -1) = 0;
-    virtual void packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, int mpitag = -1) = 0;
-    virtual void recvAndUnpackCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
+    virtual void packAndSendCpu(size_t haloId, buf_t *buf, TauschPackRegion region, int mpitag = -1) = 0;
+    virtual void packAndSendCpu(size_t haloId, buf_t *buf, int mpitag = -1) = 0;
+    virtual void recvAndUnpackCpu(size_t haloId, buf_t *buf) = 0;
 
 };
 

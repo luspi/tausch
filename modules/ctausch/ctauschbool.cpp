@@ -43,9 +43,9 @@ void tausch_setCpuRemoteHaloInfo_bool(CTauschBool *tC, size_t numHaloParts, Taus
     t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_postReceiveCpu_bool(CTauschBool *tC, size_t id, int mpitag) {
+void tausch_postReceiveCpu_bool(CTauschBool *tC, size_t haloId, int mpitag) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
-    t->postReceiveCpu(id, mpitag);
+    t->postReceiveCpu(haloId, mpitag);
 }
 
 void tausch_postAllReceivesCpu_bool(CTauschBool *tC, int *mpitag) {
@@ -58,14 +58,14 @@ void tausch_packNextSendBuffer_bool(CTauschBool *tC, size_t haloId, size_t buffe
     t->packSendBufferCpu(haloId, bufferId, buf, region);
 }
 
-void tausch_send_bool(CTauschBool *tC, size_t id, int mpitag) {
+void tausch_send_bool(CTauschBool *tC, size_t haloId, int mpitag) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
-    t->sendCpu(id, mpitag);
+    t->sendCpu(haloId, mpitag);
 }
 
-void tausch_recv_bool(CTauschBool *tC, size_t id) {
+void tausch_recv_bool(CTauschBool *tC, size_t haloId) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
-    t->recvCpu(id);
+    t->recvCpu(haloId);
 }
 
 void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf) {
@@ -73,14 +73,14 @@ void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t haloId, size_t buf
     t->unpackRecvBufferCpu(haloId, bufferId, buf);
 }
 
-void tausch_packAndSend_bool(CTauschBool *tC, size_t haloId, size_t bufferId, int mpitag, bool *buf, TauschPackRegion region) {
+void tausch_packAndSend_bool(CTauschBool *tC, size_t haloId, bool *buf, TauschPackRegion region, int mpitag) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
-    t->packAndSendCpu(haloId, bufferId, buf, region, mpitag);
+    t->packAndSendCpu(haloId, buf, region, mpitag);
 }
 
-void tausch_recvAndUnpack_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf) {
+void tausch_recvAndUnpack_bool(CTauschBool *tC, size_t haloId, bool *buf) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
-    t->recvAndUnpackCpu(haloId, bufferId, buf);
+    t->recvAndUnpackCpu(haloId, buf);
 }
 
 
