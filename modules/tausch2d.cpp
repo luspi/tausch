@@ -222,9 +222,9 @@ template <class buf_t> void Tausch2D<buf_t>::packAndSendCpu(size_t haloId, buf_t
     sendCpu(haloId, mpitag);
 }
 
-template <class buf_t> void Tausch2D<buf_t>::recvAndUnpackCpu(size_t haloId, size_t bufferId, buf_t *buf) {
+template <class buf_t> void Tausch2D<buf_t>::recvAndUnpackCpu(size_t haloId, buf_t *buf) {
     recvCpu(haloId);
-    unpackRecvBufferCpu(haloId, bufferId, buf);
+    unpackRecvBufferCpu(haloId, 0, buf);
 }
 
 

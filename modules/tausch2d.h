@@ -226,13 +226,10 @@ public:
      * all with one call.
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
-     * \param bufferId
-     *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
-     *  The numbering of the buffers has to start with 0!
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
-    void recvAndUnpackCpu(size_t haloId, size_t bufferId, buf_t *buf);
+    void recvAndUnpackCpu(size_t haloId, buf_t *buf);
 
 #ifdef TAUSCH_OPENCL
 
