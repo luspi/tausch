@@ -94,27 +94,27 @@ template <class buf_t> void Tausch1D<buf_t>::setRemoteHaloInfoCpu(size_t numHalo
 
 }
 
-template <class buf_t> void Tausch1D<buf_t>::postReceiveCpu(size_t id, int mpitag) {
+template <class buf_t> void Tausch1D<buf_t>::postReceiveCpu(size_t haloId, int mpitag) {
 
-    if(!setupMpiRecv[id]) {
+    if(!setupMpiRecv[haloId]) {
 
         if(mpitag == -1) {
-            std::cerr << "[Tausch1D] ERROR: MPI_Recv for halo region #" << id << " hasn't been posted before, missing mpitag... Abort!" << std::endl;
+            std::cerr << "[Tausch1D] ERROR: MPI_Recv for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!" << std::endl;
             exit(1);
         }
 
-        setupMpiRecv[id] = true;
+        setupMpiRecv[haloId] = true;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecs[id].haloWidth;
+            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecs[haloId].haloWidth;
 
-        MPI_Recv_init(&mpiRecvBuffer[id][0], bufsize, mpiDataType, remoteHaloSpecs[id].remoteMpiRank,
-                      mpitag, TAUSCH_COMM, &mpiRecvRequests[id]);
+        MPI_Recv_init(&mpiRecvBuffer[haloId][0], bufsize, mpiDataType, remoteHaloSpecs[haloId].remoteMpiRank,
+                      mpitag, TAUSCH_COMM, &mpiRecvRequests[haloId]);
 
     }
 
-    MPI_Start(&mpiRecvRequests[id]);
+    MPI_Start(&mpiRecvRequests[haloId]);
 
 }
 
@@ -154,32 +154,32 @@ template <class buf_t> void Tausch1D<buf_t>::packSendBufferCpu(size_t haloId, si
     packSendBufferCpu(haloId, bufferId, buf, region);
 }
 
-template <class buf_t> void Tausch1D<buf_t>::sendCpu(size_t id, int mpitag) {
+template <class buf_t> void Tausch1D<buf_t>::sendCpu(size_t haloId, int mpitag) {
 
-    if(!setupMpiSend[id]) {
+    if(!setupMpiSend[haloId]) {
 
         if(mpitag == -1) {
-            std::cerr << "[Tausch1D] ERROR: MPI_Send for halo region #" << id << " hasn't been posted before, missing mpitag... Abort!" << std::endl;
+            std::cerr << "[Tausch1D] ERROR: MPI_Send for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!" << std::endl;
             exit(1);
         }
 
-        setupMpiSend[id] = true;
+        setupMpiSend[haloId] = true;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecs[id].haloWidth;
+            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecs[haloId].haloWidth;
 
-        MPI_Send_init(&mpiSendBuffer[id][0], bufsize, mpiDataType, localHaloSpecs[id].remoteMpiRank,
-                      mpitag, TAUSCH_COMM, &mpiSendRequests[id]);
+        MPI_Send_init(&mpiSendBuffer[haloId][0], bufsize, mpiDataType, localHaloSpecs[haloId].remoteMpiRank,
+                      mpitag, TAUSCH_COMM, &mpiSendRequests[haloId]);
 
     }
 
-    MPI_Start(&mpiSendRequests[id]);
+    MPI_Start(&mpiSendRequests[haloId]);
 
 }
 
-template <class buf_t> void Tausch1D<buf_t>::recvCpu(size_t id) {
-    MPI_Wait(&mpiRecvRequests[id], MPI_STATUS_IGNORE);
+template <class buf_t> void Tausch1D<buf_t>::recvCpu(size_t haloId) {
+    MPI_Wait(&mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
 }
 
 template <class buf_t> void Tausch1D<buf_t>::unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) {
@@ -198,24 +198,23 @@ template <class buf_t> void Tausch1D<buf_t>::unpackRecvBufferCpu(size_t haloId, 
 
 }
 
-template <class buf_t> void Tausch1D<buf_t>::packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region, int mpitag) {
-    packSendBufferCpu(haloId, bufferId, buf, region);
+template <class buf_t> void Tausch1D<buf_t>::packAndSendCpu(size_t haloId, buf_t *buf, TauschPackRegion region, int mpitag) {
+    packSendBufferCpu(haloId, 0, buf, region);
     sendCpu(haloId, mpitag);
 }
 
-template <class buf_t> void Tausch1D<buf_t>::packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, int mpitag) {
+template <class buf_t> void Tausch1D<buf_t>::packAndSendCpu(size_t haloId, buf_t *buf, int mpitag) {
     TauschPackRegion region;
     region.startX = 0;
     region.width = localHaloSpecs[haloId].haloWidth;
-    packSendBufferCpu(haloId, bufferId, buf, region);
+    packSendBufferCpu(haloId, 0, buf, region);
     sendCpu(haloId, mpitag);
 }
 
-template <class buf_t> void Tausch1D<buf_t>::recvAndUnpackCpu(size_t haloId, size_t bufferId, buf_t *buf) {
+template <class buf_t> void Tausch1D<buf_t>::recvAndUnpackCpu(size_t haloId, buf_t *buf) {
     recvCpu(haloId);
-    unpackRecvBufferCpu(haloId, bufferId, buf);
+    unpackRecvBufferCpu(haloId, 0, buf);
 }
-
 
 template class Tausch1D<char>;
 template class Tausch1D<char16_t>;

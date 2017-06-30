@@ -77,7 +77,7 @@ public:
      *  How many different parts there are to the halo
      * \param haloSpecs
      *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
-     *  entries. %Tausch1D expects the following 5 variables to be set:
+     *  entries. %Tausch1D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
      *   x | The starting x coordinate of the halo region
@@ -95,7 +95,7 @@ public:
      *  How many different parts there are to the halo
      * \param haloSpecs
      *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
-     *  entries. %Tausch1D expects the following 3 variables to be set:
+     *  entries. %Tausch1D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
      *   x | The starting x coordinate of the halo region
@@ -107,13 +107,13 @@ public:
 
     /*!
      * Post the receive for the specified remote halo region of the current MPI rank. This doesn't do anything else but post the MPI_Recv.
-     * \param id
+     * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setRemoteHaloInfo().
      * \param mpitag
      *  The mpitag to be used for this MPI_Recv. This information only has to be specified the first time the MPI_Recv for the halo region with
      *  the specified id is posted. Each subsequent call, the mpitag that was passed the very first call will be re-used.
      */
-    void postReceiveCpu(size_t id, int mpitag = -1);
+    void postReceiveCpu(size_t haloId, int mpitag = -1);
 
     /*!
      * Post all receives for the current MPI rank. This doesn't do anything else but post the MPI_Recv for each remote halo region.
@@ -125,46 +125,73 @@ public:
 
     /*!
      *
-     * This packs the next buffer for a send. This has to be called as many times as there are buffers before sending the message.
-     *
-     * \param id
+     * This packs the specified region of the specified halo area for the specified buffer for a send. This has to be called for all buffers before
+     * sending the message.
+     * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
+     * \param bufferId
+     *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
+     *  The numbering of the buffers has to start with 0!
+     * \param buf
+     *  The buffer from which the data is to be extracted according to the local halo specification.
+     * \param region
+     *  Specification of the area of the current halo that is to be packed. This is specified relativce to the current halo, i.e., x=0 is
+     *  the left edge of the halo region. %Tausch1D expects the following variables to be set:
+     *  variable | description
+     *  :-------: | -------
+     *   startX | The starting x coordinate of the region to be packed
+     *   width | The width of the region to be packed
+     *
+     */
+    void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
+
+    /*!
+     *
+     * Overloaded function, packs the full region of the specified halo area.
+     *
+     * \param haloId
+     *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
+     * \param bufferId
+     *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
+     *  The numbering of the buffers has to start with 0!
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
      *
      */
     void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf);
-    void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
 
     /*!
      *
      * Sends off the send buffer for the specified halo region. This starts the respective MPI_Send.
      *
-     * \param id
+     * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
      * \param mpitag
      *  The mpitag to be used for this MPI_Send. This information only has to be specified the first time the MPI_Send for the halo region with
      *  the specified id is started. Each subsequent call, the mpitag that was passed the very first call will be re-used.
      *
      */
-    void sendCpu(size_t id, int mpitag = -1);
+    void sendCpu(size_t haloId, int mpitag = -1);
 
     /*!
      *
      * Makes sure the MPI message for the specified halo is received by this buffer. It does not do anything with that message!
      *
-     * \param id
+     * \param haloId
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
      *
      */
-    void recvCpu(size_t id);
+    void recvCpu(size_t haloId);
 
     /*!
      *
      * This unpacks the next halo from the received message into the provided buffer. This has to be called as many times as there are buffers.
      *
-     * \param id
+     * \param haloId
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
+     * \param bufferId
+     *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
+     *  The numbering of the buffers has to start with 0!
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      *
@@ -175,7 +202,29 @@ public:
      *
      * Shortcut function. If only one buffer is used, this will both pack the data out of the provided buffer and send it off, all with one call.
      *
-     * \param id
+     * \param haloId
+     *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
+     * \param buf
+     *  The buffer from which the data is to be extracted according to the local halo specification.
+     * \param mpitag
+     *  The mpitag to be used for this MPI_Send. This information only has to be specified the first time the MPI_Send for the halo region with
+     *  the specified id is started. Each subsequent call, the mpitag that was passed the very first call will be re-used.
+     * \param region
+     *  Specification of the area of the current halo that is to be packed. This is specified relative to the current halo, i.e., x=0 is
+     *  the left edge of the halo region. %Tausch1D expects the following variables to be set:
+     *  variable | description
+     *  :-------: | -------
+     *   startX | The starting x coordinate of the region to be packed
+     *   width | The width of the region to be packed
+     *
+     */
+    void packAndSendCpu(size_t haloId, buf_t *buf, TauschPackRegion region, int mpitag = -1);
+
+    /*!
+     *
+     * Shortcut function. If only one buffer is used, this will both pack the data out of the provided buffer and send it off, all with one call.
+     *
+     * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
@@ -184,20 +233,20 @@ public:
      *  the specified id is started. Each subsequent call, the mpitag that was passed the very first call will be re-used.
      *
      */
-    void packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, int mpitag = -1);
-    void packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region, int mpitag = -1);
+    void packAndSendCpu(size_t haloId, buf_t *buf, int mpitag = -1);
+
     /*!
      *
      * Shortcut function. If only one buffer is used, this will both receive the MPI message and unpack the received data into the provided buffer,
      * all with one call.
      *
-     * \param id
+     * \param haloId
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      *
      */
-    void recvAndUnpackCpu(size_t haloId, size_t bufferId, buf_t *buf);
+    void recvAndUnpackCpu(size_t haloId, buf_t *buf);
 
 private:
 
