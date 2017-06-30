@@ -25,9 +25,9 @@ private:
 
     TauschHaloSpec *localHaloSpecs;
     TauschHaloSpec *remoteHaloSpecs;
-    double *dat1, *dat2;
+    double **dat;
     size_t numBuffers;
-    size_t valuesPerPoint[2];
+    size_t *valuesPerPoint;
 
     size_t left, right, top, bottom, front, back;
 

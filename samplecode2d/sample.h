@@ -36,9 +36,9 @@ private:
     TauschHaloSpec *remoteHaloSpecsGpu;
     TauschHaloSpec *localHaloSpecsCpuForGpu;
     TauschHaloSpec *remoteHaloSpecsCpuForGpu;
-    double *dat1, *dat2;
+    double **dat;
     size_t numBuffers;
-    size_t valuesPerPointPerBuffer[2];
+    size_t *valuesPerPointPerBuffer;
 
     size_t left, right, top, bottom;
 
