@@ -203,13 +203,13 @@ template <class buf_t> void Tausch3D<buf_t>::recvCpu(size_t haloId) {
     MPI_Wait(&mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
 }
 
-template <class buf_t> void Tausch3D<buf_t>::unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) {
+template <class buf_t> void Tausch3D<buf_t>::unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
-    int size = remoteHaloSpecs[haloId].haloWidth * remoteHaloSpecs[haloId].haloHeight * remoteHaloSpecs[haloId].haloDepth;
+    int size = region.width * region.height * region.depth;
     for(int s = 0; s < size; ++s) {
-        int index = (s/(remoteHaloSpecs[haloId].haloWidth*remoteHaloSpecs[haloId].haloHeight) + remoteHaloSpecs[haloId].haloZ) * remoteHaloSpecs[haloId].bufferWidth * remoteHaloSpecs[haloId].bufferHeight +
-                    ((s%(remoteHaloSpecs[haloId].haloWidth*remoteHaloSpecs[haloId].haloHeight))/remoteHaloSpecs[haloId].haloWidth + remoteHaloSpecs[haloId].haloY) * remoteHaloSpecs[haloId].bufferWidth +
-                    s%remoteHaloSpecs[haloId].haloWidth + remoteHaloSpecs[haloId].haloX;
+        int index = (s/(region.width*region.height) + remoteHaloSpecs[haloId].haloZ) * remoteHaloSpecs[haloId].bufferWidth * remoteHaloSpecs[haloId].bufferHeight +
+                    ((s%(region.width*region.height))/remoteHaloSpecs[haloId].haloWidth + remoteHaloSpecs[haloId].haloY) * remoteHaloSpecs[haloId].bufferWidth +
+                    s%region.width + remoteHaloSpecs[haloId].haloX;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
@@ -218,6 +218,20 @@ template <class buf_t> void Tausch3D<buf_t>::unpackRecvBufferCpu(size_t haloId, 
                     mpiRecvBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*s + val];
         }
     }
+
+}
+
+template <class buf_t> void Tausch3D<buf_t>::unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) {
+
+    TauschPackRegion region;
+    region.startX = 0;
+    region.startY = 0;
+    region.startZ = 0;
+    region.width = remoteHaloSpecs[haloId].haloWidth;
+    region.height = remoteHaloSpecs[haloId].haloHeight;
+    region.depth = remoteHaloSpecs[haloId].haloDepth;
+
+    unpackRecvBufferCpu(haloId, bufferId, buf, region);
 
 }
 
@@ -238,9 +252,21 @@ template <class buf_t> void Tausch3D<buf_t>::packAndSendCpu(size_t haloId, buf_t
     sendCpu(haloId, mpitag);
 }
 
-template <class buf_t> void Tausch3D<buf_t>::recvAndUnpackCpu(size_t haloId, buf_t *buf) {
+template <class buf_t> void Tausch3D<buf_t>::recvAndUnpackCpu(size_t haloId, buf_t *buf, TauschPackRegion region) {
     recvCpu(haloId);
-    unpackRecvBufferCpu(haloId, 0, buf);
+    unpackRecvBufferCpu(haloId, 0, buf, region);
+}
+
+template <class buf_t> void Tausch3D<buf_t>::recvAndUnpackCpu(size_t haloId, buf_t *buf) {
+    TauschPackRegion region;
+    region.startX = 0;
+    region.startY = 0;
+    region.startZ = 0;
+    region.width = remoteHaloSpecs[haloId].haloWidth;
+    region.height = remoteHaloSpecs[haloId].haloHeight;
+    region.depth = remoteHaloSpecs[haloId].haloDepth;
+    recvCpu(haloId);
+    unpackRecvBufferCpu(haloId, 0, buf, region);
 }
 
 template class Tausch3D<char>;

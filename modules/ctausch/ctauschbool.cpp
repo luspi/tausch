@@ -68,9 +68,9 @@ void tausch_recv_bool(CTauschBool *tC, size_t haloId) {
     t->recvCpu(haloId);
 }
 
-void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf) {
+void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf, TauschPackRegion region) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
-    t->unpackRecvBufferCpu(haloId, bufferId, buf);
+    t->unpackRecvBufferCpu(haloId, bufferId, buf, region);
 }
 
 void tausch_packAndSend_bool(CTauschBool *tC, size_t haloId, bool *buf, TauschPackRegion region, int mpitag) {
@@ -78,9 +78,9 @@ void tausch_packAndSend_bool(CTauschBool *tC, size_t haloId, bool *buf, TauschPa
     t->packAndSendCpu(haloId, buf, region, mpitag);
 }
 
-void tausch_recvAndUnpack_bool(CTauschBool *tC, size_t haloId, bool *buf) {
+void tausch_recvAndUnpack_bool(CTauschBool *tC, size_t haloId, bool *buf, TauschPackRegion region) {
     Tausch<bool> *t = reinterpret_cast<Tausch<bool>*>(tC);
-    t->recvAndUnpackCpu(haloId, buf);
+    t->recvAndUnpackCpu(haloId, buf, region);
 }
 
 

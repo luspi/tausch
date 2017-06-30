@@ -194,6 +194,28 @@ public:
      *  The numbering of the buffers has to start with 0!
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
+     * \param region
+     *  Specification of the area of the current halo that is to be packed. This is specified relative to the current halo, i.e., x=0 is
+     *  the left edge of the halo region. %Tausch1D expects the following variables to be set:
+     *  variable | description
+     *  :-------: | -------
+     *   startX | The starting x coordinate of the region to be packed
+     *   width | The width of the region to be packed
+     *
+     */
+    void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
+
+    /*!
+     *
+     * This unpacks the next halo from the received message into the provided buffer. This has to be called as many times as there are buffers.
+     *
+     * \param haloId
+     *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
+     * \param bufferId
+     *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
+     *  The numbering of the buffers has to start with 0!
+     * \param[out] buf
+     *  The buffer to which the extracted data is to be written to according to the remote halo specification
      *
      */
     void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf);
@@ -234,6 +256,26 @@ public:
      *
      */
     void packAndSendCpu(size_t haloId, buf_t *buf, int mpitag = -1);
+
+    /*!
+     *
+     * Shortcut function. If only one buffer is used, this will both receive the MPI message and unpack the received data into the provided buffer,
+     * all with one call.
+     *
+     * \param haloId
+     *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
+     * \param[out] buf
+     *  The buffer to which the extracted data is to be written to according to the remote halo specification
+     * \param region
+     *  Specification of the area of the current halo that is to be packed. This is specified relative to the current halo, i.e., x=0 is
+     *  the left edge of the halo region. %Tausch1D expects the following variables to be set:
+     *  variable | description
+     *  :-------: | -------
+     *   startX | The starting x coordinate of the region to be packed
+     *   width | The width of the region to be packed
+     *
+     */
+    void recvAndUnpackCpu(size_t haloId, buf_t *buf, TauschPackRegion region);
 
     /*!
      *

@@ -211,9 +211,20 @@ void tausch_recv_float(CTauschFloat *tC, size_t haloId);
  *  The numbering of the buffers has to start with 0!
  * \param buf
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
+ * \param region
+ *  The specification of the region of the halo parts to be packed. This is expected to be a pointer of structs, and each halo region can be
+ *  referenced later by its index in this pointer. Each struct must have specified the following 3, 5, or 7 entries:
+ *  variable | description
+ *  :-------: | -------
+ *   startX | The starting x coordinate of the region to be packed
+ *   startY | The starting y coordinate of the region to be packed (if present)
+ *   startZ | The starting z coordinate of the region to be packed (if present)
+ *   width | The width of the region to be packed
+ *   height | The height of the region to be packed (if present)
+ *   depth | The depth of the region to be packed (if present)
  *
  */
-void tausch_unpackNextRecvBuffer_float(CTauschFloat *tC, size_t haloId, size_t bufferId, float *buf);
+void tausch_unpackNextRecvBuffer_float(CTauschFloat *tC, size_t haloId, size_t bufferId, float *buf, TauschPackRegion region);
 
 /*!
  *
@@ -253,9 +264,20 @@ void tausch_packAndSend_float(CTauschFloat *tC, size_t haloId, float *buf, Tausc
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  * \param buf
  *  The buffer to which the extracted data is to be written to according to the remote halo specification
+ * \param region
+ *  The specification of the region of the halo parts to be packed. This is expected to be a pointer of structs, and each halo region can be
+ *  referenced later by its index in this pointer. Each struct must have specified the following 3, 5, or 7 entries:
+ *  variable | description
+ *  :-------: | -------
+ *   startX | The starting x coordinate of the region to be packed
+ *   startY | The starting y coordinate of the region to be packed (if present)
+ *   startZ | The starting z coordinate of the region to be packed (if present)
+ *   width | The width of the region to be packed
+ *   height | The height of the region to be packed (if present)
+ *   depth | The depth of the region to be packed (if present)
  *
  */
-void tausch_recvAndUnpack_float(CTauschFloat *tC, size_t haloId, float *buf);
+void tausch_recvAndUnpack_float(CTauschFloat *tC, size_t haloId, float *buf, TauschPackRegion region);
 
 #ifdef __cplusplus
 }

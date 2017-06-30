@@ -135,7 +135,7 @@ template <class buf_t> void Tausch1D<buf_t>::packSendBufferCpu(size_t haloId, si
 
     int size = region.width;
     for(int s = 0; s < size; ++s) {
-        int index = localHaloSpecs[haloId].haloX + s;
+        int index = localHaloSpecs[haloId].haloX + s + region.startX;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
@@ -182,11 +182,11 @@ template <class buf_t> void Tausch1D<buf_t>::recvCpu(size_t haloId) {
     MPI_Wait(&mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
 }
 
-template <class buf_t> void Tausch1D<buf_t>::unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) {
+template <class buf_t> void Tausch1D<buf_t>::unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
-    int size = remoteHaloSpecs[haloId].haloWidth;
+    int size = region.width;
     for(int s = 0; s < size; ++s) {
-        int index = remoteHaloSpecs[haloId].haloX + s;
+        int index = remoteHaloSpecs[haloId].haloX + s + region.startX;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
@@ -196,6 +196,13 @@ template <class buf_t> void Tausch1D<buf_t>::unpackRecvBufferCpu(size_t haloId, 
         }
     }
 
+}
+
+template <class buf_t> void Tausch1D<buf_t>::unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) {
+    TauschPackRegion region;
+    region.startX = 0;
+    region.width = remoteHaloSpecs[haloId].haloWidth;
+    unpackRecvBufferCpu(haloId, bufferId, buf, region);
 }
 
 template <class buf_t> void Tausch1D<buf_t>::packAndSendCpu(size_t haloId, buf_t *buf, TauschPackRegion region, int mpitag) {
@@ -211,9 +218,17 @@ template <class buf_t> void Tausch1D<buf_t>::packAndSendCpu(size_t haloId, buf_t
     sendCpu(haloId, mpitag);
 }
 
-template <class buf_t> void Tausch1D<buf_t>::recvAndUnpackCpu(size_t haloId, buf_t *buf) {
+template <class buf_t> void Tausch1D<buf_t>::recvAndUnpackCpu(size_t haloId, buf_t *buf, TauschPackRegion region) {
     recvCpu(haloId);
-    unpackRecvBufferCpu(haloId, 0, buf);
+    unpackRecvBufferCpu(haloId, 0, buf, region);
+}
+
+template <class buf_t> void Tausch1D<buf_t>::recvAndUnpackCpu(size_t haloId, buf_t *buf) {
+    TauschPackRegion region;
+    region.startX = 0;
+    region.width = remoteHaloSpecs[haloId].haloWidth;
+    recvCpu(haloId);
+    unpackRecvBufferCpu(haloId, 0, buf, region);
 }
 
 template class Tausch1D<char>;

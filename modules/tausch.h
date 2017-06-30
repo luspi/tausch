@@ -116,9 +116,11 @@ public:
     virtual void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
     virtual void sendCpu(size_t haloId, int mpitag = -1) = 0;
     virtual void recvCpu(size_t haloId) = 0;
+    virtual void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) = 0;
     virtual void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
     virtual void packAndSendCpu(size_t haloId, buf_t *buf, TauschPackRegion region, int mpitag = -1) = 0;
     virtual void packAndSendCpu(size_t haloId, buf_t *buf, int mpitag = -1) = 0;
+    virtual void recvAndUnpackCpu(size_t haloId, buf_t *buf, TauschPackRegion region) = 0;
     virtual void recvAndUnpackCpu(size_t haloId, buf_t *buf) = 0;
 
 };

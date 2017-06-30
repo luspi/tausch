@@ -68,9 +68,9 @@ void tausch_recv_unsignedint(CTauschUnsignedInt *tC, size_t haloId) {
     t->recvCpu(haloId);
 }
 
-void tausch_unpackNextRecvBuffer_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf) {
+void tausch_unpackNextRecvBuffer_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->unpackRecvBufferCpu(haloId, bufferId, buf);
+    t->unpackRecvBufferCpu(haloId, bufferId, buf, region);
 }
 
 void tausch_packAndSend_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region, int mpitag) {
@@ -78,9 +78,9 @@ void tausch_packAndSend_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsig
     t->packAndSendCpu(haloId, buf, region, mpitag);
 }
 
-void tausch_recvAndUnpack_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf) {
+void tausch_recvAndUnpack_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->recvAndUnpackCpu(haloId, buf);
+    t->recvAndUnpackCpu(haloId, buf, region);
 }
 
 
