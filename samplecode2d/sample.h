@@ -42,8 +42,8 @@ private:
 
     size_t left, right, top, bottom;
 
-    double *gpudat1, *gpudat2;
-    cl::Buffer cl_gpudat1, cl_gpudat2;
+    double **gpudat;
+    cl::Buffer *cl_gpudat;
     cl::Buffer cl_valuesPerPointPerBuffer;
 
 };
