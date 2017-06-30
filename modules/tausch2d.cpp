@@ -256,6 +256,7 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoCpuForGpu(size_t nu
     localHaloSpecsCpuForGpu = new TauschHaloSpec[numHaloParts];
     cpuToGpuSendBuffer = new std::atomic<buf_t>*[numHaloParts];
     numBuffersPackedCpuToGpu =  new size_t[numHaloParts]{};
+    msgtagsCpuToGpu = new std::atomic<int>[numHaloParts]{};
 
     for(int i = 0; i < numHaloParts; ++i) {
 
@@ -309,6 +310,7 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGpu(size_t numHaloP
     localHaloNumPartsGpu = numHaloParts;
     localHaloSpecsGpu = new TauschHaloSpec[numHaloParts];
     gpuToCpuSendBuffer = new std::atomic<buf_t>*[numHaloParts];
+    msgtagsGpuToCpu = new std::atomic<int>[numHaloParts]{};
 
     try {
         cl_gpuToCpuSendBuffer = new cl::Buffer[numHaloParts];
@@ -442,18 +444,21 @@ template <class buf_t> void Tausch2D<buf_t>::packNextSendBufferGpuToCpu(size_t i
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::sendCpuToGpu(size_t id) {
+template <class buf_t> void Tausch2D<buf_t>::sendCpuToGpu(size_t id, int msgtag) {
     numBuffersPackedCpuToGpu[id] = 0;
+    msgtagsCpuToGpu[id].store(msgtag);
     syncCpuAndGpu();
 }
 
-template <class buf_t> void Tausch2D<buf_t>::sendGpuToCpu(size_t id) {
+template <class buf_t> void Tausch2D<buf_t>::sendGpuToCpu(size_t id, int msgtag) {
+
+    msgtagsGpuToCpu[id].store(msgtag);
 
     try {
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsCpuForGpu[id].haloWidth*remoteHaloSpecsCpuForGpu[id].haloHeight;
+            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsGpu[id].haloWidth*localHaloSpecsGpu[id].haloHeight;
 
         buf_t *tmp = new buf_t[bufsize];
         cl::copy(cl_queue, cl_gpuToCpuSendBuffer[id], &tmp[0], &tmp[bufsize]);
@@ -469,7 +474,15 @@ template <class buf_t> void Tausch2D<buf_t>::sendGpuToCpu(size_t id) {
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::recvCpuToGpu(size_t id) {
+template <class buf_t> void Tausch2D<buf_t>::recvCpuToGpu(size_t id, int msgtag) {
+
+    int remoteid = 0;
+    for(int j = 0; j < remoteHaloNumPartsGpu; ++j) {
+        if(msgtagsCpuToGpu[j].load() == msgtag) {
+            remoteid = j;
+            break;
+        }
+    }
 
     syncCpuAndGpu();
 
@@ -478,7 +491,7 @@ template <class buf_t> void Tausch2D<buf_t>::recvCpuToGpu(size_t id) {
         bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsGpu[id].haloWidth*remoteHaloSpecsGpu[id].haloHeight;
 
     for(int j = 0; j < bufsize; ++j)
-        cpuToGpuRecvBuffer[id][j] = cpuToGpuSendBuffer[id][j].load();
+        cpuToGpuRecvBuffer[id][j] = cpuToGpuSendBuffer[remoteid][j].load();
 
     try {
         cl_cpuToGpuRecvBuffer[id] = cl::Buffer(cl_context, &cpuToGpuRecvBuffer[id][0], &cpuToGpuRecvBuffer[id][bufsize], false);
@@ -490,7 +503,21 @@ template <class buf_t> void Tausch2D<buf_t>::recvCpuToGpu(size_t id) {
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::recvGpuToCpu(size_t id) {
+template <class buf_t> void Tausch2D<buf_t>::recvGpuToCpu(size_t id, int msgtag) {
+
+    int remoteid = 0;
+    for(int j = 0; j < remoteHaloNumPartsCpuForGpu; ++j) {
+        if(msgtagsCpuToGpu[j].load() == msgtag) {
+            remoteid = j;
+            break;
+        }
+    }
+
+    size_t bufsize = 0;
+    for(int n = 0; n < numBuffers; ++n)
+        bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsCpuForGpu[id].haloWidth*remoteHaloSpecsCpuForGpu[id].haloHeight;
+    for(int i = 0; i < bufsize; ++i)
+        gpuToCpuRecvBuffer[id][i] = gpuToCpuSendBuffer[remoteid][i].load();
 
     syncCpuAndGpu();
     numBuffersUnpackedGpuToCpu[id] = 0;
@@ -507,7 +534,7 @@ template <class buf_t> void Tausch2D<buf_t>::unpackNextRecvBufferGpuToCpu(size_t
             int offset = 0;
             for(int b = 0; b < numBuffersUnpackedGpuToCpu[id]; ++b)
                 offset += valuesPerPointPerBuffer[b]*size;
-            buf[valuesPerPointPerBuffer[numBuffersUnpackedGpuToCpu[id]]*index + val] = gpuToCpuSendBuffer[id][offset + valuesPerPointPerBuffer[numBuffersUnpackedGpuToCpu[id]]*s + val].load();
+            buf[valuesPerPointPerBuffer[numBuffersUnpackedGpuToCpu[id]]*index + val] = gpuToCpuRecvBuffer[id][offset + valuesPerPointPerBuffer[numBuffersUnpackedGpuToCpu[id]]*s + val];
         }
     }
     ++numBuffersUnpackedGpuToCpu[id];

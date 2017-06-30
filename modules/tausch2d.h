@@ -286,7 +286,7 @@ public:
      * \param id
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfoCpuForGpu().
      */
-    void sendCpuToGpu(size_t id);
+    void sendCpuToGpu(size_t id, int msgtag);
 
     /*!
      * Makes sure that writing the remote halo data to shared memory has completed for the specified halo id. It does not do anything with
@@ -294,7 +294,7 @@ public:
      * \param id
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfoCpuForGpu().
      */
-    void recvGpuToCpu(size_t id);
+    void recvGpuToCpu(size_t id, int msgtag);
 
     /*!
      * This unpacks the next halo from the data in shared memory into the provided buffer. This has to be called as many times as there are buffers.
@@ -361,14 +361,14 @@ public:
      * \param id
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfoGpu().
      */
-    void sendGpuToCpu(size_t id);
+    void sendGpuToCpu(size_t id, int msgtag);
     /*!
      * Makes sure that writing the remote halo data to shared memory has completed for the specified halo id. It does not do anything with
      * that message!
      * \param id
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfoGpu().
      */
-    void recvCpuToGpu(size_t id);
+    void recvCpuToGpu(size_t id, int msgtag);
     /*!
      * This unpacks the next halo from the data in shared memory into the provided buffer. This has to be called as many times as there are buffers.
      * \param id
@@ -449,6 +449,9 @@ private:
     bool blockingSyncCpuGpu;
     int cl_kernelLocalSize;
     bool showOpenCLBuildLog;
+
+    std::atomic<int> *msgtagsCpuToGpu;
+    std::atomic<int> *msgtagsGpuToCpu;
 
     std::atomic<int> sync_counter[2];
     std::atomic<int> sync_lock[2];
