@@ -131,9 +131,9 @@ template <class buf_t> void Tausch1D<buf_t>::postAllReceivesCpu(int *mpitag) {
 
 }
 
-template <class buf_t> void Tausch1D<buf_t>::packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) {
+template <class buf_t> void Tausch1D<buf_t>::packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
-    int size = localHaloSpecs[haloId].haloWidth;
+    int size = region.width;
     for(int s = 0; s < size; ++s) {
         int index = localHaloSpecs[haloId].haloX + s;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
@@ -191,8 +191,8 @@ template <class buf_t> void Tausch1D<buf_t>::unpackRecvBufferCpu(size_t haloId, 
 
 }
 
-template <class buf_t> void Tausch1D<buf_t>::packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, int mpitag) {
-    packSendBufferCpu(haloId, bufferId, buf);
+template <class buf_t> void Tausch1D<buf_t>::packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region, int mpitag) {
+    packSendBufferCpu(haloId, bufferId, buf, region);
     sendCpu(haloId, mpitag);
 }
 

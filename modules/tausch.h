@@ -60,6 +60,15 @@ struct TauschHaloSpec {
     int remoteMpiRank;
 };
 
+struct TauschPackRegion {
+    size_t startX;
+    size_t startY;
+    size_t startZ;
+    size_t width;
+    size_t height;
+    size_t depth;
+};
+
 /*!
  *
  * \internal
@@ -73,11 +82,11 @@ public:
     virtual void setRemoteHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
     virtual void postReceiveCpu(size_t id, int mpitag = -1) = 0;
     virtual void postAllReceivesCpu(int *mpitag = nullptr) = 0;
-    virtual void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
+    virtual void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) = 0;
     virtual void sendCpu(size_t id, int mpitag = -1) = 0;
     virtual void recvCpu(size_t id) = 0;
     virtual void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
-    virtual void packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, int mpitag = -1) = 0;
+    virtual void packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region, int mpitag = -1) = 0;
     virtual void recvAndUnpackCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
 
 };

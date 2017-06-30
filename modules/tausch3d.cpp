@@ -145,13 +145,13 @@ template <class buf_t> void Tausch3D<buf_t>::postAllReceivesCpu(int *mpitag) {
 
 }
 
-template <class buf_t> void Tausch3D<buf_t>::packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) {
+template <class buf_t> void Tausch3D<buf_t>::packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
-    int size = localHaloSpecs[haloId].haloWidth * localHaloSpecs[haloId].haloHeight * localHaloSpecs[haloId].haloDepth;
+    int size = region.width * region.height * region.depth;
     for(int s = 0; s < size; ++s) {
-        int index = (s/(localHaloSpecs[haloId].haloWidth*localHaloSpecs[haloId].haloHeight) + localHaloSpecs[haloId].haloZ) * localHaloSpecs[haloId].bufferWidth * localHaloSpecs[haloId].bufferHeight +
-                    ((s%(localHaloSpecs[haloId].haloWidth*localHaloSpecs[haloId].haloHeight))/localHaloSpecs[haloId].haloWidth + localHaloSpecs[haloId].haloY) * localHaloSpecs[haloId].bufferWidth +
-                    s%localHaloSpecs[haloId].haloWidth + localHaloSpecs[haloId].haloX;
+        int index = (s/(region.width*region.height) + localHaloSpecs[haloId].haloZ) * localHaloSpecs[haloId].bufferWidth * localHaloSpecs[haloId].bufferHeight +
+                    ((s%(region.width*region.height))/localHaloSpecs[haloId].haloWidth + localHaloSpecs[haloId].haloY) * localHaloSpecs[haloId].bufferWidth +
+                    s%region.width + localHaloSpecs[haloId].haloX;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
@@ -210,8 +210,8 @@ template <class buf_t> void Tausch3D<buf_t>::unpackRecvBufferCpu(size_t haloId, 
 
 }
 
-template <class buf_t> void Tausch3D<buf_t>::packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, int mpitag) {
-    packSendBufferCpu(haloId, bufferId, buf);
+template <class buf_t> void Tausch3D<buf_t>::packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region, int mpitag) {
+    packSendBufferCpu(haloId, bufferId, buf, region);
     sendCpu(haloId, mpitag);
 }
 

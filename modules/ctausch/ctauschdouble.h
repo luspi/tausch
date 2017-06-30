@@ -156,7 +156,7 @@ void tausch_postAllReceivesCpu_double(CTauschDouble *tC, int *mpitag);
  *  The buffer from which the data is to be extracted according to the local halo specification.
  *
  */
-void tausch_packNextSendBuffer_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf);
+void tausch_packNextSendBuffer_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
 
 /*!
  *
@@ -212,7 +212,7 @@ void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, size_t haloId, size_t
  *  The mpitag to be used for this MPI_Isend().
  *
  */
-void tausch_packAndSend_double(CTauschDouble *tC, size_t haloId, size_t bufferId, int mpitag, double *buf);
+void tausch_packAndSend_double(CTauschDouble *tC, size_t haloId, size_t bufferId, int mpitag, double *buf, TauschPackRegion region);
 
 /*!
  *

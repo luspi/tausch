@@ -130,7 +130,7 @@ public:
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
      */
-    void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf);
+    void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
 
     /*!
      * Sends off the send buffer for the specified halo region. This starts the respective MPI_Send.
@@ -168,7 +168,7 @@ public:
      *  The mpitag to be used for this MPI_Send. This information only has to be specified the first time the MPI_Send for the halo region with
      *  the specified id is started. Each subsequent call, the mpitag that was passed the very first call will be re-used.
      */
-    void packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, int mpitag = -1);
+    void packAndSendCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region, int mpitag = -1);
     /*!
      * Shortcut function. If only one buffer is used, this will both receive the MPI message and unpack the received data into the provided buffer,
      * all with one call.
