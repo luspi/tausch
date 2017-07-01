@@ -137,8 +137,16 @@ int main(int argc, char** argv) {
         std::cout << "-------------------------------" << std::endl;
         std::cout << "CPU region BEFORE" << std::endl;
         std::cout << "-------------------------------" << std::endl;
-        sample.print();
+        sample.printCPU();
         std::cout << "-------------------------------" << std::endl;
+        if(gpu) {
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "GPU region BEFORE" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            sample.printGPU();
+            std::cout << "-------------------------------" << std::endl;
+        }
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -164,8 +172,16 @@ int main(int argc, char** argv) {
         std::cout << "-------------------------------" << std::endl;
         std::cout << "CPU region AFTER" << std::endl;
         std::cout << "-------------------------------" << std::endl;
-        sample.print();
+        sample.printCPU();
         std::cout << "-------------------------------" << std::endl;
+        if(gpu) {
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "GPU region AFTER" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            sample.printGPU();
+            std::cout << "-------------------------------" << std::endl;
+        }
     }
 
     MPI_Barrier(MPI_COMM_WORLD);

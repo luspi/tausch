@@ -14,7 +14,8 @@ public:
     void launchCPU();
     void launchGPU();
 
-    void print();
+    void printCPU();
+    void printGPU();
 
 private:
     bool hybrid;
@@ -36,12 +37,12 @@ private:
 
     double **dat;
     size_t numBuffers;
-    size_t *valuesPerPoint;
+    size_t *valuesPerPointPerBuffer;
 
     size_t left, right, top, bottom;
 
-    double *gpudat1, *gpudat2;
-    cl::Buffer cl_gpudat1, cl_gpudat2;
+    double **gpudat;
+    cl::Buffer *cl_gpudat;
     cl::Buffer cl_valuesPerPointPerBuffer;
 
 };
