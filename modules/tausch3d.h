@@ -138,9 +138,9 @@ public:
      *  is the bottom left corner of the halo region. %Tausch3D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
-     *   startX | The starting x coordinate of the region to be packed
-     *   startY | The starting y coordinate of the region to be packed
-     *   startZ | The starting z coordinate of the region to be packed
+     *   x | The starting x coordinate of the region to be packed
+     *   y | The starting y coordinate of the region to be packed
+     *   z | The starting z coordinate of the region to be packed
      *   width | The width of the region to be packed
      *   height | The height of the region to be packed
      *   depth | The depth of the region to be packed
@@ -190,10 +190,12 @@ public:
      *  is the bottom left corner of the halo region. %Tausch3D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
-     *   startX | The starting x coordinate of the region to be packed
-     *   startY | The starting y coordinate of the region to be packed
+     *   x | The starting x coordinate of the region to be packed
+     *   y | The starting y coordinate of the region to be packed
+     *   z | The starting z coordinate of the region to be packed
      *   width | The width of the region to be packed
      *   height | The height of the region to be packed
+     *   depth | The depth of the region to be packed
      */
     void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
 
@@ -223,10 +225,12 @@ public:
      *  is the bottom left corner of the halo region. %Tausch3D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
-     *   startX | The starting x coordinate of the region to be packed
-     *   startY | The starting y coordinate of the region to be packed
+     *   x | The starting x coordinate of the region to be packed
+     *   y | The starting y coordinate of the region to be packed
+     *   z | The starting z coordinate of the region to be packed
      *   width | The width of the region to be packed
      *   height | The height of the region to be packed
+     *   depth | The depth of the region to be packed
      */
     void packAndSendCpu(size_t haloId, buf_t *buf, TauschPackRegion region, int mpitag = -1);
 
@@ -254,10 +258,12 @@ public:
      *  is the bottom left corner of the halo region. %Tausch3D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
-     *   startX | The starting x coordinate of the region to be packed
-     *   startY | The starting y coordinate of the region to be packed
+     *   x | The starting x coordinate of the region to be packed
+     *   y | The starting y coordinate of the region to be packed
+     *   z | The starting z coordinate of the region to be packed
      *   width | The width of the region to be packed
      *   height | The height of the region to be packed
+     *   depth | The depth of the region to be packed
      */
     void recvAndUnpackCpu(size_t haloId, buf_t *buf, TauschPackRegion region);
 

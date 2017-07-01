@@ -76,15 +76,15 @@ struct TauschPackRegion {
     /*!
      * The starting x coordinate of the region, relative to the halo area.
      */
-    size_t startX;
+    size_t x;
     /*!
      * The starting y coordinate of the region, relative to the halo area.
      */
-    size_t startY;
+    size_t y;
     /*!
      * The starting z coordinate of the region, relative to the halo area.
      */
-    size_t startZ;
+    size_t z;
     /*!
      * The width of the region.
      */

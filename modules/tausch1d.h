@@ -139,7 +139,7 @@ public:
      *  the left edge of the halo region. %Tausch1D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
-     *   startX | The starting x coordinate of the region to be packed
+     *   x | The starting x coordinate of the region to be packed
      *   width | The width of the region to be packed
      *
      */
@@ -199,7 +199,7 @@ public:
      *  the left edge of the halo region. %Tausch1D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
-     *   startX | The starting x coordinate of the region to be packed
+     *   x | The starting x coordinate of the region to be packed
      *   width | The width of the region to be packed
      *
      */
@@ -236,7 +236,7 @@ public:
      *  the left edge of the halo region. %Tausch1D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
-     *   startX | The starting x coordinate of the region to be packed
+     *   x | The starting x coordinate of the region to be packed
      *   width | The width of the region to be packed
      *
      */
@@ -271,7 +271,7 @@ public:
      *  the left edge of the halo region. %Tausch1D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
-     *   startX | The starting x coordinate of the region to be packed
+     *   x | The starting x coordinate of the region to be packed
      *   width | The width of the region to be packed
      *
      */

@@ -165,9 +165,9 @@ template <class buf_t> void Tausch3D<buf_t>::packSendBufferCpu(size_t haloId, si
 
 template <class buf_t> void Tausch3D<buf_t>::packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) {
     TauschPackRegion region;
-    region.startX = 0;
-    region.startY = 0;
-    region.startZ = 0;
+    region.x = 0;
+    region.y = 0;
+    region.z = 0;
     region.width = localHaloSpecs[haloId].haloWidth;
     region.height = localHaloSpecs[haloId].haloHeight;
     region.depth = localHaloSpecs[haloId].haloDepth;
@@ -224,9 +224,9 @@ template <class buf_t> void Tausch3D<buf_t>::unpackRecvBufferCpu(size_t haloId, 
 template <class buf_t> void Tausch3D<buf_t>::unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) {
 
     TauschPackRegion region;
-    region.startX = 0;
-    region.startY = 0;
-    region.startZ = 0;
+    region.x = 0;
+    region.y = 0;
+    region.z = 0;
     region.width = remoteHaloSpecs[haloId].haloWidth;
     region.height = remoteHaloSpecs[haloId].haloHeight;
     region.depth = remoteHaloSpecs[haloId].haloDepth;
@@ -242,9 +242,9 @@ template <class buf_t> void Tausch3D<buf_t>::packAndSendCpu(size_t haloId, buf_t
 
 template <class buf_t> void Tausch3D<buf_t>::packAndSendCpu(size_t haloId, buf_t *buf, int mpitag) {
     TauschPackRegion region;
-    region.startX = 0;
-    region.startY = 0;
-    region.startZ = 0;
+    region.x = 0;
+    region.y = 0;
+    region.z = 0;
     region.width = localHaloSpecs[haloId].haloWidth;
     region.height = localHaloSpecs[haloId].haloHeight;
     region.depth = localHaloSpecs[haloId].haloDepth;
@@ -259,9 +259,9 @@ template <class buf_t> void Tausch3D<buf_t>::recvAndUnpackCpu(size_t haloId, buf
 
 template <class buf_t> void Tausch3D<buf_t>::recvAndUnpackCpu(size_t haloId, buf_t *buf) {
     TauschPackRegion region;
-    region.startX = 0;
-    region.startY = 0;
-    region.startZ = 0;
+    region.x = 0;
+    region.y = 0;
+    region.z = 0;
     region.width = remoteHaloSpecs[haloId].haloWidth;
     region.height = remoteHaloSpecs[haloId].haloHeight;
     region.depth = remoteHaloSpecs[haloId].haloDepth;
