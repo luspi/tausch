@@ -366,6 +366,15 @@ public:
      *  The numbering of the buffers has to start with 0!
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
+     * \param region
+     *  Specification of the area of the current halo that is to be packed. This is specified relativce to the current halo, i.e., (x,y) = (0,0) is
+     *  the bottom left corner of the halo region. %Tausch2D expects the following variables to be set:
+     *  variable | description
+     *  :-------: | -------
+     *   startX | The starting x coordinate of the region to be packed
+     *   startY | The starting y coordinate of the region to be packed
+     *   width | The width of the region to be packed
+     *   height | The height of the region to be packed
      */
     void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
 
@@ -397,6 +406,15 @@ public:
      *  The numbering of the buffers has to start with 0!
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
+     * \param region
+     *  Specification of the area of the current halo that is to be packed. This is specified relativce to the current halo, i.e., (x,y) = (0,0) is
+     *  the bottom left corner of the halo region. %Tausch2D expects the following variables to be set:
+     *  variable | description
+     *  :-------: | -------
+     *   startX | The starting x coordinate of the region to be packed
+     *   startY | The starting y coordinate of the region to be packed
+     *   width | The width of the region to be packed
+     *   height | The height of the region to be packed
      */
     void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
 
