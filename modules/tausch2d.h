@@ -367,7 +367,7 @@ public:
      * \param buf
      *  The buffer from which the data is to be extracted according to the local halo specification.
      */
-    void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf);
+    void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
 
     /*!
      * Sends off the send buffer for the specified halo region. This does <b>NOT</b> use MPI, but takes advantage of shared memory.
@@ -398,7 +398,7 @@ public:
      * \param[out] buf
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      */
-    void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf);
+    void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
 
     ///@}
 

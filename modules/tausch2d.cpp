@@ -407,12 +407,12 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoGpu(size_t numHalo
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf) {
+template <class buf_t> void Tausch2D<buf_t>::packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
-    int size = localHaloSpecsCpuForGpu[haloId].haloWidth * localHaloSpecsCpuForGpu[haloId].haloHeight;
+    int size = region.width * region.height;
     for(int s = 0; s < size; ++s) {
-        int index = (s/localHaloSpecsCpuForGpu[haloId].haloWidth + localHaloSpecsCpuForGpu[haloId].haloY)*localHaloSpecsCpuForGpu[haloId].bufferWidth+
-                    s%localHaloSpecsCpuForGpu[haloId].haloWidth +localHaloSpecsCpuForGpu[haloId].haloX;
+        int index = (s/region.width + localHaloSpecsCpuForGpu[haloId].haloY + region.startY)*localHaloSpecsCpuForGpu[haloId].bufferWidth+
+                    s%region.width +localHaloSpecsCpuForGpu[haloId].haloX + region.startX;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
@@ -514,12 +514,12 @@ template <class buf_t> void Tausch2D<buf_t>::recvGpuToCpu(size_t haloId, int msg
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf) {
+template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
-    int size = remoteHaloSpecsCpuForGpu[haloId].haloWidth * remoteHaloSpecsCpuForGpu[haloId].haloHeight;
+    int size = region.width * region.height;
     for(int s = 0; s < size; ++s) {
-        int index = (s/remoteHaloSpecsCpuForGpu[haloId].haloWidth + remoteHaloSpecsCpuForGpu[haloId].haloY)*remoteHaloSpecsCpuForGpu[haloId].bufferWidth +
-                    s%remoteHaloSpecsCpuForGpu[haloId].haloWidth +remoteHaloSpecsCpuForGpu[haloId].haloX;
+        int index = (s/region.width + remoteHaloSpecsCpuForGpu[haloId].haloY + region.startY)*remoteHaloSpecsCpuForGpu[haloId].bufferWidth +
+                    s%region.width +remoteHaloSpecsCpuForGpu[haloId].haloX + region.startX;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
