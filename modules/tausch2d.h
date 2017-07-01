@@ -273,7 +273,6 @@ public:
 
 #ifdef TAUSCH_OPENCL
 
-
     /*! \name Public Member Functions (OpenCL)
      * Alll member functions relating to GPUs and OpenCL in general. <b>Note:</b> These are only available if %Tausch2D was compiled
      * with OpenCL support!
@@ -358,7 +357,7 @@ public:
     void setRemoteHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
     /*!
-     * This packs the next buffer to be sent. This has to be called as many times as there are buffers before sending the message.
+     * This packs the next buffer to be sent. This has to be called for all buffers before sending the message.
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfoCpuForGpu().
      * \param bufferId
@@ -377,6 +376,18 @@ public:
      *   height | The height of the region to be packed
      */
     void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
+
+    /*!
+     * Overloaded function, packs the full region of the specified halo area.
+     * \param haloId
+     *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfoCpuForGpu().
+     * \param bufferId
+     *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
+     *  The numbering of the buffers has to start with 0!
+     * \param buf
+     *  The buffer from which the data is to be extracted according to the local halo specification.
+     */
+    void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf);
 
     /*!
      * Sends off the send buffer for the specified halo region. This does <b>NOT</b> use MPI, but takes advantage of shared memory.
@@ -417,6 +428,18 @@ public:
      *   height | The height of the region to be packed
      */
     void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
+
+    /*!
+     * Overloaded function, unpacks the full region of the specified halo area.
+     * \param haloId
+     *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfoCpuForGpu().
+     * \param bufferId
+     *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
+     *  The numbering of the buffers has to start with 0!
+     * \param[out] buf
+     *  The buffer to which the extracted data is to be written to according to the remote halo specification
+     */
+    void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf);
 
     ///@}
 

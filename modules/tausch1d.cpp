@@ -133,15 +133,15 @@ template <class buf_t> void Tausch1D<buf_t>::postAllReceivesCpu(int *mpitag) {
 
 template <class buf_t> void Tausch1D<buf_t>::packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
-    int size = region.width;
-    for(int s = 0; s < size; ++s) {
-        int index = localHaloSpecs[haloId].haloX + s + region.x;
+    for(int s = 0; s < region.width; ++s) {
+        int bufIndex = localHaloSpecs[haloId].haloX + s + region.x;
+        int mpiIndex = s + region.x;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
-                offset += valuesPerPointPerBuffer[b]*size;
-            mpiSendBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*s + val] =
-                    buf[valuesPerPointPerBuffer[bufferId]*index + val];
+                offset += valuesPerPointPerBuffer[b]*localHaloSpecs[haloId].haloWidth;
+            mpiSendBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val] =
+                    buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val];
         }
     }
 
@@ -184,15 +184,15 @@ template <class buf_t> void Tausch1D<buf_t>::recvCpu(size_t haloId) {
 
 template <class buf_t> void Tausch1D<buf_t>::unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
-    int size = region.width;
-    for(int s = 0; s < size; ++s) {
-        int index = remoteHaloSpecs[haloId].haloX + s + region.x;
+    for(int s = 0; s < region.width; ++s) {
+        int bufIndex = remoteHaloSpecs[haloId].haloX + s + region.x;
+        int mpiIndex = s + region.x;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
-                offset += valuesPerPointPerBuffer[b]*size;
-            buf[valuesPerPointPerBuffer[bufferId]*index + val] =
-                    mpiRecvBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*s + val];
+                offset += valuesPerPointPerBuffer[b]*remoteHaloSpecs[haloId].haloWidth;
+            buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val] =
+                    mpiRecvBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val];
         }
     }
 

@@ -147,17 +147,19 @@ template <class buf_t> void Tausch3D<buf_t>::postAllReceivesCpu(int *mpitag) {
 
 template <class buf_t> void Tausch3D<buf_t>::packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
-    int size = region.width * region.height * region.depth;
-    for(int s = 0; s < size; ++s) {
-        int index = (s/(region.width*region.height) + localHaloSpecs[haloId].haloZ) * localHaloSpecs[haloId].bufferWidth * localHaloSpecs[haloId].bufferHeight +
+    for(int s = 0; s < region.width * region.height * region.depth; ++s) {
+        int bufIndex = (s/(region.width*region.height) + localHaloSpecs[haloId].haloZ) * localHaloSpecs[haloId].bufferWidth * localHaloSpecs[haloId].bufferHeight +
                     ((s%(region.width*region.height))/localHaloSpecs[haloId].haloWidth + localHaloSpecs[haloId].haloY) * localHaloSpecs[haloId].bufferWidth +
                     s%region.width + localHaloSpecs[haloId].haloX;
+        int mpiIndex = (s/(region.width*region.height) + region.z)*(localHaloSpecs[haloId].haloWidth*localHaloSpecs[haloId].haloHeight) +
+                       ((s%(region.width*region.height))/localHaloSpecs[haloId].haloWidth + region.y) * localHaloSpecs[haloId].haloWidth +
+                       s%region.width + region.x;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
-                offset += valuesPerPointPerBuffer[b]*size;
-            mpiSendBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*s + val] =
-                    buf[valuesPerPointPerBuffer[bufferId]*index + val];
+                offset += valuesPerPointPerBuffer[b]*localHaloSpecs[haloId].haloWidth*localHaloSpecs[haloId].haloHeight*localHaloSpecs[haloId].haloDepth;
+            mpiSendBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val] =
+                    buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val];
         }
     }
 
@@ -205,17 +207,19 @@ template <class buf_t> void Tausch3D<buf_t>::recvCpu(size_t haloId) {
 
 template <class buf_t> void Tausch3D<buf_t>::unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
-    int size = region.width * region.height * region.depth;
-    for(int s = 0; s < size; ++s) {
-        int index = (s/(region.width*region.height) + remoteHaloSpecs[haloId].haloZ) * remoteHaloSpecs[haloId].bufferWidth * remoteHaloSpecs[haloId].bufferHeight +
+    for(int s = 0; s < region.width * region.height * region.depth; ++s) {
+        int bufIndex = (s/(region.width*region.height) + remoteHaloSpecs[haloId].haloZ) * remoteHaloSpecs[haloId].bufferWidth * remoteHaloSpecs[haloId].bufferHeight +
                     ((s%(region.width*region.height))/remoteHaloSpecs[haloId].haloWidth + remoteHaloSpecs[haloId].haloY) * remoteHaloSpecs[haloId].bufferWidth +
                     s%region.width + remoteHaloSpecs[haloId].haloX;
+        int mpiIndex = (s/(region.width*region.height) + region.z)*(localHaloSpecs[haloId].haloWidth*localHaloSpecs[haloId].haloHeight) +
+                       ((s%(region.width*region.height))/localHaloSpecs[haloId].haloWidth + region.y) * localHaloSpecs[haloId].haloWidth +
+                       s%region.width + region.x;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
-                offset += valuesPerPointPerBuffer[b]*size;
-            buf[valuesPerPointPerBuffer[bufferId]*index + val] =
-                    mpiRecvBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*s + val];
+                offset += valuesPerPointPerBuffer[b]*remoteHaloSpecs[haloId].haloWidth*remoteHaloSpecs[haloId].haloHeight*remoteHaloSpecs[haloId].haloDepth;
+            buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val] =
+                    mpiRecvBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val];
         }
     }
 
