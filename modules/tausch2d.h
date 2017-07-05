@@ -177,7 +177,7 @@ public:
     void recvCpu(size_t haloId);
 
     /*!
-     * This unpacks the next halo from the received message into the provided buffer. This has to be called as many times as there are buffers.
+     * This unpacks the next halo from the received message into the provided buffer. This has to be called for all buffers.
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
      * \param bufferId
@@ -198,7 +198,7 @@ public:
     void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
 
     /*!
-     * This unpacks the next halo from the received message into the provided buffer. This has to be called as many times as there are buffers.
+     * This unpacks the next halo from the received message into the provided buffer. This has to be called for all buffers.
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
      * \param bufferId
@@ -409,7 +409,7 @@ public:
     void recvGpuToCpu(size_t haloId, int msgtag);
 
     /*!
-     * This unpacks the next halo from the data in shared memory into the provided buffer. This has to be called as many times as there are buffers.
+     * This unpacks the next halo from the data in shared memory into the provided buffer. This has to be called for all buffers.
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfoCpuForGpu().
      * \param bufferId
@@ -484,7 +484,7 @@ public:
     void setRemoteHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
     /*!
-     * This packs the next buffer to be sent. This has to be called as many times as there are buffers before sending the message.
+     * This packs the next buffer to be sent. This has to be called for all buffers before sending the message.
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfoGpu().
      * \param bufferId
@@ -513,7 +513,7 @@ public:
      */
     void recvCpuToGpu(size_t haloId, int msgtag);
     /*!
-     * This unpacks the next halo from the data in shared memory into the provided buffer. This has to be called as many times as there are buffers.
+     * This unpacks the next halo from the data in shared memory into the provided buffer. This has to be called for all buffers.
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfoGpu().
      * \param bufferId
