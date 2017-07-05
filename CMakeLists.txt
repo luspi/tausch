@@ -34,10 +34,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 # All headers and source files
 set(tausch_headers "tausch.h" "modules/tausch1d.h" "modules/tausch2d.h" "modules/tausch3d.h" "modules/ctausch/ctauschdouble.h"
     "modules/ctausch/ctauschfloat.h" "modules/ctausch/ctauschint.h" "modules/ctausch/ctauschunsignedint.h" "modules/ctausch/ctauschbool.h"
-    "modules/tausch.h" "modules/tausch_opencl_no.h" "modules/tausch_opencl_yes.h" "kernel.cl")
+    "modules/tausch.h" "modules/tausch_opencl_no.h" "modules/tausch_opencl_yes.h")
 set(tausch_source "tausch.h" "modules/tausch1d.cpp" "modules/tausch2d.cpp" "modules/tausch3d.cpp" "modules/ctausch/ctauschdouble.cpp"
     "modules/ctausch/ctauschfloat.cpp" "modules/ctausch/ctauschint.cpp" "modules/ctausch/ctauschunsignedint.cpp" "modules/ctausch/ctauschbool.cpp"
-    "modules/tausch.h" "modules/tausch_opencl_no.h" "modules/tausch_opencl_yes.h" "kernel.cl")
+    "modules/tausch.h" "modules/tausch_opencl_no.h" "modules/tausch_opencl_yes.h")
 
 # Turn semicolon separated list into spaces separated list for doxgen
 foreach(arg ${tausch_headers})

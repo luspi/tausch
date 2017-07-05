@@ -271,9 +271,9 @@ void Sample::launchCPU() {
             int sendtagsGpu[4] = {0, 1, 2, 3};
             int recvtagsGpu[4] = {0, 1, 2, 3};
 
-            for(int ver_hor = 0; ver_hor < 2; ++ver_hor) {
+            tausch->postAllReceivesCpu(recvtagsCpu);
 
-                tausch->postAllReceivesCpu(recvtagsCpu);
+            for(int ver_hor = 0; ver_hor < 2; ++ver_hor) {
 
                 for(int b = 0; b < numBuffers; ++b)
                     tausch->packSendBufferCpu(2*ver_hor, b, dat[b]);
