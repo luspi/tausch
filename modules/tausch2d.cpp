@@ -195,7 +195,7 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCpu(size_t haloId, 
     for(int s = 0; s < region.width * region.height; ++s) {
         int bufIndex = (region.y + s/region.width + remoteHaloSpecsCpu[haloId].haloY)*remoteHaloSpecsCpu[haloId].bufferWidth +
                     s%region.width + remoteHaloSpecsCpu[haloId].haloX + region.x;
-        int mpiIndex = (s/region.width + region.y)*localHaloSpecsCpu[haloId].haloWidth + s%region.width + region.x;
+        int mpiIndex = (s/region.width + region.y)*remoteHaloSpecsCpu[haloId].haloWidth + s%region.width + region.x;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
@@ -412,7 +412,7 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCpuToGpu(size_t haloI
     for(int s = 0; s < region.width * region.height; ++s) {
         int bufIndex = (s/region.width + localHaloSpecsCpuForGpu[haloId].haloY + region.y)*localHaloSpecsCpuForGpu[haloId].bufferWidth+
                     s%region.width +localHaloSpecsCpuForGpu[haloId].haloX + region.x;
-        int mpiIndex = (s/region.width + region.y)*localHaloSpecsCpu[haloId].haloWidth + s%region.width + region.x;
+        int mpiIndex = (s/region.width + region.y)*localHaloSpecsCpuForGpu[haloId].haloWidth + s%region.width + region.x;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
@@ -530,7 +530,7 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferGpuToCpu(size_t hal
     for(int s = 0; s < region.width * region.height; ++s) {
         int bufIndex = (s/region.width + remoteHaloSpecsCpuForGpu[haloId].haloY + region.y)*remoteHaloSpecsCpuForGpu[haloId].bufferWidth +
                     s%region.width +remoteHaloSpecsCpuForGpu[haloId].haloX + region.x;
-        int mpiIndex = (s/region.width + region.y)*localHaloSpecsCpu[haloId].haloWidth + s%region.width + region.x;
+        int mpiIndex = (s/region.width + region.y)*remoteHaloSpecsCpuForGpu[haloId].haloWidth + s%region.width + region.x;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
