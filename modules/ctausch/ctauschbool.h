@@ -94,7 +94,7 @@ void tausch_delete_bool(CTauschBool *tC);
  *   7. The receiving processor
  *
  */
-void tausch_setCpuLocalHaloInfo_bool(CTauschBool *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
+void tausch_setLocalHaloInfoCpu_bool(CTauschBool *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
 /*!
  *
@@ -116,7 +116,7 @@ void tausch_setCpuLocalHaloInfo_bool(CTauschBool *tC, size_t numHaloParts, Tausc
  *   7. The sending processor
  *
  */
-void tausch_setCpuRemoteHaloInfo_bool(CTauschBool *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
+void tausch_setRemoteHaloInfoCpu_bool(CTauschBool *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
 /*!
  *
@@ -146,7 +146,7 @@ void tausch_postAllReceivesCpu_bool(CTauschBool *tC, int *mpitag);
 
 /*!
  *
- * This packs the next buffer for a send. This has to be called as many times as there are buffers before sending the message.
+ * This packs the next buffer for a send. This has to be called for all buffers before sending the message.
  *
  * \param tC
  *  The CTauschBool object to operate on.
@@ -170,7 +170,7 @@ void tausch_postAllReceivesCpu_bool(CTauschBool *tC, int *mpitag);
  *   depth | The depth of the region to be packed (if present)
  *
  */
-void tausch_packNextSendBuffer_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf, TauschPackRegion region);
+void tausch_packSendBufferCpu_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf, TauschPackRegion region);
 
 /*!
  *
@@ -184,7 +184,7 @@ void tausch_packNextSendBuffer_bool(CTauschBool *tC, size_t haloId, size_t buffe
  *  The mpitag to be used for this MPI_Isend().
  *
  */
-void tausch_send_bool(CTauschBool *tC, size_t haloId, int mpitag);
+void tausch_sendCpu_bool(CTauschBool *tC, size_t haloId, int mpitag);
 
 /*!
  *
@@ -196,11 +196,11 @@ void tausch_send_bool(CTauschBool *tC, size_t haloId, int mpitag);
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  *
  */
-void tausch_recv_bool(CTauschBool *tC, size_t haloId);
+void tausch_recvCpu_bool(CTauschBool *tC, size_t haloId);
 
 /*!
  *
- * This unpacks the next halo from the received message into provided buffer. This has to be called as many times as there are buffers.
+ * This unpacks the next halo from the received message into provided buffer. This has to be called for all buffers.
  *
  * \param tC
  *  The CTauschBool object to operate on.
@@ -224,7 +224,7 @@ void tausch_recv_bool(CTauschBool *tC, size_t haloId);
  *   depth | The depth of the region to be packed (if present)
  *
  */
-void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf, TauschPackRegion region);
+void tausch_unpackNextRecvBufferCpu_bool(CTauschBool *tC, size_t haloId, size_t bufferId, bool *buf, TauschPackRegion region);
 
 /*!
  *
@@ -251,7 +251,7 @@ void tausch_unpackNextRecvBuffer_bool(CTauschBool *tC, size_t haloId, size_t buf
  *   depth | The depth of the region to be packed (if present)
  *
  */
-void tausch_packAndSend_bool(CTauschBool *tC, size_t haloId, bool *buf, TauschPackRegion region, int mpitag);
+void tausch_packAndSendCpu_bool(CTauschBool *tC, size_t haloId, bool *buf, TauschPackRegion region, int mpitag);
 
 /*!
  *
@@ -277,7 +277,7 @@ void tausch_packAndSend_bool(CTauschBool *tC, size_t haloId, bool *buf, TauschPa
  *   depth | The depth of the region to be packed (if present)
  *
  */
-void tausch_recvAndUnpack_bool(CTauschBool *tC, size_t haloId, bool *buf, TauschPackRegion region);
+void tausch_recvAndUnpackCpu_bool(CTauschBool *tC, size_t haloId, bool *buf, TauschPackRegion region);
 
 #ifdef __cplusplus
 }

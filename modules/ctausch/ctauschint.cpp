@@ -33,12 +33,12 @@ void tausch_delete_int(CTauschInt *tC) {
     delete t;
 }
 
-void tausch_setCpuLocalHaloInfo_int(CTauschInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+void tausch_setLocalHaloInfoCpu_int(CTauschInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
     t->setLocalHaloInfoCpu(numHaloParts, haloSpecs);
 }
 
-void tausch_setCpuRemoteHaloInfo_int(CTauschInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+void tausch_setRemoteHaloInfoCpu_int(CTauschInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
     t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
 }
@@ -53,32 +53,32 @@ void tausch_postAllReceivesCpu_int(CTauschInt *tC, int *mpitag) {
     t->postAllReceivesCpu(mpitag);
 }
 
-void tausch_packNextSendBuffer_int(CTauschInt *tC, size_t haloId, size_t bufferId, int *buf, TauschPackRegion region) {
+void tausch_packSendBufferCpu_int(CTauschInt *tC, size_t haloId, size_t bufferId, int *buf, TauschPackRegion region) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
     t->packSendBufferCpu(haloId, bufferId, buf, region);
 }
 
-void tausch_send_int(CTauschInt *tC, size_t haloId, int mpitag) {
+void tausch_sendCpu_int(CTauschInt *tC, size_t haloId, int mpitag) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
     t->sendCpu(haloId, mpitag);
 }
 
-void tausch_recv_int(CTauschInt *tC, size_t haloId) {
+void tausch_recvCpu_int(CTauschInt *tC, size_t haloId) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
     t->recvCpu(haloId);
 }
 
-void tausch_unpackNextRecvBuffer_int(CTauschInt *tC, size_t haloId, size_t bufferId, int *buf, TauschPackRegion region) {
+void tausch_unpackRecvBufferCpu_int(CTauschInt *tC, size_t haloId, size_t bufferId, int *buf, TauschPackRegion region) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
     t->unpackRecvBufferCpu(haloId, bufferId, buf, region);
 }
 
-void tausch_packAndSend_int(CTauschInt *tC, size_t haloId, int *buf, TauschPackRegion region, int mpitag) {
+void tausch_packAndSendCpu_int(CTauschInt *tC, size_t haloId, int *buf, TauschPackRegion region, int mpitag) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
     t->packAndSendCpu(haloId, buf, region, mpitag);
 }
 
-void tausch_recvAndUnpack_int(CTauschInt *tC, size_t haloId, int *buf, TauschPackRegion region) {
+void tausch_recvAndUnpackCpu_int(CTauschInt *tC, size_t haloId, int *buf, TauschPackRegion region) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
     t->recvAndUnpackCpu(haloId, buf, region);
 }
