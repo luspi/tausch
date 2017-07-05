@@ -18,6 +18,11 @@
 // This takes care of making sure TAUSCH_OPENCL is defined (or not).
 #include "tausch_opencl.h"
 
+#ifdef TAUSCH_OPENCL
+#define __CL_ENABLE_EXCEPTIONS
+#include <CL/cl.hpp>
+#endif
+
 /*!
  * A struct simplifying the specification of halo regions.
  */
@@ -122,6 +127,28 @@ public:
     virtual void packAndSendCpu(size_t haloId, buf_t *buf, int mpitag = -1) = 0;
     virtual void recvAndUnpackCpu(size_t haloId, buf_t *buf, TauschPackRegion region) = 0;
     virtual void recvAndUnpackCpu(size_t haloId, buf_t *buf) = 0;
+
+#ifdef TAUSCH_OPENCL
+
+    virtual void enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName, bool showOpenCLBuildLog) = 0;
+    virtual cl::Context getOpenCLContext() = 0;
+    virtual cl::CommandQueue getOpenCLQueue() = 0;
+    virtual void setLocalHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
+    virtual void setRemoteHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
+    virtual void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) = 0;
+    virtual void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
+    virtual void sendCpuToGpu(size_t haloId, int msgtag) = 0;
+    virtual void recvGpuToCpu(size_t haloId, int msgtag) = 0;
+    virtual void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) = 0;
+    virtual void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
+    virtual void setLocalHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
+    virtual void setRemoteHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
+    virtual void packSendBufferGpuToCpu(size_t haloId, size_t bufferId, cl::Buffer buf) = 0;
+    virtual void sendGpuToCpu(size_t haloId, int msgtag) = 0;
+    virtual void recvCpuToGpu(size_t haloId, int msgtag) = 0;
+    virtual void unpackRecvBufferCpuToGpu(size_t haloId, size_t bufferId, cl::Buffer buf) = 0;
+
+#endif
 
 };
 

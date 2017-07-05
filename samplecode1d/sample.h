@@ -26,7 +26,7 @@ private:
     size_t gpuHaloWidth[2];
     size_t cpuForGpuHaloWidth[2];
 
-    Tausch1D<double> *tausch;
+    Tausch<double> *tausch;
 
     TauschHaloSpec *localHaloSpecs;
     TauschHaloSpec *remoteHaloSpecs;

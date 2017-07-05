@@ -27,7 +27,7 @@ private:
     size_t mpiNum[3];
     bool hybrid;
 
-    Tausch3D<double> *tausch;
+    Tausch<double> *tausch;
 
     TauschHaloSpec *localHaloSpecs;
     TauschHaloSpec *remoteHaloSpecs;
