@@ -172,6 +172,10 @@ template <class buf_t> void Tausch1D<buf_t>::sendCpu(size_t haloId, int mpitag) 
         MPI_Send_init(&mpiSendBuffer[haloId][0], bufsize, mpiDataType, localHaloSpecs[haloId].remoteMpiRank,
                       mpitag, TAUSCH_COMM, &mpiSendRequests[haloId]);
 
+    } else {
+        int flag;
+        MPI_Test(&mpiSendRequests[haloId], &flag, MPI_STATUS_IGNORE);
+        if(flag == 0) MPI_Wait(&mpiSendRequests[haloId], MPI_STATUS_IGNORE);
     }
 
     MPI_Start(&mpiSendRequests[haloId]);
