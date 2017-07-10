@@ -297,6 +297,7 @@ public:
      *  If set, outputs the build log of the OpenCL compiler.
      */
     void enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName, bool showOpenCLBuildLog);
+    void enableOpenCL(cl::Device cl_defaultDevice, cl::Context cl_context, cl::CommandQueue cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool showOpenCLBuildLog);
 
     /*!
      * This provides an access to the OpenCL Context object, that is used internally by %Tausch2D. It allows the user to 'piggyback' onto the OpenCL

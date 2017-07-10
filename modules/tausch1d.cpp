@@ -254,6 +254,30 @@ template <class buf_t> void Tausch1D<buf_t>::enableOpenCL(bool blockingSyncCpuGp
 
 }
 
+template <class buf_t> void Tausch1D<buf_t>::enableOpenCL(cl::Device cl_defaultDevice, cl::Context cl_context, cl::CommandQueue cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool showOpenCLBuildLog) {
+
+    this->blockingSyncCpuGpu = blockingSyncCpuGpu;
+    this->cl_kernelLocalSize = clLocalWorkgroupSize;
+    this->showOpenCLBuildLog = showOpenCLBuildLog;
+
+    sync_counter[0].store(0); sync_counter[1].store(0);
+    sync_lock[0].store(0); sync_lock[1].store(0);
+
+    this->cl_defaultDevice = cl_defaultDevice;
+    this->cl_context = cl_context;
+    this->cl_queue = cl_queue;
+
+    compileKernels();
+
+    try {
+        cl_valuesPerPointPerBuffer = cl::Buffer(cl_context, &valuesPerPointPerBuffer[0], &valuesPerPointPerBuffer[numBuffers], true);
+    } catch(cl::Error error) {
+        std::cerr << "Tausch1D :: enableOpenCL() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
+
+}
+
 template <class buf_t> void Tausch1D<buf_t>::setLocalHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) {
 
     localHaloNumPartsCpuForGpu = numHaloParts;
