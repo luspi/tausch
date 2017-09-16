@@ -33,54 +33,66 @@ void tausch_delete_double(CTauschDouble *tC) {
     delete t;
 }
 
-void tausch_setLocalHaloInfoCpu_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+void tausch_setLocalHaloInfo_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->setLocalHaloInfoCpu(numHaloParts, haloSpecs);
+    t->setLocalHaloInfo(flags, numHaloParts, haloSpecs);
 }
 
-void tausch_setRemoteHaloInfoCpu_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+void tausch_setRemoteHaloInfo_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->setRemoteHaloInfoCpu(numHaloParts, haloSpecs);
+    t->setRemoteHaloInfo(flags, numHaloParts, haloSpecs);
 }
 
-void tausch_postReceiveCpu_double(CTauschDouble *tC, size_t haloId, int mpitag) {
+void tausch_postReceive_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, int mpitag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->postReceiveCpu(haloId, mpitag);
+    t->postReceive(flags, haloId, mpitag);
 }
 
-void tausch_postAllReceivesCpu_double(CTauschDouble *tC, int *mpitag) {
+void tausch_postAllReceives_double(CTauschDouble *tC, TauschDeviceDirection flags, int *mpitag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->postAllReceivesCpu(mpitag);
+    t->postAllReceives(flags, mpitag);
 }
 
-void tausch_packSendBufferCpu_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region) {
+void tausch_packSendBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, cl_mem *bufcl, TauschPackRegion region) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->packSendBufferCpu(haloId, bufferId, buf, region);
+    if(bufcl == NULL)
+        t->packSendBuffer(flags, haloId, bufferId, buf, region);
+    else
+        t->packSendBuffer(flags, haloId, bufferId, cl::Buffer(*bufcl));
 }
 
-void tausch_sendCpu_double(CTauschDouble *tC, size_t haloId, int mpitag) {
+void tausch_send_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, int mpitag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->sendCpu(haloId, mpitag);
+    t->send(flags, haloId, mpitag);
 }
 
-void tausch_recvCpu_double(CTauschDouble *tC, size_t haloId) {
+void tausch_recv_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->recvCpu(haloId);
+    t->recv(flags, haloId);
 }
 
-void tausch_unpackRecvBufferCpu_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region) {
+void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, cl_mem *bufcl, TauschPackRegion region) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->unpackRecvBufferCpu(haloId, bufferId, buf, region);
+    if(bufcl == NULL)
+        t->unpackRecvBuffer(flags, haloId, bufferId, buf, region);
+    else
+        t->unpackRecvBuffer(flags, haloId, bufferId, cl::Buffer(*bufcl));
 }
 
-void tausch_packAndSendCpu_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region, int mpitag) {
+void tausch_packAndSend_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, cl_mem *bufcl, TauschPackRegion region, int mpitag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->packAndSendCpu(haloId, buf, region, mpitag);
+    if(bufcl == NULL)
+        t->packAndSend(flags, haloId, buf, region, mpitag);
+    else
+        t->packAndSend(flags, haloId, cl::Buffer(*bufcl), mpitag);
 }
 
-void tausch_recvAndUnpackCpu_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region) {
+void tausch_recvAndUnpack_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, cl_mem *bufcl, TauschPackRegion region) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->recvAndUnpackCpu(haloId, buf, region);
+    if(bufcl == NULL)
+        t->recvAndUnpack(flags, haloId, buf, region);
+    else
+        t->recvAndUnpack(flags, haloId, cl::Buffer(*bufcl));
 }
 
 
