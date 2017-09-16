@@ -23,6 +23,17 @@
 #include <CL/cl.hpp>
 #endif
 
+enum TauschDeviceDirection {
+    TAUSCH_CPU = 1,
+    TAUSCH_GPU = 2,
+    TAUSCH_WITHCPU = 4,
+    TAUSCH_WITHGPU = 8
+};
+
+inline TauschDeviceDirection operator|(TauschDeviceDirection a, TauschDeviceDirection b) {
+    return static_cast<TauschDeviceDirection>(static_cast<int>(a) | static_cast<int>(b));
+}
+
 /*!
  * A struct simplifying the specification of halo regions.
  */
@@ -113,20 +124,32 @@ template <class buf_t>
 class Tausch {
 public:
     virtual ~Tausch() {}
-    virtual void setLocalHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
-    virtual void setRemoteHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
-    virtual void postReceiveCpu(size_t haloId, int mpitag = -1) = 0;
-    virtual void postAllReceivesCpu(int *mpitag = nullptr) = 0;
-    virtual void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) = 0;
-    virtual void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
-    virtual void sendCpu(size_t haloId, int mpitag = -1) = 0;
-    virtual void recvCpu(size_t haloId) = 0;
-    virtual void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) = 0;
-    virtual void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
-    virtual void packAndSendCpu(size_t haloId, buf_t *buf, TauschPackRegion region, int mpitag = -1) = 0;
-    virtual void packAndSendCpu(size_t haloId, buf_t *buf, int mpitag = -1) = 0;
-    virtual void recvAndUnpackCpu(size_t haloId, buf_t *buf, TauschPackRegion region) = 0;
-    virtual void recvAndUnpackCpu(size_t haloId, buf_t *buf) = 0;
+    virtual void setLocalHaloInfo(TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
+    virtual void setRemoteHaloInfo(TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
+    virtual void postReceive(TauschDeviceDirection flags, size_t haloId, int mpitag = -1) = 0;
+    virtual void postAllReceives(TauschDeviceDirection flags, int *mpitag = nullptr) = 0;
+    virtual void packSendBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) = 0;
+    virtual void packSendBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, buf_t *buf) = 0;
+#ifdef TAUSCH_OPENCL
+    virtual void packSendBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, cl::Buffer buf) = 0;
+#endif
+    virtual void send(TauschDeviceDirection flags, size_t haloId, int mpitag = -1) = 0;
+    virtual void recv(TauschDeviceDirection flags, size_t haloId) = 0;
+    virtual void unpackRecvBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) = 0;
+    virtual void unpackRecvBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, buf_t *buf) = 0;
+#ifdef TAUSCH_OPENCL
+    virtual void unpackRecvBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, cl::Buffer buf) = 0;
+#endif
+    virtual void packAndSend(TauschDeviceDirection flags, size_t haloId, buf_t *buf, TauschPackRegion region, int mpitag = -1) = 0;
+    virtual void packAndSend(TauschDeviceDirection flags, size_t haloId, buf_t *buf, int mpitag = -1) = 0;
+#ifdef TAUSCH_OPENCL
+    virtual void packAndSend(TauschDeviceDirection flags, size_t haloId, cl::Buffer buf, int mpitag = -1) = 0;
+#endif
+    virtual void recvAndUnpack(TauschDeviceDirection flags, size_t haloId, buf_t *buf, TauschPackRegion region) = 0;
+    virtual void recvAndUnpack(TauschDeviceDirection flags, size_t haloId, buf_t *buf) = 0;
+#ifdef TAUSCH_OPENCL
+    virtual void recvAndUnpack(TauschDeviceDirection flags, size_t haloId, cl::Buffer buf) = 0;
+#endif
 
 #ifdef TAUSCH_OPENCL
 
@@ -134,20 +157,6 @@ public:
     virtual void enableOpenCL(cl::Device cl_defaultDevice, cl::Context cl_context, cl::CommandQueue cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool showOpenCLBuildLog) = 0;
     virtual cl::Context getOpenCLContext() = 0;
     virtual cl::CommandQueue getOpenCLQueue() = 0;
-    virtual void setLocalHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
-    virtual void setRemoteHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
-    virtual void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) = 0;
-    virtual void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
-    virtual void sendCpuToGpu(size_t haloId, int msgtag) = 0;
-    virtual void recvGpuToCpu(size_t haloId, int msgtag) = 0;
-    virtual void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) = 0;
-    virtual void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf) = 0;
-    virtual void setLocalHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
-    virtual void setRemoteHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) = 0;
-    virtual void packSendBufferGpuToCpu(size_t haloId, size_t bufferId, cl::Buffer buf) = 0;
-    virtual void sendGpuToCpu(size_t haloId, int msgtag) = 0;
-    virtual void recvCpuToGpu(size_t haloId, int msgtag) = 0;
-    virtual void unpackRecvBufferCpuToGpu(size_t haloId, size_t bufferId, cl::Buffer buf) = 0;
 
 #endif
 

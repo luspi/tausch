@@ -19,6 +19,7 @@ public:
 
 private:
     bool hybrid;
+
     size_t localDim;
     size_t gpuDim;
     size_t loops;

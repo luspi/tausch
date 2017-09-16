@@ -135,7 +135,8 @@ int main(int argc, char** argv) {
                     str << arg.substr(last);
                     str >> cpuForGpuHaloWidth[5];
                 }
-            }
+            } else if(argv[i] == std::string("-cpu"))
+                gpu = false;
         }
     }
 

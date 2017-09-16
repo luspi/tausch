@@ -81,7 +81,7 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
     size_t tauschLocalDim[3] = {localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1],
                                 localDim[1]+cpuHaloWidth[2]+cpuHaloWidth[3],
                                 localDim[2]+cpuHaloWidth[4]+cpuHaloWidth[5]};
-    tausch = new Tausch3D<double>(MPI_DOUBLE, numBuffers, valuesPerPointPerBuffer);
+    tausch = new Tausch3D<double>(MPI_DOUBLE, numBuffers, valuesPerPointPerBuffer, MPI_COMM_WORLD);
 
     // These are the (up to) 4 remote halos that are needed by this rank
     remoteHaloSpecs = new TauschHaloSpec[6];
@@ -150,8 +150,8 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
     remoteHaloSpecs[5].haloDepth = cpuHaloWidth[5]; remoteHaloSpecs[5].remoteMpiRank = back;
 
 
-    tausch->setLocalHaloInfoCpu(6, localHaloSpecs);
-    tausch->setRemoteHaloInfoCpu(6, remoteHaloSpecs);
+    tausch->setLocalHaloInfo(TAUSCH_CPU|TAUSCH_WITHCPU, 6, localHaloSpecs);
+    tausch->setRemoteHaloInfo(TAUSCH_CPU|TAUSCH_WITHCPU, 6, remoteHaloSpecs);
 
 
     if(hybrid) {
@@ -308,8 +308,8 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
         localHaloSpecsCpuForGpu[5].haloHeight = gpuDim[1]+gpuHaloWidth[2]+gpuHaloWidth[3];
         localHaloSpecsCpuForGpu[5].haloDepth = gpuHaloWidth[5];
 
-        tausch->setLocalHaloInfoCpuForGpu(6, localHaloSpecsCpuForGpu);
-        tausch->setRemoteHaloInfoCpuForGpu(6, remoteHaloSpecsCpuForGpu);
+        tausch->setLocalHaloInfo(TAUSCH_CPU|TAUSCH_WITHGPU, 6, localHaloSpecsCpuForGpu);
+        tausch->setRemoteHaloInfo(TAUSCH_CPU|TAUSCH_WITHGPU, 6, remoteHaloSpecsCpuForGpu);
 
         remoteHaloSpecsGpu = new TauschHaloSpec[6];
         localHaloSpecsGpu = new TauschHaloSpec[6];
@@ -434,8 +434,8 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
         remoteHaloSpecsGpu[5].haloHeight = gpuDim[1] + gpuHaloWidth[2]+gpuHaloWidth[3];
         remoteHaloSpecsGpu[5].haloDepth = gpuHaloWidth[5];
 
-        tausch->setLocalHaloInfoGpu(6, localHaloSpecsGpu);
-        tausch->setRemoteHaloInfoGpu(6, remoteHaloSpecsGpu);
+        tausch->setLocalHaloInfo(TAUSCH_GPU|TAUSCH_WITHCPU, 6, localHaloSpecsGpu);
+        tausch->setRemoteHaloInfo(TAUSCH_GPU|TAUSCH_WITHCPU, 6, remoteHaloSpecsGpu);
 
     }
 
@@ -463,43 +463,44 @@ void Sample::launchCPU() {
 
         for(int iter = 0; iter < loops; ++iter) {
 
-            tausch->postAllReceivesCpu(recvtagsCpu);
+            tausch->postAllReceives(TAUSCH_CPU|TAUSCH_WITHCPU, recvtagsCpu);
+            tausch->postAllReceives(TAUSCH_GPU|TAUSCH_WITHCPU, recvtagsGpu);
 
             for(int hid = 0; hid < 3; ++hid) {
 
                 // left/right
 
                 for(int b = 0; b < numBuffers; ++b)
-                    tausch->packSendBufferCpu(2*hid, b, dat[b]);
-                tausch->sendCpu(2*hid, sendtagsCpu[2*hid]);
+                    tausch->packSendBuffer(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid, b, dat[b]);
+                tausch->send(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid, sendtagsCpu[2*hid]);
 
                 for(int b = 0; b < numBuffers; ++b)
-                    tausch->packSendBufferCpu(2*hid+1, b, dat[b]);
-                tausch->sendCpu(2*hid+1, sendtagsCpu[2*hid+1]);
+                    tausch->packSendBuffer(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid+1, b, dat[b]);
+                tausch->send(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid+1, sendtagsCpu[2*hid+1]);
 
                 for(int b = 0; b < numBuffers; ++b)
-                    tausch->packSendBufferCpuToGpu(2*hid, b, dat[b]);
-                tausch->sendCpuToGpu(2*hid, sendtagsGpu[2*hid]);
+                    tausch->packSendBuffer(TAUSCH_CPU|TAUSCH_WITHGPU, 2*hid, b, dat[b]);
+                tausch->send(TAUSCH_CPU|TAUSCH_WITHGPU, 2*hid, sendtagsGpu[2*hid]);
 
                 for(int b = 0; b < numBuffers; ++b)
-                    tausch->packSendBufferCpuToGpu(2*hid+1, b, dat[b]);
-                tausch->sendCpuToGpu(2*hid+1, sendtagsGpu[2*hid+1]);
+                    tausch->packSendBuffer(TAUSCH_CPU|TAUSCH_WITHGPU, 2*hid+1, b, dat[b]);
+                tausch->send(TAUSCH_CPU|TAUSCH_WITHGPU, 2*hid+1, sendtagsGpu[2*hid+1]);
 
-                tausch->recvCpu(2*hid);
+                tausch->recv(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid);
                 for(int b = 0; b < numBuffers; ++b)
-                    tausch->unpackRecvBufferCpu(2*hid, b, dat[b]);
+                    tausch->unpackRecvBuffer(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid, b, dat[b]);
 
-                tausch->recvCpu(2*hid+1);
+                tausch->recv(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid+1);
                 for(int b = 0; b < numBuffers; ++b)
-                    tausch->unpackRecvBufferCpu(2*hid+1, b, dat[b]);
+                    tausch->unpackRecvBuffer(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid+1, b, dat[b]);
 
-                tausch->recvGpuToCpu(2*hid, recvtagsGpu[2*hid]);
+                tausch->recv(TAUSCH_CPU|TAUSCH_WITHGPU, 2*hid);
                 for(int b = 0; b < numBuffers; ++b)
-                    tausch->unpackRecvBufferGpuToCpu(2*hid, b, dat[b]);
+                    tausch->unpackRecvBuffer(TAUSCH_CPU|TAUSCH_WITHGPU, 2*hid, b, dat[b]);
 
-                tausch->recvGpuToCpu(2*hid+1, recvtagsGpu[2*hid+1]);
+                tausch->recv(TAUSCH_CPU|TAUSCH_WITHGPU, 2*hid+1);
                 for(int b = 0; b < numBuffers; ++b)
-                    tausch->unpackRecvBufferGpuToCpu(2*hid+1, b, dat[b]);
+                    tausch->unpackRecvBuffer(TAUSCH_CPU|TAUSCH_WITHGPU, 2*hid+1, b, dat[b]);
 
             }
         }
@@ -511,27 +512,27 @@ void Sample::launchCPU() {
 
         for(int iter = 0; iter < loops; ++iter) {
 
-            tausch->postAllReceivesCpu(recvtagsCpu);
+            tausch->postAllReceives(TAUSCH_CPU|TAUSCH_WITHCPU, recvtagsCpu);
 
             for(int hid = 0; hid < 3; ++hid) {
 
                 // left/right
 
                 for(int b = 0; b < numBuffers; ++b)
-                    tausch->packSendBufferCpu(2*hid, b, dat[b]);
-                tausch->sendCpu(2*hid, sendtagsCpu[2*hid]);
+                    tausch->packSendBuffer(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid, b, dat[b]);
+                tausch->send(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid, sendtagsCpu[2*hid]);
 
                 for(int b = 0; b < numBuffers; ++b)
-                    tausch->packSendBufferCpu(2*hid+1, b, dat[b]);
-                tausch->sendCpu(2*hid+1, sendtagsCpu[2*hid+1]);
+                    tausch->packSendBuffer(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid+1, b, dat[b]);
+                tausch->send(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid+1, sendtagsCpu[2*hid+1]);
 
-                tausch->recvCpu(2*hid);
+                tausch->recv(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid);
                 for(int b = 0; b < numBuffers; ++b)
-                    tausch->unpackRecvBufferCpu(2*hid, b, dat[b]);
+                    tausch->unpackRecvBuffer(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid, b, dat[b]);
 
-                tausch->recvCpu(2*hid+1);
+                tausch->recv(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid+1);
                 for(int b = 0; b < numBuffers; ++b)
-                    tausch->unpackRecvBufferCpu(2*hid+1, b, dat[b]);
+                    tausch->unpackRecvBuffer(TAUSCH_CPU|TAUSCH_WITHCPU, 2*hid+1, b, dat[b]);
 
             }
         }
@@ -547,23 +548,25 @@ void Sample::launchGPU() {
         int sendtags[6] = {0, 1, 2, 3, 4, 5};
         int recvtags[6] = {0, 1, 2, 3, 4, 5};
 
+        tausch->postAllReceives(TAUSCH_GPU|TAUSCH_WITHCPU, recvtags);
+
         for(int hid = 0; hid < 3; ++hid) {
 
-            tausch->recvCpuToGpu(2*hid, recvtags[2*hid]);
+            tausch->recv(TAUSCH_GPU|TAUSCH_WITHCPU, 2*hid);
             for(int b = 0; b < numBuffers; ++b)
-                tausch->unpackRecvBufferCpuToGpu(2*hid, b, cl_gpudat[b]);
+                tausch->unpackRecvBuffer(TAUSCH_GPU|TAUSCH_WITHCPU, 2*hid, b, cl_gpudat[b]);
 
-            tausch->recvCpuToGpu(2*hid+1, recvtags[2*hid +1]);
+            tausch->recv(TAUSCH_GPU|TAUSCH_WITHCPU, 2*hid+1);
             for(int b = 0; b < numBuffers; ++b)
-                tausch->unpackRecvBufferCpuToGpu(2*hid+1, b, cl_gpudat[b]);
-
-            for(int b = 0; b < numBuffers; ++b)
-                tausch->packSendBufferGpuToCpu(2*hid, b, cl_gpudat[b]);
-            tausch->sendGpuToCpu(2*hid, sendtags[2*hid]);
+                tausch->unpackRecvBuffer(TAUSCH_GPU|TAUSCH_WITHCPU, 2*hid+1, b, cl_gpudat[b]);
 
             for(int b = 0; b < numBuffers; ++b)
-                tausch->packSendBufferGpuToCpu(2*hid+1, b, cl_gpudat[b]);
-            tausch->sendGpuToCpu(2*hid+1, sendtags[2*hid +1]);
+                tausch->packSendBuffer(TAUSCH_GPU|TAUSCH_WITHCPU, 2*hid, b, cl_gpudat[b]);
+            tausch->send(TAUSCH_GPU|TAUSCH_WITHCPU, 2*hid, sendtags[2*hid]);
+
+            for(int b = 0; b < numBuffers; ++b)
+                tausch->packSendBuffer(TAUSCH_GPU|TAUSCH_WITHCPU, 2*hid+1, b, cl_gpudat[b]);
+            tausch->send(TAUSCH_GPU|TAUSCH_WITHCPU, 2*hid+1, sendtags[2*hid +1]);
 
         }
 
