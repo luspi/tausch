@@ -4,10 +4,12 @@
  * \version 1.0
  *
  * \brief
- *  Virtual API, allowing runtime choice of 1D, 2D or 3D version.
+ *  Virtual API, allowing runtime choice of 1D, 2D or 3D version. Here are also some enums and structs defined.
  *
  *  Virtual API, allowing runtime choice of 1D, 2D or 3D version. For more details on the implementation of the various functions in the API refer to
  * the respective documentation of Tausch1D, Tausch2D, or Tausch3D.
+ *
+ *  This header file also defines some enums and structs to be used by and with Tausch.
  */
 #ifndef TAUSCHBASE_H
 #define TAUSCHBASE_H
@@ -23,6 +25,21 @@
 #include <CL/cl.hpp>
 #endif
 
+/*!
+ * These are the three dimensions that can be used with Tausch, providing better clarity as to which array entry is which dimension: X, Y, Z.
+ */
+enum TauschDimensions { TAUSCH_X, TAUSCH_Y, TAUSCH_Z };
+
+/*!
+ * These values specify which device is commication with which other device. They need to be specified for most calls to Tausch functions.
+ * Valid combinations are:
+ *
+ * Communication | flags | shorthand
+ * :----------: | ---------------- | -------------
+ * CPU with CPU | TAUSCH_CPU\|TAUSCH_WITHCPU | TAUSCH_CwC
+ * CPU with GPU | TAUSCH_CPU\|TAUSCH_WITHGPU | TAUSCH_CwG
+ * GPU with CPU | TAUSCH_GPU\|TAUSCH_WITHCPU | TAUSCH_GwC
+ */
 enum TauschDeviceDirection {
     TAUSCH_CPU = 1,
     TAUSCH_GPU = 2,
@@ -33,9 +50,15 @@ enum TauschDeviceDirection {
     TAUSCH_GwC = 6
 };
 
+/*!
+ * \cond DoxygenHideThis
+ */
 inline TauschDeviceDirection operator|(TauschDeviceDirection a, TauschDeviceDirection b) {
     return static_cast<TauschDeviceDirection>(static_cast<int>(a) | static_cast<int>(b));
 }
+/*!
+ * \endcond
+ */
 
 /*!
  * A struct simplifying the specification of halo regions.
