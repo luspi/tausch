@@ -27,7 +27,10 @@ enum TauschDeviceDirection {
     TAUSCH_CPU = 1,
     TAUSCH_GPU = 2,
     TAUSCH_WITHCPU = 4,
-    TAUSCH_WITHGPU = 8
+    TAUSCH_WITHGPU = 8,
+    TAUSCH_CwC = 5,
+    TAUSCH_CwG = 9,
+    TAUSCH_GwC = 6
 };
 
 inline TauschDeviceDirection operator|(TauschDeviceDirection a, TauschDeviceDirection b) {
