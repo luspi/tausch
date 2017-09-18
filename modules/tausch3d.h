@@ -77,12 +77,15 @@ public:
      *  entries. %Tausch3D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
-     *   x | The starting x coordinate of the halo region
-     *   y | The starting y coordinate of the halo region
-     *   z | The starting z coordinate of the halo region
-     *   width | The width of the halo region (x direction)
-     *   height | The height of the halo region (y direction)
-     *   depth | The height of the halo region (z direction)
+     *   haloX | The starting x coordinate of the halo region
+     *   haloY | The starting y coordinate of the halo region
+     *   haloZ | The starting z coordinate of the halo region
+     *   haloWidth | The width of the halo region (x direction)
+     *   haloHeight | The height of the halo region (y direction)
+     *   haloDepth | The height of the halo region (z direction)
+     *   bufferWidth | The width of the underlying buffer (x direction)
+     *   bufferHeight | The height of the underlying buffer (y direction)
+     *   bufferDepth | The depth of the underlying buffer (z direction)
      *   remoteMpiRank | The receiving processor
      *
      */
@@ -102,12 +105,15 @@ public:
      *  entries. %Tausch3D expects the following variables to be set:
      *  variable | description
      *  :-------: | -------
-     *   x | The starting x coordinate of the halo region
-     *   y | The starting y coordinate of the halo region
-     *   z | The starting z coordinate of the halo region
-     *   width | The width of the halo region (x direction)
-     *   height | The height of the halo region (y direction)
-     *   depth | The height of the halo region (z direction)
+     *   haloX | The starting x coordinate of the halo region
+     *   haloY | The starting y coordinate of the halo region
+     *   haloZ | The starting z coordinate of the halo region
+     *   haloWidth | The width of the halo region (x direction)
+     *   haloHeight | The height of the halo region (y direction)
+     *   haloDepth | The height of the halo region (z direction)
+     *   bufferWidth | The width of the underlying buffer (x direction)
+     *   bufferHeight | The height of the underlying buffer (y direction)
+     *   bufferDepth | The depth of the underlying buffer (z direction)
      *   remoteMpiRank | The sending processor
      *
      */

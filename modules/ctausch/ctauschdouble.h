@@ -8,6 +8,8 @@
  *
  *  C wrapper to C++ API, double datatype. It provides a single interface for all three versions (1D, 2D, 3D). It is possible to choose at runtime
  *  which version to use (using enum).
+ *
+ *  All C API versions for different data types are equivalent to this one, with different suffix, and are thus not documented.
  */
 
 #ifndef CTAUSCHDOUBLE_H
@@ -77,73 +79,95 @@ void tausch_delete_double(CTauschDouble *tC);
 
 /*!
  *
- * Set the info about all local halos that need to be sent to remote MPI ranks.
+ * Set the info about all local halos that need to be sent off.
  *
  * \param tC
  *  The CTauschDouble object to operate on.
+ * \param flags
+ *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
+ *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
  * \param numHaloParts
  *  How many different parts there are to the halo
  * \param haloSpecs
  *  The specification of the different halo parts. This is expected to be a pointer of structs, and each halo region can be referenced later by its
- *  index in this pointer. Each struct must have specified the following 3, 5, or 7 entries:
- *   1. The starting x coordinate of the local region
- *   2. The starting y coordinate of the local region (if present)
- *   3. The starting z coordinate of the local region (if present)
- *   4. The width of the region
- *   5. The height of the region (if present)
- *   6. The depth of the region (if present)
- *   7. The receiving processor
+ *  index in this pointer. Each struct must have specified some of the following variables:
+ *  variable | description
+ *  :------: | -----------
+ *   haloX | The starting x coordinate of the halo region
+ *   haloY | The starting y coordinate of the halo region (if present)
+ *   haloZ | The starting z coordinate of the halo region (if present)
+ *   haloWidth | The width of the halo region
+ *   haloHeight | The height of the halo region (if present)
+ *   haloDepth | The height of the halo region (if present)
+ *   bufferWidth | The width of the underlying buffer
+ *   bufferHeight | The height of the underlying buffer (if present)
+ *   bufferDepth | The depth of the underlying buffer (if present)
+ *   remoteMpiRank | The receiving processor
  *
  */
 void tausch_setLocalHaloInfo_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
 /*!
  *
- * Set the info about all remote halos that are needed by this MPI rank.
+ * Set the info about all remote halos that are needed by this partition.
  *
  * \param tC
  *  The CTauschDouble object to operate on.
+ * \param flags
+ *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
+ *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
  * \param numHaloParts
  *  How many different parts there are to the halo
  * \param haloSpecs
  *  The specification of the different halo parts. This is expected to be a pointer of structs, and each halo region can be referenced later by its
- *  index in this pointer. Each struct must have specified the following 3, 5, or 7 entries:
- *   1. The starting x coordinate of the halo region
- *   2. The starting y coordinate of the halo region (if present)
- *   3. The starting z coordinate of the halo region (if present)
- *   4. The width of the halo region
- *   5. The height of the halo region (if present)
- *   6. The depth of the halo region (if present)
- *   7. The sending processor
+ *  index in this pointer. Each struct must have specified some of the following variables:
+ *   variable | description
+ *  :------: | -----------
+ *   haloX | The starting x coordinate of the halo region
+ *   haloY | The starting y coordinate of the halo region (if present)
+ *   haloZ | The starting z coordinate of the halo region (if present)
+ *   haloWidth | The width of the halo region
+ *   haloHeight | The height of the halo region (if present)
+ *   haloDepth | The height of the halo region (if present)
+ *   bufferWidth | The width of the underlying buffer
+ *   bufferHeight | The height of the underlying buffer (if present)
+ *   bufferDepth | The depth of the underlying buffer (if present)
+ *   remoteMpiRank | The sending processor
  *
  */
 void tausch_setRemoteHaloInfo_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
 /*!
  *
- * Post the receive for the specified remote halo region of the current MPI rank. This doesn't do anything else but call MPI_Irecv().
+ * Post the receive for the specified remote halo region of the current rank.
  *
  * \param tC
  *  The CTauschUnsignedInt object to operate on.
+ * \param flags
+ *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
+ *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
  * \param haloId
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
- * \param mpitag
- *  The mpitag to be used for this MPI_Irecv().
+ * \param msgtag
+ *  The message tag to be used for this receive.
  *
  */
-void tausch_postReceive_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, int mpitag);
+void tausch_postReceive_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, int msgtag);
 
 /*!
  *
- * Post all MPI receives for the current MPI rank. This doesn't do anything else but call MPI_Irecv() for each remote halo region.
+ * Post all receives for the current rank for each remote halo region.
  *
  * \param tC
  *  The CTauschUnsignedInt object to operate on.
- * \param mpitag
- *  An array containing the MPI tags, one for each halo region.
+ * \param flags
+ *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
+ *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+ * \param msgtag
+ *  An array containing the message tags, one for each halo region.
  *
  */
-void tausch_postAllReceives_double(CTauschDouble *tC, TauschDeviceDirection flags, int *mpitag);
+void tausch_postAllReceives_double(CTauschDouble *tC, TauschDeviceDirection flags, int *msgtag);
 
 /*!
  *
@@ -151,13 +175,18 @@ void tausch_postAllReceives_double(CTauschDouble *tC, TauschDeviceDirection flag
  *
  * \param tC
  *  The CTauschDouble object to operate on.
+ * \param flags
+ *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
+ *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
  * \param haloId
  *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
  * \param bufferId
  *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
  *  The numbering of the buffers has to start with 0!
  * \param buf
- *  The buffer from which the data is to be extracted according to the local halo specification.
+ *  The buffer from which the data is to be extracted according to the local halo specification. Set to NULL if OpenCL buffer is used!
+ * \param bufcl
+ *  The buffer from which the data is to be extracted according to the local halo specification. Set to NULL if "normal" C buffer is used!
  * \param region
  *  The specification of the region of the halo parts to be packed. This is expected to be a pointer of structs, and each halo region can be
  *  referenced later by its index in this pointer. Each struct must have specified the following 3, 5, or 7 entries:
@@ -175,24 +204,30 @@ void tausch_packSendBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags
 
 /*!
  *
- * Sends off the send buffer for the specified halo region. This calls MPI_Start() on the respective MPI_Send_init().
+ * Sends off the send buffer for the specified halo region.
  *
  * \param tC
  *  The CTauschDouble object to operate on.
+ * \param flags
+ *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
+ *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
  * \param haloId
  *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
- * \param mpitag
- *  The mpitag to be used for this MPI_Isend().
+ * \param msgtag
+ *  The message tag to be used for this send.
  *
  */
-void tausch_send_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, int mpitag);
+void tausch_send_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, int msgtag);
 
 /*!
  *
- * Makes sure the MPI message for the specified halo is received by this buffer. It does not do anything with that message!
+ * Makes sure the message for the specified halo is received by this buffer. It does not do anything with that message!
  *
  * \param tC
  *  The CTauschDouble object to operate on.
+ * \param flags
+ *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
+ *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
  * \param haloId
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  *
@@ -205,13 +240,18 @@ void tausch_recv_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t h
  *
  * \param tC
  *  The CTauschDouble object to operate on.
+ * \param flags
+ *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
+ *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
  * \param haloId
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  * \param bufferId
  *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
  *  The numbering of the buffers has to start with 0!
  * \param buf
- *  The buffer to which the extracted data is to be written to according to the remote halo specification
+ *  The buffer to which the extracted data is to be written to according to the remote halo specification. Set to NULL if OpenCL buffer is used!
+ * \param bufcl
+ *  The OpenCL buffer to which the extracted data is to be written to according to the remote halo specification. Set to NULL if "normal" C buffer is used!
  * \param region
  *  The specification of the region of the halo parts to be packed. This is expected to be a pointer of structs, and each halo region can be
  *  referenced later by its index in this pointer. Each struct must have specified the following 3, 5, or 7 entries:
@@ -233,12 +273,17 @@ void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, TauschDeviceDirection
  *
  * \param tC
  *  The CTauschDouble object to operate on.
+ * \param flags
+ *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
+ *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
  * \param haloId
  *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
  * \param buf
- *  The buffer from which the data is to be extracted according to the local halo specification.
- * \param mpitag
- *  The mpitag to be used for this MPI_Isend().
+ *  The buffer from which the data is to be extracted according to the local halo specification. Set to NULL if OpenCL buffer is used!
+ * \param bufcl
+ *  The OpenCL buffer from which the data is to be extracted according to the local halo specification. Set to NULL if "normal" C buffer is used!
+ * \param msgtag
+ *  The message tag to be used for this send.
  * \param region
  *  The specification of the region of the halo parts to be packed. This is expected to be a pointer of structs, and each halo region can be
  *  referenced later by its index in this pointer. Each struct must have specified the following 3, 5, or 7 entries:
@@ -252,19 +297,24 @@ void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, TauschDeviceDirection
  *   depth | The depth of the region to be packed (if present)
  *
  */
-void tausch_packAndSend_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, cl_mem *bufcl, TauschPackRegion region, int mpitag);
+void tausch_packAndSend_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, cl_mem *bufcl, TauschPackRegion region, int msgtag);
 
 /*!
  *
- * Shortcut function. If only one buffer is used, this will both receive the MPI message and unpack the received data into the provided buffer,
+ * Shortcut function. If only one buffer is used, this will both receive the message and unpack the received data into the provided buffer,
  * all with one call.
  *
  * \param tC
  *  The CTauschDouble object to operate on.
+ * \param flags
+ *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
+ *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
  * \param haloId
  *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
  * \param buf
- *  The buffer to which the extracted data is to be written to according to the remote halo specification
+ *  The buffer to which the extracted data is to be written to according to the remote halo specification. Set to NULL if OpenCL buffer is used!
+ * \param bufcl
+ *  The OpenCL buffer to which the extracted data is to be written to according to the remote halo specification. Set to NULL if "normal" C buffer is used!
  * \param region
  *  The specification of the region of the halo parts to be packed. This is expected to be a pointer of structs, and each halo region can be
  *  referenced later by its index in this pointer. Each struct must have specified the following 3, 5, or 7 entries:

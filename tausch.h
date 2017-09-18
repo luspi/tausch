@@ -42,7 +42,7 @@
  * efficient C/C++ API for halo exchange for structured grids. It supports halo exchange across the partition boundaries as specified by the user.
  * It comes with an API for one dimension, Tausch1D, for two dimensions, Tausch2D, and for three dimensions, Tausch3D. The C API is a simple wrapper
  * to the C++ API, taking advantage of the polymorphism of C++. Thus, for all three versions of Tausch there
- * is one C wrapper for each datatype (differentiated by a suffix), e.g., \link ctauschdouble.h CTauschDouble\endlink for the double datatype.
+ * is one C wrapper for the most common data types (differentiated by a suffix), e.g., \link ctauschdouble.h CTauschDouble\endlink for the double datatype.
  *
  * The interface is contained within a single header file \em tausch.h for both the C and C++ APIs. Nothing additional is required other than linking
  * against the %Tausch library. Both the C and C++ bindings are very similar. Both the underlying C++ API, and the C wrapper API are documented here

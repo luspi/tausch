@@ -77,10 +77,12 @@ public:
      *  entries. %Tausch2D expects the following 5 variables to be set:
      *  variable | description
      *  :-------: | -------
-     *   x | The starting x coordinate of the halo region
-     *   y | The starting y coordinate of the halo region
-     *   width | The width of the halo region
-     *   height | The height of the halo region
+     *   haloX | The starting x coordinate of the halo region
+     *   haloY | The starting y coordinate of the halo region
+     *   haloWidth | The width of the halo region
+     *   haloHeight | The height of the halo region
+     *   bufferWidth | The width of the underlying buffer
+     *   bufferHeight | The height of the underlying buffer
      *   remoteMpiRank | The receiving processor
      *
      */
@@ -100,10 +102,12 @@ public:
      *  entries. %Tausch2D expects the following 5 variables to be set:
      *  variable | description
      *  :-------: | -------
-     *   x | The starting x coordinate of the halo region
-     *   y | The starting y coordinate of the halo region
-     *   width | The width of the halo region
-     *   height | The height of the halo region
+     *   haloX | The starting x coordinate of the halo region
+     *   haloY | The starting y coordinate of the halo region
+     *   haloWidth | The width of the halo region
+     *   haloHeight | The height of the halo region
+     *   bufferWidth | The width of the underlying buffer
+     *   bufferHeight | The height of the underlying buffer
      *   remoteMpiRank | The sending processor
      *
      */

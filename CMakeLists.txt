@@ -40,7 +40,7 @@ set(tausch_source "tausch.h" "modules/tausch1d.cpp" "modules/tausch2d.cpp" "modu
     "modules/tausch.h" "modules/tausch_opencl_no.h" "modules/tausch_opencl_yes.h")
 
 # Set the Doxygen list
-set(list_for_doxygen_headers "tausch.h" "modules/tausch1d.h" "modules/tausch2d.h" "modules/tausch3d.h" "modules/tausch.h")
+set(list_for_doxygen_headers "tausch.h" "modules/tausch1d.h" "modules/tausch2d.h" "modules/tausch3d.h" "modules/tausch.h" "modules/ctausch/ctauschdouble.h")
 foreach(arg ${list_for_doxygen_headers})
     set(doxygen_headers "${doxygen_headers} ${CMAKE_CURRENT_SOURCE_DIR}/${arg}")
 endforeach(arg ${list_for_doxygen_headers})
