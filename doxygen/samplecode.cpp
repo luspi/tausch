@@ -57,25 +57,29 @@ int main(int argc, char** argv) {
     TauschHaloSpec *localHaloSpecs = new TauschHaloSpec[1];
 
     // left edge (0) remote halo region: [x, y, w, h, receiver, tag]
-    remoteHaloSpecs[0].x = 0;
-    remoteHaloSpecs[0].y = 0;
-    remoteHaloSpecs[0].width = cpuHaloWidth[0];
-    remoteHaloSpecs[0].height = localDim[TAUSCH_Y];
+    remoteHaloSpecs[0].haloX = 0;
+    remoteHaloSpecs[0].haloY = 0;
+    remoteHaloSpecs[0].haloWidth = cpuHaloWidth[0];
+    remoteHaloSpecs[0].haloHeight = localDim[TAUSCH_Y];
+    remoteHaloSpecs[0].bufferWidth = localDim[TAUSCH_X];
+    remoteHaloSpecs[0].bufferHeight = localDim[TAUSCH_Y];
     remoteHaloSpecs[0].remoteMpiRank = left;
 
     // right edge (1) local halo region: [x, y, w, h, sender, tag]
-    localHaloSpecs[0].x = localDim[TAUSCH_X];
-    localHaloSpecs[0].y = 0;
-    localHaloSpecs[0].width = cpuHaloWidth[0];
-    localHaloSpecs[0].height = localDim[TAUSCH_Y];
+    localHaloSpecs[0].haloX = localDim[TAUSCH_X];
+    localHaloSpecs[0].haloY = 0;
+    localHaloSpecs[0].haloWidth = cpuHaloWidth[0];
+    localHaloSpecs[0].haloHeight = localDim[TAUSCH_Y];
+    localHaloSpecs[0].bufferWidth = localDim[TAUSCH_X];
+    localHaloSpecs[0].bufferHeight = localDim[TAUSCH_Y];
     localHaloSpecs[0].remoteMpiRank = right;
 
     // The Tausch object, using its double version. The pointer type is of type 'Tausch', although using Tausch2D directly would also be possible here
-    Tausch<double> *tausch = new Tausch2D<double>(localDim, MPI_DOUBLE, numBuffers, nullptr);
+    Tausch<double> *tausch = new Tausch2D<double>(MPI_DOUBLE, numBuffers, nullptr, MPI_COMM_WORLD);
 
     // Tell Tausch about the local and remote halo regions
-    tausch->setLocalHaloInfoCpu(1, localHaloSpecs);
-    tausch->setRemoteHaloInfoCpu(1, remoteHaloSpecs);
+    tausch->setLocalHaloInfo(TAUSCH_CwC, 1, localHaloSpecs);
+    tausch->setRemoteHaloInfo(TAUSCH_CwC, 1, remoteHaloSpecs);
 
     /*****************
      * HALO EXCHANGE *
@@ -90,17 +94,17 @@ int main(int argc, char** argv) {
     int mpitag = 0;
 
     // post the MPI receives
-    tausch->postAllReceivesCpu(&mpitag);
+    tausch->postAllReceives(TAUSCH_CwC, &mpitag);
 
     // pack the right buffers and send them off
-    tausch->packNextSendBufferCpu(0, dat1);
-    tausch->packNextSendBufferCpu(0, dat2);
-    tausch->sendCpu(0, mpitag);
+    tausch->packSendBuffer(TAUSCH_CwC, 0, 0, dat1);
+    tausch->packSendBuffer(TAUSCH_CwC, 0, 1, dat2);
+    tausch->send(TAUSCH_CwC, 0, mpitag);
 
     // receive the left buffers and unpack them
-    tausch->recvCpu(0);
-    tausch->unpackNextRecvBufferCpu(0, dat1);
-    tausch->unpackNextRecvBufferCpu(0, dat2);
+    tausch->recv(TAUSCH_CwC, 0);
+    tausch->unpackRecvBuffer(TAUSCH_CwC, 0, 0, dat1);
+    tausch->unpackRecvBuffer(TAUSCH_CwC, 0, 1, dat2);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
