@@ -200,7 +200,11 @@ void tausch_postAllReceives_double(CTauschDouble *tC, TauschDeviceDirection flag
  *   depth | The depth of the region to be packed (if present)
  *
  */
+#ifdef TAUSCH_OPENCL
 void tausch_packSendBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, cl_mem *bufcl, TauschPackRegion region);
+#else
+void tausch_packSendBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
+#endif
 
 /*!
  *
@@ -265,7 +269,11 @@ void tausch_recv_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t h
  *   depth | The depth of the region to be packed (if present)
  *
  */
+#ifdef TAUSCH_OPENCL
 void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, cl_mem *bufcl, TauschPackRegion region);
+#else
+void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
+#endif
 
 /*!
  *
@@ -297,7 +305,11 @@ void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, TauschDeviceDirection
  *   depth | The depth of the region to be packed (if present)
  *
  */
+#ifdef TAUSCH_OPENCL
 void tausch_packAndSend_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, cl_mem *bufcl, TauschPackRegion region, int msgtag);
+#else
+void tausch_packAndSend_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, TauschPackRegion region, int msgtag);
+#endif
 
 /*!
  *
@@ -328,7 +340,11 @@ void tausch_packAndSend_double(CTauschDouble *tC, TauschDeviceDirection flags, s
  *   depth | The depth of the region to be packed (if present)
  *
  */
+#ifdef TAUSCH_OPENCL
 void tausch_recvAndUnpack_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, cl_mem *bufcl, TauschPackRegion region);
+#else
+void tausch_recvAndUnpack_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, TauschPackRegion region);
+#endif
 
 #ifdef __cplusplus
 }

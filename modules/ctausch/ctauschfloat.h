@@ -41,12 +41,22 @@ void tausch_setLocalHaloInfo_float(CTauschFloat *tC, TauschDeviceDirection flags
 void tausch_setRemoteHaloInfo_float(CTauschFloat *tC, TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 void tausch_postReceive_float(CTauschFloat *tC, TauschDeviceDirection flags, size_t haloId, int mpitag);
 void tausch_postAllReceives_float(CTauschFloat *tC, TauschDeviceDirection flags, int *mpitag);
+#ifdef TAUSCH_OPENCL
 void tausch_packSendBuffer_float(CTauschFloat *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, float *buf, cl_mem *bufcl, TauschPackRegion region);
+#else
+void tausch_packSendBuffer_float(CTauschFloat *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, float *buf, TauschPackRegion region);
+#endif
 void tausch_send_float(CTauschFloat *tC, TauschDeviceDirection flags, size_t haloId, int mpitag);
 void tausch_recv_float(CTauschFloat *tC, TauschDeviceDirection flags, size_t haloId);
+#ifdef TAUSCH_OPENCL
 void tausch_unpackNextRecvBuffer_float(CTauschFloat *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, float *buf, cl_mem *bufcl, TauschPackRegion region);
 void tausch_packAndSend_float(CTauschFloat *tC, TauschDeviceDirection flags, size_t haloId, float *buf, cl_mem *bufcl, TauschPackRegion region, int mpitag);
 void tausch_recvAndUnpack_float(CTauschFloat *tC, TauschDeviceDirection flags, size_t haloId, float *buf, cl_mem *bufcl, TauschPackRegion region);
+#else
+void tausch_unpackNextRecvBuffer_float(CTauschFloat *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, float *buf, TauschPackRegion region);
+void tausch_packAndSend_float(CTauschFloat *tC, TauschDeviceDirection flags, size_t haloId, float *buf, TauschPackRegion region, int mpitag);
+void tausch_recvAndUnpack_float(CTauschFloat *tC, TauschDeviceDirection flags, size_t haloId, float *buf, TauschPackRegion region);
+#endif
 
 #ifdef __cplusplus
 }

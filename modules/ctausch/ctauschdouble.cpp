@@ -53,6 +53,7 @@ void tausch_postAllReceives_double(CTauschDouble *tC, TauschDeviceDirection flag
     t->postAllReceives(flags, msgtag);
 }
 
+#ifdef TAUSCH_OPENCL
 void tausch_packSendBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, cl_mem *bufcl, TauschPackRegion region) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     if(bufcl == NULL)
@@ -60,6 +61,12 @@ void tausch_packSendBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags
     else
         t->packSendBuffer(flags, haloId, bufferId, cl::Buffer(*bufcl));
 }
+#else
+void tausch_packSendBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region) {
+    Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
+    t->packSendBuffer(flags, haloId, bufferId, buf, region);
+}
+#endif
 
 void tausch_send_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, int msgtag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
@@ -71,6 +78,7 @@ void tausch_recv_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t h
     t->recv(flags, haloId);
 }
 
+#ifdef TAUSCH_OPENCL
 void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, cl_mem *bufcl, TauschPackRegion region) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     if(bufcl == NULL)
@@ -78,7 +86,14 @@ void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, TauschDeviceDirection
     else
         t->unpackRecvBuffer(flags, haloId, bufferId, cl::Buffer(*bufcl));
 }
+#else
+void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region) {
+    Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
+    t->unpackRecvBuffer(flags, haloId, bufferId, buf, region);
+}
+#endif
 
+#ifdef TAUSCH_OPENCL
 void tausch_packAndSend_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, cl_mem *bufcl, TauschPackRegion region, int msgtag) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     if(bufcl == NULL)
@@ -86,7 +101,14 @@ void tausch_packAndSend_double(CTauschDouble *tC, TauschDeviceDirection flags, s
     else
         t->packAndSend(flags, haloId, cl::Buffer(*bufcl), msgtag);
 }
+#else
+void tausch_packAndSend_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, TauschPackRegion region, int msgtag) {
+    Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
+    t->packAndSend(flags, haloId, buf, region, msgtag);
+}
+#endif
 
+#ifdef TAUSCH_OPENCL
 void tausch_recvAndUnpack_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, cl_mem *bufcl, TauschPackRegion region) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
     if(bufcl == NULL)
@@ -94,6 +116,12 @@ void tausch_recvAndUnpack_double(CTauschDouble *tC, TauschDeviceDirection flags,
     else
         t->recvAndUnpack(flags, haloId, cl::Buffer(*bufcl));
 }
+#else
+void tausch_recvAndUnpack_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, TauschPackRegion region) {
+    Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
+    t->recvAndUnpack(flags, haloId, buf, region);
+}
+#endif
 
 
 #ifdef __cplusplus
