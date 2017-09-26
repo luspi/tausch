@@ -192,7 +192,8 @@ public:
 #ifdef TAUSCH_OPENCL
 
     virtual void enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName, bool showOpenCLBuildLog) = 0;
-    virtual void enableOpenCL(cl::Device cl_defaultDevice, cl::Context cl_context, cl::CommandQueue cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool showOpenCLBuildLog) = 0;
+    virtual void enableOpenCL(cl::Device cl_defaultDevice, cl::Context cl_context, cl::CommandQueue cl_queue, bool blockingSyncCpuGpu,
+                              int clLocalWorkgroupSize, bool showOpenCLBuildLog) = 0;
     virtual cl::Context getOpenCLContext() = 0;
     virtual cl::CommandQueue getOpenCLQueue() = 0;
 

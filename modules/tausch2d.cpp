@@ -107,7 +107,8 @@ template <class buf_t> void Tausch2D<buf_t>::postAllReceives(TauschDeviceDirecti
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::packSendBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
+template <class buf_t> void Tausch2D<buf_t>::packSendBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, buf_t *buf,
+                                                            TauschPackRegion region) {
 
     if(flags == TAUSCH_CPU+TAUSCH_WITHCPU)
         return packSendBufferCpu(haloId, bufferId, buf, region);
@@ -186,7 +187,8 @@ template <class buf_t> void Tausch2D<buf_t>::recv(TauschDeviceDirection flags, s
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::unpackRecvBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
+template <class buf_t> void Tausch2D<buf_t>::unpackRecvBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, buf_t *buf,
+                                                              TauschPackRegion region) {
 
     if(flags == TAUSCH_CPU+TAUSCH_WITHCPU)
         return unpackRecvBufferCpu(haloId, bufferId, buf, region);
@@ -234,7 +236,7 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBuffer(TauschDeviceDirect
 }
 #endif
 
-template <class buf_t> void Tausch2D<buf_t>::packAndSend(TauschDeviceDirection flags, size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag) {
+template <class buf_t> void Tausch2D<buf_t>::packAndSend(TauschDeviceDirection flags, size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag){
 
     if(flags == TAUSCH_CPU+TAUSCH_WITHCPU)
         return packAndSendCpu(haloId, buf, region, msgtag);
@@ -335,7 +337,8 @@ template <class buf_t> TauschPackRegion Tausch2D<buf_t>::createFilledPackRegion(
     return region;
 }
 
-template <class buf_t> TauschPackRegion Tausch2D<buf_t>::createFilledPackRegion(size_t x, size_t y, size_t z, size_t width, size_t height, size_t depth) {
+template <class buf_t> TauschPackRegion Tausch2D<buf_t>::createFilledPackRegion(size_t x, size_t y, size_t z,
+                                                                                size_t width, size_t height, size_t depth) {
     TauschPackRegion region;
     region.x = x;
     region.y = y;
@@ -368,8 +371,9 @@ template <class buf_t> TauschHaloSpec Tausch2D<buf_t>::createFilledHaloSpec(size
     return halo;
 }
 
-template <class buf_t> TauschHaloSpec Tausch2D<buf_t>::createFilledHaloSpec(size_t bufferWidth, size_t bufferHeight, size_t bufferDepth, size_t haloX, size_t haloY, size_t haloZ,
-                                                                            size_t haloWidth, size_t haloHeight, size_t haloDepth, int remoteMpiRank) {
+template <class buf_t> TauschHaloSpec Tausch2D<buf_t>::createFilledHaloSpec(size_t bufferWidth, size_t bufferHeight, size_t bufferDepth,
+                                                                            size_t haloX, size_t haloY, size_t haloZ,
+                                                                            size_t haloWidth, size_t haloHeight, size_t haloDepth, int remoteMpiRank){
     TauschHaloSpec halo;
     halo.bufferWidth = bufferWidth;
     halo.bufferHeight = bufferHeight;
@@ -481,13 +485,15 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGpu(size_t numHaloP
             bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight;
         gpuToCpuSendBuffer[i] = new std::atomic<buf_t>[bufsize]{};
 
-        size_t tmpHaloSpecs[6] = {haloSpecs[i].haloX, haloSpecs[i].haloY, haloSpecs[i].haloWidth, haloSpecs[i].haloHeight, haloSpecs[i].bufferWidth, haloSpecs[i].bufferHeight};
+        size_t tmpHaloSpecs[6] = {haloSpecs[i].haloX, haloSpecs[i].haloY, haloSpecs[i].haloWidth, haloSpecs[i].haloHeight,
+                                  haloSpecs[i].bufferWidth, haloSpecs[i].bufferHeight};
 
         try {
             cl_gpuToCpuSendBuffer[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, bufsize*sizeof(buf_t));
             cl_localHaloSpecsGpu[i] = cl::Buffer(cl_context, &tmpHaloSpecs[0], &tmpHaloSpecs[6], true);
         } catch(cl::Error error) {
-            std::cerr << "Tausch2D :: setLocalHaloInfoGpu() (2) :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+            std::cerr << "Tausch2D :: setLocalHaloInfoGpu() (2) :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")"
+                      << std::endl;
             exit(1);
         }
 
@@ -584,7 +590,8 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoGpu(size_t numHalo
             bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight;
         cpuToGpuRecvBuffer[i] = new buf_t[bufsize];
 
-        size_t tmpHaloSpecs[6] = {haloSpecs[i].haloX, haloSpecs[i].haloY, haloSpecs[i].haloWidth, haloSpecs[i].haloHeight, haloSpecs[i].bufferWidth, haloSpecs[i].bufferHeight, };
+        size_t tmpHaloSpecs[6] = {haloSpecs[i].haloX, haloSpecs[i].haloY, haloSpecs[i].haloWidth, haloSpecs[i].haloHeight,
+                                  haloSpecs[i].bufferWidth, haloSpecs[i].bufferHeight, };
 
         try {
             cl_cpuToGpuRecvBuffer[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, bufsize*sizeof(double));
@@ -608,7 +615,8 @@ template <class buf_t> void Tausch2D<buf_t>::postReceiveCpu(size_t haloId, int m
     if(!setupMpiRecv[haloId]) {
 
         if(mpitag == -1) {
-            std::cerr << "[Tausch2D] ERROR: MPI_Recv for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!" << std::endl;
+            std::cerr << "[Tausch2D] ERROR: MPI_Recv for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!"
+                      << std::endl;
             exit(1);
         }
 
@@ -712,7 +720,8 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCpuToGpu(size_t haloI
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
                 offset += valuesPerPointPerBuffer[b] * localHaloSpecsCpuForGpu[haloId].haloWidth * localHaloSpecsCpuForGpu[haloId].haloHeight;
-            cpuToGpuSendBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val].store(buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val]);
+            cpuToGpuSendBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val]
+                    .store(buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val]);
         }
     }
 
@@ -754,7 +763,8 @@ template <class buf_t> void Tausch2D<buf_t>::sendCpu(size_t haloId, int mpitag) 
     if(!setupMpiSend[haloId]) {
 
         if(mpitag == -1) {
-            std::cerr << "[Tausch2D] ERROR: MPI_Send for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!" << std::endl;
+            std::cerr << "[Tausch2D] ERROR: MPI_Send for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!"
+                      << std::endl;
             exit(1);
         }
 
@@ -885,7 +895,8 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferGpuToCpu(size_t hal
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
                 offset += valuesPerPointPerBuffer[b] * remoteHaloSpecsCpuForGpu[haloId].haloWidth * remoteHaloSpecsCpuForGpu[haloId].haloHeight;
-            buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val] = gpuToCpuRecvBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val];
+            buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val]
+                    = gpuToCpuRecvBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val];
         }
     }
 
@@ -967,7 +978,8 @@ template <class buf_t> void Tausch2D<buf_t>::recvAndUnpackGpu(size_t haloId, cl:
 
 #ifdef TAUSCH_OPENCL
 
-template <class buf_t> void Tausch2D<buf_t>::enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName, bool showOpenCLBuildLog) {
+template <class buf_t> void Tausch2D<buf_t>::enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName,
+                                                          bool showOpenCLBuildLog) {
 
     this->blockingSyncCpuGpu = blockingSyncCpuGpu;
     cl_kernelLocalSize = clLocalWorkgroupSize;
@@ -987,7 +999,8 @@ template <class buf_t> void Tausch2D<buf_t>::enableOpenCL(bool blockingSyncCpuGp
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::enableOpenCL(cl::Device cl_defaultDevice, cl::Context cl_context, cl::CommandQueue cl_queue, bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool showOpenCLBuildLog) {
+template <class buf_t> void Tausch2D<buf_t>::enableOpenCL(cl::Device cl_defaultDevice, cl::Context cl_context, cl::CommandQueue cl_queue,
+                                                          bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool showOpenCLBuildLog) {
 
     this->blockingSyncCpuGpu = blockingSyncCpuGpu;
     this->cl_kernelLocalSize = clLocalWorkgroupSize;
@@ -1167,7 +1180,8 @@ kernel void unpackRecvBuffer(global const size_t * restrict const haloSpecs,
                           << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** "
                           << std::endl << std::endl;
             } catch(cl::Error err) {
-                std::cout << "Tausch2D :: compileKernels() :: getBuildInfo :: OpenCL exception caught: " << err.what() << " (" << err.err() << ")" << std::endl;
+                std::cout << "Tausch2D :: compileKernels() :: getBuildInfo :: OpenCL exception caught: " << err.what() << " (" << err.err() << ")"
+                          << std::endl;
             }
         }
     } catch(cl::Error error) {
@@ -1179,7 +1193,8 @@ kernel void unpackRecvBuffer(global const size_t * restrict const haloSpecs,
                           << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** "
                           << std::endl << std::endl;
             } catch(cl::Error err) {
-                std::cout << "Tausch2D :: compileKernels() :: getBuildInfo :: OpenCL exception caught: " << err.what() << " (" << err.err() << ")" << std::endl;
+                std::cout << "Tausch2D :: compileKernels() :: getBuildInfo :: OpenCL exception caught: " << err.what() << " (" << err.err() << ")"
+                          << std::endl;
             }
         }
     }

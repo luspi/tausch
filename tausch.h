@@ -42,11 +42,13 @@
  * efficient C/C++ API for halo exchange for structured grids. It supports halo exchange across the partition boundaries as specified by the user.
  * It comes with an API for one dimension, Tausch1D, for two dimensions, Tausch2D, and for three dimensions, Tausch3D. The C API is a simple wrapper
  * to the C++ API, taking advantage of the polymorphism of C++. Thus, for all three versions of Tausch there
- * is one C wrapper for the most common data types (differentiated by a suffix); see \link ctauschdouble.h CTauschDouble\endlink for the double data type.
+ * is one C wrapper for the most common data types (differentiated by a suffix); see \link ctauschdouble.h CTauschDouble\endlink for the double data
+ * type.
  *
  * The interface is contained within a single header file \em tausch.h for both the C and C++ APIs. Nothing additional is required other than linking
  * against the %Tausch library. Both the C and C++ bindings are very similar. The underlying C++ API, and the C wrapper API are documented here
- * in detail. For the C API, only the version for the double data type is documented, the other data types work equivalently, only with different suffix
+ * in detail. For the C API, only the version for the double data type is documented, the other data types work equivalently, only with different
+ * suffix.
  *
  * \em Note: %Tausch requires at least C++11 support to work!
  *
@@ -56,16 +58,23 @@
  * - <b>Remote halo</b>: the halo required by the current processor for computations that lives on other processors
  *
  * \section assumptions Assumptions
- * Tausch makes almost no assumptions about the data and the overall domain. How the domain is partitioned or where the GPU lies, Tausch does not care about these specifics. There are only two assumptions done by Tausch, both very basic:
- * -# <b>Data layout</b>: The data is expected to be stored first along the x, then along the y, and finally along the z dimension. Within a specified buffer dimension (specified within each halo specification), the data is expected to be stored as one contiguous array, and also containing the halo data.
- * -# <b>GPU fully inside</b>: Currently, Tausch only supports communication between the CPU and GPU when both live on the same MPI rank. This restriction is planned to be removed in the future.
+ * Tausch makes almost no assumptions about the data and the overall domain. How the domain is partitioned or where the GPU lies, Tausch does not care
+ * about these specifics. There are only two assumptions done by Tausch, both very basic:
+ * -# <b>Data layout</b>: The data is expected to be stored first along the x, then along the y, and finally along the z dimension. Within a specified
+ * buffer dimension (specified within each halo specification), the data is expected to be stored as one contiguous array, and also containing the
+ * halo data.
+ * -# <b>GPU fully inside</b>: Currently, Tausch only supports communication between the CPU and GPU when both live on the same MPI rank. This
+ * restriction is planned to be removed in the future.
  *
  * \section possible What is possible
  * Due to making only very few assumption, %Tausch is very flexible and can be used for many different scenarios:
- * - If there are multiple buffers covering a domain, then their halos can all be sent in one combined message for each halo region. The buffers do not even need to have the same dimensions, but must follow the same underlying discretisation. The order in which they are packed can be controlled using the buffer id, i.e., any order is possible.
+ * - If there are multiple buffers covering a domain, then their halos can all be sent in one combined message for each halo region. The buffers do
+ * not even need to have the same dimensions, but must follow the same underlying discretisation. The order in which they are packed can be controlled
+ * using the buffer id, i.e., any order is possible.
  * - If there is one buffer that stores multiple values for each point consecutively (e.g., when storing a stencil) then they can also get sent as one
  * grouped message, assuming that each point has the same number of values stored.
- * - The use of templates allows %Tausch to be used for data of different types. Tausch supports most of the common C/C++ datatypes, with the C API offering support for the most common of these.
+ * - The use of templates allows %Tausch to be used for data of different types. Tausch supports most of the common C/C++ datatypes, with the C API
+ * offering support for the most common of these.
  * - A common base class amongst all three versions (1D, 2D, and 3D) containing virtual pointers to all functions in the API allows the user to choose
  * at runtime which version to use. Using virtual function pointers does not appear to cause any slowdown in the case of %Tausch.
  * - The buffers do not have to be the same throughout the lifetime of any %Tausch object. When packing a buffer, %Tausch requires a pointer to the
@@ -91,15 +100,16 @@
  * 3. Received an incoming message for a specific remote halo region.
  * 4. Unpack a received message for a specific remote halo region into a specified data buffer.
  *
- * The following code snippet demonstrates the steps detailed above. It omits all the details around for readability. For a full compilable example, see below.
+ * The following code snippet demonstrates the steps detailed above. It omits all the details around for readability. For a full compilable example,
+ * see below.
  *
  * \include codesnippet.cpp
  *
  * \section code Code snippet
- * This is a short but compilable example code of how to use %Tausch for a halo exchange in two dimensions across a structured grid. For simplicity, we will only
- * perform a halo exchange to the right, across the right edge. If the right edge is along the domain boundary it wraps around to the opposite end
- * again (periodic boundary conditions). It shows how to use %Tausch with two buffers over the same domain. At the end it outputs the required
- * runtime.
+ * This is a short but compilable example code of how to use %Tausch for a halo exchange in two dimensions across a structured grid. For simplicity,
+ * we will only perform a halo exchange to the right, across the right edge. If the right edge is along the domain boundary it wraps around to the
+ * opposite end again (periodic boundary conditions). It shows how to use %Tausch with two buffers over the same domain. At the end it outputs the
+ * required runtime.
  *
  * \includelineno samplecode.cpp
  *
