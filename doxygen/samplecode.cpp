@@ -81,6 +81,10 @@ int main(int argc, char** argv) {
     tausch->setLocalHaloInfo(TAUSCH_CwC, 1, localHaloSpecs);
     tausch->setRemoteHaloInfo(TAUSCH_CwC, 1, remoteHaloSpecs);
 
+    // After calling the above functions, the arrays can be safely deleted.
+    delete[] localHaloSpecs;
+    delete[] remoteHaloSpecs;
+
     /*****************
      * HALO EXCHANGE *
      *****************/
@@ -118,8 +122,6 @@ int main(int argc, char** argv) {
         std::cout << "Required time: " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
 
     // Clean up memory
-    delete[] localHaloSpecs;
-    delete[] remoteHaloSpecs;
     delete[] dat1;
     delete[] dat2;
     delete tausch;

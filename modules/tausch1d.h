@@ -75,14 +75,16 @@ public:
      * \param numHaloParts
      *  How many different parts there are to the halo
      * \param haloSpecs
-     *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
-     *  entries. %Tausch1D expects the following variables to be set:
+     *  The specification of the different halo parts. This is done using an array of the struct TauschHaloSpec, with each instance in the array
+     *  containing the specification of one halo region. %Tausch1D expects the following variables to be set for each region:
      *  variable | description
      *  :-------: | -------
      *   haloX | The starting x coordinate of the halo region
      *   haloWidth | The width of the halo region
      *   bufferWidth | The width of the underlying buffer
      *   remoteMpiRank | The receiving processor
+     * %Tausch1D internally copies all the data out of the haloSpecs (and sets up some buffers along the way), so it is safe to delete this array
+     * after calling this function.
      *
      */
     void setLocalHaloInfo(TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs);
@@ -97,14 +99,16 @@ public:
      * \param numHaloParts
      *  How many different parts there are to the halo
      * \param haloSpecs
-     *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
-     *  entries. %Tausch1D expects the following variables to be set:
+     *  The specification of the different halo parts. This is done using an array of the struct TauschHaloSpec, with each instance in the array
+     *  containing the specification of one halo region. %Tausch1D expects the following variables to be set for each region:
      *  variable | description
      *  :-------: | -------
      *   haloX | The starting x coordinate of the halo region
      *   haloWidth | The width of the halo region
      *   bufferWidth | The width of the underlying buffer
      *   remoteMpiRank | The sending processor
+     * %Tausch1D internally copies all the data out of the haloSpecs (and sets up some buffers along the way), so it is safe to delete this array
+     * after calling this function.
      *
      */
     void setRemoteHaloInfo(TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs);

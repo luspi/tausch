@@ -71,10 +71,10 @@ public:
      *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
      *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
      * \param numHaloParts
-     *  How many different parts there are to the halo
+     *  How many different parts there are to the halo.
      * \param haloSpecs
-     *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
-     *  entries. %Tausch3D expects the following variables to be set:
+     *  The specification of the different halo parts. This is done using an array of the struct TauschHaloSpec, with each instance in the array
+     *  containing the specification of one halo region. %Tausch3D expects the following variables to be set for each region:
      *  variable | description
      *  :-------: | -------
      *   haloX | The starting x coordinate of the halo region
@@ -87,6 +87,8 @@ public:
      *   bufferHeight | The height of the underlying buffer (y direction)
      *   bufferDepth | The depth of the underlying buffer (z direction)
      *   remoteMpiRank | The receiving processor
+     * %Tausch3D internally copies all the data out of the haloSpecs (and sets up some buffers along the way), so it is safe to delete this array
+     * after calling this function.
      *
      */
     void setLocalHaloInfo(TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs);
@@ -99,10 +101,10 @@ public:
      *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
      *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
      * \param numHaloParts
-     *  How many different parts there are to the halo
+     *  How many different parts there are to the halo.
      * \param haloSpecs
-     *  The specification of the different halo parts. This is done using the simple struct TauschHaloSpec, containing variables for all the necessary
-     *  entries. %Tausch3D expects the following variables to be set:
+     *  The specification of the different halo parts. This is done using an array of the struct TauschHaloSpec, with each instance in the array
+     *  containing the specification of one halo region. %Tausch3D expects the following variables to be set for each region:
      *  variable | description
      *  :-------: | -------
      *   haloX | The starting x coordinate of the halo region
@@ -115,6 +117,8 @@ public:
      *   bufferHeight | The height of the underlying buffer (y direction)
      *   bufferDepth | The depth of the underlying buffer (z direction)
      *   remoteMpiRank | The sending processor
+     * %Tausch3D internally copies all the data out of the haloSpecs (and sets up some buffers along the way), so it is safe to delete this array
+     * after calling this function.
      *
      */
     void setRemoteHaloInfo(TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs);

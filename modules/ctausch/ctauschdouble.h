@@ -87,10 +87,10 @@ void tausch_delete_double(CTauschDouble *tC);
  *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
  *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
  * \param numHaloParts
- *  How many different parts there are to the halo
+ *  How many different parts there are to the halo.
  * \param haloSpecs
- *  The specification of the different halo parts. This is expected to be a pointer of structs, and each halo region can be referenced later by its
- *  index in this pointer. Each struct must have specified some of the following variables:
+ *  The specification of the different halo parts. This is done using an array of the struct TauschHaloSpec, with each instance in the array
+ *  containing the specification of one halo region. Each struct must have specified some of the following variables:
  *  variable | description
  *  :------: | -----------
  *   haloX | The starting x coordinate of the halo region
@@ -103,6 +103,8 @@ void tausch_delete_double(CTauschDouble *tC);
  *   bufferHeight | The height of the underlying buffer (if present)
  *   bufferDepth | The depth of the underlying buffer (if present)
  *   remoteMpiRank | The receiving processor
+ * Internally all the data is copied out of the haloSpecs (with some buffers set up along the way), so it is safe to delete this array
+ * after calling this function.
  *
  */
 void tausch_setLocalHaloInfo_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs);
@@ -117,11 +119,11 @@ void tausch_setLocalHaloInfo_double(CTauschDouble *tC, TauschDeviceDirection fla
  *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
  *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
  * \param numHaloParts
- *  How many different parts there are to the halo
+ *  How many different parts there are to the halo.
  * \param haloSpecs
- *  The specification of the different halo parts. This is expected to be a pointer of structs, and each halo region can be referenced later by its
- *  index in this pointer. Each struct must have specified some of the following variables:
- *   variable | description
+ *  The specification of the different halo parts. This is done using an array of the struct TauschHaloSpec, with each instance in the array
+ *  containing the specification of one halo region. Each struct must have specified some of the following variables:
+ *  variable | description
  *  :------: | -----------
  *   haloX | The starting x coordinate of the halo region
  *   haloY | The starting y coordinate of the halo region (if present)
@@ -133,6 +135,8 @@ void tausch_setLocalHaloInfo_double(CTauschDouble *tC, TauschDeviceDirection fla
  *   bufferHeight | The height of the underlying buffer (if present)
  *   bufferDepth | The depth of the underlying buffer (if present)
  *   remoteMpiRank | The sending processor
+ * Internally all the data is copied out of the haloSpecs (with some buffers set up along the way), so it is safe to delete this array
+ * after calling this function.
  *
  */
 void tausch_setRemoteHaloInfo_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs);
@@ -203,7 +207,13 @@ void tausch_postAllReceives_double(CTauschDouble *tC, TauschDeviceDirection flag
 #ifdef TAUSCH_OPENCL
 void tausch_packSendBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, cl_mem *bufcl, TauschPackRegion region);
 #else
+/*!
+ * \cond DoxygenHideThis
+ */
 void tausch_packSendBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
+/*!
+ * \endcond
+ */
 #endif
 
 /*!
@@ -272,7 +282,13 @@ void tausch_recv_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t h
 #ifdef TAUSCH_OPENCL
 void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, cl_mem *bufcl, TauschPackRegion region);
 #else
+/*!
+ * \cond DoxygenHideThis
+ */
 void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
+/*!
+ * \endcond
+ */
 #endif
 
 /*!
@@ -308,7 +324,13 @@ void tausch_unpackNextRecvBuffer_double(CTauschDouble *tC, TauschDeviceDirection
 #ifdef TAUSCH_OPENCL
 void tausch_packAndSend_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, cl_mem *bufcl, TauschPackRegion region, int msgtag);
 #else
+/*!
+ * \cond DoxygenHideThis
+ */
 void tausch_packAndSend_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, TauschPackRegion region, int msgtag);
+/*!
+ * \endcond
+ */
 #endif
 
 /*!
@@ -343,7 +365,13 @@ void tausch_packAndSend_double(CTauschDouble *tC, TauschDeviceDirection flags, s
 #ifdef TAUSCH_OPENCL
 void tausch_recvAndUnpack_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, cl_mem *bufcl, TauschPackRegion region);
 #else
+/*!
+ * \cond DoxygenHideThis
+ */
 void tausch_recvAndUnpack_double(CTauschDouble *tC, TauschDeviceDirection flags, size_t haloId, double *buf, TauschPackRegion region);
+/*!
+ * \endcond
+ */
 #endif
 
 #ifdef __cplusplus
