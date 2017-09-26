@@ -435,6 +435,143 @@ public:
     void recvAndUnpack(TauschDeviceDirection flags, size_t haloId, cl::Buffer buf);
 #endif
 
+    /*!
+     *
+     * A simple shortcut for creating a filled TauschPackRegion object. Allows to create one such object using a single function call instead of
+     * specifying each entry individually. 1D version.
+     *
+     * \param x
+     *  The starting x coordinate of the region, relative to the halo area.
+     * \param width
+     *  The width of the region.
+     * \return
+     *  The filled TauschPackRegion object.
+     *
+     */
+    TauschPackRegion createFilledPackRegion(size_t x, size_t width);
+
+    /*!
+     *
+     * A simple shortcut for creating a filled TauschPackRegion object. Allows to create one such object using a single function call instead of
+     * specifying each entry individually. 2D version.
+     *
+     * \param x
+     *  The starting x coordinate of the region, relative to the halo area.
+     * \param y
+     *  The starting y coordinate of the region, relative to the halo area.
+     * \param width
+     *  The width of the region.
+     * \param height
+     *  The height of the region.
+     * \return
+     *  The filled TauschPackRegion object.
+     *
+     */
+    TauschPackRegion createFilledPackRegion(size_t x, size_t y, size_t width, size_t height);
+
+    /*!
+     *
+     * A simple shortcut for creating a filled TauschPackRegion object. Allows to create one such object using a single function call instead of
+     * specifying each entry individually. 3D version.
+     *
+     * \param x
+     *  The starting x coordinate of the region, relative to the halo area.
+     * \param y
+     *  The starting y coordinate of the region, relative to the halo area.
+     * \param z
+     *  The starting z coordinate of the region, relative to the halo area.
+     * \param width
+     *  The width of the region.
+     * \param height
+     *  The height of the region.
+     * \param depth
+     *  The depth of the region.
+     * \return
+     *  The filled TauschPackRegion object.
+     *
+     */
+    TauschPackRegion createFilledPackRegion(size_t x, size_t y, size_t z, size_t width, size_t height, size_t depth);
+
+    /*!
+     *
+     * A simple shortcut for creating a filled TauschHaloSpec object. Allows to create one such object using a single function call instead of
+     * specifying each entry individually. 1D version.
+     *
+     * \param bufferWidth
+     *  The width of the underlying buffer.
+     * \param haloX
+     *  The starting x coordinate of the halo region.
+     * \param haloWidth
+     *  The width of the halo region.
+     * \param remoteMpiRank
+     *  The remote MPI rank associated with this halo region. This is either the sending or receiving MPI rank, depending on if the halo region
+     * specifies a local or remote halo.
+     * \return
+     *  The filled TauschHaloSpec object.
+     *
+     */
+    TauschHaloSpec createFilledHaloSpec(size_t bufferWidth, size_t haloX, size_t haloWidth, int remoteMpiRank);
+
+    /*!
+     *
+     * A simple shortcut for creating a filled TauschHaloSpec object. Allows to create one such object using a single function call instead of
+     * specifying each entry individually. 2D version.
+     *
+     * \param bufferWidth
+     *  The width of the underlying buffer.
+     * \param bufferHeight
+     *  The height of the underlying buffer.
+     * \param haloX
+     *  The starting x coordinate of the halo region.
+     * \param haloY
+     *  The starting y coordinate of the halo region.
+     * \param haloWidth
+     *  The width of the halo region.
+     * \param haloHeight
+     *  The height of the halo region.
+     * \param remoteMpiRank
+     *  The remote MPI rank associated with this halo region. This is either the sending or receiving MPI rank, depending on if the halo region
+     * specifies a local or remote halo.
+     * \return
+     *  The filled TauschHaloSpec object.
+     *
+     */
+    TauschHaloSpec createFilledHaloSpec(size_t bufferWidth, size_t bufferHeight, size_t haloX, size_t haloY,
+                                        size_t haloWidth, size_t haloHeight, int remoteMpiRank);
+
+    /*!
+     *
+     * A simple shortcut for creating a filled TauschHaloSpec object. Allows to create one such object using a single function call instead of
+     * specifying each entry individually. 3D version.
+     *
+     * \param bufferWidth
+     *  The width of the underlying buffer.
+     * \param bufferHeight
+     *  The height of the underlying buffer.
+     * \param bufferDepth
+     *  The depth of the underlying buffer.
+     * \param haloX
+     *  The starting x coordinate of the halo region.
+     * \param haloY
+     *  The starting y coordinate of the halo region.
+     * \param haloZ
+     *  The starting z coordinate of the halo region.
+     * \param haloWidth
+     *  The width of the halo region.
+     * \param haloHeight
+     *  The height of the halo region.
+     * \param haloDepth
+     *  The depth of the halo region.
+     * \param remoteMpiRank
+     *  The remote MPI rank associated with this halo region. This is either the sending or receiving MPI rank, depending on if the halo region
+     * specifies a local or remote halo.
+     * \return
+     *  The filled TauschHaloSpec object.
+     *
+     */
+    TauschHaloSpec createFilledHaloSpec(size_t bufferWidth, size_t bufferHeight, size_t bufferDepth, size_t haloX, size_t haloY, size_t haloZ,
+                                        size_t haloWidth, size_t haloHeight, size_t haloDepth, int remoteMpiRank);
+
 
 
 #ifdef TAUSCH_OPENCL

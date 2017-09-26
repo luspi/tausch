@@ -115,6 +115,8 @@ struct TauschHaloSpec {
  * A struct for specifying which region of a halo area to pack.
  */
 struct TauschPackRegion {
+    TauschPackRegion() : x(0), y(0), z(0),
+                       width(0), height(0), depth(0) {}
     /*!
      * The starting x coordinate of the region, relative to the halo area.
      */
@@ -176,6 +178,16 @@ public:
 #ifdef TAUSCH_OPENCL
     virtual void recvAndUnpack(TauschDeviceDirection flags, size_t haloId, cl::Buffer buf) = 0;
 #endif
+
+    virtual TauschPackRegion createFilledPackRegion(size_t x, size_t width) = 0;
+    virtual TauschPackRegion createFilledPackRegion(size_t x, size_t y, size_t width, size_t height) = 0;
+    virtual TauschPackRegion createFilledPackRegion(size_t x, size_t y, size_t z, size_t width, size_t height, size_t depth) = 0;
+
+    virtual TauschHaloSpec createFilledHaloSpec(size_t bufferWidth, size_t haloX, size_t haloWidth, int remoteMpiRank) = 0;
+    virtual TauschHaloSpec createFilledHaloSpec(size_t bufferWidth, size_t bufferHeight, size_t haloX, size_t haloY,
+                                                size_t haloWidth, size_t haloHeight, int remoteMpiRank) = 0;
+    virtual TauschHaloSpec createFilledHaloSpec(size_t bufferWidth, size_t bufferHeight, size_t bufferDepth, size_t haloX, size_t haloY, size_t haloZ,
+                                                size_t haloWidth, size_t haloHeight, size_t haloDepth, int remoteMpiRank) = 0;
 
 #ifdef TAUSCH_OPENCL
 
