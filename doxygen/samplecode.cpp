@@ -13,17 +13,10 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
     MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-    // The width of the halos along the four edges
-    size_t cpuHaloWidth[4];
-    cpuHaloWidth[0] = 1;
-    cpuHaloWidth[1] = 4;
-    cpuHaloWidth[2] = 2;
-    cpuHaloWidth[3] = 1;
-
     // The local dimensions of the domain, with the halowidths added on
     size_t localDim[2];
-    localDim[TAUSCH_X] = 100 + cpuHaloWidth[0]+cpuHaloWidth[1];
-    localDim[TAUSCH_Y] = 120 + cpuHaloWidth[2]+cpuHaloWidth[3];
+    localDim[TAUSCH_X] = 100;
+    localDim[TAUSCH_Y] = 120;
 
     // The layout of the MPI ranks. If mpiSize is a perfect square we take its square root for each dimension,
     // otherwise all MPI ranks are lined up in the x direction
@@ -53,37 +46,33 @@ int main(int argc, char** argv) {
     double *dat2 = new double[localDim[TAUSCH_X]*localDim[TAUSCH_Y]]{};
 
     // We have four halo regions, one across each of the four edges
-    TauschHaloSpec *remoteHaloSpecs = new TauschHaloSpec[1];
-    TauschHaloSpec *localHaloSpecs = new TauschHaloSpec[1];
+    TauschHaloSpec remoteHaloSpecs;
+    TauschHaloSpec localHaloSpecs;
 
     // left edge (0) remote halo region: [x, y, w, h, receiver, tag]
-    remoteHaloSpecs[0].haloX = 0;
-    remoteHaloSpecs[0].haloY = 0;
-    remoteHaloSpecs[0].haloWidth = cpuHaloWidth[0];
-    remoteHaloSpecs[0].haloHeight = localDim[TAUSCH_Y];
-    remoteHaloSpecs[0].bufferWidth = localDim[TAUSCH_X];
-    remoteHaloSpecs[0].bufferHeight = localDim[TAUSCH_Y];
-    remoteHaloSpecs[0].remoteMpiRank = left;
+    remoteHaloSpecs.haloX = 0;
+    remoteHaloSpecs.haloY = 0;
+    remoteHaloSpecs.haloWidth = 1;
+    remoteHaloSpecs.haloHeight = localDim[TAUSCH_Y];
+    remoteHaloSpecs.bufferWidth = localDim[TAUSCH_X];
+    remoteHaloSpecs.bufferHeight = localDim[TAUSCH_Y];
+    remoteHaloSpecs.remoteMpiRank = left;
 
     // right edge (1) local halo region: [x, y, w, h, sender, tag]
-    localHaloSpecs[0].haloX = localDim[TAUSCH_X];
-    localHaloSpecs[0].haloY = 0;
-    localHaloSpecs[0].haloWidth = cpuHaloWidth[0];
-    localHaloSpecs[0].haloHeight = localDim[TAUSCH_Y];
-    localHaloSpecs[0].bufferWidth = localDim[TAUSCH_X];
-    localHaloSpecs[0].bufferHeight = localDim[TAUSCH_Y];
-    localHaloSpecs[0].remoteMpiRank = right;
+    localHaloSpecs.haloX = localDim[TAUSCH_X];
+    localHaloSpecs.haloY = 0;
+    localHaloSpecs.haloWidth = 1;
+    localHaloSpecs.haloHeight = localDim[TAUSCH_Y];
+    localHaloSpecs.bufferWidth = localDim[TAUSCH_X];
+    localHaloSpecs.bufferHeight = localDim[TAUSCH_Y];
+    localHaloSpecs.remoteMpiRank = right;
 
     // The Tausch object, using its double version. The pointer type is of type 'Tausch', although using Tausch2D directly would also be possible here
     Tausch<double> *tausch = new Tausch2D<double>(MPI_DOUBLE, numBuffers, nullptr, MPI_COMM_WORLD);
 
     // Tell Tausch about the local and remote halo regions
-    tausch->setLocalHaloInfo(TAUSCH_CwC, 1, localHaloSpecs);
-    tausch->setRemoteHaloInfo(TAUSCH_CwC, 1, remoteHaloSpecs);
-
-    // After calling the above functions, the arrays can be safely deleted.
-    delete[] localHaloSpecs;
-    delete[] remoteHaloSpecs;
+    tausch->setLocalHaloInfo(TAUSCH_CwC, 1, &localHaloSpecs);
+    tausch->setRemoteHaloInfo(TAUSCH_CwC, 1, &remoteHaloSpecs);
 
     /*****************
      * HALO EXCHANGE *
