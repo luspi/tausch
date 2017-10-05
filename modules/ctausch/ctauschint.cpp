@@ -109,7 +109,7 @@ void tausch_packAndSend_int(CTauschInt *tC, TauschDeviceDirection flags, size_t 
 #endif
 
 #ifdef TAUSCH_OPENCL
-void tausch_recvAndUnpack_int(CTauschInt *tC, TauschDeviceDirection flags, size_t haloId, int *buf, TauschPackRegion region) {
+void tausch_recvAndUnpack_int(CTauschInt *tC, TauschDeviceDirection flags, size_t haloId, int *buf, cl_mem *bufcl, TauschPackRegion region) {
     Tausch<int> *t = reinterpret_cast<Tausch<int>*>(tC);
     if(bufcl == NULL)
         t->recvAndUnpack(flags, haloId, buf, region);
