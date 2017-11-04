@@ -26,11 +26,6 @@ else(not OPENCL)
     configure_file("${CMAKE_CURRENT_SOURCE_DIR}/modules/tausch_opencl_no.h" "${CMAKE_CURRENT_SOURCE_DIR}/modules/tausch_opencl.h" COPYONLY)
 endif(OPENCL)
 
-# find OpenMP
-find_package(OpenMP)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-
 # All headers and source files
 set(tausch_headers "tausch.h" "modules/tausch1d.h" "modules/tausch2d.h" "modules/tausch3d.h"
     "modules/ctausch/ctauschdouble.h" "modules/ctausch/ctauschfloat.h" "modules/ctausch/ctauschint.h" "modules/ctausch/ctauschunsignedint.h"
