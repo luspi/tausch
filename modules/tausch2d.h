@@ -633,60 +633,70 @@ public:
 #ifdef TAUSCH_OPENCL
     void setLocalHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setLocalHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setLocalHaloInfoGpuWithGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #endif
 
     void setRemoteHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #ifdef TAUSCH_OPENCL
     void setRemoteHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setRemoteHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setRemoteHaloInfoGpuWithGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #endif
 
     void postReceiveCpu(size_t haloId, int mpitag = -1);
 #ifdef TAUSCH_OPENCL
     void postReceiveCpuForGpu(size_t haloId, int msgtag = -1);
     void postReceiveGpu(size_t haloId, int msgtag = -1);
+    void postReceiveGpuWithGpu(size_t haloId, int msgtag = -1);
 #endif
 
     void postAllReceivesCpu(int *mpitag = nullptr);
 #ifdef TAUSCH_OPENCL
     void postAllReceivesCpuForGpu(int *msgtag = nullptr);
     void postAllReceivesGpu(int *msgtag = nullptr);
+    void postAllReceivesGpuWithGpu(int *msgtag = nullptr);
 #endif
 
     void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
 #ifdef TAUSCH_OPENCL
     void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
     void packSendBufferGpuToCpu(size_t haloId, size_t bufferId, cl::Buffer buf);
+    void packSendBufferGpuWithGpu(size_t haloId, size_t bufferId, cl::Buffer buf);
 #endif
 
     void sendCpu(size_t haloId, int mpitag = -1);
 #ifdef TAUSCH_OPENCL
     void sendCpuToGpu(size_t haloId, int msgtag);
     void sendGpuToCpu(size_t haloId, int msgtag);
+    void sendGpuWithGpu(size_t haloId, int msgtag);
 #endif
 
     void recvCpu(size_t haloId);
 #ifdef TAUSCH_OPENCL
     void recvGpuToCpu(size_t haloId);
     void recvCpuToGpu(size_t haloId);
+    void recvGpuWithGpu(size_t haloId);
 #endif
 
     void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
 #ifdef TAUSCH_OPENCL
     void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
     void unpackRecvBufferCpuToGpu(size_t haloId, size_t bufferId, cl::Buffer buf);
+    void unpackRecvBufferGpuWithGpu(size_t haloId, size_t bufferId, cl::Buffer buf);
 #endif
 
     void packAndSendCpu(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
 #ifdef TAUSCH_OPENCL
     void packAndSendCpuForGpu(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
     void packAndSendGpu(size_t haloId, cl::Buffer buf, int msgtag = -1);
+    void packAndSendGpuWithGpu(size_t haloId, cl::Buffer buf, int msgtag = -1);
 #endif
 
     void recvAndUnpackCpu(size_t haloId, buf_t *buf, TauschPackRegion region);
 #ifdef TAUSCH_OPENCL
     void recvAndUnpackCpuForGpu(size_t haloId, buf_t *buf, TauschPackRegion region);
     void recvAndUnpackGpu(size_t haloId, cl::Buffer buf);
+    void recvAndUnpackGpuWithGpu(size_t haloId, cl::Buffer buf);
 #endif
 
     /*!
@@ -698,46 +708,65 @@ private:
     MPI_Comm TAUSCH_COMM;
     int mpiRank, mpiSize;
 
-    size_t localHaloNumPartsCpu;
-    TauschHaloSpec *localHaloSpecsCpu;
-    size_t remoteHaloNumPartsCpu;
-    TauschHaloSpec *remoteHaloSpecsCpu;
+    size_t localHaloNumPartsCpuWithCpu;
+    TauschHaloSpec *localHaloSpecsCpuWithCpu;
+    size_t remoteHaloNumPartsCpuWithCpu;
+    TauschHaloSpec *remoteHaloSpecsCpuWithCpu;
 
     size_t numBuffers;
     size_t *valuesPerPointPerBuffer;
 
-    buf_t **mpiRecvBuffer;
-    buf_t **mpiSendBuffer;
-    MPI_Request *mpiRecvRequests;
-    MPI_Request *mpiSendRequests;
+    buf_t **mpiRecvBufferCpuWithCpu;
+    buf_t **mpiSendBufferCpuWithCpu;
+    MPI_Request *mpiRecvRequestsCpuWithCpu;
+    MPI_Request *mpiSendRequestsCpuWithCpu;
+
+    buf_t **mpiRecvBufferGpuWithGpu;
+    buf_t **mpiSendBufferGpuWithGpu;
+    MPI_Request *mpiRecvRequestsGpuWithGpu;
+    MPI_Request *mpiSendRequestsGpuWithGpu;
+
     MPI_Datatype mpiDataType;
 
-    bool *setupMpiSend;
-    bool *setupMpiRecv;
+    bool *setupMpiSendCpuWithCpu;
+    bool *setupMpiRecvCpuWithCpu;
+    bool *setupMpiSendGpuWithGpu;
+    bool *setupMpiRecvGpuWithGpu;
 
 #ifdef TAUSCH_OPENCL
 
-    std::atomic<buf_t> **cpuToGpuSendBuffer;
-    std::atomic<buf_t> **gpuToCpuSendBuffer;
-    buf_t **cpuToGpuRecvBuffer;
-    buf_t **gpuToCpuRecvBuffer;
-    cl::Buffer *cl_gpuToCpuSendBuffer;
-    cl::Buffer *cl_cpuToGpuRecvBuffer;
+    std::atomic<buf_t> **sendBufferCpuWithGpu;
+    std::atomic<buf_t> **sendBufferGpuWithCpu;
+    buf_t **recvBufferGpuWithCpu;
+    buf_t **recvBufferCpuWithGpu;
+    cl::Buffer *cl_sendBufferGpuWithCpu;
+    cl::Buffer *cl_recvBufferCpuWithGpu;
+    cl::Buffer *cl_sendBufferGpuWithGpu;
+    cl::Buffer *cl_recvBufferGpuWithGpu;
 
-    // gpu def
-    size_t localHaloNumPartsGpu;
-    TauschHaloSpec *localHaloSpecsGpu;
-    cl::Buffer *cl_localHaloSpecsGpu;
-    size_t remoteHaloNumPartsGpu;
-    TauschHaloSpec *remoteHaloSpecsGpu;
-    cl::Buffer *cl_remoteHaloSpecsGpu;
-    // cpu def
-    size_t localHaloNumPartsCpuForGpu;
-    TauschHaloSpec *localHaloSpecsCpuForGpu;
-    cl::Buffer *cl_localHaloSpecsCpuForGpu;
-    size_t remoteHaloNumPartsCpuForGpu;
-    TauschHaloSpec *remoteHaloSpecsCpuForGpu;
-    cl::Buffer *cl_remoteHaloSpecsCpuForGpu;
+    // gpu with cpu def
+    size_t localHaloNumPartsGpuWithCpu;
+    TauschHaloSpec *localHaloSpecsGpuWithCpu;
+    cl::Buffer *cl_localHaloSpecsGpuWithCpu;
+    size_t remoteHaloNumPartsGpuWithCpu;
+    TauschHaloSpec *remoteHaloSpecsGpuWithCpu;
+    cl::Buffer *cl_remoteHaloSpecsGpuWithCpu;
+
+    // cpu with gpu def
+    size_t localHaloNumPartsCpuWithGpu;
+    TauschHaloSpec *localHaloSpecsCpuWithGpu;
+    cl::Buffer *cl_localHaloSpecsCpuWithGpu;
+    size_t remoteHaloNumPartsCpuWithGpu;
+    TauschHaloSpec *remoteHaloSpecsCpuWithGpu;
+    cl::Buffer *cl_remoteHaloSpecsCpuWithGpu;
+
+    // gpu with gpu def
+    size_t localHaloNumPartsGpuWithGpu;
+    TauschHaloSpec *localHaloSpecsGpuWithGpu;
+    cl::Buffer *cl_localHaloSpecsGpuWithGpu;
+    size_t remoteHaloNumPartsGpuWithGpu;
+    TauschHaloSpec *remoteHaloSpecsGpuWithGpu;
+    cl::Buffer *cl_remoteHaloSpecsGpuWithGpu;
 
 
     cl::Buffer cl_valuesPerPointPerBuffer;
@@ -750,7 +779,7 @@ private:
 
     void setupOpenCL(bool giveOpenCLDeviceName);
     void compileKernels();
-    void syncCpuAndGpu();
+    void syncTwoThreads();
 
     int obtainRemoteId(int msgtag);
 
@@ -763,6 +792,11 @@ private:
 
     std::atomic<int> sync_counter[2];
     std::atomic<int> sync_lock[2];
+
+    bool setupCpuWithCpu;
+    bool setupCpuWithGpu;
+    bool setupGpuWithCpu;
+    bool setupGpuWithGpu;
 
 #endif
 

@@ -22,23 +22,88 @@ template <class buf_t> Tausch2D<buf_t>::Tausch2D(MPI_Datatype mpiDataType,
 
     this->mpiDataType = mpiDataType;
 
+    setupCpuWithCpu = false;
+    setupCpuWithGpu = false;
+    setupGpuWithCpu = false;
+    setupGpuWithGpu = false;
+
 }
 
 template <class buf_t> Tausch2D<buf_t>::~Tausch2D() {
-    for(int i = 0; i < localHaloNumPartsCpu; ++i)
-        delete[] mpiSendBuffer[i];
-    for(int i = 0; i < remoteHaloNumPartsCpu; ++i)
-        delete[] mpiRecvBuffer[i];
-    delete[] localHaloSpecsCpu;
-    delete[] mpiSendBuffer;
-    delete[] remoteHaloSpecsCpu;
-    delete[] mpiRecvBuffer;
 
-    delete[] mpiSendRequests;
-    delete[] mpiRecvRequests;
+    if(setupCpuWithCpu) {
 
-    delete[] setupMpiRecv;
-    delete[] setupMpiSend;
+        for(int i = 0; i < localHaloNumPartsCpuWithCpu; ++i)
+            delete[] mpiSendBufferCpuWithCpu[i];
+        delete[] localHaloSpecsCpuWithCpu;
+        delete[] mpiSendBufferCpuWithCpu;
+        delete[] mpiSendRequestsCpuWithCpu;
+        delete[] setupMpiSendCpuWithCpu;
+
+        for(int i = 0; i < remoteHaloNumPartsCpuWithCpu; ++i)
+            delete[] mpiRecvBufferCpuWithCpu[i];
+        delete[] remoteHaloSpecsCpuWithCpu;
+        delete[] mpiRecvBufferCpuWithCpu;
+        delete[] mpiRecvRequestsCpuWithCpu;
+        delete[] setupMpiRecvCpuWithCpu;
+
+    }
+
+    if(setupCpuWithGpu) {
+
+        for(int i = 0; i < localHaloNumPartsCpuWithGpu; ++i)
+            delete[] sendBufferCpuWithGpu[i];
+        delete[] localHaloSpecsCpuWithGpu;
+        delete[] sendBufferCpuWithGpu;
+        delete[] msgtagsCpuToGpu;
+
+        for(int i = 0; i < remoteHaloNumPartsCpuWithGpu; ++i)
+            delete[] recvBufferCpuWithGpu[i];
+        delete[] remoteHaloSpecsCpuWithGpu;
+        delete[] recvBufferCpuWithGpu;
+
+    }
+
+    if(setupGpuWithCpu) {
+
+        for(int i = 0; i < localHaloNumPartsGpuWithCpu; ++i)
+            delete[] sendBufferGpuWithCpu[i];
+        delete[] localHaloSpecsGpuWithCpu;
+        delete[] sendBufferGpuWithCpu;
+        delete[] msgtagsGpuToCpu;
+        delete[] cl_sendBufferGpuWithCpu;
+        delete[] cl_localHaloSpecsGpuWithCpu;
+
+        for(int i = 0; i < remoteHaloNumPartsGpuWithCpu; ++i)
+            delete[] recvBufferGpuWithCpu[i];
+        delete[] remoteHaloSpecsGpuWithCpu;
+        delete[] recvBufferGpuWithCpu;
+        delete[] cl_recvBufferCpuWithGpu;
+        delete[] cl_remoteHaloSpecsGpuWithCpu;
+
+    }
+
+    if(setupGpuWithGpu) {
+
+        for(int i = 0; i < localHaloNumPartsGpuWithGpu; ++i)
+            delete[] mpiSendBufferGpuWithGpu[i];
+        delete[] localHaloSpecsGpuWithGpu;
+        delete[] mpiSendBufferGpuWithGpu;
+        delete[] mpiSendRequestsGpuWithGpu;
+        delete[] setupMpiSendGpuWithGpu;
+        delete[] cl_sendBufferGpuWithGpu;
+        delete[] cl_localHaloSpecsGpuWithGpu;
+
+        for(int i = 0; i < remoteHaloNumPartsGpuWithGpu; ++i)
+            delete[] mpiRecvBufferGpuWithGpu[i];
+        delete[] remoteHaloSpecsGpuWithGpu;
+        delete[] mpiRecvBufferGpuWithGpu;
+        delete[] mpiRecvRequestsGpuWithGpu;
+        delete[] setupMpiRecvGpuWithGpu;
+        delete[] cl_recvBufferGpuWithGpu;
+        delete[] cl_remoteHaloSpecsGpuWithGpu;
+
+    }
 
     delete[] valuesPerPointPerBuffer;
 }
@@ -56,6 +121,8 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfo(TauschDeviceDirect
         return setLocalHaloInfoCpuForGpu(numHaloParts, haloSpecs);
     if(flags == TAUSCH_GPU+TAUSCH_WITHCPU)
         return setLocalHaloInfoGpu(numHaloParts, haloSpecs);
+    if(flags == TAUSCH_GPU+TAUSCH_WITHGPU)
+        return setLocalHaloInfoGpuWithGpu(numHaloParts, haloSpecs);
 #endif
 
     std::cerr << "Tausch2D::setLocalHaloInfo :: ERROR :: Unknown device specification provided: " << flags << std::endl;
@@ -71,6 +138,8 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfo(TauschDeviceDirec
         return setRemoteHaloInfoCpuForGpu(numHaloParts, haloSpecs);
     if(flags == TAUSCH_GPU+TAUSCH_WITHCPU)
         return setRemoteHaloInfoGpu(numHaloParts, haloSpecs);
+    if(flags == TAUSCH_GPU+TAUSCH_WITHGPU)
+        return setRemoteHaloInfoGpuWithGpu(numHaloParts, haloSpecs);
 #endif
 
     std::cerr << "Tausch2D::setRemoteHaloInfo :: ERROR :: Unknown device specification provided: " << flags << std::endl;
@@ -86,6 +155,8 @@ template <class buf_t> void Tausch2D<buf_t>::postReceive(TauschDeviceDirection f
         return postReceiveCpuForGpu(haloId, msgtag);
     if(flags == TAUSCH_GPU+TAUSCH_WITHCPU)
         return postReceiveGpu(haloId, msgtag);
+    if(flags == TAUSCH_GPU+TAUSCH_WITHGPU)
+        return postReceiveGpuWithGpu(haloId, msgtag);
 #endif
 
     std::cerr << "Tausch2D::postReceive :: ERROR :: Unknown device specification provided: " << flags << std::endl;
@@ -101,6 +172,8 @@ template <class buf_t> void Tausch2D<buf_t>::postAllReceives(TauschDeviceDirecti
         return postAllReceivesCpuForGpu(msgtag);
     if(flags == TAUSCH_GPU+TAUSCH_WITHCPU)
         return postAllReceivesGpu(msgtag);
+    if(flags == TAUSCH_GPU+TAUSCH_WITHGPU)
+        return postAllReceivesGpuWithGpu(msgtag);
 #endif
 
     std::cerr << "Tausch2D::postAllReceives :: ERROR :: Unknown device specification provided: " << flags << std::endl;
@@ -127,8 +200,8 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBuffer(TauschDeviceDirectio
         TauschPackRegion region;
         region.x = 0;
         region.y = 0;
-        region.width = localHaloSpecsCpu[haloId].haloWidth;
-        region.height = localHaloSpecsCpu[haloId].haloHeight;
+        region.width = localHaloSpecsCpuWithCpu[haloId].haloWidth;
+        region.height = localHaloSpecsCpuWithCpu[haloId].haloHeight;
         return packSendBufferCpu(haloId, bufferId, buf, region);
     }
 #ifdef TAUSCH_OPENCL
@@ -136,8 +209,8 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBuffer(TauschDeviceDirectio
         TauschPackRegion region;
         region.x = 0;
         region.y = 0;
-        region.width = localHaloSpecsCpuForGpu[haloId].haloWidth;
-        region.height = localHaloSpecsCpuForGpu[haloId].haloHeight;
+        region.width = localHaloSpecsCpuWithGpu[haloId].haloWidth;
+        region.height = localHaloSpecsCpuWithGpu[haloId].haloHeight;
         return packSendBufferCpuToGpu(haloId, bufferId, buf, region);
     }
 #endif
@@ -151,6 +224,8 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBuffer(TauschDeviceDirectio
 
     if(flags == TAUSCH_GPU+TAUSCH_WITHCPU)
         return packSendBufferGpuToCpu(haloId, bufferId, buf);
+    if(flags == TAUSCH_GPU+TAUSCH_WITHGPU)
+        return packSendBufferGpuWithGpu(haloId, bufferId, buf);
 
     std::cerr << "Tausch2D::postReceive(cl::Buffer) :: ERROR :: Unknown device specification provided: " << flags << std::endl;
 
@@ -166,6 +241,8 @@ template <class buf_t> void Tausch2D<buf_t>::send(TauschDeviceDirection flags, s
         return sendCpuToGpu(haloId, msgtag);
     if(flags == TAUSCH_GPU+TAUSCH_WITHCPU)
         return sendGpuToCpu(haloId, msgtag);
+    if(flags == TAUSCH_GPU+TAUSCH_WITHGPU)
+        return sendGpuWithGpu(haloId, msgtag);
 #endif
 
     std::cerr << "Tausch2D::send :: ERROR :: Unknown device specification provided: " << flags << std::endl;
@@ -181,6 +258,8 @@ template <class buf_t> void Tausch2D<buf_t>::recv(TauschDeviceDirection flags, s
         return recvGpuToCpu(haloId);
     if(flags == TAUSCH_GPU+TAUSCH_WITHCPU)
         return recvCpuToGpu(haloId);
+    if(flags == TAUSCH_GPU+TAUSCH_WITHGPU)
+        return recvGpuWithGpu(haloId);
 #endif
 
     std::cerr << "Tausch2D::recv :: ERROR :: Unknown device specification provided: " << flags << std::endl;
@@ -207,8 +286,8 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBuffer(TauschDeviceDirect
         TauschPackRegion region;
         region.x = 0;
         region.y = 0;
-        region.width = remoteHaloSpecsCpu[haloId].haloWidth;
-        region.height = remoteHaloSpecsCpu[haloId].haloHeight;
+        region.width = remoteHaloSpecsCpuWithCpu[haloId].haloWidth;
+        region.height = remoteHaloSpecsCpuWithCpu[haloId].haloHeight;
         return unpackRecvBufferCpu(haloId, bufferId, buf, region);
     }
 #ifdef TAUSCH_OPENCL
@@ -216,8 +295,8 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBuffer(TauschDeviceDirect
         TauschPackRegion region;
         region.x = 0;
         region.y = 0;
-        region.width = remoteHaloSpecsCpuForGpu[haloId].haloWidth;
-        region.height = remoteHaloSpecsCpuForGpu[haloId].haloHeight;
+        region.width = remoteHaloSpecsCpuWithGpu[haloId].haloWidth;
+        region.height = remoteHaloSpecsCpuWithGpu[haloId].haloHeight;
         return unpackRecvBufferGpuToCpu(haloId, bufferId, buf, region);
     }
 #endif
@@ -230,6 +309,8 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBuffer(TauschDeviceDirect
 
     if(flags == TAUSCH_GPU+TAUSCH_WITHCPU)
         return unpackRecvBufferCpuToGpu(haloId, bufferId, buf);
+    if(flags == TAUSCH_GPU+TAUSCH_WITHGPU)
+        return unpackRecvBufferGpuWithGpu(haloId, bufferId, buf);
 
     std::cerr << "Tausch2D::recv(cl::Buffer) :: ERROR :: Unknown device specification provided: " << flags << std::endl;
 
@@ -253,8 +334,8 @@ template <class buf_t> void Tausch2D<buf_t>::packAndSend(TauschDeviceDirection f
         TauschPackRegion region;
         region.x = 0;
         region.y = 0;
-        region.width = localHaloSpecsCpu[haloId].haloWidth;
-        region.height = localHaloSpecsCpu[haloId].haloHeight;
+        region.width = localHaloSpecsCpuWithCpu[haloId].haloWidth;
+        region.height = localHaloSpecsCpuWithCpu[haloId].haloHeight;
         return packAndSendCpu(haloId, buf, region, msgtag);
     }
 #ifdef TAUSCH_OPENCL
@@ -262,8 +343,8 @@ template <class buf_t> void Tausch2D<buf_t>::packAndSend(TauschDeviceDirection f
         TauschPackRegion region;
         region.x = 0;
         region.y = 0;
-        region.width = localHaloSpecsCpuForGpu[haloId].haloWidth;
-        region.height = localHaloSpecsCpuForGpu[haloId].haloHeight;
+        region.width = localHaloSpecsCpuWithGpu[haloId].haloWidth;
+        region.height = localHaloSpecsCpuWithGpu[haloId].haloHeight;
         return packAndSendCpuForGpu(haloId, buf, region, msgtag);
     }
 #endif
@@ -275,6 +356,8 @@ template <class buf_t> void Tausch2D<buf_t>::packAndSend(TauschDeviceDirection f
 
     if(flags == TAUSCH_GPU+TAUSCH_WITHCPU)
         return packAndSendGpu(haloId, buf, msgtag);
+    if(flags == TAUSCH_GPU+TAUSCH_WITHGPU)
+        return packAndSendGpuWithGpu(haloId, buf, msgtag);
 
 }
 #endif
@@ -296,8 +379,8 @@ template <class buf_t> void Tausch2D<buf_t>::recvAndUnpack(TauschDeviceDirection
         TauschPackRegion region;
         region.x = 0;
         region.y = 0;
-        region.width = remoteHaloSpecsCpu[haloId].haloWidth;
-        region.height = remoteHaloSpecsCpu[haloId].haloHeight;
+        region.width = remoteHaloSpecsCpuWithCpu[haloId].haloWidth;
+        region.height = remoteHaloSpecsCpuWithCpu[haloId].haloHeight;
         return recvAndUnpackCpu(haloId, buf, region);
     }
 #ifdef TAUSCH_OPENCL
@@ -305,8 +388,8 @@ template <class buf_t> void Tausch2D<buf_t>::recvAndUnpack(TauschDeviceDirection
         TauschPackRegion region;
         region.x = 0;
         region.y = 0;
-        region.width = remoteHaloSpecsCpuForGpu[haloId].haloWidth;
-        region.height = remoteHaloSpecsCpuForGpu[haloId].haloHeight;
+        region.width = remoteHaloSpecsCpuWithGpu[haloId].haloWidth;
+        region.height = remoteHaloSpecsCpuWithGpu[haloId].haloHeight;
         return recvAndUnpackCpuForGpu(haloId, buf, region);
     }
 #endif
@@ -318,6 +401,8 @@ template <class buf_t> void Tausch2D<buf_t>::recvAndUnpack(TauschDeviceDirection
 
     if(flags == TAUSCH_GPU+TAUSCH_WITHCPU)
         return recvAndUnpackGpu(haloId, buf);
+    if(flags == TAUSCH_GPU+TAUSCH_WITHGPU)
+        return recvAndUnpackGpuWithGpu(haloId, buf);
 
 }
 #endif
@@ -401,28 +486,30 @@ template <class buf_t> TauschHaloSpec Tausch2D<buf_t>::createFilledHaloSpec(size
 
 template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) {
 
-    localHaloNumPartsCpu = numHaloParts;
-    localHaloSpecsCpu = new TauschHaloSpec[numHaloParts];
-    mpiSendBuffer = new buf_t*[numHaloParts];
-    mpiSendRequests = new MPI_Request[numHaloParts];
-    setupMpiSend = new bool[numHaloParts];
+    localHaloNumPartsCpuWithCpu = numHaloParts;
+    localHaloSpecsCpuWithCpu = new TauschHaloSpec[numHaloParts];
+    mpiSendBufferCpuWithCpu = new buf_t*[numHaloParts];
+    mpiSendRequestsCpuWithCpu = new MPI_Request[numHaloParts];
+    setupMpiSendCpuWithCpu = new bool[numHaloParts];
+
+    setupCpuWithCpu = true;
 
     for(int i = 0; i < numHaloParts; ++i) {
 
-        localHaloSpecsCpu[i].bufferWidth = haloSpecs[i].bufferWidth;
-        localHaloSpecsCpu[i].bufferHeight = haloSpecs[i].bufferHeight;
-        localHaloSpecsCpu[i].haloX = haloSpecs[i].haloX;
-        localHaloSpecsCpu[i].haloY = haloSpecs[i].haloY;
-        localHaloSpecsCpu[i].haloWidth = haloSpecs[i].haloWidth;
-        localHaloSpecsCpu[i].haloHeight = haloSpecs[i].haloHeight;
-        localHaloSpecsCpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
+        localHaloSpecsCpuWithCpu[i].bufferWidth = haloSpecs[i].bufferWidth;
+        localHaloSpecsCpuWithCpu[i].bufferHeight = haloSpecs[i].bufferHeight;
+        localHaloSpecsCpuWithCpu[i].haloX = haloSpecs[i].haloX;
+        localHaloSpecsCpuWithCpu[i].haloY = haloSpecs[i].haloY;
+        localHaloSpecsCpuWithCpu[i].haloWidth = haloSpecs[i].haloWidth;
+        localHaloSpecsCpuWithCpu[i].haloHeight = haloSpecs[i].haloHeight;
+        localHaloSpecsCpuWithCpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
             bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight;
-        mpiSendBuffer[i] = new buf_t[bufsize]{};
+        mpiSendBufferCpuWithCpu[i] = new buf_t[bufsize]{};
 
-        setupMpiSend[i] = false;
+        setupMpiSendCpuWithCpu[i] = false;
 
     }
 
@@ -431,25 +518,27 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoCpu(size_t numHaloP
 #ifdef TAUSCH_OPENCL
 template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) {
 
-    localHaloNumPartsCpuForGpu = numHaloParts;
-    localHaloSpecsCpuForGpu = new TauschHaloSpec[numHaloParts];
-    cpuToGpuSendBuffer = new std::atomic<buf_t>*[numHaloParts];
+    localHaloNumPartsCpuWithGpu = numHaloParts;
+    localHaloSpecsCpuWithGpu = new TauschHaloSpec[numHaloParts];
+    sendBufferCpuWithGpu = new std::atomic<buf_t>*[numHaloParts];
     msgtagsCpuToGpu = new std::atomic<int>[numHaloParts]{};
+
+    setupCpuWithGpu = true;
 
     for(int i = 0; i < numHaloParts; ++i) {
 
-        localHaloSpecsCpuForGpu[i].bufferWidth = haloSpecs[i].bufferWidth;
-        localHaloSpecsCpuForGpu[i].bufferHeight = haloSpecs[i].bufferHeight;
-        localHaloSpecsCpuForGpu[i].haloX = haloSpecs[i].haloX;
-        localHaloSpecsCpuForGpu[i].haloY = haloSpecs[i].haloY;
-        localHaloSpecsCpuForGpu[i].haloWidth = haloSpecs[i].haloWidth;
-        localHaloSpecsCpuForGpu[i].haloHeight = haloSpecs[i].haloHeight;
-        localHaloSpecsCpuForGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
+        localHaloSpecsCpuWithGpu[i].bufferWidth = haloSpecs[i].bufferWidth;
+        localHaloSpecsCpuWithGpu[i].bufferHeight = haloSpecs[i].bufferHeight;
+        localHaloSpecsCpuWithGpu[i].haloX = haloSpecs[i].haloX;
+        localHaloSpecsCpuWithGpu[i].haloY = haloSpecs[i].haloY;
+        localHaloSpecsCpuWithGpu[i].haloWidth = haloSpecs[i].haloWidth;
+        localHaloSpecsCpuWithGpu[i].haloHeight = haloSpecs[i].haloHeight;
+        localHaloSpecsCpuWithGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
             bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight;
-        cpuToGpuSendBuffer[i] = new std::atomic<buf_t>[bufsize]{};
+        sendBufferCpuWithGpu[i] = new std::atomic<buf_t>[bufsize]{};
 
     }
 
@@ -457,14 +546,16 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoCpuForGpu(size_t nu
 
 template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) {
 
-    localHaloNumPartsGpu = numHaloParts;
-    localHaloSpecsGpu = new TauschHaloSpec[numHaloParts];
-    gpuToCpuSendBuffer = new std::atomic<buf_t>*[numHaloParts];
+    localHaloNumPartsGpuWithCpu = numHaloParts;
+    localHaloSpecsGpuWithCpu = new TauschHaloSpec[numHaloParts];
+    sendBufferGpuWithCpu = new std::atomic<buf_t>*[numHaloParts];
     msgtagsGpuToCpu = new std::atomic<int>[numHaloParts]{};
 
+    setupGpuWithCpu = true;
+
     try {
-        cl_gpuToCpuSendBuffer = new cl::Buffer[numHaloParts];
-        cl_localHaloSpecsGpu = new cl::Buffer[numHaloParts];
+        cl_sendBufferGpuWithCpu = new cl::Buffer[numHaloParts];
+        cl_localHaloSpecsGpuWithCpu = new cl::Buffer[numHaloParts];
     } catch(cl::Error error) {
         std::cerr << "Tausch2D :: setLocalHaloInfoGpu() (1) :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
@@ -472,27 +563,78 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGpu(size_t numHaloP
 
     for(int i = 0; i < numHaloParts; ++i) {
 
-        localHaloSpecsGpu[i].bufferWidth = haloSpecs[i].bufferWidth;
-        localHaloSpecsGpu[i].bufferHeight = haloSpecs[i].bufferHeight;
-        localHaloSpecsGpu[i].haloX = haloSpecs[i].haloX;
-        localHaloSpecsGpu[i].haloY = haloSpecs[i].haloY;
-        localHaloSpecsGpu[i].haloWidth = haloSpecs[i].haloWidth;
-        localHaloSpecsGpu[i].haloHeight = haloSpecs[i].haloHeight;
-        localHaloSpecsGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
+        localHaloSpecsGpuWithCpu[i].bufferWidth = haloSpecs[i].bufferWidth;
+        localHaloSpecsGpuWithCpu[i].bufferHeight = haloSpecs[i].bufferHeight;
+        localHaloSpecsGpuWithCpu[i].haloX = haloSpecs[i].haloX;
+        localHaloSpecsGpuWithCpu[i].haloY = haloSpecs[i].haloY;
+        localHaloSpecsGpuWithCpu[i].haloWidth = haloSpecs[i].haloWidth;
+        localHaloSpecsGpuWithCpu[i].haloHeight = haloSpecs[i].haloHeight;
+        localHaloSpecsGpuWithCpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
             bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight;
-        gpuToCpuSendBuffer[i] = new std::atomic<buf_t>[bufsize]{};
+        sendBufferGpuWithCpu[i] = new std::atomic<buf_t>[bufsize]{};
 
         size_t tmpHaloSpecs[6] = {haloSpecs[i].haloX, haloSpecs[i].haloY, haloSpecs[i].haloWidth, haloSpecs[i].haloHeight,
                                   haloSpecs[i].bufferWidth, haloSpecs[i].bufferHeight};
 
         try {
-            cl_gpuToCpuSendBuffer[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, bufsize*sizeof(buf_t));
-            cl_localHaloSpecsGpu[i] = cl::Buffer(cl_context, &tmpHaloSpecs[0], &tmpHaloSpecs[6], true);
+            cl_sendBufferGpuWithCpu[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, bufsize*sizeof(buf_t));
+            cl_localHaloSpecsGpuWithCpu[i] = cl::Buffer(cl_context, &tmpHaloSpecs[0], &tmpHaloSpecs[6], true);
         } catch(cl::Error error) {
             std::cerr << "Tausch2D :: setLocalHaloInfoGpu() (2) :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")"
+                      << std::endl;
+            exit(1);
+        }
+
+    }
+
+}
+
+template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGpuWithGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+
+    localHaloNumPartsGpuWithGpu = numHaloParts;
+    localHaloSpecsGpuWithGpu = new TauschHaloSpec[numHaloParts];
+    mpiSendBufferGpuWithGpu = new buf_t*[numHaloParts];
+    mpiSendRequestsGpuWithGpu = new MPI_Request[numHaloParts];
+    setupMpiSendGpuWithGpu = new bool[numHaloParts];
+
+    setupGpuWithGpu = true;
+
+    try {
+        cl_sendBufferGpuWithGpu = new cl::Buffer[numHaloParts];
+        cl_localHaloSpecsGpuWithGpu = new cl::Buffer[numHaloParts];
+    } catch(cl::Error error) {
+        std::cerr << "Tausch2D :: setLocalHaloInfoGpuWithGpu() (1) :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
+
+    for(int i = 0; i < numHaloParts; ++i) {
+
+        localHaloSpecsGpuWithGpu[i].bufferWidth = haloSpecs[i].bufferWidth;
+        localHaloSpecsGpuWithGpu[i].bufferHeight = haloSpecs[i].bufferHeight;
+        localHaloSpecsGpuWithGpu[i].haloX = haloSpecs[i].haloX;
+        localHaloSpecsGpuWithGpu[i].haloY = haloSpecs[i].haloY;
+        localHaloSpecsGpuWithGpu[i].haloWidth = haloSpecs[i].haloWidth;
+        localHaloSpecsGpuWithGpu[i].haloHeight = haloSpecs[i].haloHeight;
+        localHaloSpecsGpuWithGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
+
+        size_t bufsize = 0;
+        for(int n = 0; n < numBuffers; ++n)
+            bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight;
+        mpiSendBufferGpuWithGpu[i] = new buf_t[bufsize]{};
+
+        setupMpiSendGpuWithGpu[i] = false;
+
+        size_t tmpHaloSpecs[6] = {haloSpecs[i].haloX, haloSpecs[i].haloY, haloSpecs[i].haloWidth, haloSpecs[i].haloHeight,
+                                  haloSpecs[i].bufferWidth, haloSpecs[i].bufferHeight};
+
+        try {
+            cl_sendBufferGpuWithGpu[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, bufsize*sizeof(buf_t));
+            cl_localHaloSpecsGpuWithGpu[i] = cl::Buffer(cl_context, &tmpHaloSpecs[0], &tmpHaloSpecs[6], true);
+        } catch(cl::Error error) {
+            std::cerr << "Tausch2D :: setLocalHaloInfoGpuWithGpu() (2) :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")"
                       << std::endl;
             exit(1);
         }
@@ -508,28 +650,28 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGpu(size_t numHaloP
 
 template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) {
 
-    remoteHaloNumPartsCpu = numHaloParts;
-    remoteHaloSpecsCpu = new TauschHaloSpec[numHaloParts];
-    mpiRecvBuffer = new buf_t*[numHaloParts];
-    mpiRecvRequests = new MPI_Request[numHaloParts];
-    setupMpiRecv = new bool[numHaloParts];
+    remoteHaloNumPartsCpuWithCpu = numHaloParts;
+    remoteHaloSpecsCpuWithCpu = new TauschHaloSpec[numHaloParts];
+    mpiRecvBufferCpuWithCpu = new buf_t*[numHaloParts];
+    mpiRecvRequestsCpuWithCpu = new MPI_Request[numHaloParts];
+    setupMpiRecvCpuWithCpu = new bool[numHaloParts];
 
     for(int i = 0; i < numHaloParts; ++i) {
 
-        remoteHaloSpecsCpu[i].bufferWidth = haloSpecs[i].bufferWidth;
-        remoteHaloSpecsCpu[i].bufferHeight = haloSpecs[i].bufferHeight;
-        remoteHaloSpecsCpu[i].haloX = haloSpecs[i].haloX;
-        remoteHaloSpecsCpu[i].haloY = haloSpecs[i].haloY;
-        remoteHaloSpecsCpu[i].haloWidth = haloSpecs[i].haloWidth;
-        remoteHaloSpecsCpu[i].haloHeight = haloSpecs[i].haloHeight;
-        remoteHaloSpecsCpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
+        remoteHaloSpecsCpuWithCpu[i].bufferWidth = haloSpecs[i].bufferWidth;
+        remoteHaloSpecsCpuWithCpu[i].bufferHeight = haloSpecs[i].bufferHeight;
+        remoteHaloSpecsCpuWithCpu[i].haloX = haloSpecs[i].haloX;
+        remoteHaloSpecsCpuWithCpu[i].haloY = haloSpecs[i].haloY;
+        remoteHaloSpecsCpuWithCpu[i].haloWidth = haloSpecs[i].haloWidth;
+        remoteHaloSpecsCpuWithCpu[i].haloHeight = haloSpecs[i].haloHeight;
+        remoteHaloSpecsCpuWithCpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
             bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight;
-        mpiRecvBuffer[i] = new buf_t[bufsize]{};
+        mpiRecvBufferCpuWithCpu[i] = new buf_t[bufsize]{};
 
-        setupMpiRecv[i] = false;
+        setupMpiRecvCpuWithCpu[i] = false;
 
     }
 
@@ -538,24 +680,24 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCpu(size_t numHalo
 #ifdef TAUSCH_OPENCL
 template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) {
 
-    remoteHaloNumPartsCpuForGpu = numHaloParts;
-    remoteHaloSpecsCpuForGpu = new TauschHaloSpec[numHaloParts];
-    gpuToCpuRecvBuffer = new buf_t*[numHaloParts];
+    remoteHaloNumPartsCpuWithGpu = numHaloParts;
+    remoteHaloSpecsCpuWithGpu = new TauschHaloSpec[numHaloParts];
+    recvBufferCpuWithGpu = new buf_t*[numHaloParts];
 
     for(int i = 0; i < numHaloParts; ++i) {
 
-        remoteHaloSpecsCpuForGpu[i].bufferWidth = haloSpecs[i].bufferWidth;
-        remoteHaloSpecsCpuForGpu[i].bufferHeight = haloSpecs[i].bufferHeight;
-        remoteHaloSpecsCpuForGpu[i].haloX = haloSpecs[i].haloX;
-        remoteHaloSpecsCpuForGpu[i].haloY = haloSpecs[i].haloY;
-        remoteHaloSpecsCpuForGpu[i].haloWidth = haloSpecs[i].haloWidth;
-        remoteHaloSpecsCpuForGpu[i].haloHeight = haloSpecs[i].haloHeight;
-        remoteHaloSpecsCpuForGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
+        remoteHaloSpecsCpuWithGpu[i].bufferWidth = haloSpecs[i].bufferWidth;
+        remoteHaloSpecsCpuWithGpu[i].bufferHeight = haloSpecs[i].bufferHeight;
+        remoteHaloSpecsCpuWithGpu[i].haloX = haloSpecs[i].haloX;
+        remoteHaloSpecsCpuWithGpu[i].haloY = haloSpecs[i].haloY;
+        remoteHaloSpecsCpuWithGpu[i].haloWidth = haloSpecs[i].haloWidth;
+        remoteHaloSpecsCpuWithGpu[i].haloHeight = haloSpecs[i].haloHeight;
+        remoteHaloSpecsCpuWithGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
             bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight;
-        gpuToCpuRecvBuffer[i] = new buf_t[bufsize];
+        recvBufferCpuWithGpu[i] = new buf_t[bufsize];
 
     }
 
@@ -563,13 +705,13 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCpuForGpu(size_t n
 
 template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) {
 
-    remoteHaloNumPartsGpu = numHaloParts;
-    remoteHaloSpecsGpu = new TauschHaloSpec[numHaloParts];
-    cpuToGpuRecvBuffer = new buf_t*[numHaloParts];
+    remoteHaloNumPartsGpuWithCpu = numHaloParts;
+    remoteHaloSpecsGpuWithCpu = new TauschHaloSpec[numHaloParts];
+    recvBufferGpuWithCpu = new buf_t*[numHaloParts];
 
     try {
-        cl_cpuToGpuRecvBuffer = new cl::Buffer[remoteHaloNumPartsGpu];
-        cl_remoteHaloSpecsGpu = new cl::Buffer[numHaloParts];
+        cl_recvBufferCpuWithGpu = new cl::Buffer[remoteHaloNumPartsGpuWithCpu];
+        cl_remoteHaloSpecsGpuWithCpu = new cl::Buffer[numHaloParts];
     } catch(cl::Error error) {
         std::cerr << "Tausch2D :: enableOpenCL() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
@@ -577,27 +719,75 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoGpu(size_t numHalo
 
     for(int i = 0; i < numHaloParts; ++i) {
 
-        remoteHaloSpecsGpu[i].bufferWidth = haloSpecs[i].bufferWidth;
-        remoteHaloSpecsGpu[i].bufferHeight = haloSpecs[i].bufferHeight;
-        remoteHaloSpecsGpu[i].haloX = haloSpecs[i].haloX;
-        remoteHaloSpecsGpu[i].haloY = haloSpecs[i].haloY;
-        remoteHaloSpecsGpu[i].haloWidth = haloSpecs[i].haloWidth;
-        remoteHaloSpecsGpu[i].haloHeight = haloSpecs[i].haloHeight;
-        remoteHaloSpecsGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
+        remoteHaloSpecsGpuWithCpu[i].bufferWidth = haloSpecs[i].bufferWidth;
+        remoteHaloSpecsGpuWithCpu[i].bufferHeight = haloSpecs[i].bufferHeight;
+        remoteHaloSpecsGpuWithCpu[i].haloX = haloSpecs[i].haloX;
+        remoteHaloSpecsGpuWithCpu[i].haloY = haloSpecs[i].haloY;
+        remoteHaloSpecsGpuWithCpu[i].haloWidth = haloSpecs[i].haloWidth;
+        remoteHaloSpecsGpuWithCpu[i].haloHeight = haloSpecs[i].haloHeight;
+        remoteHaloSpecsGpuWithCpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
             bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight;
-        cpuToGpuRecvBuffer[i] = new buf_t[bufsize];
+        recvBufferGpuWithCpu[i] = new buf_t[bufsize];
 
         size_t tmpHaloSpecs[6] = {haloSpecs[i].haloX, haloSpecs[i].haloY, haloSpecs[i].haloWidth, haloSpecs[i].haloHeight,
                                   haloSpecs[i].bufferWidth, haloSpecs[i].bufferHeight, };
 
         try {
-            cl_cpuToGpuRecvBuffer[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, bufsize*sizeof(double));
-            cl_remoteHaloSpecsGpu[i] = cl::Buffer(cl_context, &tmpHaloSpecs[0], &tmpHaloSpecs[6], true);
+            cl_recvBufferCpuWithGpu[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, bufsize*sizeof(double));
+            cl_remoteHaloSpecsGpuWithCpu[i] = cl::Buffer(cl_context, &tmpHaloSpecs[0], &tmpHaloSpecs[6], true);
         } catch(cl::Error error) {
             std::cerr << "Tausch2D :: setRemoteHaloInfo() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+            exit(1);
+        }
+
+    }
+
+}
+
+template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoGpuWithGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+
+    remoteHaloNumPartsGpuWithGpu = numHaloParts;
+    remoteHaloSpecsGpuWithGpu = new TauschHaloSpec[numHaloParts];
+    mpiRecvBufferGpuWithGpu = new buf_t*[numHaloParts];
+    mpiRecvRequestsGpuWithGpu = new MPI_Request[numHaloParts];
+    setupMpiRecvGpuWithGpu = new bool[numHaloParts];
+
+    try {
+        cl_recvBufferGpuWithGpu = new cl::Buffer[remoteHaloNumPartsGpuWithGpu];
+        cl_remoteHaloSpecsGpuWithGpu = new cl::Buffer[numHaloParts];
+    } catch(cl::Error error) {
+        std::cerr << "Tausch2D :: setRemoteHaloInfoGpuWithGpu() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
+
+    for(int i = 0; i < numHaloParts; ++i) {
+
+        remoteHaloSpecsGpuWithGpu[i].bufferWidth = haloSpecs[i].bufferWidth;
+        remoteHaloSpecsGpuWithGpu[i].bufferHeight = haloSpecs[i].bufferHeight;
+        remoteHaloSpecsGpuWithGpu[i].haloX = haloSpecs[i].haloX;
+        remoteHaloSpecsGpuWithGpu[i].haloY = haloSpecs[i].haloY;
+        remoteHaloSpecsGpuWithGpu[i].haloWidth = haloSpecs[i].haloWidth;
+        remoteHaloSpecsGpuWithGpu[i].haloHeight = haloSpecs[i].haloHeight;
+        remoteHaloSpecsGpuWithGpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
+
+        size_t bufsize = 0;
+        for(int n = 0; n < numBuffers; ++n)
+            bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight;
+        mpiRecvBufferGpuWithGpu[i] = new buf_t[bufsize]{};
+
+        setupMpiRecvGpuWithGpu[i] = false;
+
+        size_t tmpHaloSpecs[6] = {haloSpecs[i].haloX, haloSpecs[i].haloY, haloSpecs[i].haloWidth, haloSpecs[i].haloHeight,
+                                  haloSpecs[i].bufferWidth, haloSpecs[i].bufferHeight, };
+
+        try {
+            cl_recvBufferGpuWithGpu[i] = cl::Buffer(cl_context, CL_MEM_READ_WRITE, bufsize*sizeof(double));
+            cl_remoteHaloSpecsGpuWithGpu[i] = cl::Buffer(cl_context, &tmpHaloSpecs[0], &tmpHaloSpecs[6], true);
+        } catch(cl::Error error) {
+            std::cerr << "Tausch2D :: setRemoteHaloInfoGpuWithGpu() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
             exit(1);
         }
 
@@ -612,7 +802,7 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoGpu(size_t numHalo
 
 template <class buf_t> void Tausch2D<buf_t>::postReceiveCpu(size_t haloId, int mpitag) {
 
-    if(!setupMpiRecv[haloId]) {
+    if(!setupMpiRecvCpuWithCpu[haloId]) {
 
         if(mpitag == -1) {
             std::cerr << "[Tausch2D] ERROR: MPI_Recv for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!"
@@ -620,18 +810,18 @@ template <class buf_t> void Tausch2D<buf_t>::postReceiveCpu(size_t haloId, int m
             exit(1);
         }
 
-        setupMpiRecv[haloId] = true;
+        setupMpiRecvCpuWithCpu[haloId] = true;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsCpu[haloId].haloWidth*remoteHaloSpecsCpu[haloId].haloHeight;
+            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsCpuWithCpu[haloId].haloWidth*remoteHaloSpecsCpuWithCpu[haloId].haloHeight;
 
-        MPI_Recv_init(&mpiRecvBuffer[haloId][0], bufsize, mpiDataType,
-                      remoteHaloSpecsCpu[haloId].remoteMpiRank, mpitag, TAUSCH_COMM, &mpiRecvRequests[haloId]);
+        MPI_Recv_init(&mpiRecvBufferCpuWithCpu[haloId][0], bufsize, mpiDataType,
+                      remoteHaloSpecsCpuWithCpu[haloId].remoteMpiRank, mpitag, TAUSCH_COMM, &mpiRecvRequestsCpuWithCpu[haloId]);
 
     }
 
-    MPI_Start(&mpiRecvRequests[haloId]);
+    MPI_Start(&mpiRecvRequestsCpuWithCpu[haloId]);
 
 }
 
@@ -643,6 +833,30 @@ template <class buf_t> void Tausch2D<buf_t>::postReceiveCpuForGpu(size_t haloId,
 template <class buf_t> void Tausch2D<buf_t>::postReceiveGpu(size_t haloId, int msgtag) {
     msgtagsGpuToCpu[haloId].store(msgtag);
 }
+
+template <class buf_t> void Tausch2D<buf_t>::postReceiveGpuWithGpu(size_t haloId, int msgtag) {
+
+    if(!setupMpiRecvGpuWithGpu[haloId]) {
+
+        if(msgtag == -1) {
+            std::cerr << "[Tausch2D] ERROR: MPI_Recv for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!"
+                      << std::endl;
+            exit(1);
+        }
+
+        setupMpiRecvGpuWithGpu[haloId] = true;
+
+        size_t bufsize = 0;
+        for(int n = 0; n < numBuffers; ++n)
+            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsGpuWithGpu[haloId].haloWidth*remoteHaloSpecsGpuWithGpu[haloId].haloHeight;
+
+        MPI_Recv_init(&mpiRecvBufferGpuWithGpu[haloId][0], bufsize, mpiDataType,
+                      remoteHaloSpecsGpuWithGpu[haloId].remoteMpiRank, msgtag, TAUSCH_COMM, &mpiRecvRequestsGpuWithGpu[haloId]);
+
+    }
+
+    MPI_Start(&mpiRecvRequestsGpuWithGpu[haloId]);
+}
 #endif
 
 
@@ -652,12 +866,12 @@ template <class buf_t> void Tausch2D<buf_t>::postReceiveGpu(size_t haloId, int m
 template <class buf_t> void Tausch2D<buf_t>::postAllReceivesCpu(int *mpitag) {
 
     if(mpitag == nullptr) {
-        mpitag = new int[remoteHaloNumPartsCpu];
-        for(int id = 0; id < remoteHaloNumPartsCpu; ++id)
+        mpitag = new int[remoteHaloNumPartsCpuWithCpu];
+        for(int id = 0; id < remoteHaloNumPartsCpuWithCpu; ++id)
             mpitag[id] = -1;
     }
 
-    for(int id = 0; id < remoteHaloNumPartsCpu; ++id)
+    for(int id = 0; id < remoteHaloNumPartsCpuWithCpu; ++id)
         postReceiveCpu(id, mpitag[id]);
 
 }
@@ -670,7 +884,7 @@ template <class buf_t> void Tausch2D<buf_t>::postAllReceivesCpuForGpu(int *msgta
         return;
     }
 
-    for(int id = 0; id < remoteHaloNumPartsCpuForGpu; ++id)
+    for(int id = 0; id < remoteHaloNumPartsCpuWithGpu; ++id)
         postReceiveCpuForGpu(id, msgtag[id]);
 
 }
@@ -682,8 +896,21 @@ template <class buf_t> void Tausch2D<buf_t>::postAllReceivesGpu(int *msgtag) {
         return;
     }
 
-    for(int id = 0; id < remoteHaloNumPartsGpu; ++id)
+    for(int id = 0; id < remoteHaloNumPartsGpuWithCpu; ++id)
         postReceiveGpu(id, msgtag[id]);
+
+}
+
+template <class buf_t> void Tausch2D<buf_t>::postAllReceivesGpuWithGpu(int *msgtag) {
+
+    if(msgtag == nullptr) {
+        msgtag = new int[remoteHaloNumPartsCpuWithCpu];
+        for(int id = 0; id < remoteHaloNumPartsCpuWithCpu; ++id)
+            msgtag[id] = -1;
+    }
+
+    for(int id = 0; id < remoteHaloNumPartsGpuWithGpu; ++id)
+        postReceiveGpuWithGpu(id, msgtag[id]);
 
 }
 #endif
@@ -695,14 +922,14 @@ template <class buf_t> void Tausch2D<buf_t>::postAllReceivesGpu(int *msgtag) {
 template <class buf_t> void Tausch2D<buf_t>::packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
     for(int s = 0; s < region.width*region.height; ++s) {
-        int bufIndex = (region.y + s/region.width + localHaloSpecsCpu[haloId].haloY)*localHaloSpecsCpu[haloId].bufferWidth +
-                    s%region.width + localHaloSpecsCpu[haloId].haloX + region.x;
-        int mpiIndex = (s/region.width + region.y)*localHaloSpecsCpu[haloId].haloWidth + s%region.width + region.x;
+        int bufIndex = (region.y + s/region.width + localHaloSpecsCpuWithCpu[haloId].haloY)*localHaloSpecsCpuWithCpu[haloId].bufferWidth +
+                    s%region.width + localHaloSpecsCpuWithCpu[haloId].haloX + region.x;
+        int mpiIndex = (s/region.width + region.y)*localHaloSpecsCpuWithCpu[haloId].haloWidth + s%region.width + region.x;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
-                offset += valuesPerPointPerBuffer[b] * localHaloSpecsCpu[haloId].haloWidth * localHaloSpecsCpu[haloId].haloHeight;
-            mpiSendBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val] =
+                offset += valuesPerPointPerBuffer[b] * localHaloSpecsCpuWithCpu[haloId].haloWidth * localHaloSpecsCpuWithCpu[haloId].haloHeight;
+            mpiSendBufferCpuWithCpu[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val] =
                     buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val];
         }
     }
@@ -713,14 +940,14 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCpu(size_t haloId, si
 template <class buf_t> void Tausch2D<buf_t>::packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
     for(int s = 0; s < region.width * region.height; ++s) {
-        int bufIndex = (s/region.width + localHaloSpecsCpuForGpu[haloId].haloY + region.y)*localHaloSpecsCpuForGpu[haloId].bufferWidth+
-                    s%region.width +localHaloSpecsCpuForGpu[haloId].haloX + region.x;
-        int mpiIndex = (s/region.width + region.y)*localHaloSpecsCpuForGpu[haloId].haloWidth + s%region.width + region.x;
+        int bufIndex = (s/region.width + localHaloSpecsCpuWithGpu[haloId].haloY + region.y)*localHaloSpecsCpuWithGpu[haloId].bufferWidth+
+                    s%region.width +localHaloSpecsCpuWithGpu[haloId].haloX + region.x;
+        int mpiIndex = (s/region.width + region.y)*localHaloSpecsCpuWithGpu[haloId].haloWidth + s%region.width + region.x;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
-                offset += valuesPerPointPerBuffer[b] * localHaloSpecsCpuForGpu[haloId].haloWidth * localHaloSpecsCpuForGpu[haloId].haloHeight;
-            cpuToGpuSendBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val]
+                offset += valuesPerPointPerBuffer[b] * localHaloSpecsCpuWithGpu[haloId].haloWidth * localHaloSpecsCpuWithGpu[haloId].haloHeight;
+            sendBufferCpuWithGpu[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val]
                     .store(buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val]);
         }
     }
@@ -736,18 +963,44 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferGpuToCpu(size_t haloI
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsGpu[haloId].haloWidth*localHaloSpecsGpu[haloId].haloHeight;
+            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsGpuWithCpu[haloId].haloWidth*localHaloSpecsGpuWithCpu[haloId].haloHeight;
 
         int globalsize = (bufsize/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         cl::Buffer cl_bufferId(cl_context, &bufferId, (&bufferId)+1, true);
 
         kernel_packNextSendBuffer(cl::EnqueueArgs(cl_queue, cl::NDRange(globalsize), cl::NDRange(cl_kernelLocalSize)),
-                                  cl_localHaloSpecsGpu[haloId], cl_valuesPerPointPerBuffer,
-                                  cl_bufferId, cl_gpuToCpuSendBuffer[haloId], buf);
+                                  cl_localHaloSpecsGpuWithCpu[haloId], cl_valuesPerPointPerBuffer,
+                                  cl_bufferId, cl_sendBufferGpuWithCpu[haloId], buf);
 
     } catch(cl::Error error) {
         std::cerr << "Tausch2D :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
+
+}
+
+template <class buf_t> void Tausch2D<buf_t>::packSendBufferGpuWithGpu(size_t haloId, size_t bufferId, cl::Buffer buf) {
+
+    try {
+
+        auto kernel_packSendBuffer = cl::make_kernel<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer>
+                                                    (cl_programs, "packSendBuffer");
+
+        size_t bufsize = 0;
+        for(int n = 0; n < numBuffers; ++n)
+            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsGpuWithGpu[haloId].haloWidth*localHaloSpecsGpuWithGpu[haloId].haloHeight;
+
+        int globalsize = (bufsize/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+
+        cl::Buffer cl_bufferId(cl_context, &bufferId, (&bufferId)+1, true);
+
+        kernel_packSendBuffer(cl::EnqueueArgs(cl_queue, cl::NDRange(globalsize), cl::NDRange(cl_kernelLocalSize)),
+                                  cl_localHaloSpecsGpuWithGpu[haloId], cl_valuesPerPointPerBuffer,
+                                  cl_bufferId, cl_sendBufferGpuWithGpu[haloId], buf);
+
+    } catch(cl::Error error) {
+        std::cerr << "Tausch2D :: packSendBufferGpuWithGpu() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
     }
 
@@ -760,7 +1013,7 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferGpuToCpu(size_t haloI
 
 template <class buf_t> void Tausch2D<buf_t>::sendCpu(size_t haloId, int mpitag) {
 
-    if(!setupMpiSend[haloId]) {
+    if(!setupMpiSendCpuWithCpu[haloId]) {
 
         if(mpitag == -1) {
             std::cerr << "[Tausch2D] ERROR: MPI_Send for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!"
@@ -768,28 +1021,28 @@ template <class buf_t> void Tausch2D<buf_t>::sendCpu(size_t haloId, int mpitag) 
             exit(1);
         }
 
-        setupMpiSend[haloId] = true;
+        setupMpiSendCpuWithCpu[haloId] = true;
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsCpu[haloId].haloWidth*localHaloSpecsCpu[haloId].haloHeight;
-        MPI_Send_init(&mpiSendBuffer[haloId][0], bufsize, mpiDataType, localHaloSpecsCpu[haloId].remoteMpiRank,
-                  mpitag, TAUSCH_COMM, &mpiSendRequests[haloId]);
+            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsCpuWithCpu[haloId].haloWidth*localHaloSpecsCpuWithCpu[haloId].haloHeight;
+        MPI_Send_init(&mpiSendBufferCpuWithCpu[haloId][0], bufsize, mpiDataType, localHaloSpecsCpuWithCpu[haloId].remoteMpiRank,
+                  mpitag, TAUSCH_COMM, &mpiSendRequestsCpuWithCpu[haloId]);
 
     } else {
         int flag;
-        MPI_Test(&mpiSendRequests[haloId], &flag, MPI_STATUS_IGNORE);
-        if(flag == 0) MPI_Wait(&mpiSendRequests[haloId], MPI_STATUS_IGNORE);
+        MPI_Test(&mpiSendRequestsCpuWithCpu[haloId], &flag, MPI_STATUS_IGNORE);
+        if(flag == 0) MPI_Wait(&mpiSendRequestsCpuWithCpu[haloId], MPI_STATUS_IGNORE);
     }
 
-    MPI_Start(&mpiSendRequests[haloId]);
+    MPI_Start(&mpiSendRequestsCpuWithCpu[haloId]);
 
 }
 
 #ifdef TAUSCH_OPENCL
 template <class buf_t> void Tausch2D<buf_t>::sendCpuToGpu(size_t haloId, int msgtag) {
     msgtagsCpuToGpu[haloId].store(msgtag);
-    syncCpuAndGpu();
+    syncTwoThreads();
 }
 
 template <class buf_t> void Tausch2D<buf_t>::sendGpuToCpu(size_t haloId, int msgtag) {
@@ -800,19 +1053,55 @@ template <class buf_t> void Tausch2D<buf_t>::sendGpuToCpu(size_t haloId, int msg
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsGpu[haloId].haloWidth*localHaloSpecsGpu[haloId].haloHeight;
+            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsGpuWithCpu[haloId].haloWidth*localHaloSpecsGpuWithCpu[haloId].haloHeight;
 
         buf_t *tmp = new buf_t[bufsize];
-        cl::copy(cl_queue, cl_gpuToCpuSendBuffer[haloId], &tmp[0], &tmp[bufsize]);
+        cl::copy(cl_queue, cl_sendBufferGpuWithCpu[haloId], &tmp[0], &tmp[bufsize]);
         for(int i = 0; i < bufsize; ++i)
-            gpuToCpuSendBuffer[haloId][i].store(tmp[i]);
+            sendBufferGpuWithCpu[haloId][i].store(tmp[i]);
 
     } catch(cl::Error error) {
         std::cerr << "Tausch2D :: sendGpuToCpu() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
     }
 
-    syncCpuAndGpu();
+    syncTwoThreads();
+
+}
+
+template <class buf_t> void Tausch2D<buf_t>::sendGpuWithGpu(size_t haloId, int msgtag) {
+
+    size_t bufsize = 0;
+    for(int n = 0; n < numBuffers; ++n)
+        bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsGpuWithGpu[haloId].haloWidth*localHaloSpecsGpuWithGpu[haloId].haloHeight;
+
+    if(!setupMpiSendGpuWithGpu[haloId]) {
+
+        if(msgtag == -1) {
+            std::cerr << "[Tausch2D] ERROR: MPI_Send for halo region #" << haloId << " hasn't been posted before, missing msgtag... Abort!"
+                      << std::endl;
+            exit(1);
+        }
+
+        setupMpiSendGpuWithGpu[haloId] = true;
+
+        MPI_Send_init(&mpiSendBufferGpuWithGpu[haloId][0], bufsize, mpiDataType, localHaloSpecsGpuWithGpu[haloId].remoteMpiRank,
+                  msgtag, TAUSCH_COMM, &mpiSendRequestsGpuWithGpu[haloId]);
+
+    } else {
+        int flag;
+        MPI_Test(&mpiSendRequestsGpuWithGpu[haloId], &flag, MPI_STATUS_IGNORE);
+        if(flag == 0) MPI_Wait(&mpiSendRequestsGpuWithGpu[haloId], MPI_STATUS_IGNORE);
+    }
+
+    try {
+        cl::copy(cl_queue, cl_sendBufferGpuWithGpu[haloId], &mpiSendBufferGpuWithGpu[haloId][0], &mpiSendBufferGpuWithGpu[haloId][bufsize]);
+    } catch(cl::Error error) {
+        std::cerr << "Tausch2D :: sendGpuWithGpu() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
+
+    MPI_Start(&mpiSendRequestsGpuWithGpu[haloId]);
 
 }
 #endif
@@ -822,25 +1111,25 @@ template <class buf_t> void Tausch2D<buf_t>::sendGpuToCpu(size_t haloId, int msg
 /// Receive data
 
 template <class buf_t> void Tausch2D<buf_t>::recvCpu(size_t haloId) {
-    MPI_Wait(&mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
+    MPI_Wait(&mpiRecvRequestsCpuWithCpu[haloId], MPI_STATUS_IGNORE);
 }
 
 #ifdef TAUSCH_OPENCL
 template <class buf_t> void Tausch2D<buf_t>::recvCpuToGpu(size_t haloId) {
 
-    syncCpuAndGpu();
+    syncTwoThreads();
 
     int remoteid = obtainRemoteId(msgtagsCpuToGpu[haloId]);
 
     size_t bufsize = 0;
     for(int n = 0; n < numBuffers; ++n)
-        bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsGpu[haloId].haloWidth*remoteHaloSpecsGpu[haloId].haloHeight;
+        bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsGpuWithCpu[haloId].haloWidth*remoteHaloSpecsGpuWithCpu[haloId].haloHeight;
 
     for(int j = 0; j < bufsize; ++j)
-        cpuToGpuRecvBuffer[haloId][j] = cpuToGpuSendBuffer[remoteid][j].load();
+        recvBufferGpuWithCpu[haloId][j] = sendBufferCpuWithGpu[remoteid][j].load();
 
     try {
-        cl_cpuToGpuRecvBuffer[haloId] = cl::Buffer(cl_context, &cpuToGpuRecvBuffer[haloId][0], &cpuToGpuRecvBuffer[haloId][bufsize], false);
+        cl_recvBufferCpuWithGpu[haloId] = cl::Buffer(cl_context, &recvBufferGpuWithCpu[haloId][0], &recvBufferGpuWithCpu[haloId][bufsize], false);
     } catch(cl::Error error) {
         std::cerr << "Tausch2D :: recvCpuToGpu() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
@@ -850,15 +1139,32 @@ template <class buf_t> void Tausch2D<buf_t>::recvCpuToGpu(size_t haloId) {
 
 template <class buf_t> void Tausch2D<buf_t>::recvGpuToCpu(size_t haloId) {
 
-    syncCpuAndGpu();
+    syncTwoThreads();
 
     int remoteid = obtainRemoteId(msgtagsGpuToCpu[haloId]);
 
     size_t bufsize = 0;
     for(int n = 0; n < numBuffers; ++n)
-        bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsCpuForGpu[haloId].haloWidth*remoteHaloSpecsCpuForGpu[haloId].haloHeight;
+        bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsCpuWithGpu[haloId].haloWidth*remoteHaloSpecsCpuWithGpu[haloId].haloHeight;
     for(int i = 0; i < bufsize; ++i)
-        gpuToCpuRecvBuffer[haloId][i] = gpuToCpuSendBuffer[remoteid][i].load();
+        recvBufferCpuWithGpu[haloId][i] = sendBufferGpuWithCpu[remoteid][i].load();
+
+}
+
+template <class buf_t> void Tausch2D<buf_t>::recvGpuWithGpu(size_t haloId) {
+
+    MPI_Wait(&mpiRecvRequestsGpuWithGpu[haloId], MPI_STATUS_IGNORE);
+
+    size_t bufsize = 0;
+    for(int n = 0; n < numBuffers; ++n)
+        bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsGpuWithGpu[haloId].haloWidth*remoteHaloSpecsGpuWithGpu[haloId].haloHeight;
+
+    try {
+        cl_recvBufferGpuWithGpu[haloId] = cl::Buffer(cl_context, &mpiRecvBufferGpuWithGpu[haloId][0], &mpiRecvBufferGpuWithGpu[haloId][bufsize], false);
+    } catch(cl::Error error) {
+        std::cerr << "Tausch2D :: recvGpuWithGpu() :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
 
 }
 #endif
@@ -870,15 +1176,15 @@ template <class buf_t> void Tausch2D<buf_t>::recvGpuToCpu(size_t haloId) {
 template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
     for(int s = 0; s < region.width * region.height; ++s) {
-        int bufIndex = (region.y + s/region.width + remoteHaloSpecsCpu[haloId].haloY)*remoteHaloSpecsCpu[haloId].bufferWidth +
-                    s%region.width + remoteHaloSpecsCpu[haloId].haloX + region.x;
-        int mpiIndex = (s/region.width + region.y)*remoteHaloSpecsCpu[haloId].haloWidth + s%region.width + region.x;
+        int bufIndex = (region.y + s/region.width + remoteHaloSpecsCpuWithCpu[haloId].haloY)*remoteHaloSpecsCpuWithCpu[haloId].bufferWidth +
+                    s%region.width + remoteHaloSpecsCpuWithCpu[haloId].haloX + region.x;
+        int mpiIndex = (s/region.width + region.y)*remoteHaloSpecsCpuWithCpu[haloId].haloWidth + s%region.width + region.x;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
-                offset += valuesPerPointPerBuffer[b] * remoteHaloSpecsCpu[haloId].haloWidth * remoteHaloSpecsCpu[haloId].haloHeight;
+                offset += valuesPerPointPerBuffer[b] * remoteHaloSpecsCpuWithCpu[haloId].haloWidth * remoteHaloSpecsCpuWithCpu[haloId].haloHeight;
             buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val] =
-                    mpiRecvBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val];
+                    mpiRecvBufferCpuWithCpu[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val];
         }
     }
 
@@ -888,15 +1194,15 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCpu(size_t haloId, 
 template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
     for(int s = 0; s < region.width * region.height; ++s) {
-        int bufIndex = (s/region.width + remoteHaloSpecsCpuForGpu[haloId].haloY + region.y)*remoteHaloSpecsCpuForGpu[haloId].bufferWidth +
-                    s%region.width +remoteHaloSpecsCpuForGpu[haloId].haloX + region.x;
-        int mpiIndex = (s/region.width + region.y)*remoteHaloSpecsCpuForGpu[haloId].haloWidth + s%region.width + region.x;
+        int bufIndex = (s/region.width + remoteHaloSpecsCpuWithGpu[haloId].haloY + region.y)*remoteHaloSpecsCpuWithGpu[haloId].bufferWidth +
+                    s%region.width +remoteHaloSpecsCpuWithGpu[haloId].haloX + region.x;
+        int mpiIndex = (s/region.width + region.y)*remoteHaloSpecsCpuWithGpu[haloId].haloWidth + s%region.width + region.x;
         for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
             int offset = 0;
             for(int b = 0; b < bufferId; ++b)
-                offset += valuesPerPointPerBuffer[b] * remoteHaloSpecsCpuForGpu[haloId].haloWidth * remoteHaloSpecsCpuForGpu[haloId].haloHeight;
+                offset += valuesPerPointPerBuffer[b] * remoteHaloSpecsCpuWithGpu[haloId].haloWidth * remoteHaloSpecsCpuWithGpu[haloId].haloHeight;
             buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val]
-                    = gpuToCpuRecvBuffer[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val];
+                    = recvBufferCpuWithGpu[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val];
         }
     }
 
@@ -910,18 +1216,44 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCpuToGpu(size_t hal
 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsGpu[haloId].haloWidth*remoteHaloSpecsGpu[haloId].haloHeight;
+            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsGpuWithCpu[haloId].haloWidth*remoteHaloSpecsGpuWithCpu[haloId].haloHeight;
 
         int globalsize = (bufsize/cl_kernelLocalSize +1)*cl_kernelLocalSize;
 
         cl::Buffer cl_bufferId(cl_context, &bufferId, (&bufferId)+1, true);
 
         kernel_unpackRecvBuffer(cl::EnqueueArgs(cl_queue, cl::NDRange(globalsize), cl::NDRange(cl_kernelLocalSize)),
-                                cl_remoteHaloSpecsGpu[haloId], cl_valuesPerPointPerBuffer, cl_bufferId,
-                                cl_cpuToGpuRecvBuffer[haloId], buf);
+                                cl_remoteHaloSpecsGpuWithCpu[haloId], cl_valuesPerPointPerBuffer, cl_bufferId,
+                                cl_recvBufferCpuWithGpu[haloId], buf);
 
     } catch(cl::Error error) {
         std::cerr << "Tausch2D :: unpackRecvBufferCpuToGpu() :: OpenCL exception caught: " << error.what()
+                  << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
+
+}
+
+template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferGpuWithGpu(size_t haloId, size_t bufferId, cl::Buffer buf) {
+
+    try {
+        auto kernel_unpackRecvBuffer = cl::make_kernel<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer>
+                                                (cl_programs, "unpackRecvBuffer");
+
+        size_t bufsize = 0;
+        for(int n = 0; n < numBuffers; ++n)
+            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsGpuWithGpu[haloId].haloWidth*remoteHaloSpecsGpuWithGpu[haloId].haloHeight;
+
+        int globalsize = (bufsize/cl_kernelLocalSize +1)*cl_kernelLocalSize;
+
+        cl::Buffer cl_bufferId(cl_context, &bufferId, (&bufferId)+1, true);
+
+        kernel_unpackRecvBuffer(cl::EnqueueArgs(cl_queue, cl::NDRange(globalsize), cl::NDRange(cl_kernelLocalSize)),
+                                cl_remoteHaloSpecsGpuWithGpu[haloId], cl_valuesPerPointPerBuffer, cl_bufferId,
+                                cl_recvBufferGpuWithGpu[haloId], buf);
+
+    } catch(cl::Error error) {
+        std::cerr << "Tausch2D :: unpackRecvBufferGpuWithGpu() :: OpenCL exception caught: " << error.what()
                   << " (" << error.err() << ")" << std::endl;
         exit(1);
     }
@@ -946,6 +1278,10 @@ template <class buf_t> void Tausch2D<buf_t>::packAndSendGpu(size_t haloId, cl::B
     packSendBufferGpuToCpu(haloId, 0, buf);
     sendGpuToCpu(haloId, msgtag);
 }
+template <class buf_t> void Tausch2D<buf_t>::packAndSendGpuWithGpu(size_t haloId, cl::Buffer buf, int msgtag) {
+    packSendBufferGpuWithGpu(haloId, 0, buf);
+    sendGpuWithGpu(haloId, msgtag);
+}
 #endif
 
 
@@ -964,6 +1300,10 @@ template <class buf_t> void Tausch2D<buf_t>::recvAndUnpackCpuForGpu(size_t haloI
 template <class buf_t> void Tausch2D<buf_t>::recvAndUnpackGpu(size_t haloId, cl::Buffer buf) {
     recvCpu(haloId);
     unpackRecvBufferCpuToGpu(haloId, 0, buf);
+}
+template <class buf_t> void Tausch2D<buf_t>::recvAndUnpackGpuWithGpu(size_t haloId, cl::Buffer buf) {
+    recvGpuWithGpu(haloId);
+    unpackRecvBufferGpuWithGpu(haloId, 0, buf);
 }
 #endif
 
@@ -1024,7 +1364,7 @@ template <class buf_t> void Tausch2D<buf_t>::enableOpenCL(cl::Device cl_defaultD
 
 }
 
-template <class buf_t> void Tausch2D<buf_t>::syncCpuAndGpu() {
+template <class buf_t> void Tausch2D<buf_t>::syncTwoThreads() {
 
     // need to do this twice to prevent potential (though unlikely) deadlocks
     for(int i = 0; i < 2; ++i) {
@@ -1043,7 +1383,7 @@ template <class buf_t> void Tausch2D<buf_t>::syncCpuAndGpu() {
 }
 
 template <class buf_t> int Tausch2D<buf_t>::obtainRemoteId(int msgtag) {
-    for(int j = 0; j < remoteHaloNumPartsCpuForGpu; ++j) {
+    for(int j = 0; j < remoteHaloNumPartsCpuWithGpu; ++j) {
         if(msgtagsCpuToGpu[j].load() == msgtag)
             return j;
     }
