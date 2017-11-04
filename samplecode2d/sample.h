@@ -8,17 +8,19 @@
 class Sample {
 
 public:
-    explicit Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWidth, size_t *gpuHaloWidth, size_t *cpuForGpuHaloWidth, size_t *mpiNum, bool buildlog, bool hybrid);
+    explicit Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWidth, size_t *gpuHaloWidth, size_t *cpuForGpuHaloWidth, size_t *mpiNum, bool buildlog, bool hybrid, bool gpuonly);
     ~Sample();
 
     void launchCPU();
     void launchGPU();
+    void launchGPUonly();
 
     void printCPU();
     void printGPU();
 
 private:
     bool hybrid;
+    bool gpuonly;
 
     size_t localDim[2];
     size_t gpuDim[2];
@@ -36,6 +38,8 @@ private:
     TauschHaloSpec *remoteHaloSpecsGpu;
     TauschHaloSpec *localHaloSpecsCpuForGpu;
     TauschHaloSpec *remoteHaloSpecsCpuForGpu;
+    TauschHaloSpec *localHaloSpecsGpuWithGpu;
+    TauschHaloSpec *remoteHaloSpecsGpuWithGpu;
     double **dat;
     size_t numBuffers;
     size_t *valuesPerPointPerBuffer;

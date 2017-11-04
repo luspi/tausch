@@ -28,6 +28,7 @@ int main(int argc, char** argv) {
     size_t gpuHaloWidth[4] = {1,1,1,1};
     size_t cpuForGpuHaloWidth[4] = {1,1,1,1};
     bool gpu = true;
+    bool gpuonly = false;
     bool buildlog = false;
 
     if(argc > 1) {
@@ -131,6 +132,8 @@ int main(int argc, char** argv) {
                 }
             } else if(argv[i] == std::string("-cpu"))
                 gpu = false;
+            else if(argv[i] == std::string("-gpuonly"))
+                gpuonly = true;
         }
     }
 
@@ -144,21 +147,23 @@ int main(int argc, char** argv) {
                   << "CPU halo      = " << cpuHaloWidth[0] << "/" << cpuHaloWidth[1] << "/" << cpuHaloWidth[2] << "/" << cpuHaloWidth[3] << std::endl
                   << "GPU->GPU halo = " << gpuHaloWidth[0] << "/" << gpuHaloWidth[1] << "/" << gpuHaloWidth[2] << "/" << gpuHaloWidth[3] << std::endl
                   << "CPU->GPU halo = " << cpuForGpuHaloWidth[0] << "/" << cpuForGpuHaloWidth[1] << "/" << cpuForGpuHaloWidth[2] << "/" << cpuForGpuHaloWidth[3] << std::endl
-                  << "Version       = " << (gpu ? "Hybrid" : "CPU-only")
+                  << "Version       = " << (gpuonly ? "GPU-only" : (gpu ? "Hybrid" : "CPU-only"))
                   << std::endl;
 
     }
 
-    Sample sample(localDim, gpuDim, loops, cpuHaloWidth, gpuHaloWidth, cpuForGpuHaloWidth, mpiNum, buildlog, gpu);
+    Sample sample(localDim, gpuDim, loops, cpuHaloWidth, gpuHaloWidth, cpuForGpuHaloWidth, mpiNum, buildlog, (gpu&&!gpuonly), gpuonly);
 
     if(mpiRank == printMpiRank) {
-        std::cout << "-------------------------------" << std::endl;
-        std::cout << "-------------------------------" << std::endl;
-        std::cout << "CPU region BEFORE" << std::endl;
-        std::cout << "-------------------------------" << std::endl;
-        sample.printCPU();
-        std::cout << "-------------------------------" << std::endl;
-        if(gpu) {
+        if(!gpuonly) {
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "CPU region BEFORE" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            sample.printCPU();
+            std::cout << "-------------------------------" << std::endl;
+        }
+        if(gpu || gpuonly) {
             std::cout << "-------------------------------" << std::endl;
             std::cout << "-------------------------------" << std::endl;
             std::cout << "GPU region BEFORE" << std::endl;
@@ -171,7 +176,11 @@ int main(int argc, char** argv) {
     MPI_Barrier(MPI_COMM_WORLD);
     auto t_start = std::chrono::steady_clock::now();
 
-    if(gpu) {
+    if(gpuonly) {
+
+        sample.launchGPUonly();
+
+    } else if(gpu) {
 
         std::future<void> thrdGPU(std::async(std::launch::async, &Sample::launchGPU, &sample));
         sample.launchCPU();
@@ -187,13 +196,15 @@ int main(int argc, char** argv) {
     auto t_end = std::chrono::steady_clock::now();
 
     if(mpiRank == printMpiRank) {
-        std::cout << "-------------------------------" << std::endl;
-        std::cout << "-------------------------------" << std::endl;
-        std::cout << "CPU region AFTER" << std::endl;
-        std::cout << "-------------------------------" << std::endl;
-        sample.printCPU();
-        std::cout << "-------------------------------" << std::endl;
-        if(gpu) {
+        if(!gpuonly) {
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            std::cout << "CPU region AFTER" << std::endl;
+            std::cout << "-------------------------------" << std::endl;
+            sample.printCPU();
+            std::cout << "-------------------------------" << std::endl;
+        }
+        if(gpu || gpuonly) {
             std::cout << "-------------------------------" << std::endl;
             std::cout << "-------------------------------" << std::endl;
             std::cout << "GPU region AFTER" << std::endl;

@@ -1,8 +1,9 @@
 #include "sample.h"
 
-Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWidth, size_t *gpuHaloWidth, size_t *cpuForGpuHaloWidth, size_t *mpiNum, bool buildlog, bool hybrid) {
+Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWidth, size_t *gpuHaloWidth, size_t *cpuForGpuHaloWidth, size_t *mpiNum, bool buildlog, bool hybrid, bool gpuonly) {
 
     this->hybrid = hybrid;
+    this->gpuonly = gpuonly;
     this->localDim[0] = localDim[0];
     this->localDim[1] = localDim[1];
     this->gpuDim[0] = gpuDim[0];
@@ -37,77 +38,82 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
     for(int b = 0; b < numBuffers; ++b)
         valuesPerPointPerBuffer[b] = 1;
 
-    dat = new double*[numBuffers];
-    for(int b = 0; b < numBuffers; ++b)
-        dat[b] = new double[valuesPerPointPerBuffer[b]*(localDim[0] + cpuHaloWidth[0] + cpuHaloWidth[1])*(localDim[1] + cpuHaloWidth[2] + cpuHaloWidth[3])]{};
-    if(!hybrid) {
-        for(int j = 0; j < localDim[1]; ++j)
-            for(int i = 0; i < localDim[0]; ++i) {
-                for(int b = 0; b < numBuffers; ++b)
-                    for(int val = 0; val < valuesPerPointPerBuffer[b]; ++val)
-                        dat[b][valuesPerPointPerBuffer[b]*((j+cpuHaloWidth[3])*(localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i+cpuHaloWidth[0])+val] =
-                                (b*5 + j*localDim[0]+i+1)*10+val;
-            }
-    } else {
-        for(int j = 0; j < localDim[1]; ++j)
-            for(int i = 0; i < localDim[0]; ++i) {
-                if(i >= (localDim[0]-gpuDim[0])/2 && i < (localDim[0]-gpuDim[0])/2+gpuDim[0] &&
-                   j >= (localDim[1]-gpuDim[1])/2 && j < (localDim[1]-gpuDim[1])/2+gpuDim[1])
-                    continue;
-                for(int b = 0; b < numBuffers; ++b)
-                    for(int val = 0; val < valuesPerPointPerBuffer[b]; ++val)
-                        dat[b][valuesPerPointPerBuffer[b]*((j+cpuHaloWidth[3])*(localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i+cpuHaloWidth[0])+val] =
-                                (b*5 + j*localDim[0]+i+1)*10+val;
-            }
-    }
-
-
-    size_t tauschLocalDim[2] = {localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1], localDim[1]+cpuHaloWidth[2]+cpuHaloWidth[3]};
     tausch = new Tausch2D<double>(MPI_DOUBLE, numBuffers, valuesPerPointPerBuffer, MPI_COMM_WORLD);
 
-    // These are the (up to) 4 remote halos that are needed by this rank
-    remoteHaloSpecsCpu = new TauschHaloSpec[4];
-    // These are the (up to) 4 local halos that are needed tobe sent by this rank
-    localHaloSpecsCpu = new TauschHaloSpec[4];
+    if(!gpuonly) {
 
-    localHaloSpecsCpu[0].bufferWidth = tauschLocalDim[0]; localHaloSpecsCpu[0].bufferHeight = tauschLocalDim[1];
-    localHaloSpecsCpu[0].haloX = cpuHaloWidth[0]; localHaloSpecsCpu[0].haloY = 0;
-    localHaloSpecsCpu[0].haloWidth = cpuHaloWidth[1]; localHaloSpecsCpu[0].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
-    localHaloSpecsCpu[0].remoteMpiRank = left;
-    remoteHaloSpecsCpu[0].bufferWidth = tauschLocalDim[0]; remoteHaloSpecsCpu[0].bufferHeight = tauschLocalDim[1];
-    remoteHaloSpecsCpu[0].haloX = 0; remoteHaloSpecsCpu[0].haloY = 0;
-    remoteHaloSpecsCpu[0].haloWidth = cpuHaloWidth[0]; remoteHaloSpecsCpu[0].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
-    remoteHaloSpecsCpu[0].remoteMpiRank = left;
+        dat = new double*[numBuffers];
+        for(int b = 0; b < numBuffers; ++b)
+            dat[b] = new double[valuesPerPointPerBuffer[b]*(localDim[0] + cpuHaloWidth[0] + cpuHaloWidth[1])*(localDim[1] + cpuHaloWidth[2] + cpuHaloWidth[3])]{};
 
-    localHaloSpecsCpu[1].bufferWidth = tauschLocalDim[0]; localHaloSpecsCpu[1].bufferHeight = tauschLocalDim[1];
-    localHaloSpecsCpu[1].haloX = localDim[0]; localHaloSpecsCpu[1].haloY = 0;
-    localHaloSpecsCpu[1].haloWidth = cpuHaloWidth[0]; localHaloSpecsCpu[1].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
-    localHaloSpecsCpu[1].remoteMpiRank = right;
-    remoteHaloSpecsCpu[1].bufferWidth = tauschLocalDim[0]; remoteHaloSpecsCpu[1].bufferHeight = tauschLocalDim[1];
-    remoteHaloSpecsCpu[1].haloX = cpuHaloWidth[0]+localDim[0]; remoteHaloSpecsCpu[1].haloY = 0;
-    remoteHaloSpecsCpu[1].haloWidth = cpuHaloWidth[1]; remoteHaloSpecsCpu[1].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
-    remoteHaloSpecsCpu[1].remoteMpiRank = right;
+        if(!hybrid) {
+            for(int j = 0; j < localDim[1]; ++j)
+                for(int i = 0; i < localDim[0]; ++i) {
+                    for(int b = 0; b < numBuffers; ++b)
+                        for(int val = 0; val < valuesPerPointPerBuffer[b]; ++val)
+                            dat[b][valuesPerPointPerBuffer[b]*((j+cpuHaloWidth[3])*(localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i+cpuHaloWidth[0])+val] =
+                                    (b*5 + j*localDim[0]+i+1)*10+val;
+                }
+        } else {
+            for(int j = 0; j < localDim[1]; ++j)
+                for(int i = 0; i < localDim[0]; ++i) {
+                    if(i >= (localDim[0]-gpuDim[0])/2 && i < (localDim[0]-gpuDim[0])/2+gpuDim[0] &&
+                       j >= (localDim[1]-gpuDim[1])/2 && j < (localDim[1]-gpuDim[1])/2+gpuDim[1])
+                        continue;
+                    for(int b = 0; b < numBuffers; ++b)
+                        for(int val = 0; val < valuesPerPointPerBuffer[b]; ++val)
+                            dat[b][valuesPerPointPerBuffer[b]*((j+cpuHaloWidth[3])*(localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1]) + i+cpuHaloWidth[0])+val] =
+                                    (b*5 + j*localDim[0]+i+1)*10+val;
+                }
+        }
 
-    localHaloSpecsCpu[2].bufferWidth = tauschLocalDim[0]; localHaloSpecsCpu[2].bufferHeight = tauschLocalDim[1];
-    localHaloSpecsCpu[2].haloX = 0; localHaloSpecsCpu[2].haloY = localDim[1];
-    localHaloSpecsCpu[2].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecsCpu[2].haloHeight = cpuHaloWidth[3];
-    localHaloSpecsCpu[2].remoteMpiRank = top;
-    remoteHaloSpecsCpu[2].bufferWidth = tauschLocalDim[0]; remoteHaloSpecsCpu[2].bufferHeight = tauschLocalDim[1];
-    remoteHaloSpecsCpu[2].haloX = 0; remoteHaloSpecsCpu[2].haloY = cpuHaloWidth[3]+localDim[1];
-    remoteHaloSpecsCpu[2].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecsCpu[2].haloHeight = cpuHaloWidth[2];
-    remoteHaloSpecsCpu[2].remoteMpiRank = top;
+        size_t tauschLocalDim[2] = {localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1], localDim[1]+cpuHaloWidth[2]+cpuHaloWidth[3]};
 
-    localHaloSpecsCpu[3].bufferWidth = tauschLocalDim[0]; localHaloSpecsCpu[3].bufferHeight = tauschLocalDim[1];
-    localHaloSpecsCpu[3].haloX = 0; localHaloSpecsCpu[3].haloY = cpuHaloWidth[3];
-    localHaloSpecsCpu[3].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecsCpu[3].haloHeight = cpuHaloWidth[2];
-    localHaloSpecsCpu[3].remoteMpiRank = bottom;
-    remoteHaloSpecsCpu[3].bufferWidth = tauschLocalDim[0]; remoteHaloSpecsCpu[3].bufferHeight = tauschLocalDim[1];
-    remoteHaloSpecsCpu[3].haloX = 0; remoteHaloSpecsCpu[3].haloY = 0;
-    remoteHaloSpecsCpu[3].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecsCpu[3].haloHeight = cpuHaloWidth[3];
-    remoteHaloSpecsCpu[3].remoteMpiRank = bottom;
+        // These are the (up to) 4 remote halos that are needed by this rank
+        remoteHaloSpecsCpu = new TauschHaloSpec[4];
+        // These are the (up to) 4 local halos that are needed tobe sent by this rank
+        localHaloSpecsCpu = new TauschHaloSpec[4];
 
-    tausch->setLocalHaloInfo(TAUSCH_CPU|TAUSCH_WITHCPU, 4, localHaloSpecsCpu);
-    tausch->setRemoteHaloInfo(TAUSCH_CPU|TAUSCH_WITHCPU, 4, remoteHaloSpecsCpu);
+        localHaloSpecsCpu[0].bufferWidth = tauschLocalDim[0]; localHaloSpecsCpu[0].bufferHeight = tauschLocalDim[1];
+        localHaloSpecsCpu[0].haloX = cpuHaloWidth[0]; localHaloSpecsCpu[0].haloY = 0;
+        localHaloSpecsCpu[0].haloWidth = cpuHaloWidth[1]; localHaloSpecsCpu[0].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+        localHaloSpecsCpu[0].remoteMpiRank = left;
+        remoteHaloSpecsCpu[0].bufferWidth = tauschLocalDim[0]; remoteHaloSpecsCpu[0].bufferHeight = tauschLocalDim[1];
+        remoteHaloSpecsCpu[0].haloX = 0; remoteHaloSpecsCpu[0].haloY = 0;
+        remoteHaloSpecsCpu[0].haloWidth = cpuHaloWidth[0]; remoteHaloSpecsCpu[0].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+        remoteHaloSpecsCpu[0].remoteMpiRank = left;
+
+        localHaloSpecsCpu[1].bufferWidth = tauschLocalDim[0]; localHaloSpecsCpu[1].bufferHeight = tauschLocalDim[1];
+        localHaloSpecsCpu[1].haloX = localDim[0]; localHaloSpecsCpu[1].haloY = 0;
+        localHaloSpecsCpu[1].haloWidth = cpuHaloWidth[0]; localHaloSpecsCpu[1].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+        localHaloSpecsCpu[1].remoteMpiRank = right;
+        remoteHaloSpecsCpu[1].bufferWidth = tauschLocalDim[0]; remoteHaloSpecsCpu[1].bufferHeight = tauschLocalDim[1];
+        remoteHaloSpecsCpu[1].haloX = cpuHaloWidth[0]+localDim[0]; remoteHaloSpecsCpu[1].haloY = 0;
+        remoteHaloSpecsCpu[1].haloWidth = cpuHaloWidth[1]; remoteHaloSpecsCpu[1].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
+        remoteHaloSpecsCpu[1].remoteMpiRank = right;
+
+        localHaloSpecsCpu[2].bufferWidth = tauschLocalDim[0]; localHaloSpecsCpu[2].bufferHeight = tauschLocalDim[1];
+        localHaloSpecsCpu[2].haloX = 0; localHaloSpecsCpu[2].haloY = localDim[1];
+        localHaloSpecsCpu[2].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecsCpu[2].haloHeight = cpuHaloWidth[3];
+        localHaloSpecsCpu[2].remoteMpiRank = top;
+        remoteHaloSpecsCpu[2].bufferWidth = tauschLocalDim[0]; remoteHaloSpecsCpu[2].bufferHeight = tauschLocalDim[1];
+        remoteHaloSpecsCpu[2].haloX = 0; remoteHaloSpecsCpu[2].haloY = cpuHaloWidth[3]+localDim[1];
+        remoteHaloSpecsCpu[2].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecsCpu[2].haloHeight = cpuHaloWidth[2];
+        remoteHaloSpecsCpu[2].remoteMpiRank = top;
+
+        localHaloSpecsCpu[3].bufferWidth = tauschLocalDim[0]; localHaloSpecsCpu[3].bufferHeight = tauschLocalDim[1];
+        localHaloSpecsCpu[3].haloX = 0; localHaloSpecsCpu[3].haloY = cpuHaloWidth[3];
+        localHaloSpecsCpu[3].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecsCpu[3].haloHeight = cpuHaloWidth[2];
+        localHaloSpecsCpu[3].remoteMpiRank = bottom;
+        remoteHaloSpecsCpu[3].bufferWidth = tauschLocalDim[0]; remoteHaloSpecsCpu[3].bufferHeight = tauschLocalDim[1];
+        remoteHaloSpecsCpu[3].haloX = 0; remoteHaloSpecsCpu[3].haloY = 0;
+        remoteHaloSpecsCpu[3].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecsCpu[3].haloHeight = cpuHaloWidth[3];
+        remoteHaloSpecsCpu[3].remoteMpiRank = bottom;
+
+        tausch->setLocalHaloInfo(TAUSCH_CPU|TAUSCH_WITHCPU, 4, localHaloSpecsCpu);
+        tausch->setRemoteHaloInfo(TAUSCH_CPU|TAUSCH_WITHCPU, 4, remoteHaloSpecsCpu);
+
+    }
 
     if(hybrid) {
 
@@ -136,6 +142,8 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
             std::cerr << "Samplecode2D :: constructor :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
             exit(1);
         }
+
+        size_t tauschLocalDim[2] = {localDim[0]+cpuHaloWidth[0]+cpuHaloWidth[1], localDim[1]+cpuHaloWidth[2]+cpuHaloWidth[3]};
 
         remoteHaloSpecsCpuForGpu = new TauschHaloSpec[4];
         localHaloSpecsCpuForGpu = new TauschHaloSpec[4];
@@ -247,16 +255,111 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
 
     }
 
+    if(gpuonly) {
+
+        size_t tauschGpuDim[2] = {gpuDim[0]+gpuHaloWidth[0]+gpuHaloWidth[1], gpuDim[1]+gpuHaloWidth[2]+gpuHaloWidth[3]};
+        tausch->enableOpenCL(true, 64, true, buildlog);
+
+        gpudat = new double*[numBuffers];
+        for(int b = 0; b < numBuffers; ++b)
+            gpudat[b] = new double[valuesPerPointPerBuffer[b]*(gpuDim[0] + gpuHaloWidth[0] + gpuHaloWidth[1])*(gpuDim[1] + gpuHaloWidth[2] + gpuHaloWidth[3])]{};
+
+        for(int j = 0; j < gpuDim[1]; ++j)
+            for(int i = 0; i < gpuDim[0]; ++i) {
+                for(int b = 0; b < numBuffers; ++b)
+                    for(int val = 0; val < valuesPerPointPerBuffer[b]; ++val)
+                        gpudat[b][valuesPerPointPerBuffer[b]*((j+gpuHaloWidth[3])*(gpuDim[0]+gpuHaloWidth[0]+gpuHaloWidth[1]) + i+gpuHaloWidth[0])+val] =
+                                (b*5 + j*gpuDim[0]+i+1)*10+val;
+            }
+
+        try {
+            cl_gpudat = new cl::Buffer[numBuffers];
+            for(int b = 0; b < numBuffers; ++b) {
+                int s = valuesPerPointPerBuffer[b]*(gpuDim[0] + gpuHaloWidth[0] + gpuHaloWidth[1])*(gpuDim[1] + gpuHaloWidth[2] + gpuHaloWidth[3]);
+                cl_gpudat[b] = cl::Buffer(tausch->getOpenCLContext(), &gpudat[b][0], &gpudat[b][s], false);
+            }
+        } catch(cl::Error error) {
+            std::cerr << "Samplecode2D :: constructor :: OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+            exit(1);
+        }
+
+        remoteHaloSpecsGpuWithGpu = new TauschHaloSpec[4];
+        localHaloSpecsGpuWithGpu = new TauschHaloSpec[4];
+
+        localHaloSpecsGpuWithGpu[0].bufferWidth = tauschGpuDim[0]; localHaloSpecsGpuWithGpu[0].bufferHeight = tauschGpuDim[1];
+        localHaloSpecsGpuWithGpu[0].haloX = gpuHaloWidth[0]; localHaloSpecsGpuWithGpu[0].haloY = 0;
+        localHaloSpecsGpuWithGpu[0].haloWidth = gpuHaloWidth[1]; localHaloSpecsGpuWithGpu[0].haloHeight = gpuHaloWidth[3]+gpuDim[1]+gpuHaloWidth[2];
+        localHaloSpecsGpuWithGpu[0].remoteMpiRank = left;
+        remoteHaloSpecsGpuWithGpu[0].bufferWidth = tauschGpuDim[0]; remoteHaloSpecsGpuWithGpu[0].bufferHeight = tauschGpuDim[1];
+        remoteHaloSpecsGpuWithGpu[0].haloX = 0; remoteHaloSpecsGpuWithGpu[0].haloY = 0;
+        remoteHaloSpecsGpuWithGpu[0].haloWidth = gpuHaloWidth[0]; remoteHaloSpecsGpuWithGpu[0].haloHeight = gpuHaloWidth[3]+gpuDim[1]+gpuHaloWidth[2];
+        remoteHaloSpecsGpuWithGpu[0].remoteMpiRank = left;
+
+        localHaloSpecsGpuWithGpu[1].bufferWidth = tauschGpuDim[0]; localHaloSpecsGpuWithGpu[1].bufferHeight = tauschGpuDim[1];
+        localHaloSpecsGpuWithGpu[1].haloX = gpuDim[0]; localHaloSpecsGpuWithGpu[1].haloY = 0;
+        localHaloSpecsGpuWithGpu[1].haloWidth = gpuHaloWidth[0]; localHaloSpecsGpuWithGpu[1].haloHeight = gpuHaloWidth[3]+gpuDim[1]+gpuHaloWidth[2];
+        localHaloSpecsGpuWithGpu[1].remoteMpiRank = right;
+        remoteHaloSpecsGpuWithGpu[1].bufferWidth = tauschGpuDim[0]; remoteHaloSpecsGpuWithGpu[1].bufferHeight = tauschGpuDim[1];
+        remoteHaloSpecsGpuWithGpu[1].haloX = gpuHaloWidth[0]+gpuDim[0]; remoteHaloSpecsGpuWithGpu[1].haloY = 0;
+        remoteHaloSpecsGpuWithGpu[1].haloWidth = gpuHaloWidth[1]; remoteHaloSpecsGpuWithGpu[1].haloHeight = gpuHaloWidth[3]+gpuDim[1]+gpuHaloWidth[2];
+        remoteHaloSpecsGpuWithGpu[1].remoteMpiRank = right;
+
+        localHaloSpecsGpuWithGpu[2].bufferWidth = tauschGpuDim[0]; localHaloSpecsGpuWithGpu[2].bufferHeight = tauschGpuDim[1];
+        localHaloSpecsGpuWithGpu[2].haloX = 0; localHaloSpecsGpuWithGpu[2].haloY = gpuDim[1];
+        localHaloSpecsGpuWithGpu[2].haloWidth = gpuHaloWidth[0]+gpuDim[0]+gpuHaloWidth[1]; localHaloSpecsGpuWithGpu[2].haloHeight = gpuHaloWidth[3];
+        localHaloSpecsGpuWithGpu[2].remoteMpiRank = top;
+        remoteHaloSpecsGpuWithGpu[2].bufferWidth = tauschGpuDim[0]; remoteHaloSpecsGpuWithGpu[2].bufferHeight = tauschGpuDim[1];
+        remoteHaloSpecsGpuWithGpu[2].haloX = 0; remoteHaloSpecsGpuWithGpu[2].haloY = gpuHaloWidth[3]+gpuDim[1];
+        remoteHaloSpecsGpuWithGpu[2].haloWidth = gpuHaloWidth[0]+gpuDim[0]+gpuHaloWidth[1]; remoteHaloSpecsGpuWithGpu[2].haloHeight = gpuHaloWidth[2];
+        remoteHaloSpecsGpuWithGpu[2].remoteMpiRank = top;
+
+        localHaloSpecsGpuWithGpu[3].bufferWidth = tauschGpuDim[0]; localHaloSpecsGpuWithGpu[3].bufferHeight = tauschGpuDim[1];
+        localHaloSpecsGpuWithGpu[3].haloX = 0; localHaloSpecsGpuWithGpu[3].haloY = gpuHaloWidth[3];
+        localHaloSpecsGpuWithGpu[3].haloWidth = gpuHaloWidth[0]+gpuDim[0]+gpuHaloWidth[1]; localHaloSpecsGpuWithGpu[3].haloHeight = gpuHaloWidth[2];
+        localHaloSpecsGpuWithGpu[3].remoteMpiRank = bottom;
+        remoteHaloSpecsGpuWithGpu[3].bufferWidth = tauschGpuDim[0]; remoteHaloSpecsGpuWithGpu[3].bufferHeight = tauschGpuDim[1];
+        remoteHaloSpecsGpuWithGpu[3].haloX = 0; remoteHaloSpecsGpuWithGpu[3].haloY = 0;
+        remoteHaloSpecsGpuWithGpu[3].haloWidth = gpuHaloWidth[0]+gpuDim[0]+gpuHaloWidth[1]; remoteHaloSpecsGpuWithGpu[3].haloHeight = gpuHaloWidth[3];
+        remoteHaloSpecsGpuWithGpu[3].remoteMpiRank = bottom;
+
+        tausch->setLocalHaloInfo(TAUSCH_GPU|TAUSCH_WITHGPU, 4, localHaloSpecsGpuWithGpu);
+        tausch->setRemoteHaloInfo(TAUSCH_GPU|TAUSCH_WITHGPU, 4, remoteHaloSpecsGpuWithGpu);
+
+
+    }
+
 }
 
 Sample::~Sample() {
 
-    delete[] localHaloSpecsCpu;
-    delete[] remoteHaloSpecsCpu;
-    delete tausch;
-    for(int b = 0; b < numBuffers; ++b)
-        delete[] dat[b];
-    delete[] dat;
+    delete[] valuesPerPointPerBuffer;
+
+    if(!gpuonly) {
+        delete[] localHaloSpecsCpu;
+        delete[] remoteHaloSpecsCpu;
+        for(int b = 0; b < numBuffers; ++b)
+            delete[] dat[b];
+        delete[] dat;
+    }
+
+    if(hybrid) {
+        delete[] localHaloSpecsGpu;
+        delete[] remoteHaloSpecsGpu;
+        delete[] localHaloSpecsCpuForGpu;
+        delete[] remoteHaloSpecsCpuForGpu;
+    }
+
+    if(gpuonly) {
+        delete[] localHaloSpecsGpuWithGpu;
+        delete[] remoteHaloSpecsGpuWithGpu;
+    }
+
+    if(hybrid || gpuonly) {
+        for(int b = 0; b < numBuffers; ++b)
+            delete[] gpudat[b];
+        delete[] gpudat;
+        delete[] cl_gpudat;
+    }
 
 }
 
@@ -319,7 +422,7 @@ void Sample::launchCPU() {
             int sendtags[4] = {0, 1, 2, 3};
             int recvtags[4] = {1, 0, 3, 2};
 
-            tausch->postAllReceives(TAUSCH_CPU, recvtags);
+            tausch->postAllReceives(TAUSCH_CPU|TAUSCH_WITHCPU, recvtags);
 
             for(int ver_hor = 0; ver_hor < 2; ++ver_hor) {
 
@@ -373,6 +476,44 @@ void Sample::launchGPU() {
             for(int b = 0; b < numBuffers; ++b)
                 tausch->packSendBuffer(TAUSCH_GPU|TAUSCH_WITHCPU, 2*ver_hor+1, b, cl_gpudat[b]);
             tausch->send(TAUSCH_GPU|TAUSCH_WITHCPU, 2*ver_hor+1, sendtags[2*ver_hor +1]);
+
+        }
+
+    }
+
+    for(int b = 0; b < numBuffers; ++b) {
+        int s = valuesPerPointPerBuffer[b]*(gpuDim[0] + gpuHaloWidth[0] + gpuHaloWidth[1])*(gpuDim[1] + gpuHaloWidth[2] + gpuHaloWidth[3]);
+        cl::copy(tausch->getOpenCLQueue(), cl_gpudat[b], &gpudat[b][0], &gpudat[b][s]);
+    }
+
+}
+
+void Sample::launchGPUonly() {
+
+    for(int iter = 0; iter < loops; ++iter) {
+
+        int sendtags[4] = {0, 1, 2, 3};
+        int recvtags[4] = {1, 0, 3, 2};
+
+        tausch->postAllReceives(TAUSCH_GPU|TAUSCH_WITHGPU, recvtags);
+
+        for(int ver_hor = 0; ver_hor < 2; ++ver_hor) {
+
+            for(int b = 0; b < numBuffers; ++b)
+                tausch->packSendBuffer(TAUSCH_GPU|TAUSCH_WITHGPU, 2*ver_hor, b, cl_gpudat[b]);
+            tausch->send(TAUSCH_GPU|TAUSCH_WITHGPU, 2*ver_hor, sendtags[2*ver_hor]);
+
+            for(int b = 0; b < numBuffers; ++b)
+                tausch->packSendBuffer(TAUSCH_GPU|TAUSCH_WITHGPU, 2*ver_hor+1, b, cl_gpudat[b]);
+            tausch->send(TAUSCH_GPU|TAUSCH_WITHGPU, 2*ver_hor+1, sendtags[2*ver_hor +1]);
+
+            tausch->recv(TAUSCH_GPU|TAUSCH_WITHGPU, 2*ver_hor);
+            for(int b = 0; b < numBuffers; ++b)
+                tausch->unpackRecvBuffer(TAUSCH_GPU|TAUSCH_WITHGPU, 2*ver_hor, b, cl_gpudat[b]);
+
+            tausch->recv(TAUSCH_GPU|TAUSCH_WITHGPU, 2*ver_hor+1);
+            for(int b = 0; b < numBuffers; ++b)
+                tausch->unpackRecvBuffer(TAUSCH_GPU|TAUSCH_WITHGPU, 2*ver_hor+1, b, cl_gpudat[b]);
 
         }
 

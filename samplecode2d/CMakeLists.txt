@@ -33,6 +33,7 @@ endif(OPENCL)
 
 target_link_libraries(sample2d ${MPI_LIBRARIES})
 target_link_libraries(sample2d "tausch")
+target_link_libraries(sample2d "atomic")
 set_target_properties(sample2d PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
 set_target_properties(sample2d PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
 
