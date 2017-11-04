@@ -47,7 +47,8 @@ enum TauschDeviceDirection {
     TAUSCH_WITHGPU = 8,
     TAUSCH_CwC = 5,
     TAUSCH_CwG = 9,
-    TAUSCH_GwC = 6
+    TAUSCH_GwC = 6,
+    TAUSCH_GwG = 10
 };
 
 /*!
