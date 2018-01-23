@@ -1032,13 +1032,10 @@ template <class buf_t> void Tausch2D<buf_t>::sendCpu(size_t haloId, int mpitag) 
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
             bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsCpuWithCpu[haloId].haloWidth*localHaloSpecsCpuWithCpu[haloId].haloHeight;
+
         MPI_Send_init(&mpiSendBufferCpuWithCpu[haloId][0], bufsize, mpiDataType, localHaloSpecsCpuWithCpu[haloId].remoteMpiRank,
                   mpitag, TAUSCH_COMM, &mpiSendRequestsCpuWithCpu[haloId]);
 
-    } else {
-        int flag;
-        MPI_Test(&mpiSendRequestsCpuWithCpu[haloId], &flag, MPI_STATUS_IGNORE);
-        if(flag == 0) MPI_Wait(&mpiSendRequestsCpuWithCpu[haloId], MPI_STATUS_IGNORE);
     }
 
     MPI_Start(&mpiSendRequestsCpuWithCpu[haloId]);
@@ -1094,10 +1091,6 @@ template <class buf_t> void Tausch2D<buf_t>::sendGpuWithGpu(size_t haloId, int m
         MPI_Send_init(&mpiSendBufferGpuWithGpu[haloId][0], bufsize, mpiDataType, localHaloSpecsGpuWithGpu[haloId].remoteMpiRank,
                   msgtag, TAUSCH_COMM, &mpiSendRequestsGpuWithGpu[haloId]);
 
-    } else {
-        int flag;
-        MPI_Test(&mpiSendRequestsGpuWithGpu[haloId], &flag, MPI_STATUS_IGNORE);
-        if(flag == 0) MPI_Wait(&mpiSendRequestsGpuWithGpu[haloId], MPI_STATUS_IGNORE);
     }
 
     try {
