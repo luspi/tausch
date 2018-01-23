@@ -733,6 +733,8 @@ private:
     bool *setupMpiSendGpuWithGpu;
     bool *setupMpiRecvGpuWithGpu;
 
+    bool setupCpuWithCpu;
+
 #ifdef TAUSCH_OPENCL
 
     std::atomic<buf_t> **sendBufferCpuWithGpu;
@@ -793,7 +795,6 @@ private:
     std::atomic<int> sync_counter[2];
     std::atomic<int> sync_lock[2];
 
-    bool setupCpuWithCpu;
     bool setupCpuWithGpu;
     bool setupGpuWithCpu;
     bool setupGpuWithGpu;

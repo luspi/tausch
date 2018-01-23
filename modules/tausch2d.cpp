@@ -23,9 +23,11 @@ template <class buf_t> Tausch2D<buf_t>::Tausch2D(MPI_Datatype mpiDataType,
     this->mpiDataType = mpiDataType;
 
     setupCpuWithCpu = false;
+#ifdef TAUSCH_OPENCL
     setupCpuWithGpu = false;
     setupGpuWithCpu = false;
     setupGpuWithGpu = false;
+#endif
 
 }
 
@@ -48,6 +50,8 @@ template <class buf_t> Tausch2D<buf_t>::~Tausch2D() {
         delete[] setupMpiRecvCpuWithCpu;
 
     }
+
+#ifdef TAUSCH_OPENCL
 
     if(setupCpuWithGpu) {
 
@@ -104,6 +108,8 @@ template <class buf_t> Tausch2D<buf_t>::~Tausch2D() {
         delete[] cl_remoteHaloSpecsGpuWithGpu;
 
     }
+
+#endif
 
     delete[] valuesPerPointPerBuffer;
 }
