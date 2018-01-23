@@ -1,1 +1,1 @@
-#undef TAUSCH_OPENCL
+#define TAUSCH_OPENCL
