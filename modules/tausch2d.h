@@ -715,6 +715,7 @@ private:
 
     size_t numBuffers;
     size_t *valuesPerPointPerBuffer;
+    bool valuesPerPointPerBufferAllOne;
 
     buf_t **mpiRecvBufferCpuWithCpu;
     buf_t **mpiSendBufferCpuWithCpu;

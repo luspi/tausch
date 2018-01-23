@@ -13,12 +13,15 @@ template <class buf_t> Tausch2D<buf_t>::Tausch2D(MPI_Datatype mpiDataType,
     this->numBuffers = numBuffers;
 
     this->valuesPerPointPerBuffer = new size_t[numBuffers];
-    if(valuesPerPointPerBuffer == nullptr)
+    if(valuesPerPointPerBuffer == nullptr) {
+        valuesPerPointPerBufferAllOne = true;
         for(int i = 0; i < numBuffers; ++i)
             this->valuesPerPointPerBuffer[i] = 1;
-    else
+    } else {
+        valuesPerPointPerBufferAllOne = false;
         for(int i = 0; i < numBuffers; ++i)
             this->valuesPerPointPerBuffer[i] = valuesPerPointPerBuffer[i];
+    }
 
     this->mpiDataType = mpiDataType;
 
@@ -927,17 +930,42 @@ template <class buf_t> void Tausch2D<buf_t>::postAllReceivesGpuWithGpu(int *msgt
 
 template <class buf_t> void Tausch2D<buf_t>::packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
-    for(int s = 0; s < region.width*region.height; ++s) {
-        int bufIndex = (region.y + s/region.width + localHaloSpecsCpuWithCpu[haloId].haloY)*localHaloSpecsCpuWithCpu[haloId].bufferWidth +
-                    s%region.width + localHaloSpecsCpuWithCpu[haloId].haloX + region.x;
-        int mpiIndex = (s/region.width + region.y)*localHaloSpecsCpuWithCpu[haloId].haloWidth + s%region.width + region.x;
-        for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
-            int offset = 0;
-            for(int b = 0; b < bufferId; ++b)
-                offset += valuesPerPointPerBuffer[b] * localHaloSpecsCpuWithCpu[haloId].haloWidth * localHaloSpecsCpuWithCpu[haloId].haloHeight;
-            mpiSendBufferCpuWithCpu[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val] =
-                    buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val];
+    int bufIndexBase = (region.y + localHaloSpecsCpuWithCpu[haloId].haloY)*localHaloSpecsCpuWithCpu[haloId].bufferWidth +
+                        localHaloSpecsCpuWithCpu[haloId].haloX + region.x;
+    int mpiIndexBase = region.y*localHaloSpecsCpuWithCpu[haloId].haloWidth + region.x;
+
+    if(valuesPerPointPerBufferAllOne) {
+
+        int offset = 0;
+        for(int b = 0; b < bufferId; ++b)
+            offset += localHaloSpecsCpuWithCpu[haloId].haloWidth * localHaloSpecsCpuWithCpu[haloId].haloHeight;
+
+        for(int h = 0; h < region.height; ++h) {
+            int hbw = bufIndexBase + h*localHaloSpecsCpuWithCpu[haloId].bufferWidth;
+            int hhw = offset+mpiIndexBase + h*localHaloSpecsCpuWithCpu[haloId].haloWidth;
+            for(int w = 0; w < region.width; ++w)
+                mpiSendBufferCpuWithCpu[haloId][hhw + w] = buf[hbw + w];
         }
+
+    } else {
+
+        int offset = 0;
+        for(int b = 0; b < bufferId; ++b)
+            offset += valuesPerPointPerBuffer[b] * localHaloSpecsCpuWithCpu[haloId].haloWidth * localHaloSpecsCpuWithCpu[haloId].haloHeight;
+
+        for(int h = 0; h < region.height; ++h) {
+            int hbw = h*localHaloSpecsCpuWithCpu[haloId].bufferWidth;
+            int hhw = h*localHaloSpecsCpuWithCpu[haloId].haloWidth;
+            for(int w = 0; w < region.width; ++w) {
+                int bufIndex = bufIndexBase + hbw + w;
+                int mpiIndex = mpiIndexBase + hhw + w;
+                for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
+                    mpiSendBufferCpuWithCpu[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val] =
+                            buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val];
+                }
+            }
+        }
+
     }
 
 }
@@ -1174,17 +1202,42 @@ template <class buf_t> void Tausch2D<buf_t>::recvGpuWithGpu(size_t haloId) {
 
 template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
-    for(int s = 0; s < region.width * region.height; ++s) {
-        int bufIndex = (region.y + s/region.width + remoteHaloSpecsCpuWithCpu[haloId].haloY)*remoteHaloSpecsCpuWithCpu[haloId].bufferWidth +
-                    s%region.width + remoteHaloSpecsCpuWithCpu[haloId].haloX + region.x;
-        int mpiIndex = (s/region.width + region.y)*remoteHaloSpecsCpuWithCpu[haloId].haloWidth + s%region.width + region.x;
-        for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
-            int offset = 0;
-            for(int b = 0; b < bufferId; ++b)
-                offset += valuesPerPointPerBuffer[b] * remoteHaloSpecsCpuWithCpu[haloId].haloWidth * remoteHaloSpecsCpuWithCpu[haloId].haloHeight;
-            buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val] =
-                    mpiRecvBufferCpuWithCpu[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val];
+    int bufIndexBase = (region.y + remoteHaloSpecsCpuWithCpu[haloId].haloY)*remoteHaloSpecsCpuWithCpu[haloId].bufferWidth +
+                        remoteHaloSpecsCpuWithCpu[haloId].haloX + region.x;
+    int mpiIndexBase = (region.y)*remoteHaloSpecsCpuWithCpu[haloId].haloWidth + region.x;
+
+    if(valuesPerPointPerBufferAllOne) {
+
+        int offset = 0;
+        for(int b = 0; b < bufferId; ++b)
+            offset += remoteHaloSpecsCpuWithCpu[haloId].haloWidth * remoteHaloSpecsCpuWithCpu[haloId].haloHeight;
+
+        for(int h = 0; h < region.height; ++h) {
+            int hbw = bufIndexBase + h*remoteHaloSpecsCpuWithCpu[haloId].bufferWidth;
+            int hhw = offset + mpiIndexBase + h*remoteHaloSpecsCpuWithCpu[haloId].haloWidth;
+            for(int w = 0; w < region.width; ++w)
+                buf[hbw + w] = mpiRecvBufferCpuWithCpu[haloId][hhw + w];
         }
+
+    } else {
+
+        int offset = 0;
+        for(int b = 0; b < bufferId; ++b)
+            offset += valuesPerPointPerBuffer[b] * remoteHaloSpecsCpuWithCpu[haloId].haloWidth * remoteHaloSpecsCpuWithCpu[haloId].haloHeight;
+
+        for(int h = 0; h < region.height; ++h) {
+            int hbw = h*remoteHaloSpecsCpuWithCpu[haloId].bufferWidth;
+            int hhw = h*remoteHaloSpecsCpuWithCpu[haloId].haloWidth;
+            for(int w = 0; w < region.width; ++w) {
+                int bufIndex = bufIndexBase + hbw + w;
+                int mpiIndex = mpiIndexBase + hhw + w;
+                for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val) {
+                    buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val] =
+                            mpiRecvBufferCpuWithCpu[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val];
+                }
+            }
+        }
+
     }
 
 }
