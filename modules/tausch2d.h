@@ -629,74 +629,76 @@ public:
      * \cond DoxygenHideThis
      */
 
-    void setLocalHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setLocalHaloInfoCwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #ifdef TAUSCH_OPENCL
-    void setLocalHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
-    void setLocalHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
-    void setLocalHaloInfoGpuWithGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setLocalHaloInfoCwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setLocalHaloInfoGwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setLocalHaloInfoGwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #endif
 
-    void setRemoteHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setRemoteHaloInfoCwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #ifdef TAUSCH_OPENCL
-    void setRemoteHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
-    void setRemoteHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
-    void setRemoteHaloInfoGpuWithGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setRemoteHaloInfoCwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setRemoteHaloInfoGwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setRemoteHaloInfoGwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #endif
 
-    void postReceiveCpu(size_t haloId, int mpitag = -1);
+    void postReceiveCwC(size_t haloId, int mpitag = -1);
 #ifdef TAUSCH_OPENCL
-    void postReceiveCpuForGpu(size_t haloId, int msgtag = -1);
-    void postReceiveGpu(size_t haloId, int msgtag = -1);
-    void postReceiveGpuWithGpu(size_t haloId, int msgtag = -1);
+    void postReceiveCwG(size_t haloId, int msgtag = -1);
+    void postReceiveGwC(size_t haloId, int msgtag = -1);
+    void postReceiveGwG(size_t haloId, int msgtag = -1);
 #endif
 
-    void postAllReceivesCpu(int *mpitag = nullptr);
+    void postAllReceivesCwC(int *mpitag = nullptr);
 #ifdef TAUSCH_OPENCL
-    void postAllReceivesCpuForGpu(int *msgtag = nullptr);
-    void postAllReceivesGpu(int *msgtag = nullptr);
-    void postAllReceivesGpuWithGpu(int *msgtag = nullptr);
+    void postAllReceivesCwG(int *msgtag = nullptr);
+    void postAllReceivesGwC(int *msgtag = nullptr);
+    void postAllReceivesGwG(int *msgtag = nullptr);
 #endif
 
-    void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
+    void packSendBufferCwC(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
+    void packSendBufferCwC(size_t haloId, size_t bufferId, buf_t *buf);
 #ifdef TAUSCH_OPENCL
-    void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
-    void packSendBufferGpuToCpu(size_t haloId, size_t bufferId, cl::Buffer buf);
-    void packSendBufferGpuWithGpu(size_t haloId, size_t bufferId, cl::Buffer buf);
+    void packSendBufferCwG(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
+    void packSendBufferGwC(size_t haloId, size_t bufferId, cl::Buffer buf);
+    void packSendBufferGwG(size_t haloId, size_t bufferId, cl::Buffer buf);
 #endif
 
-    void sendCpu(size_t haloId, int mpitag = -1);
+    void sendCwC(size_t haloId, int mpitag = -1);
 #ifdef TAUSCH_OPENCL
-    void sendCpuToGpu(size_t haloId, int msgtag);
-    void sendGpuToCpu(size_t haloId, int msgtag);
-    void sendGpuWithGpu(size_t haloId, int msgtag);
+    void sendCwG(size_t haloId, int msgtag);
+    void sendGwC(size_t haloId, int msgtag);
+    void sendGwG(size_t haloId, int msgtag);
 #endif
 
-    void recvCpu(size_t haloId);
+    void recvCwC(size_t haloId);
 #ifdef TAUSCH_OPENCL
-    void recvGpuToCpu(size_t haloId);
-    void recvCpuToGpu(size_t haloId);
-    void recvGpuWithGpu(size_t haloId);
+    void recvCwG(size_t haloId);
+    void recvGwC(size_t haloId);
+    void recvGwG(size_t haloId);
 #endif
 
-    void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
+    void unpackRecvBufferCwC(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
+    void unpackRecvBufferCwC(size_t haloId, size_t bufferId, buf_t *buf);
 #ifdef TAUSCH_OPENCL
-    void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
-    void unpackRecvBufferCpuToGpu(size_t haloId, size_t bufferId, cl::Buffer buf);
-    void unpackRecvBufferGpuWithGpu(size_t haloId, size_t bufferId, cl::Buffer buf);
+    void unpackRecvBufferCwG(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
+    void unpackRecvBufferGwC(size_t haloId, size_t bufferId, cl::Buffer buf);
+    void unpackRecvBufferGwG(size_t haloId, size_t bufferId, cl::Buffer buf);
 #endif
 
-    void packAndSendCpu(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
+    void packAndSendCwC(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
 #ifdef TAUSCH_OPENCL
-    void packAndSendCpuForGpu(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
-    void packAndSendGpu(size_t haloId, cl::Buffer buf, int msgtag = -1);
-    void packAndSendGpuWithGpu(size_t haloId, cl::Buffer buf, int msgtag = -1);
+    void packAndSendCwG(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
+    void packAndSendGwC(size_t haloId, cl::Buffer buf, int msgtag = -1);
+    void packAndSendGwG(size_t haloId, cl::Buffer buf, int msgtag = -1);
 #endif
 
-    void recvAndUnpackCpu(size_t haloId, buf_t *buf, TauschPackRegion region);
+    void recvAndUnpackCwC(size_t haloId, buf_t *buf, TauschPackRegion region);
 #ifdef TAUSCH_OPENCL
-    void recvAndUnpackCpuForGpu(size_t haloId, buf_t *buf, TauschPackRegion region);
-    void recvAndUnpackGpu(size_t haloId, cl::Buffer buf);
-    void recvAndUnpackGpuWithGpu(size_t haloId, cl::Buffer buf);
+    void recvAndUnpackCwG(size_t haloId, buf_t *buf, TauschPackRegion region);
+    void recvAndUnpackGwC(size_t haloId, cl::Buffer buf);
+    void recvAndUnpackGwG(size_t haloId, cl::Buffer buf);
 #endif
 
     /*!
