@@ -145,16 +145,14 @@
  *
  */
 
-#ifndef TAUSCH_H
-#define TAUSCH_H
+#ifndef TAUSCHMAIN_H
+#define TAUSCHMAIN_H
 
-#include "modules/tausch1d.h"
-#include "modules/tausch2d.h"
-#include "modules/tausch3d.h"
+#include "modules/tausch.h"
 
 #include "modules/ctausch/ctauschdouble.h"
 #include "modules/ctausch/ctauschfloat.h"
 #include "modules/ctausch/ctauschint.h"
 #include "modules/ctausch/ctauschunsignedint.h"
 
-#endif // TAUSCH_H
+#endif // TAUSCHMAIN_H

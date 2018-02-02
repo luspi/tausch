@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
 
 SET(CMAKE_CXX_COMPILER "mpic++")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O0 -g")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -g")
 
 project(sample3d)
 
@@ -33,6 +33,7 @@ endif(OPENCL)
 
 target_link_libraries(sample3d ${MPI_LIBRARIES})
 target_link_libraries(sample3d "tausch")
+target_link_libraries(sample3d "atomic")
 set_target_properties(sample3d PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
 set_target_properties(sample3d PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
 

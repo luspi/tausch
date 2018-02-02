@@ -13,7 +13,7 @@
 #ifndef TAUSCH1D_H
 #define TAUSCH1D_H
 
-#include "tausch.h"
+#include "tauschdefs.h"
 #include <mpi.h>
 #include <iostream>
 #include <fstream>
@@ -36,7 +36,7 @@
  * C++ data types
  */
 template <class buf_t>
-class Tausch1D : public Tausch<buf_t> {
+class Tausch1D {
 
 public:
 
@@ -69,9 +69,9 @@ public:
      *
      * Set the info about all local halos that need to be sent to remote MPI ranks.
      *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC and CwG.
+     *
      * \param numHaloParts
      *  How many different parts there are to the halo
      * \param haloSpecs
@@ -87,15 +87,19 @@ public:
      * after calling this function.
      *
      */
-    void setLocalHaloInfo(TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setLocalHaloInfoCwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+#ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
+    void setLocalHaloInfoCwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setLocalHaloInfoGwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+#endif /*! \endcond */
 
     /*!
      *
      * Set the info about all remote halos that are needed by this MPI rank.
      *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC and CwG.
+     *
      * \param numHaloParts
      *  How many different parts there are to the halo
      * \param haloSpecs
@@ -111,15 +115,19 @@ public:
      * after calling this function.
      *
      */
-    void setRemoteHaloInfo(TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setRemoteHaloInfoCwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+#ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
+    void setRemoteHaloInfoCwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    void setRemoteHaloInfoGwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+#endif /*! \endcond */
 
     /*!
      *
      * Post the receive for the specified remote halo region of the current MPI rank.
      *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC and CwG.
+     *
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setRemoteHaloInfo().
      * \param msgtag
@@ -128,31 +136,38 @@ public:
      *  an MPI tag (and is, in fact, identical to it for MPI communication).
      *
      */
-    void postReceive(TauschDeviceDirection flags, size_t haloId, int msgtag = -1);
+    void postReceiveCwC(size_t haloId, int msgtag = -1);
+#ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
+    void postReceiveCwG(size_t haloId, int msgtag = -1);
+    void postReceiveGwC(size_t haloId, int msgtag = -1);
+#endif /*! \endcond */
 
     /*!
      *
      * Post all receives for the current MPI rank. This doesn't do anything else but post the MPI_Recv for each remote halo region.
      *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC and CwG.
+     *
      * \param msgtag
      *  An array containing the message tags, one for each halo region. This information only has to be specified the first time the receives are
      *  posted. Each subsequent call, the message tags that were passed the very first call will be re-used. This works equivalently to
      *  an MPI tag (and is, in fact, identical to it for MPI communication).
      *
      */
-    void postAllReceives(TauschDeviceDirection flags, int *msgtag = nullptr);
+    void postAllReceivesCwC(int *msgtag = nullptr);
+#ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
+    void postAllReceivesCwG(int *msgtag = nullptr);
+    void postAllReceivesGwC(int *msgtag = nullptr);
+#endif /*! \endcond */
 
     /*!
      *
-     * This packs the specified region of the specified halo area for the specified buffer for a send. This has to be called for all buffers before
-     * sending the message.
+     * This packs the specified region of the specified halo area for the specified buffer for a send.
      *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC and CwG.
+     *
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
      * \param bufferId
@@ -169,14 +184,13 @@ public:
      *   width | The width of the region to be packed
      *
      */
-    void packSendBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
-
+    void packSendBufferCwC(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
     /*!
      * Overloaded function, taking the full halo region for packing.
      *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC and CwG.
+     *
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
      * \param bufferId
@@ -186,34 +200,20 @@ public:
      *  The buffer from which the data is to be extracted according to the local halo specification.
      *
      */
-    void packSendBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, buf_t *buf);
-
-#ifdef TAUSCH_OPENCL
-    /*!
-     * Overloaded function, taking the full halo region of an OpenCL buffer for packing.
-     *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
-     * \param haloId
-     *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
-     * \param bufferId
-     *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
-     *  The numbering of the buffers starts with 0!
-     * \param buf
-     *  The OpenCL buffer from which the data is to be extracted according to the local halo specification.
-     *
-     */
-    void packSendBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, cl::Buffer buf);
-#endif
+    void packSendBufferCwC(size_t haloId, size_t bufferId, buf_t *buf);
+#ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
+    void packSendBufferCwG(size_t haloId, size_t bufferId, buf_t *buf);
+    void packSendBufferCwG(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
+    void packSendBufferGwC(size_t haloId, size_t bufferId, cl::Buffer buf);
+#endif /*! \endcond */
 
     /*!
      *
      * Sends off the send buffer for the specified halo region. This starts the respective MPI_Send.
      *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC and CwG.
+     *
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
      * \param msgtag
@@ -222,28 +222,36 @@ public:
      *  equivalently to an MPI tag (and is, in fact, identical to it for MPI communication).
      *
      */
-    void send(TauschDeviceDirection flags, size_t haloId, int msgtag = -1);
+    void sendCwC(size_t haloId, int msgtag = -1);
+#ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
+    void sendCwG(size_t haloId, int msgtag);
+    void sendGwC(size_t haloId, int msgtag);
+#endif /*! \endcond */
 
     /*!
      *
      * Makes sure the MPI message for the specified halo is received by this buffer. It does not do anything with that message!
      *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC and CwG.
+     *
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
      *
      */
-    void recv(TauschDeviceDirection flags, size_t haloId);
+    void recvCwC(size_t haloId);
+#ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
+    void recvCwG(size_t haloId);
+    void recvGwC(size_t haloId);
+#endif /*! \endcond */
 
     /*!
      *
-     * This unpacks the next halo from the received message into the provided buffer. This has to be called for all buffers.
+     * This unpacks the halo with the specified id from the received message into the provided buffer.
      *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC and CwG.
+     *
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
      * \param bufferId
@@ -260,15 +268,14 @@ public:
      *   width | The width of the region to be packed
      *
      */
-    void unpackRecvBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
-
+    void unpackRecvBufferCwC(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
     /*!
      *
      * Overloaded function, taking the full halo region for unpacking.
      *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC and CwG.
+     *
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
      * \param bufferId
@@ -278,35 +285,20 @@ public:
      *  The buffer to which the extracted data is to be written to according to the remote halo specification
      *
      */
-    void unpackRecvBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, buf_t *buf);
-
-#ifdef TAUSCH_OPENCL
-    /*!
-     *
-     * Overloaded function, taking the full halo region of an OpenCL buffer for unpacking.
-     *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
-     * \param haloId
-     *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
-     * \param bufferId
-     *  The id of the buffer. The order of the buffers will be preserved, i.e., packing buffer with id 1 required unpacking that buffer with id 1.
-     *  The numbering of the buffers has to start with 0!
-     * \param[out] buf
-     *  The OpenCL buffer to which the extracted data is to be written to according to the remote halo specification
-     *
-     */
-    void unpackRecvBuffer(TauschDeviceDirection flags, size_t haloId, size_t bufferId, cl::Buffer buf);
-#endif
+    void unpackRecvBufferCwC(size_t haloId, size_t bufferId, buf_t *buf);
+#ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
+    void unpackRecvBufferCwG(size_t haloId, size_t bufferId, buf_t *buf);
+    void unpackRecvBufferCwG(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
+    void unpackRecvBufferGwC(size_t haloId, size_t bufferId, cl::Buffer buf);
+#endif /*! \endcond */
 
     /*!
      *
      * Shortcut function. If only one buffer is used, this will both pack the data out of the provided buffer and send it off, all with one call.
      *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC and CwG.
+     *
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
      * \param buf
@@ -324,56 +316,20 @@ public:
      *   width | The width of the region to be packed
      *
      */
-    void packAndSend(TauschDeviceDirection flags, size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
-
-    /*!
-     *
-     * Overloaded function, taking the full halo region for packing and sending.
-     *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
-     * \param haloId
-     *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
-     * \param buf
-     *  The buffer from which the data is to be extracted according to the local halo specification.
-     * \param msgtag
-     *  The message tag to be used for this send. This information only has to be specified the first time the send for the halo region with
-     *  the specified id is started. Each subsequent call, the message tag that was passed the very first call will be re-used. This works
-     *  equivalently to an MPI tag (and is, in fact, identical to it for MPI communication).
-     *
-     */
-    void packAndSend(TauschDeviceDirection flags, size_t haloId, buf_t *buf, int msgtag = -1);
-
-#ifdef TAUSCH_OPENCL
-    /*!
-     *
-     * Overloaded function, taking the full halo region of an OpenCL buffer for unpacking.
-     *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
-     * \param haloId
-     *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
-     * \param buf
-     *  The OpenCL buffer from which the data is to be extracted according to the local halo specification.
-     * \param msgtag
-     *  The message tag to be used for this send. This information only has to be specified the first time the send for the halo region with
-     *  the specified id is started. Each subsequent call, the message tag that was passed the very first call will be re-used. This works
-     *  equivalently to an MPI tag (and is, in fact, identical to it for MPI communication).
-     *
-     */
-    void packAndSend(TauschDeviceDirection flags, size_t haloId, cl::Buffer buf, int msgtag = -1);
-#endif
+    void packAndSendCwC(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
+#ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
+    void packAndSendCwG(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
+    void packAndSendGwC(size_t haloId, cl::Buffer buf, int msgtag = -1);
+#endif /*! \endcond */
 
     /*!
      *
      * Shortcut function. If only one buffer is used, this will both receive the MPI message and unpack the received data into the provided buffer,
      * all with one call.
      *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC and CwG.
+     *
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
      * \param[out] buf
@@ -387,39 +343,11 @@ public:
      *   width | The width of the region to be packed
      *
      */
-    void recvAndUnpack(TauschDeviceDirection flags, size_t haloId, buf_t *buf, TauschPackRegion region);
-
-    /*!
-     *
-     * Overloaded function, taking the full halo region for receiving and unpacking.
-     *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
-     * \param haloId
-     *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
-     * \param[out] buf
-     *  The buffer to which the extracted data is to be written to according to the remote halo specification
-     *
-     */
-    void recvAndUnpack(TauschDeviceDirection flags, size_t haloId, buf_t *buf);
-
-#ifdef TAUSCH_OPENCL
-    /*!
-     *
-     * Overloaded function, taking the full halo region of an OpenCL buffer for receiving and unpacking.
-     *
-     * \param flags
-     *  This is expected to be a bit wise combination of two flags. First choose one of TAUSCH_CPU or TAUSCH_GPU and combine it with either of
-     *  TAUSCH_WITHCPU or TAUSCH_WITHGPU.
-     * \param haloId
-     *  The id of the halo region. This is the index of this halo region in the remote halo specification provided with setRemoteHaloInfo().
-     * \param[out] buf
-     *  The OpenCL buffer to which the extracted data is to be written to according to the remote halo specification
-     *
-     */
-    void recvAndUnpack(TauschDeviceDirection flags, size_t haloId, cl::Buffer buf);
-#endif
+    void recvAndUnpackCwC(size_t haloId, buf_t *buf, TauschPackRegion region);
+#ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
+    void recvAndUnpackCwG(size_t haloId, buf_t *buf, TauschPackRegion region);
+    void recvAndUnpackGwC(size_t haloId, cl::Buffer buf);
+#endif /*! \endcond */
 
     /*!
      *
@@ -606,74 +534,6 @@ public:
 
 #endif
 
-    /*!
-     * \cond DoxygenHideThis
-     */
-
-    void setLocalHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
-#ifdef TAUSCH_OPENCL
-    void setLocalHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
-    void setLocalHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
-#endif
-
-    void setRemoteHaloInfoCpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
-#ifdef TAUSCH_OPENCL
-    void setRemoteHaloInfoCpuForGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
-    void setRemoteHaloInfoGpu(size_t numHaloParts, TauschHaloSpec *haloSpecs);
-#endif
-
-    void postReceiveCpu(size_t haloId, int mpitag = -1);
-#ifdef TAUSCH_OPENCL
-    void postReceiveCpuForGpu(size_t haloId, int msgtag = -1);
-    void postReceiveGpu(size_t haloId, int msgtag = -1);
-#endif
-
-    void postAllReceivesCpu(int *mpitag = nullptr);
-#ifdef TAUSCH_OPENCL
-    void postAllReceivesCpuForGpu(int *msgtag = nullptr);
-    void postAllReceivesGpu(int *msgtag = nullptr);
-#endif
-
-    void packSendBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
-#ifdef TAUSCH_OPENCL
-    void packSendBufferCpuToGpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
-    void packSendBufferGpuToCpu(size_t haloId, size_t bufferId, cl::Buffer buf);
-#endif
-
-    void sendCpu(size_t haloId, int mpitag = -1);
-#ifdef TAUSCH_OPENCL
-    void sendCpuToGpu(size_t haloId, int msgtag);
-    void sendGpuToCpu(size_t haloId, int msgtag);
-#endif
-
-    void recvCpu(size_t haloId);
-#ifdef TAUSCH_OPENCL
-    void recvGpuToCpu(size_t haloId);
-    void recvCpuToGpu(size_t haloId);
-#endif
-
-    void unpackRecvBufferCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
-#ifdef TAUSCH_OPENCL
-    void unpackRecvBufferGpuToCpu(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region);
-    void unpackRecvBufferCpuToGpu(size_t haloId, size_t bufferId, cl::Buffer buf);
-#endif
-
-    void packAndSendCpu(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
-#ifdef TAUSCH_OPENCL
-    void packAndSendCpuForGpu(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
-    void packAndSendGpu(size_t haloId, cl::Buffer buf, int msgtag = -1);
-#endif
-
-    void recvAndUnpackCpu(size_t haloId, buf_t *buf, TauschPackRegion region);
-#ifdef TAUSCH_OPENCL
-    void recvAndUnpackCpuForGpu(size_t haloId, buf_t *buf, TauschPackRegion region);
-    void recvAndUnpackGpu(size_t haloId, cl::Buffer buf);
-#endif
-
-    /*!
-     * \endcond
-     */
-
 private:
 
     MPI_Comm TAUSCH_COMM;
@@ -695,6 +555,8 @@ private:
 
     bool *setupMpiSend;
     bool *setupMpiRecv;
+
+    bool setupCpuWithCpu;
 
 #ifdef TAUSCH_OPENCL
 
@@ -744,6 +606,9 @@ private:
 
     std::atomic<int> sync_counter[2];
     std::atomic<int> sync_lock[2];
+
+    bool setupCpuWithGpu;
+    bool setupGpuWithCpu;
 
 #endif
 

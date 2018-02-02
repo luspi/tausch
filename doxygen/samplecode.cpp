@@ -68,11 +68,11 @@ int main(int argc, char** argv) {
     localHaloSpecs.remoteMpiRank = right;
 
     // The Tausch object, using its double version. The pointer type is of type 'Tausch', although using Tausch2D directly would also be possible here
-    Tausch<double> *tausch = new Tausch2D<double>(MPI_DOUBLE, numBuffers, nullptr, MPI_COMM_WORLD);
+    Tausch<double> *tausch = new Tausch<double>(MPI_DOUBLE, numBuffers, nullptr, MPI_COMM_WORLD);
 
     // Tell Tausch about the local and remote halo regions
-    tausch->setLocalHaloInfo(TAUSCH_CwC, 1, &localHaloSpecs);
-    tausch->setRemoteHaloInfo(TAUSCH_CwC, 1, &remoteHaloSpecs);
+    tausch->setLocalHaloInfo2D_CwC(1, &localHaloSpecs);
+    tausch->setRemoteHaloInfo2D_CwC(1, &remoteHaloSpecs);
 
     /*****************
      * HALO EXCHANGE *
@@ -87,17 +87,17 @@ int main(int argc, char** argv) {
     int mpitag = 0;
 
     // post the MPI receives
-    tausch->postAllReceives(TAUSCH_CwC, &mpitag);
+    tausch->postAllReceives2D_CwC(&mpitag);
 
     // pack the right buffers and send them off
-    tausch->packSendBuffer(TAUSCH_CwC, 0, 0, dat1);
-    tausch->packSendBuffer(TAUSCH_CwC, 0, 1, dat2);
-    tausch->send(TAUSCH_CwC, 0, mpitag);
+    tausch->packSendBuffer2D_CwC(0, 0, dat1);
+    tausch->packSendBuffer2D_CwC(0, 1, dat2);
+    tausch->send2D_CwC(0, mpitag);
 
     // receive the left buffers and unpack them
-    tausch->recv(TAUSCH_CwC, 0);
-    tausch->unpackRecvBuffer(TAUSCH_CwC, 0, 0, dat1);
-    tausch->unpackRecvBuffer(TAUSCH_CwC, 0, 1, dat2);
+    tausch->recv2D_CwC(0);
+    tausch->unpackRecvBuffer2D_CwC(0, 0, dat1);
+    tausch->unpackRecvBuffer2D_CwC(0, 1, dat2);
 
     MPI_Barrier(MPI_COMM_WORLD);
 

@@ -1,6 +1,4 @@
-#include "../tausch1d.h"
-#include "../tausch2d.h"
-#include "../tausch3d.h"
+#include "../tausch.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -8,24 +6,9 @@ extern "C" {
 
 #include "ctauschunsignedint.h"
 
-CTauschUnsignedInt *tausch_new_unsignedint(size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, TauschVersion version) {
-
-    if(version != TAUSCH_1D && version != TAUSCH_2D && version != TAUSCH_3D) {
-        std::cerr << "[CTauschUnsignedInt] ERROR: Invalid version specified: " << version << " - Abort..." << std::endl;
-        exit(1);
-    }
-
-    Tausch<unsigned int> *t;
-
-    if(version == TAUSCH_1D)
-        t = new Tausch1D<unsigned int>(MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
-    else if(version == TAUSCH_2D)
-        t = new Tausch2D<unsigned int>(MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
-    else if(version == TAUSCH_3D)
-        t = new Tausch3D<unsigned int>(MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
-
+CTauschUnsignedInt *tausch_new_unsignedint(size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm) {
+    Tausch<unsigned int> *t = new Tausch<unsigned int>(MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
     return reinterpret_cast<CTauschUnsignedInt*>(t);
-
 }
 
 void tausch_delete_unsignedint(CTauschUnsignedInt *tC) {
@@ -33,96 +16,485 @@ void tausch_delete_unsignedint(CTauschUnsignedInt *tC) {
     delete t;
 }
 
-void tausch_setLocalHaloInfo_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
-    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->setLocalHaloInfo(flags, numHaloParts, haloSpecs);
-}
+/*********************************************/
+// tausch_setLocalHaloInfo*
 
-void tausch_setRemoteHaloInfo_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+// CPU with CPU
+void tausch_setLocalHaloInfo1D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->setRemoteHaloInfo(flags, numHaloParts, haloSpecs);
+    t->setLocalHaloInfo1D_CwC(numHaloParts, haloSpecs);
 }
-
-void tausch_postReceive_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t haloId, int msgtag) {
+void tausch_setLocalHaloInfo2D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->postReceive(flags, haloId, msgtag);
+    t->setLocalHaloInfo2D_CwC(numHaloParts, haloSpecs);
 }
-
-void tausch_postAllReceives_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, int *msgtag) {
+void tausch_setLocalHaloInfo3D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->postAllReceives(flags, msgtag);
+    t->setLocalHaloInfo3D_CwC(numHaloParts, haloSpecs);
 }
 
 #ifdef TAUSCH_OPENCL
-void tausch_packSendBuffer_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, unsigned int*buf, cl_mem *bufcl, TauschPackRegion region) {
+// CPU with GPU
+void tausch_setLocalHaloInfo1D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    if(bufcl == NULL)
-        t->packSendBuffer(flags, haloId, bufferId, buf, region);
-    else
-        t->packSendBuffer(flags, haloId, bufferId, cl::Buffer(*bufcl));
+    t->setLocalHaloInfo1D_CwG(numHaloParts, haloSpecs);
 }
-#else
-void tausch_packSendBuffer_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, unsigned int*buf, TauschPackRegion region) {
+void tausch_setLocalHaloInfo2D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->packSendBuffer(flags, haloId, bufferId, buf, region);
+    t->setLocalHaloInfo2D_CwG(numHaloParts, haloSpecs);
+}
+void tausch_setLocalHaloInfo3D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->setLocalHaloInfo3D_CwG(numHaloParts, haloSpecs);
+}
+
+// GPU with CPU
+void tausch_setLocalHaloInfo1D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->setLocalHaloInfo1D_GwC(numHaloParts, haloSpecs);
+}
+void tausch_setLocalHaloInfo2D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->setLocalHaloInfo2D_GwC(numHaloParts, haloSpecs);
+}
+void tausch_setLocalHaloInfo3D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->setLocalHaloInfo3D_GwC(numHaloParts, haloSpecs);
 }
 #endif
 
-void tausch_send_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t haloId, int msgtag) {
-    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->send(flags, haloId, msgtag);
-}
 
-void tausch_recv_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t haloId) {
+/*********************************************/
+// tausch_setRemoteHaloInfo*
+
+
+// CPU with CPU
+void tausch_setRemoteHaloInfo1D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->recv(flags, haloId);
+    t->setRemoteHaloInfo1D_CwC(numHaloParts, haloSpecs);
+}
+void tausch_setRemoteHaloInfo2D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->setRemoteHaloInfo2D_CwC(numHaloParts, haloSpecs);
+}
+void tausch_setRemoteHaloInfo3D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->setRemoteHaloInfo3D_CwC(numHaloParts, haloSpecs);
 }
 
 #ifdef TAUSCH_OPENCL
-void tausch_unpackNextRecvBuffer_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, unsigned int*buf, cl_mem *bufcl, TauschPackRegion region) {
+// CPU with GPU
+void tausch_setRemoteHaloInfo1D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    if(bufcl == NULL)
-        t->unpackRecvBuffer(flags, haloId, bufferId, buf, region);
-    else
-        t->unpackRecvBuffer(flags, haloId, bufferId, cl::Buffer(*bufcl));
+    t->setRemoteHaloInfo1D_CwG(numHaloParts, haloSpecs);
 }
-#else
-void tausch_unpackNextRecvBuffer_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t haloId, size_t bufferId, unsigned int*buf, TauschPackRegion region) {
+void tausch_setRemoteHaloInfo2D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->unpackRecvBuffer(flags, haloId, bufferId, buf, region);
+    t->setRemoteHaloInfo2D_CwG(numHaloParts, haloSpecs);
+}
+void tausch_setRemoteHaloInfo3D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->setRemoteHaloInfo3D_CwG(numHaloParts, haloSpecs);
+}
+
+// GPU with CPU
+void tausch_setRemoteHaloInfo1D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->setRemoteHaloInfo1D_GwC(numHaloParts, haloSpecs);
+}
+void tausch_setRemoteHaloInfo2D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->setRemoteHaloInfo2D_GwC(numHaloParts, haloSpecs);
+}
+void tausch_setRemoteHaloInfo3D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->setRemoteHaloInfo3D_GwC(numHaloParts, haloSpecs);
 }
 #endif
+
+
+/*********************************************/
+// tausch_postReceive*
+
+// CPU with CPU
+void tausch_postReceive1D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postReceive1D_CwC(haloId, msgtag);
+}
+void tausch_postReceive2D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postReceive2D_CwC(haloId, msgtag);
+}
+void tausch_postReceive3D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postReceive3D_CwC(haloId, msgtag);
+}
 
 #ifdef TAUSCH_OPENCL
-void tausch_packAndSend_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t haloId, unsigned int*buf, cl_mem *bufcl, TauschPackRegion region, int msgtag) {
+// CPU with GPU
+void tausch_postReceive1D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    if(bufcl == NULL)
-        t->packAndSend(flags, haloId, buf, region, msgtag);
-    else
-        t->packAndSend(flags, haloId, cl::Buffer(*bufcl), msgtag);
+    t->postReceive1D_CwG(haloId, msgtag);
 }
-#else
-void tausch_packAndSend_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t haloId, unsigned int*buf, TauschPackRegion region, int msgtag) {
+void tausch_postReceive2D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->packAndSend(flags, haloId, buf, region, msgtag);
+    t->postReceive2D_CwG(haloId, msgtag);
+}
+void tausch_postReceive3D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postReceive3D_CwG(haloId, msgtag);
+}
+
+// GPU with CPU
+void tausch_postReceive1D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postReceive1D_GwC(haloId, msgtag);
+}
+void tausch_postReceive2D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postReceive2D_GwC(haloId, msgtag);
+}
+void tausch_postReceive3D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postReceive3D_GwC(haloId, msgtag);
 }
 #endif
+
+
+/*********************************************/
+// postAllReceives*
+
+// CPU with CPU
+void tausch_postAllReceives1D_CwC_unsignedint(CTauschUnsignedInt *tC, int *msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postAllReceives1D_CwC(msgtag);
+}
+void tausch_postAllReceives2D_CwC_unsignedint(CTauschUnsignedInt *tC, int *msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postAllReceives2D_CwC(msgtag);
+}
+void tausch_postAllReceives3D_CwC_unsignedint(CTauschUnsignedInt *tC, int *msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postAllReceives3D_CwC(msgtag);
+}
 
 #ifdef TAUSCH_OPENCL
-void tausch_recvAndUnpack_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t haloId, unsigned int*buf, cl_mem *bufcl, TauschPackRegion region) {
+// CPU with GPU
+void tausch_postAllReceives1D_CwG_unsignedint(CTauschUnsignedInt *tC, int *msgtag) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    if(bufcl == NULL)
-        t->recvAndUnpack(flags, haloId, buf, region);
-    else
-        t->recvAndUnpack(flags, haloId, cl::Buffer(*bufcl));
+    t->postAllReceives1D_CwG(msgtag);
 }
-#else
-void tausch_recvAndUnpack_unsignedint(CTauschUnsignedInt *tC, TauschDeviceDirection flags, size_t haloId, unsigned int*buf, TauschPackRegion region) {
+void tausch_postAllReceives2D_CwG_unsignedint(CTauschUnsignedInt *tC, int *msgtag) {
     Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
-    t->recvAndUnpack(flags, haloId, buf, region);
+    t->postAllReceives2D_CwG(msgtag);
+}
+void tausch_postAllReceives3D_CwG_unsignedint(CTauschUnsignedInt *tC, int *msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postAllReceives3D_CwG(msgtag);
+}
+
+// GPU with CPU
+void tausch_postAllReceives1D_GwC_unsignedint(CTauschUnsignedInt *tC, int *msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postAllReceives1D_GwC(msgtag);
+}
+void tausch_postAllReceives2D_GwC_unsignedint(CTauschUnsignedInt *tC, int *msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postAllReceives2D_GwC(msgtag);
+}
+void tausch_postAllReceives3D_GwC_unsignedint(CTauschUnsignedInt *tC, int *msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->postAllReceives3D_GwC(msgtag);
 }
 #endif
 
+
+/*********************************************/
+// tausch_packSendBuffer*
+
+// CPU with CPU
+void tausch_packSendBuffer1D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packSendBuffer1D_CwC(haloId, bufferId, buf, region);
+}
+void tausch_packSendBuffer2D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packSendBuffer2D_CwC(haloId, bufferId, buf, region);
+}
+void tausch_packSendBuffer3D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packSendBuffer3D_CwC(haloId, bufferId, buf, region);
+}
+
+#ifdef TAUSCH_OPENCL
+// CPU with GPU
+void tausch_packSendBuffer1D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packSendBuffer1D_CwG(haloId, bufferId, buf, region);
+}
+void tausch_packSendBuffer2D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packSendBuffer2D_CwG(haloId, bufferId, buf, region);
+}
+void tausch_packSendBuffer3D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packSendBuffer3D_CwG(haloId, bufferId, buf, region);
+}
+
+// GPU with CPU
+void tausch_packSendBuffer1D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, cl_mem *buf) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packSendBuffer1D_GwC(haloId, bufferId, cl::Buffer(*buf));
+}
+void tausch_packSendBuffer2D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, cl_mem *buf) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packSendBuffer2D_GwC(haloId, bufferId, cl::Buffer(*buf));
+}
+void tausch_packSendBuffer3D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, cl_mem *buf) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packSendBuffer3D_GwC(haloId, bufferId, cl::Buffer(*buf));
+}
+#endif
+
+
+/*********************************************/
+// tausch_send*
+
+// CPU with CPU
+void tausch_send1D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->send1D_CwC(haloId, msgtag);
+}
+void tausch_send2D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->send2D_CwC(haloId, msgtag);
+}
+void tausch_send3D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->send3D_CwC(haloId, msgtag);
+}
+
+#ifdef TAUSCH_OPENCL
+// CPU with GPU
+void tausch_send1D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->send1D_CwG(haloId, msgtag);
+}
+void tausch_send2D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->send2D_CwG(haloId, msgtag);
+}
+void tausch_send3D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->send3D_CwG(haloId, msgtag);
+}
+
+// GPU with CPU
+void tausch_send1D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->send1D_GwC(haloId, msgtag);
+}
+void tausch_send2D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->send2D_GwC(haloId, msgtag);
+}
+void tausch_send3D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->send3D_GwC(haloId, msgtag);
+}
+#endif
+
+
+/*********************************************/
+// tausch_recv*
+
+// CPU with CPU
+void tausch_recv1D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recv1D_CwC(haloId);
+}
+void tausch_recv2D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recv2D_CwC(haloId);
+}
+void tausch_recv3D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recv3D_CwC(haloId);
+}
+
+#ifdef TAUSCH_OPENCL
+// CPU with GPU
+void tausch_recv1D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recv1D_CwG(haloId);
+}
+void tausch_recv2D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recv2D_CwG(haloId);
+}
+void tausch_recv3D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recv3D_CwG(haloId);
+}
+
+// GPU with CPU
+void tausch_recv1D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recv1D_GwC(haloId);
+}
+void tausch_recv2D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recv2D_GwC(haloId);
+}
+void tausch_recv3D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recv3D_GwC(haloId);
+}
+#endif
+
+
+/*********************************************/
+// tausch_unpackNextRecvBuffer*
+
+// CPU with CPU
+void tausch_unpackNextRecvBuffer1D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->unpackRecvBuffer1D_CwC(haloId, bufferId, buf, region);
+}
+void tausch_unpackNextRecvBuffer2D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->unpackRecvBuffer2D_CwC(haloId, bufferId, buf, region);
+}
+void tausch_unpackNextRecvBuffer3D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->unpackRecvBuffer3D_CwC(haloId, bufferId, buf, region);
+}
+
+#ifdef TAUSCH_OPENCL
+// CPU with GPU
+void tausch_unpackNextRecvBuffer1D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->unpackRecvBuffer1D_CwG(haloId, bufferId, buf, region);
+}
+void tausch_unpackNextRecvBuffer2D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->unpackRecvBuffer2D_CwG(haloId, bufferId, buf, region);
+}
+void tausch_unpackNextRecvBuffer3D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->unpackRecvBuffer3D_CwG(haloId, bufferId, buf, region);
+}
+
+// GPU with GPU
+void tausch_unpackNextRecvBuffer1D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, cl_mem *bufcl) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->unpackRecvBuffer1D_GwC(haloId, bufferId, cl::Buffer(*bufcl));
+}
+void tausch_unpackNextRecvBuffer2D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, cl_mem *bufcl) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->unpackRecvBuffer2D_GwC(haloId, bufferId, cl::Buffer(*bufcl));
+}
+void tausch_unpackNextRecvBuffer3D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, size_t bufferId, cl_mem *bufcl) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->unpackRecvBuffer3D_GwC(haloId, bufferId, cl::Buffer(*bufcl));
+}
+#endif
+
+
+/*********************************************/
+// tausch_packAndSend*
+
+// CPU with CPU
+void tausch_packAndSend1D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packAndSend1D_CwC(haloId, buf, region, msgtag);
+}
+void tausch_packAndSend2D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packAndSend2D_CwC(haloId, buf, region, msgtag);
+}
+void tausch_packAndSend3D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packAndSend3D_CwC(haloId, buf, region, msgtag);
+}
+
+#ifdef TAUSCH_OPENCL
+// CPU with GPU
+void tausch_packAndSend1D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packAndSend1D_CwG(haloId, buf, region, msgtag);
+}
+void tausch_packAndSend2D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packAndSend2D_CwG(haloId, buf, region, msgtag);
+}
+void tausch_packAndSend3D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packAndSend3D_CwG(haloId, buf, region, msgtag);
+}
+
+// GPU with CPU
+void tausch_packAndSend1D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, cl_mem *bufcl, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packAndSend1D_GwC(haloId, cl::Buffer(*bufcl), msgtag);
+}
+void tausch_packAndSend2D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, cl_mem *bufcl, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packAndSend2D_GwC(haloId, cl::Buffer(*bufcl), msgtag);
+}
+void tausch_packAndSend3D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, cl_mem *bufcl, int msgtag) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->packAndSend3D_GwC(haloId, cl::Buffer(*bufcl), msgtag);
+}
+#endif
+
+
+/*********************************************/
+// tausch_recvAndUnpack*
+
+// CPU with CPU
+void tausch_recvAndUnpack1D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recvAndUnpack1D_CwC(haloId, buf, region);
+}
+void tausch_recvAndUnpack2D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recvAndUnpack2D_CwC(haloId, buf, region);
+}
+void tausch_recvAndUnpack3D_CwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recvAndUnpack3D_CwC(haloId, buf, region);
+}
+
+#ifdef TAUSCH_OPENCL
+// CPU with GPU
+void tausch_recvAndUnpack1D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recvAndUnpack1D_CwG(haloId, buf, region);
+}
+void tausch_recvAndUnpack2D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recvAndUnpack2D_CwG(haloId, buf, region);
+}
+void tausch_recvAndUnpack3D_CwG_unsignedint(CTauschUnsignedInt *tC, size_t haloId, unsigned int *buf, TauschPackRegion region) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recvAndUnpack3D_CwG(haloId, buf, region);
+}
+
+// GPU with CPU
+void tausch_recvAndUnpack1D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, cl_mem *bufcl) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recvAndUnpack1D_GwC(haloId, cl::Buffer(*bufcl));
+}
+void tausch_recvAndUnpack2D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, cl_mem *bufcl) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recvAndUnpack2D_GwC(haloId, cl::Buffer(*bufcl));
+}
+void tausch_recvAndUnpack3D_GwC_unsignedint(CTauschUnsignedInt *tC, size_t haloId, cl_mem *bufcl) {
+    Tausch<unsigned int> *t = reinterpret_cast<Tausch<unsigned int>*>(tC);
+    t->recvAndUnpack3D_GwC(haloId, cl::Buffer(*bufcl));
+}
+#endif
 
 #ifdef __cplusplus
 }

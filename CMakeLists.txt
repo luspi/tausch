@@ -8,7 +8,7 @@ set(CMAKE_PROJECT_NAME "Tausch - A general halo exchange library")
 SET(CMAKE_CXX_COMPILER "mpic++")
 
 # Enable C++11 and optimisations
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -g")
 
 # option to toggle OpenCL support
 option(OPENCL "Enable OpenCL support" ON)
@@ -29,14 +29,13 @@ endif(OPENCL)
 # All headers and source files
 set(tausch_headers "tausch.h" "modules/tausch1d.h" "modules/tausch2d.h" "modules/tausch3d.h"
     "modules/ctausch/ctauschdouble.h" "modules/ctausch/ctauschfloat.h" "modules/ctausch/ctauschint.h" "modules/ctausch/ctauschunsignedint.h"
-    "modules/tausch.h" "modules/tausch_opencl_no.h" "modules/tausch_opencl_yes.h")
+    "modules/tausch.h" "modules/tauschdefs.h" "modules/tausch_opencl_no.h" "modules/tausch_opencl_yes.h")
 set(tausch_source "tausch.h" "modules/tausch1d.cpp" "modules/tausch2d.cpp" "modules/tausch3d.cpp"
     "modules/ctausch/ctauschdouble.cpp" "modules/ctausch/ctauschfloat.cpp" "modules/ctausch/ctauschint.cpp" "modules/ctausch/ctauschunsignedint.cpp"
-    "modules/tausch.h" "modules/tausch_opencl_no.h" "modules/tausch_opencl_yes.h")
+    "modules/tausch.h" "modules/tauschdefs.h" "modules/tausch_opencl_no.h" "modules/tausch_opencl_yes.h")
 
 # Set the Doxygen list
-set(list_for_doxygen_headers "tausch.h" "modules/tausch1d.h" "modules/tausch2d.h" "modules/tausch3d.h"
-    "modules/tausch.h" "modules/ctausch/ctauschdouble.h")
+set(list_for_doxygen_headers "tausch.h" "modules/tausch1d.h" "modules/tausch2d.h" "modules/tausch3d.h" "modules/tausch.h" "modules/tauschdefs.h")
 foreach(arg ${list_for_doxygen_headers})
     set(doxygen_headers "${doxygen_headers} ${CMAKE_CURRENT_SOURCE_DIR}/${arg}")
 endforeach(arg ${list_for_doxygen_headers})
@@ -51,7 +50,7 @@ install(TARGETS tausch_static DESTINATION "lib")
 
 # Install library headers
 install(FILES "tausch.h" DESTINATION "include/tausch")
-install(FILES "modules/tausch1d.h" "modules/tausch2d.h" "modules/tausch3d.h" "modules/tausch.h" "modules/tausch_opencl.h"
+install(FILES "modules/tausch1d.h" "modules/tausch2d.h" "modules/tausch3d.h" "modules/tausch.h" "modules/tausch_opencl.h" "modules/tauschdefs.h"
         DESTINATION "include/tausch/modules")
 install(FILES "modules/ctausch/ctauschdouble.h" "modules/ctausch/ctauschfloat.h" "modules/ctausch/ctauschint.h" "modules/ctausch/ctauschunsignedint.h"
         DESTINATION "include/tausch/modules/ctausch")
