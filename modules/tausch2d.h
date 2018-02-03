@@ -593,6 +593,12 @@ private:
 
     bool setupCpuWithCpu;
 
+    int *localBufferOffsetCwC;
+    int *remoteBufferOffsetCwC;
+
+    int *localTotalBufferSize;
+    int *remoteTotalBufferSizeCwC;
+
 #ifdef TAUSCH_OPENCL
 
     std::atomic<buf_t> **sendBufferCpuWithGpu;

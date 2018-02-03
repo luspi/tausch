@@ -55,6 +55,11 @@ template <class buf_t> Tausch2D<buf_t>::~Tausch2D() {
         delete[] mpiRecvRequestsCpuWithCpu;
         delete[] setupMpiRecvCpuWithCpu;
 
+        delete[] localBufferOffsetCwC;
+        delete[] remoteBufferOffsetCwC;
+
+        delete[] localTotalBufferSize;
+
     }
 
 #ifdef TAUSCH_OPENCL
@@ -156,6 +161,23 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoCwC(size_t numHaloP
         setupMpiSendCpuWithCpu[i] = false;
 
     }
+
+    // These are computed once as they don't change below
+    localBufferOffsetCwC = new int[numHaloParts*numBuffers]{};
+    for(int nb = 0; nb < numBuffers; ++nb) {
+        for(int nh = 0; nh < numHaloParts; ++nh) {
+            int offset = 0;
+            for(int b = 0; b < nb; ++b)
+                offset += valuesPerPointPerBuffer[b] * localHaloSpecsCpuWithCpu[nh].haloWidth * localHaloSpecsCpuWithCpu[nh].haloHeight;
+            localBufferOffsetCwC[nb*numHaloParts + nh] = offset;
+        }
+    }
+
+    // The buffer sizes also do not change anymore
+    localTotalBufferSize = new int[numHaloParts]{};
+    for(int nh = 0; nh < numHaloParts; ++nh)
+        for(int nb = 0; nb < numBuffers; ++nb)
+            localTotalBufferSize[nh] += valuesPerPointPerBuffer[nb]*localHaloSpecsCpuWithCpu[nh].haloWidth*localHaloSpecsCpuWithCpu[nh].haloHeight;
 
 }
 
@@ -319,6 +341,23 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCwC(size_t numHalo
 
     }
 
+    // These are computed once as they don't change below
+    remoteBufferOffsetCwC = new int[numHaloParts*numBuffers]{};
+    for(int nb = 0; nb < numBuffers; ++nb) {
+        for(int nh = 0; nh < numHaloParts; ++nh) {
+            int offset = 0;
+            for(int b = 0; b < nb; ++b)
+                offset += valuesPerPointPerBuffer[b] * remoteHaloSpecsCpuWithCpu[nh].haloWidth * remoteHaloSpecsCpuWithCpu[nh].haloHeight;
+            remoteBufferOffsetCwC[nb*numHaloParts + nh] = offset;
+        }
+    }
+
+    // The buffer sizes also do not change anymore
+    remoteTotalBufferSizeCwC = new int[numHaloParts]{};
+    for(int nh = 0; nh < numHaloParts; ++nh)
+        for(int nb = 0; nb < numBuffers; ++nb)
+            remoteTotalBufferSizeCwC[nh] += valuesPerPointPerBuffer[nb]*remoteHaloSpecsCpuWithCpu[nh].haloWidth*remoteHaloSpecsCpuWithCpu[nh].haloHeight;
+
 }
 
 #ifdef TAUSCH_OPENCL
@@ -456,11 +495,7 @@ template <class buf_t> void Tausch2D<buf_t>::postReceiveCwC(size_t haloId, int m
 
         setupMpiRecvCpuWithCpu[haloId] = true;
 
-        size_t bufsize = 0;
-        for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsCpuWithCpu[haloId].haloWidth*remoteHaloSpecsCpuWithCpu[haloId].haloHeight;
-
-        MPI_Recv_init(&mpiRecvBufferCpuWithCpu[haloId][0], bufsize, mpiDataType,
+        MPI_Recv_init(&mpiRecvBufferCpuWithCpu[haloId][0], remoteTotalBufferSizeCwC[haloId], mpiDataType,
                       remoteHaloSpecsCpuWithCpu[haloId].remoteMpiRank, msgtag, TAUSCH_COMM, &mpiRecvRequestsCpuWithCpu[haloId]);
 
     } else {
@@ -584,22 +619,16 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCwC(size_t haloId, si
 
     if(valuesPerPointPerBufferAllOne) {
 
-        int offset = 0;
-        for(int b = 0; b < bufferId; ++b)
-            offset += localHaloSpecsCpuWithCpu[haloId].haloWidth * localHaloSpecsCpuWithCpu[haloId].haloHeight;
+        mpiIndexBase += localBufferOffsetCwC[localHaloNumPartsCpuWithCpu*bufferId + haloId];
 
         for(int h = 0; h < region.height; ++h) {
             int hbw = bufIndexBase + h*localHaloSpecsCpuWithCpu[haloId].bufferWidth;
-            int hhw = offset+mpiIndexBase + h*localHaloSpecsCpuWithCpu[haloId].haloWidth;
+            int hhw = mpiIndexBase + h*localHaloSpecsCpuWithCpu[haloId].haloWidth;
             for(int w = 0; w < region.width; ++w)
                 mpiSendBufferCpuWithCpu[haloId][hhw + w] = buf[hbw + w];
         }
 
     } else {
-
-        int offset = 0;
-        for(int b = 0; b < bufferId; ++b)
-            offset += valuesPerPointPerBuffer[b] * localHaloSpecsCpuWithCpu[haloId].haloWidth * localHaloSpecsCpuWithCpu[haloId].haloHeight;
 
         for(int h = 0; h < region.height; ++h) {
 
@@ -609,10 +638,10 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCwC(size_t haloId, si
             for(int w = 0; w < region.width; ++w) {
 
                 int bufIndex = bufIndexBase + hbw + w;
-                int mpiIndex = mpiIndexBase + hhw + w;
+                int mpiIndex = localBufferOffsetCwC[localHaloNumPartsCpuWithCpu*bufferId + haloId] + valuesPerPointPerBuffer[bufferId]*(mpiIndexBase + hhw + w);
 
                 for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val)
-                    mpiSendBufferCpuWithCpu[haloId][offset + valuesPerPointPerBuffer[bufferId]*mpiIndex + val] =
+                    mpiSendBufferCpuWithCpu[haloId][mpiIndex + val] =
                             buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val];
 
             }
@@ -752,11 +781,7 @@ template <class buf_t> void Tausch2D<buf_t>::sendCwC(size_t haloId, int msgtag) 
 
         setupMpiSendCpuWithCpu[haloId] = true;
 
-        size_t bufsize = 0;
-        for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsCpuWithCpu[haloId].haloWidth*localHaloSpecsCpuWithCpu[haloId].haloHeight;
-
-        MPI_Send_init(&mpiSendBufferCpuWithCpu[haloId][0], bufsize, mpiDataType, localHaloSpecsCpuWithCpu[haloId].remoteMpiRank,
+        MPI_Send_init(&mpiSendBufferCpuWithCpu[haloId][0], localTotalBufferSize[haloId], mpiDataType, localHaloSpecsCpuWithCpu[haloId].remoteMpiRank,
                   msgtag, TAUSCH_COMM, &mpiSendRequestsCpuWithCpu[haloId]);
 
     } else {
@@ -920,14 +945,12 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCwC(size_t haloId, 
 
     if(valuesPerPointPerBufferAllOne) {
 
-        int offset = mpiIndexBase;
-        for(int b = 0; b < bufferId; ++b)
-            offset += remoteHaloSpecsCpuWithCpu[haloId].haloWidth * remoteHaloSpecsCpuWithCpu[haloId].haloHeight;
+        mpiIndexBase += remoteBufferOffsetCwC[remoteHaloNumPartsCpuWithCpu*bufferId + haloId];
 
         for(int h = 0; h < region.height; ++h) {
 
             int hbw = bufIndexBase + h*remoteHaloSpecsCpuWithCpu[haloId].bufferWidth;
-            int hhw = offset + h*remoteHaloSpecsCpuWithCpu[haloId].haloWidth;
+            int hhw = mpiIndexBase + h*remoteHaloSpecsCpuWithCpu[haloId].haloWidth;
 
             for(int w = 0; w < region.width; ++w)
                 buf[hbw + w] = mpiRecvBufferCpuWithCpu[haloId][hhw + w];
@@ -935,10 +958,6 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCwC(size_t haloId, 
         }
 
     } else {
-
-        int offset = 0;
-        for(int b = 0; b < bufferId; ++b)
-            offset += valuesPerPointPerBuffer[b] * remoteHaloSpecsCpuWithCpu[haloId].haloWidth * remoteHaloSpecsCpuWithCpu[haloId].haloHeight;
 
         for(int h = 0; h < region.height; ++h) {
 
@@ -948,7 +967,7 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCwC(size_t haloId, 
             for(int w = 0; w < region.width; ++w) {
 
                 int bufIndex = valuesPerPointPerBuffer[bufferId]* ( hbw + w );
-                int fullerOffset = valuesPerPointPerBuffer[bufferId]* ( hhw + w );
+                int fullerOffset = remoteBufferOffsetCwC[remoteHaloNumPartsCpuWithCpu*bufferId + haloId] + valuesPerPointPerBuffer[bufferId]* ( hhw + w );
 
                 for(int val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val)
                     buf[bufIndex + val] = mpiRecvBufferCpuWithCpu[haloId][fullerOffset + val];
