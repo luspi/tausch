@@ -63,6 +63,8 @@ void tausch_setLocalHaloInfo1D_CwC_double(CTauschDouble *tC, size_t numHaloParts
 void tausch_setLocalHaloInfo2D_CwC_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 void tausch_setLocalHaloInfo3D_CwC_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
+#ifdef TAUSCH_OPENCL
+
 void tausch_setLocalHaloInfo1D_CwG_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 void tausch_setLocalHaloInfo2D_CwG_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 void tausch_setLocalHaloInfo3D_CwG_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
@@ -70,6 +72,8 @@ void tausch_setLocalHaloInfo3D_CwG_double(CTauschDouble *tC, size_t numHaloParts
 void tausch_setLocalHaloInfo1D_GwC_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 void tausch_setLocalHaloInfo2D_GwC_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 void tausch_setLocalHaloInfo3D_GwC_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
+
+#endif
 
 
 /****************************************/
@@ -79,6 +83,8 @@ void tausch_setRemoteHaloInfo1D_CwC_double(CTauschDouble *tC, size_t numHaloPart
 void tausch_setRemoteHaloInfo2D_CwC_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 void tausch_setRemoteHaloInfo3D_CwC_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
+#ifdef TAUSCH_OPENCL
+
 void tausch_setRemoteHaloInfo1D_CwG_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 void tausch_setRemoteHaloInfo2D_CwG_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 void tausch_setRemoteHaloInfo3D_CwG_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
@@ -86,6 +92,8 @@ void tausch_setRemoteHaloInfo3D_CwG_double(CTauschDouble *tC, size_t numHaloPart
 void tausch_setRemoteHaloInfo1D_GwC_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 void tausch_setRemoteHaloInfo2D_GwC_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 void tausch_setRemoteHaloInfo3D_GwC_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
+
+#endif
 
 
 /****************************************/
@@ -95,6 +103,8 @@ void tausch_postReceive1D_CwC_double(CTauschDouble *tC, size_t haloId, int msgta
 void tausch_postReceive2D_CwC_double(CTauschDouble *tC, size_t haloId, int msgtag);
 void tausch_postReceive3D_CwC_double(CTauschDouble *tC, size_t haloId, int msgtag);
 
+#ifdef TAUSCH_OPENCL
+
 void tausch_postReceive1D_CwG_double(CTauschDouble *tC, size_t haloId, int msgtag);
 void tausch_postReceive2D_CwG_double(CTauschDouble *tC, size_t haloId, int msgtag);
 void tausch_postReceive3D_CwG_double(CTauschDouble *tC, size_t haloId, int msgtag);
@@ -102,6 +112,8 @@ void tausch_postReceive3D_CwG_double(CTauschDouble *tC, size_t haloId, int msgta
 void tausch_postReceive1D_GwC_double(CTauschDouble *tC, size_t haloId, int msgtag);
 void tausch_postReceive2D_GwC_double(CTauschDouble *tC, size_t haloId, int msgtag);
 void tausch_postReceive3D_GwC_double(CTauschDouble *tC, size_t haloId, int msgtag);
+
+#endif
 
 
 /****************************************/
@@ -111,6 +123,8 @@ void tausch_postAllReceives1D_CwC_double(CTauschDouble *tC, int *msgtag);
 void tausch_postAllReceives2D_CwC_double(CTauschDouble *tC, int *msgtag);
 void tausch_postAllReceives3D_CwC_double(CTauschDouble *tC, int *msgtag);
 
+#ifdef TAUSCH_OPENCL
+
 void tausch_postAllReceives1D_CwG_double(CTauschDouble *tC, int *msgtag);
 void tausch_postAllReceives2D_CwG_double(CTauschDouble *tC, int *msgtag);
 void tausch_postAllReceives3D_CwG_double(CTauschDouble *tC, int *msgtag);
@@ -118,6 +132,8 @@ void tausch_postAllReceives3D_CwG_double(CTauschDouble *tC, int *msgtag);
 void tausch_postAllReceives1D_GwC_double(CTauschDouble *tC, int *msgtag);
 void tausch_postAllReceives2D_GwC_double(CTauschDouble *tC, int *msgtag);
 void tausch_postAllReceives3D_GwC_double(CTauschDouble *tC, int *msgtag);
+
+#endif
 
 
 /****************************************/
@@ -127,6 +143,8 @@ void tausch_packSendBuffer1D_CwC_double(CTauschDouble *tC, size_t haloId, size_t
 void tausch_packSendBuffer2D_CwC_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
 void tausch_packSendBuffer3D_CwC_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
 
+#ifdef TAUSCH_OPENCL
+
 void tausch_packSendBuffer1D_CwG_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
 void tausch_packSendBuffer2D_CwG_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
 void tausch_packSendBuffer3D_CwG_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
@@ -134,6 +152,8 @@ void tausch_packSendBuffer3D_CwG_double(CTauschDouble *tC, size_t haloId, size_t
 void tausch_packSendBuffer1D_GwC_double(CTauschDouble *tC, size_t haloId, size_t bufferId, cl_mem *bufcl);
 void tausch_packSendBuffer2D_GwC_double(CTauschDouble *tC, size_t haloId, size_t bufferId, cl_mem *bufcl);
 void tausch_packSendBuffer3D_GwC_double(CTauschDouble *tC, size_t haloId, size_t bufferId, cl_mem *bufcl);
+
+#endif
 
 
 /****************************************/
@@ -143,6 +163,8 @@ void tausch_send1D_CwC_double(CTauschDouble *tC, size_t haloId, int msgtag);
 void tausch_send2D_CwC_double(CTauschDouble *tC, size_t haloId, int msgtag);
 void tausch_send3D_CwC_double(CTauschDouble *tC, size_t haloId, int msgtag);
 
+#ifdef TAUSCH_OPENCL
+
 void tausch_send1D_CwG_double(CTauschDouble *tC, size_t haloId, int msgtag);
 void tausch_send2D_CwG_double(CTauschDouble *tC, size_t haloId, int msgtag);
 void tausch_send3D_CwG_double(CTauschDouble *tC, size_t haloId, int msgtag);
@@ -150,6 +172,8 @@ void tausch_send3D_CwG_double(CTauschDouble *tC, size_t haloId, int msgtag);
 void tausch_send1D_GwC_double(CTauschDouble *tC, size_t haloId, int msgtag);
 void tausch_send2D_GwC_double(CTauschDouble *tC, size_t haloId, int msgtag);
 void tausch_send3D_GwC_double(CTauschDouble *tC, size_t haloId, int msgtag);
+
+#endif
 
 
 /****************************************/
@@ -159,6 +183,8 @@ void tausch_recv1D_CwC_double(CTauschDouble *tC, size_t haloId);
 void tausch_recv2D_CwC_double(CTauschDouble *tC, size_t haloId);
 void tausch_recv3D_CwC_double(CTauschDouble *tC, size_t haloId);
 
+#ifdef TAUSCH_OPENCL
+
 void tausch_recv1D_CwG_double(CTauschDouble *tC, size_t haloId);
 void tausch_recv2D_CwG_double(CTauschDouble *tC, size_t haloId);
 void tausch_recv3D_CwG_double(CTauschDouble *tC, size_t haloId);
@@ -166,6 +192,8 @@ void tausch_recv3D_CwG_double(CTauschDouble *tC, size_t haloId);
 void tausch_recv1D_GwC_double(CTauschDouble *tC, size_t haloId);
 void tausch_recv2D_GwC_double(CTauschDouble *tC, size_t haloId);
 void tausch_recv3D_GwC_double(CTauschDouble *tC, size_t haloId);
+
+#endif
 
 
 /****************************************/
@@ -175,6 +203,8 @@ void tausch_unpackNextRecvBuffer1D_CwC_double(CTauschDouble *tC, size_t haloId, 
 void tausch_unpackNextRecvBuffer2D_CwC_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
 void tausch_unpackNextRecvBuffer3D_CwC_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
 
+#ifdef TAUSCH_OPENCL
+
 void tausch_unpackNextRecvBuffer1D_CwG_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
 void tausch_unpackNextRecvBuffer2D_CwG_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
 void tausch_unpackNextRecvBuffer3D_CwG_double(CTauschDouble *tC, size_t haloId, size_t bufferId, double *buf, TauschPackRegion region);
@@ -182,6 +212,8 @@ void tausch_unpackNextRecvBuffer3D_CwG_double(CTauschDouble *tC, size_t haloId, 
 void tausch_unpackNextRecvBuffer1D_GwC_double(CTauschDouble *tC, size_t haloId, size_t bufferId, cl_mem *bufcl);
 void tausch_unpackNextRecvBuffer2D_GwC_double(CTauschDouble *tC, size_t haloId, size_t bufferId, cl_mem *bufcl);
 void tausch_unpackNextRecvBuffer3D_GwC_double(CTauschDouble *tC, size_t haloId, size_t bufferId, cl_mem *bufcl);
+
+#endif
 
 
 /****************************************/
@@ -191,6 +223,8 @@ void tausch_packAndSend1D_CwC_double(CTauschDouble *tC, size_t haloId, double *b
 void tausch_packAndSend2D_CwC_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region, int msgtag);
 void tausch_packAndSend3D_CwC_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region, int msgtag);
 
+#ifdef TAUSCH_OPENCL
+
 void tausch_packAndSend1D_CwG_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region, int msgtag);
 void tausch_packAndSend2D_CwG_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region, int msgtag);
 void tausch_packAndSend3D_CwG_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region, int msgtag);
@@ -198,6 +232,8 @@ void tausch_packAndSend3D_CwG_double(CTauschDouble *tC, size_t haloId, double *b
 void tausch_packAndSend1D_GwC_double(CTauschDouble *tC, size_t haloId, cl_mem *bufcl, int msgtag);
 void tausch_packAndSend2D_GwC_double(CTauschDouble *tC, size_t haloId, cl_mem *bufcl, int msgtag);
 void tausch_packAndSend3D_GwC_double(CTauschDouble *tC, size_t haloId, cl_mem *bufcl, int msgtag);
+
+#endif
 
 
 /****************************************/
@@ -207,6 +243,8 @@ void tausch_recvAndUnpack1D_CwC_double(CTauschDouble *tC, size_t haloId, double 
 void tausch_recvAndUnpack2D_CwC_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region);
 void tausch_recvAndUnpack3D_CwC_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region);
 
+#ifdef TAUSCH_OPENCL
+
 void tausch_recvAndUnpack1D_CwG_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region);
 void tausch_recvAndUnpack2D_CwG_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region);
 void tausch_recvAndUnpack3D_CwG_double(CTauschDouble *tC, size_t haloId, double *buf, TauschPackRegion region);
@@ -214,6 +252,8 @@ void tausch_recvAndUnpack3D_CwG_double(CTauschDouble *tC, size_t haloId, double 
 void tausch_recvAndUnpack1D_GwC_double(CTauschDouble *tC, size_t haloId, cl_mem *bufcl);
 void tausch_recvAndUnpack2D_GwC_double(CTauschDouble *tC, size_t haloId, cl_mem *bufcl);
 void tausch_recvAndUnpack3D_GwC_double(CTauschDouble *tC, size_t haloId, cl_mem *bufcl);
+
+#endif
 
 #ifdef __cplusplus
 }
