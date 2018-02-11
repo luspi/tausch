@@ -317,6 +317,7 @@ public:
      *
      */
     void packAndSendCwC(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
+    void packAndSendCwC(size_t haloId, buf_t *buf, int msgtag = -1);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void packAndSendCwG(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1);
     void packAndSendGwC(size_t haloId, cl::Buffer buf, int msgtag = -1);
@@ -344,6 +345,7 @@ public:
      *
      */
     void recvAndUnpackCwC(size_t haloId, buf_t *buf, TauschPackRegion region);
+    void recvAndUnpackCwC(size_t haloId, buf_t *buf);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void recvAndUnpackCwG(size_t haloId, buf_t *buf, TauschPackRegion region);
     void recvAndUnpackGwC(size_t haloId, cl::Buffer buf);

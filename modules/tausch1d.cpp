@@ -647,6 +647,10 @@ template <class buf_t> void Tausch1D<buf_t>::packAndSendCwC(size_t haloId, buf_t
     packSendBufferCwC(haloId, 0, buf, region);
     sendCwC(haloId, mpitag);
 }
+template <class buf_t> void Tausch1D<buf_t>::packAndSendCwC(size_t haloId, buf_t *buf, int mpitag) {
+    packSendBufferCwC(haloId, 0, buf);
+    sendCwC(haloId, mpitag);
+}
 
 #ifdef TAUSCH_OPENCL
 template <class buf_t> void Tausch1D<buf_t>::packAndSendCwG(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag) {
@@ -666,6 +670,10 @@ template <class buf_t> void Tausch1D<buf_t>::packAndSendGwC(size_t haloId, cl::B
 template <class buf_t> void Tausch1D<buf_t>::recvAndUnpackCwC(size_t haloId, buf_t *buf, TauschPackRegion region) {
     recvCwC(haloId);
     unpackRecvBufferCwC(haloId, 0, buf, region);
+}
+template <class buf_t> void Tausch1D<buf_t>::recvAndUnpackCwC(size_t haloId, buf_t *buf) {
+    recvCwC(haloId);
+    unpackRecvBufferCwC(haloId, 0, buf);
 }
 
 #ifdef TAUSCH_OPENCL

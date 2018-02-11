@@ -194,6 +194,11 @@ public:
     void packAndSend1D_CwC(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1) { tausch1->packAndSendCwC(haloId, buf, region, msgtag); }
     void packAndSend2D_CwC(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1) { tausch2->packAndSendCwC(haloId, buf, region, msgtag); }
     void packAndSend3D_CwC(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1) { tausch3->packAndSendCwC(haloId, buf, region, msgtag); }
+
+    void packAndSend1D_CwC(size_t haloId, buf_t *buf, int msgtag = -1) { tausch1->packAndSendCwC(haloId, buf, msgtag); }
+    void packAndSend2D_CwC(size_t haloId, buf_t *buf, int msgtag = -1) { tausch2->packAndSendCwC(haloId, buf, msgtag); }
+    void packAndSend3D_CwC(size_t haloId, buf_t *buf, int msgtag = -1) { tausch3->packAndSendCwC(haloId, buf, msgtag); }
+
 #ifdef TAUSCH_OPENCL
     void packAndSend1D_CwG(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1) { tausch1->packAndSendCwG(haloId, buf, region, msgtag); }
     void packAndSend2D_CwG(size_t haloId, buf_t *buf, TauschPackRegion region, int msgtag = -1) { tausch2->packAndSendCwG(haloId, buf, region, msgtag); }
@@ -211,6 +216,10 @@ public:
     void recvAndUnpack1D_CwC(size_t haloId, buf_t *buf, TauschPackRegion region) { tausch1->recvAndUnpackCwC(haloId, buf, region); }
     void recvAndUnpack2D_CwC(size_t haloId, buf_t *buf, TauschPackRegion region) { tausch2->recvAndUnpackCwC(haloId, buf, region); }
     void recvAndUnpack3D_CwC(size_t haloId, buf_t *buf, TauschPackRegion region) { tausch3->recvAndUnpackCwC(haloId, buf, region); }
+
+    void recvAndUnpack1D_CwC(size_t haloId, buf_t *buf) { tausch1->recvAndUnpackCwC(haloId, buf); }
+    void recvAndUnpack2D_CwC(size_t haloId, buf_t *buf) { tausch2->recvAndUnpackCwC(haloId, buf); }
+    void recvAndUnpack3D_CwC(size_t haloId, buf_t *buf) { tausch3->recvAndUnpackCwC(haloId, buf); }
 #ifdef TAUSCH_OPENCL
     void recvAndUnpack1D_CwG(size_t haloId, buf_t *buf, TauschPackRegion region) { tausch1->recvAndUnpackCwG(haloId, buf, region); }
     void recvAndUnpack2D_CwG(size_t haloId, buf_t *buf, TauschPackRegion region) { tausch2->recvAndUnpackCwG(haloId, buf, region); }
