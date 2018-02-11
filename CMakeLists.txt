@@ -56,9 +56,11 @@ install(FILES "modules/ctausch/ctauschdouble.h" "modules/ctausch/ctauschfloat.h"
         DESTINATION "include/tausch/modules/ctausch")
 
 # build documentation (if enabled)
-find_package(Doxygen)
 option(DOC "Create and install the HTML based API documentation (requires Doxygen)" ${DOXYGEN_FOUND})
 if(DOC)
+
+    find_package(Doxygen)
+
     if(NOT DOXYGEN_FOUND)
         message(FATAL_ERROR "Doxygen is needed to build the documentation.")
     endif()
