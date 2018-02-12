@@ -314,8 +314,7 @@ template <class buf_t> void Tausch1D<buf_t>::postReceiveCwC(size_t haloId, int m
         MPI_Recv_init(&mpiRecvBuffer[haloId][0], bufsize, mpiDataType, remoteHaloSpecsCpu[haloId].remoteMpiRank,
                       msgtag, TAUSCH_COMM, &mpiRecvRequests[haloId]);
 
-    } else
-        MPI_Wait(&mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
+    }
 
     MPI_Start(&mpiRecvRequests[haloId]);
 
