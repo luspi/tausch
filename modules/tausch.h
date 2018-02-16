@@ -269,6 +269,10 @@ public:
 
 #endif
 
+    TauschPackRegion createFilledPackRegion1D(size_t x, size_t width) { tausch1->createFilledPackRegion(x, width); }
+    TauschPackRegion createFilledPackRegion2D(size_t x, size_t y, size_t width, size_t height) { tausch2->createFilledPackRegion(x, y, width, height); }
+    TauschPackRegion createFilledPackRegion3D(size_t x, size_t y, size_t z, size_t width, size_t height, size_t depth) { tausch3->createFilledPackRegion(x, y, z, width, height, depth); }
+
 private:
     Tausch1D<buf_t> *tausch1;
     Tausch2D<buf_t> *tausch2;

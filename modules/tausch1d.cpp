@@ -693,25 +693,6 @@ template <class buf_t> TauschPackRegion Tausch1D<buf_t>::createFilledPackRegion(
     return region;
 }
 
-template <class buf_t> TauschPackRegion Tausch1D<buf_t>::createFilledPackRegion(size_t x, size_t y, size_t width, size_t height) {
-    TauschPackRegion region;
-    region.x = x;
-    region.width = width;
-    return region;
-}
-
-template <class buf_t> TauschPackRegion Tausch1D<buf_t>::createFilledPackRegion(size_t x, size_t y, size_t z,
-                                                                                size_t width, size_t height, size_t depth) {
-    TauschPackRegion region;
-    region.x = x;
-    region.y = y;
-    region.z = z;
-    region.width = width;
-    region.height = height;
-    region.depth = depth;
-    return region;
-}
-
 template <class buf_t> TauschHaloSpec Tausch1D<buf_t>::createFilledHaloSpec(size_t bufferWidth, size_t haloX, size_t haloWidth, int remoteMpiRank) {
     TauschHaloSpec halo;
     halo.bufferWidth = bufferWidth;
@@ -720,37 +701,6 @@ template <class buf_t> TauschHaloSpec Tausch1D<buf_t>::createFilledHaloSpec(size
     halo.remoteMpiRank = remoteMpiRank;
     return halo;
 }
-
-template <class buf_t> TauschHaloSpec Tausch1D<buf_t>::createFilledHaloSpec(size_t bufferWidth, size_t bufferHeight, size_t haloX, size_t haloY,
-                                                                            size_t haloWidth, size_t haloHeight, int remoteMpiRank) {
-    TauschHaloSpec halo;
-    halo.bufferWidth = bufferWidth;
-    halo.bufferHeight = bufferHeight;
-    halo.haloX = haloX;
-    halo.haloY = haloY;
-    halo.haloWidth = haloWidth;
-    halo.haloHeight = haloHeight;
-    halo.remoteMpiRank = remoteMpiRank;
-    return halo;
-}
-
-template <class buf_t> TauschHaloSpec Tausch1D<buf_t>::createFilledHaloSpec(size_t bufferWidth, size_t bufferHeight, size_t bufferDepth,
-                                                                            size_t haloX, size_t haloY, size_t haloZ,
-                                                                            size_t haloWidth, size_t haloHeight, size_t haloDepth, int remoteMpiRank) {
-    TauschHaloSpec halo;
-    halo.bufferWidth = bufferWidth;
-    halo.bufferHeight = bufferHeight;
-    halo.bufferDepth = bufferDepth;
-    halo.haloX = haloX;
-    halo.haloY = haloY;
-    halo.haloZ = haloZ;
-    halo.haloWidth = haloWidth;
-    halo.haloHeight = haloHeight;
-    halo.haloDepth = haloDepth;
-    halo.remoteMpiRank = remoteMpiRank;
-    return halo;
-}
-
 
 
 ///////////////////////////////////////////////////////////////
