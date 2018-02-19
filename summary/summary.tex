@@ -188,7 +188,7 @@ This data array is also expected to contain the space required for remote halo d
 \end{figure}
 
 
-Communication between a CPU and a GPU is currently only supported when both compute units live on the same MPI rank. There are two different ways this can be implemented on the user's end: 1) They can both live in the same thread and operate one after the other, or 2) They can live in seperate threads allowing them to run concurrently. A schematic way of how to realise computations on the CPU and GPU concurrently in seperate threads is shown in \autoref{fig:threadsschematic}:
+Communication between a CPU and a GPU is currently only supported when both compute units live on the same MPI rank. There are two different ways this can be implemented on the user's end: 1) They can both live in the same thread and operate one after the other, or 2) They can live in separate threads allowing them to run concurrently. A schematic way of how to realize computations on the CPU and GPU concurrently in separate threads is shown in \autoref{fig:threadsschematic}:
 
 \begin{figure}[ht]\centering
     \begin{tikzpicture}[scale=1.2]
@@ -245,10 +245,10 @@ Communication between a CPU and a GPU is currently only supported when both comp
         \end{scope}
 
     \end{tikzpicture}
-    \caption{Schematic of how to compute on CPU and GPU concurrently in seperate threads \label{fig:threadsschematic}}
+    \caption{Schematic of how to compute on CPU and GPU concurrently in separate threads \label{fig:threadsschematic}}
 \end{figure}
 
-When the computations on the CPU and the GPU run in seperate threads, Tausch will make sure to properly synchronise the threads when communicating the halo data. If both are running in the same thread, then Tausch must be told to do any synchronisation, as this would otherwise lead to a deadlock.
+When the computations on the CPU and the GPU run in separate threads, Tausch will make sure to properly synchronize the threads when communicating the halo data. If both are running in the same thread, then Tausch must be told to do any synchronization, as this would otherwise lead to a deadlock.
 
 \section{How Tausch works}\label{sec:howtauschworks}
 
@@ -330,7 +330,7 @@ The API of Tausch very closely resembles the steps of how Tausch works (see \aut
         \rowcolor{black!10}
         & \bfseries struct members\\
         \hline
-        the underying buffer & bufferWidth, bufferHeight, bufferDepth\\
+        the underlying buffer & bufferWidth, bufferHeight, bufferDepth\\
         the starting location of the halo & haloX, haloY, haloZ\\
         the size of the halo region & haloWidth, haloHeight, haloDepth\\
         the receiving/sending MPI rank & remoteMpiRank\\
@@ -453,14 +453,14 @@ The API distinguishes between the 1D, 2D and the 3D version by a suffix to the r
 
 There are two things Tausch is able to do that don't really fit into any one of the previous sections:
 \begin{enumerate}
-    \item Combine multiple buffers into one message. If there are multiple buffers covering the same domain that all need to exchange halo data, then Tausch can combine them all into one message instead of having to do a seperate halo exchange for each individual buffer. It does so by assigning buffer id's to the buffers in a similar fashion as the halo id's. That means that the first buffer has an index of 0, the second one an index of 1, etc. The difference to the halo id is, though, that Tausch doesn't care if the order is kept the same at each halo exchange. The only thing Tausch will make sure is that halo data arrives with the same buffer id as it was sent off.
-    \item Instead of having multiple buffers cover the same domain, it is also possible to have one buffer store multiple values for each point in the discretisation (e.g., for storing stencil data). Tausch can be told for each buffer how many values it stores for each point. If \emph{NULL} is specified (or rather \emph{nullptr}) then Tausch assumes that each buffer stores exactly one value for each point in the discretisation.
+    \item Combine multiple buffers into one message. If there are multiple buffers covering the same domain that all need to exchange halo data, then Tausch can combine them all into one message instead of having to do a separate halo exchange for each individual buffer. It does so by assigning buffer id's to the buffers in a similar fashion as the halo id's. That means that the first buffer has an index of 0, the second one an index of 1, etc. The difference to the halo id is, though, that Tausch doesn't care if the order is kept the same at each halo exchange. The only thing Tausch will make sure is that halo data arrives with the same buffer id as it was sent off.
+    \item Instead of having multiple buffers cover the same domain, it is also possible to have one buffer store multiple values for each point in the discretization (e.g., for storing stencil data). Tausch can be told for each buffer how many values it stores for each point. If \emph{NULL} is specified (or rather \emph{nullptr}) then Tausch assumes that each buffer stores exactly one value for each point in the discretization.
 \end{enumerate}
 
 \section{Next steps in the development}
 
 \begin{itemize}
-    \item Tausch currently is very well optimised in terms of performance only for two-dimensional CPU/CPU communication. The first next step is to perform similar optimisations for all the other types of communications and dimensions.
+    \item Tausch currently is very well optimized in terms of performance only for two-dimensional CPU/CPU communication. The first next step is to perform similar optimizations for all the other types of communications and dimensions.
     \item GPU/GPU communication is currently only implemented in the two-dimensional code, still missing from one- and three-dimensional versions.
     \item Even though Tausch generally outperforms MSG, it does so (according to some testing) only in 3 out of 4 cases. We would like it to perform better in all cases though.
 \end{itemize}
