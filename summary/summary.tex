@@ -73,7 +73,7 @@ Some of the terms used in this document are as follows:
 
 \section{What Tausch expects}
 
-Tausch doesn't come with many expectations, it can work with a large variety of setups. One requirement is regarding the data layout in the arrays: The data is expected to be stored in one consecutive array, first along the $x$, second along the $y$, and third along the $z$ direction, as illustrated in \autoref{fig:datastorage}.
+Tausch does not come with many expectations, it can work with a large variety of setups. One requirement is regarding the data layout in the arrays: The data is expected to be stored in one consecutive array, first along the $x$, second along the $y$, and third along the $z$ direction, as illustrated in \autoref{fig:datastorage}.
 
 \begin{figure}[ht]\centering
     \begin{tikzpicture}[scale=0.8]
@@ -451,11 +451,12 @@ The API distinguishes between the 1D, 2D and the 3D version by a suffix to the r
 
 \section{Additional features}
 
-There are two things Tausch is able to do that don't really fit into any one of the previous sections:
+There are two things Tausch is able to do that do not really fit into any one of the previous sections:
 \begin{enumerate}
-    \item Combine multiple buffers into one message. If there are multiple buffers covering the same domain that all need to exchange halo data, then Tausch can combine them all into one message instead of having to do a separate halo exchange for each individual buffer. It does so by assigning buffer id's to the buffers in a similar fashion as the halo id's. That means that the first buffer has an index of 0, the second one an index of 1, etc. The difference to the halo id is, though, that Tausch doesn't care if the order is kept the same at each halo exchange. The only thing Tausch will make sure is that halo data arrives with the same buffer id as it was sent off.
-    \item Instead of having multiple buffers cover the same domain, it is also possible to have one buffer store multiple values for each point in the discretization (e.g., for storing stencil data). Tausch can be told for each buffer how many values it stores for each point. If \emph{NULL} is specified (or rather \emph{nullptr}) then Tausch assumes that each buffer stores exactly one value for each point in the discretization.
+    \item \textbf{Combine multiple buffers into one message.} If there are multiple buffers covering the same domain that all need to exchange halo data, then Tausch can combine them all into one message instead of having to do a separate halo exchange for each individual buffer. It does so by assigning buffer id's to the buffers in a similar fashion as the halo id's. That means that the first buffer has an index of 0, the second one an index of 1, etc. The difference to the halo id's is, though, that Tausch does not care if the order is kept the same at each halo exchange. The only thing Tausch will make sure is that halo data arrives with the same buffer id as it was sent off with.
+    \item \textbf{Store multiple values per point.} Instead of having multiple buffers cover the same domain, it is also possible to have one buffer store multiple values for each point in the discretization (e.g., for storing stencil data). Tausch can be told for each buffer how many values it stores for each point. If \emph{NULL} is specified (or rather \emph{nullptr}) then Tausch assumes that each buffer stores exactly one value for each point in the discretization.
 \end{enumerate}
+Both of these features are not mutually exclusive and can be combined as needed.
 
 \section{Next steps in the development}
 
