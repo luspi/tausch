@@ -505,9 +505,23 @@ private:
 
     int *localBufferOffsetCwC;
     int *remoteBufferOffsetCwC;
-
-    int *localTotalBufferSize;
+    int *localTotalBufferSizeCwC;
     int *remoteTotalBufferSizeCwC;
+
+    int *remoteBufferOffsetCwG;
+    int *localBufferOffsetCwG;
+    int *localTotalBufferSizeCwG;
+    int *remoteTotalBufferSizeCwG;
+
+    int *localBufferOffsetGwC;
+    int *remoteBufferOffsetGwC;
+    int *localTotalBufferSizeGwC;
+    int *remoteTotalBufferSizeGwC;
+
+    int *localBufferOffsetGwG;
+    int *remoteBufferOffsetGwG;
+    int *localTotalBufferSizeGwG;
+    int *remoteTotalBufferSizeGwG;
 
 #ifdef TAUSCH_OPENCL
 
