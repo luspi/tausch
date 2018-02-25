@@ -530,7 +530,7 @@ private:
     buf_t **recvBufferGpuWithCpu;
     buf_t **recvBufferCpuWithGpu;
     cl::Buffer *cl_sendBufferGpuWithCpu;
-    cl::Buffer *cl_recvBufferCpuWithGpu;
+    cl::Buffer *cl_recvBufferGpuWithCpu;
     cl::Buffer *cl_sendBufferGpuWithGpu;
     cl::Buffer *cl_recvBufferGpuWithGpu;
 
