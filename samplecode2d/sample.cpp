@@ -2,21 +2,23 @@
 
 Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWidth, size_t *gpuHaloWidth, size_t *cpuForGpuHaloWidth, size_t *mpiNum, bool buildlog, bool hybrid, bool gpuonly) {
 
-    this->hybrid = hybrid;
-    this->gpuonly = gpuonly;
     this->localDim[0] = localDim[0];
     this->localDim[1] = localDim[1];
-    this->gpuDim[0] = gpuDim[0];
-    this->gpuDim[1] = gpuDim[1];
     this->loops = loops;
     for(int i = 0; i < 4; ++i)
         this->cpuHaloWidth[i] = cpuHaloWidth[i];
+    this->mpiNum[0] = mpiNum[0];
+    this->mpiNum[1] = mpiNum[1];
+#ifdef OPENCL
+    this->hybrid = hybrid;
+    this->gpuonly = gpuonly;
+    this->gpuDim[0] = gpuDim[0];
+    this->gpuDim[1] = gpuDim[1];
     for(int i = 0; i < 4; ++i)
         this->gpuHaloWidth[i] = gpuHaloWidth[i];
     for(int i = 0; i < 4; ++i)
         this->cpuForGpuHaloWidth[i] = cpuForGpuHaloWidth[i];
-    this->mpiNum[0] = mpiNum[0];
-    this->mpiNum[1] = mpiNum[1];
+#endif
 
     int mpiRank = 0, mpiSize = 1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -36,11 +38,13 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
 
     valuesPerPointPerBuffer = new size_t[numBuffers];
     for(int b = 0; b < numBuffers; ++b)
-        valuesPerPointPerBuffer[b] = 1;
+        valuesPerPointPerBuffer[b] = 2;
 
     tausch = new Tausch<double>(MPI_DOUBLE, numBuffers, valuesPerPointPerBuffer, MPI_COMM_WORLD);
 
+#ifdef OPENCL
     if(!gpuonly) {
+#endif
 
         dat = new double*[numBuffers];
         for(int b = 0; b < numBuffers; ++b)
@@ -113,10 +117,10 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
         tausch->setLocalHaloInfo2D_CwC(4, localHaloSpecsCpu);
         tausch->setRemoteHaloInfo2D_CwC(4, remoteHaloSpecsCpu);
 
+#ifdef OPENCL
     }
 
     if(hybrid) {
-
         size_t tauschGpuDim[2] = {gpuDim[0]+gpuHaloWidth[0]+gpuHaloWidth[1], gpuDim[1]+gpuHaloWidth[2]+gpuHaloWidth[3]};
         tausch->enableOpenCL2D(true, 64, true, buildlog);
 
@@ -328,19 +332,28 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
 
     }
 
+#endif
+
 }
 
 Sample::~Sample() {
 
     delete[] valuesPerPointPerBuffer;
+    delete tausch;
 
+#ifdef OPENCL
     if(!gpuonly) {
+#endif
+
         delete[] localHaloSpecsCpu;
         delete[] remoteHaloSpecsCpu;
         for(int b = 0; b < numBuffers; ++b)
             delete[] dat[b];
         delete[] dat;
+
+#ifdef OPENCL
     }
+
 
     if(hybrid) {
         delete[] localHaloSpecsGpu;
@@ -361,10 +374,13 @@ Sample::~Sample() {
         delete[] cl_gpudat;
     }
 
+#endif
+
 }
 
 void Sample::launchCPU() {
 
+#ifdef OPENCL
     if(hybrid) {
 
         for(int iter = 0; iter < loops; ++iter) {
@@ -417,6 +433,8 @@ void Sample::launchCPU() {
 
     } else {
 
+#endif
+
         for(int iter = 0; iter < loops; ++iter) {
 
             int sendtags[4] = {0, 1, 2, 3};
@@ -446,10 +464,13 @@ void Sample::launchCPU() {
 
         }
 
+#ifdef OPENCL
     }
+#endif
 
 }
 
+#ifdef OPENCL
 void Sample::launchGPU() {
 
     for(int iter = 0; iter < loops; ++iter) {
@@ -525,6 +546,7 @@ void Sample::launchGPUonly() {
     }
 
 }
+#endif
 
 void Sample::printCPU() {
 
@@ -544,6 +566,7 @@ void Sample::printCPU() {
 
 }
 
+#ifdef OPENCL
 void Sample::printGPU() {
 
     for(int j = gpuDim[1]+gpuHaloWidth[2]+gpuHaloWidth[3]-1; j >= 0; --j) {
@@ -561,3 +584,4 @@ void Sample::printGPU() {
     }
 
 }
+#endif
