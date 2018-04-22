@@ -59,10 +59,6 @@ template <class buf_t> Tausch2D<buf_t>::~Tausch2D() {
         delete[] remoteBufferOffsetCwC;
 
         delete[] localTotalBufferSizeCwC;
-
-        delete[] localBufferOffsetCwC;
-        delete[] remoteBufferOffsetCwC;
-        delete[] localTotalBufferSizeCwC;
         delete[] remoteTotalBufferSizeCwC;
 
     }
