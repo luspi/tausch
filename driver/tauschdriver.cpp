@@ -132,10 +132,7 @@ void TauschDriver::iterate() {
 
         tausch->postAllReceives2D_CwC(recvtagsCpu);
 
-//#pragma omp parallel
-//{
         kernel(0,0,localDim[0], localDim[1]);
-//}
 
         tausch->packAndSend2D_CwC(2, cpuData, sendtagsCpu[2]);
         tausch->packAndSend2D_CwC(3, cpuData, sendtagsCpu[3]);
@@ -155,35 +152,26 @@ void TauschDriver::iterate() {
 
 void TauschDriver::kernel(int startX, int startY, int endX, int endY) {
 
-    int effectiveStartY[4] = {startY, startY, startY+1, startY+1};
-    int effectiveStartX[4] = {startX, startX+1, startX, startX+1};
+    int onerow = (1+localDim[0]+1);
 
-    for(int xy = 0; xy < 4; ++xy) {
+    for(int j = startY; j < endY; ++j) {
+        for(int i = startX; i < endX; ++i) {
 
-        int onerow = (1+localDim[0]+1);
+            int index = (j+1)*onerow+i+1;
 
-//#pragma omp for
-        for(int j = effectiveStartY[xy]; j < endY; j += 2) {
-            for(int i = effectiveStartX[xy]; i < endX; i += 2) {
+            cpuData[index] = cpuStencil[5*index] * cpuData[index-onerow-1] +
+                             cpuStencil[5*index+1] * cpuData[index-onerow] +
+                             cpuStencil[5*index+2] * cpuData[index-1] +
+                             cpuStencil[5*index+3] * cpuData[index] +
+                             cpuStencil[5*index+4] * cpuData[index+onerow-1] +
 
-                int index = (j+1)*onerow+i+1;
+                             cpuStencil[5*index + 5] * cpuData[index-onerow+1] +
+                             cpuStencil[5*index + 5+2] * cpuData[index+1] +
+                             cpuStencil[5*index + 5+4] * cpuData[index+onerow+1] +
 
-                cpuData[index] = cpuStencil[5*index] * cpuData[index-onerow-1] +
-                                 cpuStencil[5*index+1] * cpuData[index-onerow] +
-                                 cpuStencil[5*index+2] * cpuData[index-1] +
-                                 cpuStencil[5*index+3] * cpuData[index] +
-                                 cpuStencil[5*index+4] * cpuData[index+onerow-1] +
+                             cpuStencil[5*(index+onerow) + 1] * cpuData[index+onerow];
 
-                                 cpuStencil[5*index + 5] * cpuData[index-onerow+1] +
-                                 cpuStencil[5*index + 5+2] * cpuData[index+1] +
-                                 cpuStencil[5*index + 5+4] * cpuData[index+onerow+1] +
-
-                                 cpuStencil[5*(index+onerow) + 1] * cpuData[index+onerow];
-
-            }
         }
-
-//#pragma omp barrier
 
     }
 

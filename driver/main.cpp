@@ -35,11 +35,6 @@ int main(int argc, char **argv) {
             averageOfHowManyRuns = atoi(argv[++i]);
     }
 
-    if(mpiNum[0]*mpiNum[1] != numProc) {
-        std::cout << "Invalid number of ranks, requested: " << numProc << " - specified for use: " << mpiNum[0]*mpiNum[1] << std::endl;
-        MPI_Abort(MPI_COMM_WORLD, 1);
-    }
-
     if(myRank == 0) {
 
         std::cout << std::endl
@@ -54,6 +49,11 @@ int main(int argc, char **argv) {
                   << "*********************************" << std::endl
                   << std::endl;
 
+    }
+
+    if(mpiNum[0]*mpiNum[1] != numProc) {
+        std::cout << "Invalid number of ranks, requested: " << numProc << " - specified for use: " << mpiNum[0]*mpiNum[1] << std::endl;
+        MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
