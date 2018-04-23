@@ -8,29 +8,25 @@
 class TauschDriver {
 
 public:
-    explicit TauschDriver(size_t *localDim, int iterations, int *mpiNum);
+    explicit TauschDriver(int *localDim, int iterations, int *mpiNum);
     ~TauschDriver();
 
     void iterate();
 
 private:
-    size_t localDim[2];
-    int mpiNum[2];
-    int iterations;
-
-    double deltaX, deltaY;
-
     int myRank, numProc;
 
+    int localDim[2];
+    int iterations;
+
+    int mpiNum[2];
+    int left, right, top, bottom;
+
     Tausch<double> *tausch;
-
-    size_t left, right, top, bottom;
-    size_t bottomleft, bottomright, topleft, topright;
-
-    double *cpuData, *cpuStencil;
-
     TauschHaloSpec *remoteHaloSpecs;
     TauschHaloSpec *localHaloSpecs;
+
+    double *cpuData, *cpuStencil;
 
     void kernel(int startX, int startY, int endX, int endY);
 
