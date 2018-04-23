@@ -38,7 +38,6 @@ template <class buf_t> Tausch2D<buf_t>::Tausch2D(MPI_Datatype mpiDataType,
 
 template <class buf_t> Tausch2D<buf_t>::~Tausch2D() {
 
-
     for(size_t i = 0; i < mpiSendBufferCpuWithCpu.size(); ++i) {
         if(std::find(alreadyDeletedLocalHaloIds.begin(), alreadyDeletedLocalHaloIds.end(), i) == alreadyDeletedLocalHaloIds.end())
             delete[] mpiSendBufferCpuWithCpu[i];
@@ -642,8 +641,10 @@ template <class buf_t> void Tausch2D<buf_t>::postAllReceivesCwC(int *msgtag) {
             msgtag[id] = -1;
     }
 
-    for(size_t id = 0; id < remoteHaloSpecsCpuWithCpu.size(); ++id)
-        postReceiveCwC(id, msgtag[id]);
+    for(size_t id = 0; id < remoteHaloSpecsCpuWithCpu.size(); ++id) {
+        if(std::find(alreadyDeletedRemoteHaloIds.begin(), alreadyDeletedRemoteHaloIds.end(), id) == alreadyDeletedRemoteHaloIds.end())
+            postReceiveCwC(id, msgtag[id]);
+    }
 
 }
 
