@@ -19,6 +19,7 @@
 #include <fstream>
 #include <atomic>
 #include <vector>
+#include <algorithm>
 
 #ifdef TAUSCH_OPENCL
 #define __CL_ENABLE_EXCEPTIONS
@@ -90,12 +91,25 @@ public:
      *
      */
     int addLocalHaloInfoCwC(TauschHaloSpec haloSpec);
-    void delLocalHaloInfoCwC(size_t haloId);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void setLocalHaloInfoCwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setLocalHaloInfoGwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setLocalHaloInfoGwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #endif /*! \endcond */
+
+    /*!
+     *
+     * Frees up the memory associated with the given haloId. This does not remove the entry completely from the vector and thus doesn't change any
+     * other haloId's!
+     *
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC, CwG, and GwG.
+     *
+     * \param haloId
+     *  The id of the halo region that is to be deleted.
+     *
+     */
+    void delLocalHaloInfoCwC(size_t haloId);
 
     /*!
      *
@@ -537,6 +551,9 @@ private:
     int *remoteBufferOffsetGwG;
     int *localTotalBufferSizeGwG;
     int *remoteTotalBufferSizeGwG;
+
+    std::vector<size_t> alreadyDeletedLocalHaloIds;
+    std::vector<size_t> alreadyDeletedRemoteHaloIds;
 
 #ifdef TAUSCH_OPENCL
 

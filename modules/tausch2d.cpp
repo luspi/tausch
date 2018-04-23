@@ -39,11 +39,15 @@ template <class buf_t> Tausch2D<buf_t>::Tausch2D(MPI_Datatype mpiDataType,
 template <class buf_t> Tausch2D<buf_t>::~Tausch2D() {
 
 
-    for(size_t i = 0; i < mpiSendBufferCpuWithCpu.size(); ++i)
-        delete[] mpiSendBufferCpuWithCpu[i];
+    for(size_t i = 0; i < mpiSendBufferCpuWithCpu.size(); ++i) {
+        if(std::find(alreadyDeletedLocalHaloIds.begin(), alreadyDeletedLocalHaloIds.end(), i) == alreadyDeletedLocalHaloIds.end())
+            delete[] mpiSendBufferCpuWithCpu[i];
+    }
 
-    for(size_t i = 0; i < mpiRecvBufferCpuWithCpu.size(); ++i)
-        delete[] mpiRecvBufferCpuWithCpu[i];
+    for(size_t i = 0; i < mpiRecvBufferCpuWithCpu.size(); ++i) {
+        if(std::find(alreadyDeletedRemoteHaloIds.begin(), alreadyDeletedRemoteHaloIds.end(), i) == alreadyDeletedRemoteHaloIds.end())
+            delete[] mpiRecvBufferCpuWithCpu[i];
+    }
 
 #ifdef TAUSCH_OPENCL
 
@@ -159,13 +163,6 @@ template <class buf_t> int Tausch2D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpec h
 
     return mpiSendBufferCpuWithCpu.size()-1;
 
-}
-
-template <class buf_t> void Tausch2D<buf_t>::delLocalHaloInfoCwC(size_t haloId) {
-    delete[] mpiSendBufferCpuWithCpu[haloId];
-    mpiSendRequestsCpuWithCpu[haloId] = MPI_Request();
-    localBufferOffsetCwC[haloId] = 0;
-    localTotalBufferSizeCwC[haloId] = 0;
 }
 
 #ifdef TAUSCH_OPENCL
@@ -347,6 +344,18 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGwG(size_t numHaloP
 
 }
 #endif
+
+
+////////////////////////
+/// Destroy local halo info
+
+template <class buf_t> void Tausch2D<buf_t>::delLocalHaloInfoCwC(size_t haloId) {
+    delete[] mpiSendBufferCpuWithCpu[haloId];
+    mpiSendRequestsCpuWithCpu[haloId] = MPI_Request();
+    localBufferOffsetCwC[haloId] = 0;
+    localTotalBufferSizeCwC[haloId] = 0;
+    alreadyDeletedLocalHaloIds.push_back(haloId);
+}
 
 
 ////////////////////////
@@ -563,6 +572,7 @@ template <class buf_t> void Tausch2D<buf_t>::delRemoteHaloInfoCwC(size_t haloId)
     mpiRecvRequestsCpuWithCpu[haloId] = MPI_Request();
     remoteBufferOffsetCwC[haloId] = 0;
     remoteTotalBufferSizeCwC[haloId] = 0;
+    alreadyDeletedRemoteHaloIds.push_back(haloId);
 }
 
 
