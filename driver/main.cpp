@@ -17,24 +17,45 @@ int main(int argc, char **argv) {
     int mpiNum[2] = {(int)std::sqrt(numProc), (int)std::sqrt(numProc)};
     int averageOfHowManyRuns = 10;
 
+    bool showhelp = false;
+
     // check for command line options
     for(int i = 1; i < argc; ++i) {
 
-        if(std::string(argv[i]) == "-iter" && i+1 < argc)
+        std::string cmd = std::string(argv[i]);
+
+        if(cmd == "-iter" && i+1 < argc)
             iterations = atoi(argv[++i]);
-        else if(std::string(argv[i]) == "-x" && i+1 < argc)
+        else if(cmd == "-x" && i+1 < argc)
             localDim[0] = atoll(argv[++i]);
-        else if(std::string(argv[i]) == "-y" && i+1 < argc)
+        else if(cmd == "-y" && i+1 < argc)
             localDim[1] = atoi(argv[++i]);
-        else if(std::string(argv[i]) == "-xy" && i+1 < argc) {
+        else if(cmd == "-xy" && i+1 < argc) {
             localDim[0] = atoi(argv[++i]);
             localDim[1] = localDim[0];
-        } else if(std::string(argv[i]) == "-mpix" && i+1 < argc)
+        } else if(cmd == "-mpix" && i+1 < argc)
             mpiNum[0] = atoi(argv[++i]);
-        else if(std::string(argv[i]) == "-mpiy" && i+1 < argc)
+        else if(cmd == "-mpiy" && i+1 < argc)
             mpiNum[1] = atoi(argv[++i]);
-        else if(std::string(argv[i]) == "-time" && i+1 < argc)
+        else if(cmd == "-time" && i+1 < argc)
             averageOfHowManyRuns = atoi(argv[++i]);
+        else if(cmd == "-h" || cmd == "-help") {
+            showhelp = true;
+            break;
+        }
+    }
+
+    if(showhelp) {
+        std::cout << std::endl
+                  << "Usage: tauschdriver [options]" << std::endl
+                  << std::endl
+                  << "  -iter                How many iterations to do (each iteration: apply stencil and exchange halo)" << std::endl
+                  << "  -x, -y, -xy <int>    Specify dimensions of mesh (either separately or combined)" << std::endl
+                  << "  -mpix, -mpiy <int>   How the number of MPI ranks are to be split up horizontally/vertically" << std::endl
+                  << "  -time <int>          How often to measure the time and calculate average (ignoring max/min time)" << std::endl
+                  << "  -h, -help            This help message" << std::endl << std::endl;
+        MPI_Finalize();
+        return 0;
     }
 
     // run at least 3 times (needed as largest and smallest times are always dropped)
