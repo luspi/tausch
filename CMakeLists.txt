@@ -8,7 +8,7 @@ set(CMAKE_PROJECT_NAME "Tausch - A general halo exchange library")
 SET(CMAKE_CXX_COMPILER "mpic++")
 
 # Enable C++11 and optimisations
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -g")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 
 # option to toggle OpenCL support
 option(OPENCL "Enable OpenCL support" ON)
