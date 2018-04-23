@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 project(tauschdriver)
 
 set(CMAKE_CXX_COMPILER "mpic++")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O0 -g -Wall -pedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
