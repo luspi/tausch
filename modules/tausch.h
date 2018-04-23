@@ -39,7 +39,7 @@ public:
         delete tausch3;
     }
 
-    void setLocalHaloInfo1D_CwC(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch1->setLocalHaloInfoCwC(numHaloParts, haloSpecs); }
+    int addLocalHaloInfo1D_CwC(TauschHaloSpec haloSpec) { return tausch1->addLocalHaloInfoCwC(haloSpec); }
     int addLocalHaloInfo2D_CwC(TauschHaloSpec haloSpec) { return tausch2->addLocalHaloInfoCwC(haloSpec); }
     void setLocalHaloInfo3D_CwC(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch3->setLocalHaloInfoCwC(numHaloParts, haloSpecs); }
 #ifdef TAUSCH_OPENCL
@@ -56,9 +56,10 @@ public:
 //    void setLocalHaloInfo3D_GwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #endif
 
+    void delLocalHaloInfo1D_CwC(size_t haloId) { tausch1->delLocalHaloInfoCwC(haloId); }
     void delLocalHaloInfo2D_CwC(size_t haloId) { tausch2->delLocalHaloInfoCwC(haloId); }
 
-    void setRemoteHaloInfo1D_CwC(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch1->setRemoteHaloInfoCwC(numHaloParts, haloSpecs); }
+    int addRemoteHaloInfo1D_CwC(TauschHaloSpec haloSpec) { return tausch1->addRemoteHaloInfoCwC(haloSpec); }
     int addRemoteHaloInfo2D_CwC(TauschHaloSpec haloSpec) { return tausch2->addRemoteHaloInfoCwC(haloSpec); }
     void setRemoteHaloInfo3D_CwC(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch3->setRemoteHaloInfoCwC(numHaloParts, haloSpecs); }
 #ifdef TAUSCH_OPENCL

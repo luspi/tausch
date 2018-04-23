@@ -20,9 +20,9 @@ void tausch_delete_double(CTauschDouble *tC) {
 // tausch_addLocalHaloInfo*
 
 // CPU with CPU
-void tausch_setLocalHaloInfo1D_CwC_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+int tausch_addLocalHaloInfo1D_CwC_double(CTauschDouble *tC, TauschHaloSpec haloSpec) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->setLocalHaloInfo1D_CwC(numHaloParts, haloSpecs);
+    return t->addLocalHaloInfo1D_CwC(haloSpec);
 }
 int tausch_addLocalHaloInfo2D_CwC_double(CTauschDouble *tC, TauschHaloSpec haloSpec) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
@@ -77,9 +77,9 @@ void tausch_setLocalHaloInfo3D_GwC_double(CTauschDouble *tC, size_t numHaloParts
 
 
 // CPU with CPU
-void tausch_setRemoteHaloInfo1D_CwC_double(CTauschDouble *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+int tausch_addRemoteHaloInfo1D_CwC_double(CTauschDouble *tC, TauschHaloSpec haloSpec) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);
-    t->setRemoteHaloInfo1D_CwC(numHaloParts, haloSpecs);
+    return t->addRemoteHaloInfo1D_CwC(haloSpec);
 }
 int tausch_addRemoteHaloInfo2D_CwC_double(CTauschDouble *tC, TauschHaloSpec haloSpec) {
     Tausch<double> *t = reinterpret_cast<Tausch<double>*>(tC);

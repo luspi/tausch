@@ -18,6 +18,8 @@
 #include <iostream>
 #include <fstream>
 #include <atomic>
+#include <vector>
+#include <algorithm>
 
 #ifdef TAUSCH_OPENCL
 #define __CL_ENABLE_EXCEPTIONS
@@ -87,11 +89,13 @@ public:
      * after calling this function.
      *
      */
-    void setLocalHaloInfoCwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    int addLocalHaloInfoCwC(TauschHaloSpec haloSpec);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void setLocalHaloInfoCwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setLocalHaloInfoGwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #endif /*! \endcond */
+
+    void delLocalHaloInfoCwC(size_t haloId);
 
     /*!
      *
@@ -115,11 +119,13 @@ public:
      * after calling this function.
      *
      */
-    void setRemoteHaloInfoCwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    int addRemoteHaloInfoCwC(TauschHaloSpec haloSpec);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void setRemoteHaloInfoCwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setRemoteHaloInfoGwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #endif /*! \endcond */
+
+    void delRemoteHaloInfoCwC(size_t haloId);
 
     /*!
      *
@@ -439,24 +445,23 @@ private:
     MPI_Comm TAUSCH_COMM;
     int mpiRank, mpiSize;
 
-    size_t localHaloNumParts;
-    TauschHaloSpec *localHaloSpecsCpu;
-    size_t remoteHaloNumParts;
-    TauschHaloSpec *remoteHaloSpecsCpu;
+    std::vector<TauschHaloSpec> localHaloSpecsCpu;
+    std::vector<TauschHaloSpec> remoteHaloSpecsCpu;
 
     size_t numBuffers;
     size_t *valuesPerPointPerBuffer;
 
-    buf_t **mpiRecvBuffer;
-    buf_t **mpiSendBuffer;
-    MPI_Request *mpiRecvRequests;
-    MPI_Request *mpiSendRequests;
+    std::vector<buf_t*> mpiRecvBuffer;
+    std::vector<buf_t*> mpiSendBuffer;
+    std::vector<MPI_Request> mpiRecvRequests;
+    std::vector<MPI_Request> mpiSendRequests;
     MPI_Datatype mpiDataType;
 
-    bool *setupMpiSend;
-    bool *setupMpiRecv;
+    std::vector<bool> setupMpiSend;
+    std::vector<bool> setupMpiRecv;
 
-    bool setupCpuWithCpu;
+    std::vector<size_t> alreadyDeletedLocalHaloIds;
+    std::vector<size_t> alreadyDeletedRemoteHaloIds;
 
 #ifdef TAUSCH_OPENCL
 
