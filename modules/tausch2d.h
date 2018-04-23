@@ -18,6 +18,7 @@
 #include <iostream>
 #include <fstream>
 #include <atomic>
+#include <vector>
 
 #ifdef TAUSCH_OPENCL
 #define __CL_ENABLE_EXCEPTIONS
@@ -88,7 +89,8 @@ public:
      * after calling this function.
      *
      */
-    void setLocalHaloInfoCwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    int addLocalHaloInfoCwC(TauschHaloSpec haloSpec);
+    void delLocalHaloInfoCwC(size_t haloId);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void setLocalHaloInfoCwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setLocalHaloInfoGwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
@@ -119,13 +121,30 @@ public:
      * %Tausch2D internally copies all the data out of the haloSpecs (and sets up some buffers along the way), so it is safe to delete this array
      * after calling this function.
      *
+     * \return
+     *  The haloId of the created halo region.
+     *
      */
-    void setRemoteHaloInfoCwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
+    int addRemoteHaloInfoCwC(TauschHaloSpec haloSpec);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void setRemoteHaloInfoCwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setRemoteHaloInfoGwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setRemoteHaloInfoGwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #endif /*! \endcond */
+
+    /*!
+     *
+     * Frees up the memory associated with the given haloId. This does not remove the entry completely from the vector and thus doesn't change any
+     * other haloId's!
+     *
+     * Function for CPU-CPU communication. The equivalent functions for CPU/GPU communication vary only in the ending of the name. Possible variants
+     * are GwC, CwG, and GwG.
+     *
+     * \param haloId
+     *  The id of the halo region that is to be deleted.
+     *
+     */
+    void delRemoteHaloInfoCwC(size_t haloId);
 
     /*!
      *
@@ -475,19 +494,17 @@ private:
     MPI_Comm TAUSCH_COMM;
     int mpiRank, mpiSize;
 
-    size_t localHaloNumPartsCpuWithCpu;
-    TauschHaloSpec *localHaloSpecsCpuWithCpu;
-    size_t remoteHaloNumPartsCpuWithCpu;
-    TauschHaloSpec *remoteHaloSpecsCpuWithCpu;
+    std::vector<TauschHaloSpec> localHaloSpecsCpuWithCpu;
+    std::vector<TauschHaloSpec> remoteHaloSpecsCpuWithCpu;
 
     size_t numBuffers;
     size_t *valuesPerPointPerBuffer;
     bool valuesPerPointPerBufferAllOne;
 
-    buf_t **mpiRecvBufferCpuWithCpu;
-    buf_t **mpiSendBufferCpuWithCpu;
-    MPI_Request *mpiRecvRequestsCpuWithCpu;
-    MPI_Request *mpiSendRequestsCpuWithCpu;
+    std::vector<buf_t*> mpiRecvBufferCpuWithCpu;
+    std::vector<buf_t*> mpiSendBufferCpuWithCpu;
+    std::vector<MPI_Request> mpiRecvRequestsCpuWithCpu;
+    std::vector<MPI_Request> mpiSendRequestsCpuWithCpu;
 
     buf_t **mpiRecvBufferGpuWithGpu;
     buf_t **mpiSendBufferGpuWithGpu;
@@ -496,17 +513,15 @@ private:
 
     MPI_Datatype mpiDataType;
 
-    bool *setupMpiSendCpuWithCpu;
-    bool *setupMpiRecvCpuWithCpu;
+    std::vector<bool> setupMpiSendCpuWithCpu;
+    std::vector<bool> setupMpiRecvCpuWithCpu;
     bool *setupMpiSendGpuWithGpu;
     bool *setupMpiRecvGpuWithGpu;
 
-    bool setupCpuWithCpu;
-
-    int *localBufferOffsetCwC;
-    int *remoteBufferOffsetCwC;
-    int *localTotalBufferSizeCwC;
-    int *remoteTotalBufferSizeCwC;
+    std::vector<int> localBufferOffsetCwC;
+    std::vector<int> remoteBufferOffsetCwC;
+    std::vector<int> localTotalBufferSizeCwC;
+    std::vector<int> remoteTotalBufferSizeCwC;
 
     int *remoteBufferOffsetCwG;
     int *localBufferOffsetCwG;

@@ -40,7 +40,7 @@ public:
     }
 
     void setLocalHaloInfo1D_CwC(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch1->setLocalHaloInfoCwC(numHaloParts, haloSpecs); }
-    void setLocalHaloInfo2D_CwC(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch2->setLocalHaloInfoCwC(numHaloParts, haloSpecs); }
+    int addLocalHaloInfo2D_CwC(TauschHaloSpec haloSpec) { return tausch2->addLocalHaloInfoCwC(haloSpec); }
     void setLocalHaloInfo3D_CwC(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch3->setLocalHaloInfoCwC(numHaloParts, haloSpecs); }
 #ifdef TAUSCH_OPENCL
     void setLocalHaloInfo1D_CwG(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch1->setLocalHaloInfoCwG(numHaloParts, haloSpecs); }
@@ -56,8 +56,10 @@ public:
 //    void setLocalHaloInfo3D_GwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #endif
 
+    void delLocalHaloInfo2D_CwC(size_t haloId) { tausch2->delLocalHaloInfoCwC(haloId); }
+
     void setRemoteHaloInfo1D_CwC(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch1->setRemoteHaloInfoCwC(numHaloParts, haloSpecs); }
-    void setRemoteHaloInfo2D_CwC(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch2->setRemoteHaloInfoCwC(numHaloParts, haloSpecs); }
+    int addRemoteHaloInfo2D_CwC(TauschHaloSpec haloSpec) { return tausch2->addRemoteHaloInfoCwC(haloSpec); }
     void setRemoteHaloInfo3D_CwC(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch3->setRemoteHaloInfoCwC(numHaloParts, haloSpecs); }
 #ifdef TAUSCH_OPENCL
     void setRemoteHaloInfo1D_CwG(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch1->setRemoteHaloInfoCwG(numHaloParts, haloSpecs); }
@@ -72,6 +74,8 @@ public:
     void setRemoteHaloInfo2D_GwG(size_t numHaloParts, TauschHaloSpec *haloSpecs) { tausch2->setRemoteHaloInfoGwG(numHaloParts, haloSpecs); }
 //    void setRemoteHaloInfo3D_GwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
 #endif
+
+    void delRemoteHaloInfo2D_CwC(size_t haloId) { tausch2->delRemoteHaloInfoCwC(haloId); }
 
     void postReceive1D_CwC(size_t haloId, int mpitag = -1) { tausch1->postReceiveCwC(haloId, mpitag); }
     void postReceive2D_CwC(size_t haloId, int mpitag = -1) { tausch2->postReceiveCwC(haloId, mpitag); }
