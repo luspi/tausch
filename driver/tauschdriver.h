@@ -3,7 +3,7 @@
 
 #include <random>
 #include <mpi.h>
-#include <tausch/tausch.h>
+#include "../tausch.h"
 
 class TauschDriver {
 

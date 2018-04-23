@@ -8,8 +8,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
 
-add_executable(${PROJECT_NAME} "main.cpp" "tauschdriver.cpp")
+add_executable(${PROJECT_NAME} "main.cpp" "tauschdriver.cpp" "../modules/tausch1d.cpp"  "../modules/tausch2d.cpp"  "../modules/tausch3d.cpp")
 
 target_link_libraries(${PROJECT_NAME} ${MPI_LIBRARIES})
-target_link_libraries(${PROJECT_NAME} "tausch")
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
