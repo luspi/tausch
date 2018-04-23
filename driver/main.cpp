@@ -101,21 +101,21 @@ int main(int argc, char **argv) {
         // All ranks start at the same time
         MPI_Barrier(MPI_COMM_WORLD);
 
-        auto t_start = std::chrono::steady_clock::now();
+        auto t_start = MPI_Wtime();
 
         // Perform all iterations (applies stencil and exchanges halo data)
         driver.iterate();
 
         // Wait for all ranks to end
         MPI_Barrier(MPI_COMM_WORLD);
-        auto t_end = std::chrono::steady_clock::now();
+        auto t_end = MPI_Wtime();
 
         // Calculate the total time needed
-        double t = std::chrono::duration<double, std::milli>(t_end-t_start).count();
+        double t = t_end-t_start;
 
         // Output timing for each timing run
         if(myRank == 0)
-            std::cout << " Run #" << run << " took " << t << " ms" << std::endl;
+            std::cout << " Run #" << run << " took " << t << " s" << std::endl;
 
         // Store time
         allt[run] = t;
@@ -147,7 +147,7 @@ int main(int argc, char **argv) {
 
         // Display average time
         std::cout << std::endl
-                  << " >> Average time is: " << total/(double)(averageOfHowManyRuns-2) << " ms" << std::endl
+                  << " >> Average time is: " << total/(double)(averageOfHowManyRuns-2) << " s" << std::endl
                   << std::endl;
 
     }

@@ -5,6 +5,8 @@ project(tauschdriver)
 set(CMAKE_CXX_COMPILER "mpic++")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/../modules/tausch_opencl_no.h" "${CMAKE_CURRENT_SOURCE_DIR}/../modules/tausch_opencl.h" COPYONLY)
+
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
 
