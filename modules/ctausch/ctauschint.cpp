@@ -7,7 +7,7 @@ extern "C" {
 #include "ctauschint.h"
 
 CTauschInt *tausch_new_int(size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm) {
-    Tausch<int> *t = new Tausch<int>(MPI_INT, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
+    Tausch<int> *t = new Tausch<int>(MPI_INT, numBuffers, valuesPerPointPerBuffer, comm);
     return reinterpret_cast<CTauschInt*>(t);
 }
 

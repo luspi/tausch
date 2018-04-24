@@ -7,7 +7,7 @@ extern "C" {
 #include "ctauschunsignedint.h"
 
 CTauschUnsignedInt *tausch_new_unsignedint(size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm) {
-    Tausch<unsigned int> *t = new Tausch<unsigned int>(MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
+    Tausch<unsigned int> *t = new Tausch<unsigned int>(MPI_DOUBLE, numBuffers, valuesPerPointPerBuffer, comm);
     return reinterpret_cast<CTauschUnsignedInt*>(t);
 }
 

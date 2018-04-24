@@ -17,7 +17,9 @@
 #include <mpi.h>
 #include <iostream>
 #include <fstream>
+#ifdef TAUSCH_OPENCL
 #include <atomic>
+#endif
 #include <vector>
 #include <algorithm>
 
@@ -52,13 +54,13 @@ public:
      *  The number of buffers that will be used. If more than one, they are all combined into one message for halo exchanges. Default value: 1
      * \param valuesPerPointPerBuffer
      *  How many values are stored consecutively per point in the same buffer. Each buffer can have different number of values stored per point. This
-     *  is expected to be an array of the same size as the number of buffers. If set to nullptr, all buffers are assumed to store 1 value per point.
+     *  is expected to be an array of the same size as the number of buffers. If set to NULL, all buffers are assumed to store 1 value per point.
      * \param comm
      *  The MPI Communictor to be used. %Tausch1D will duplicate the communicator, thus it is safe to have multiple instances of %Tausch1D working
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      *
      */
-    Tausch2D(MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = nullptr, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch2D(MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = NULL, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * The destructor cleaning up all memory.
@@ -195,11 +197,11 @@ public:
      *  an MPI tag (and is, in fact, identical to it for MPI communication).
      *
      */
-    void postAllReceivesCwC(int *msgtag = nullptr);
+    void postAllReceivesCwC(int *msgtag = NULL);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
-    void postAllReceivesCwG(int *msgtag = nullptr);
-    void postAllReceivesGwC(int *msgtag = nullptr);
-    void postAllReceivesGwG(int *msgtag = nullptr);
+    void postAllReceivesCwG(int *msgtag = NULL);
+    void postAllReceivesGwC(int *msgtag = NULL);
+    void postAllReceivesGwG(int *msgtag = NULL);
 #endif /*! \endcond */
 
     /*!

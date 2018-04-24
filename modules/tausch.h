@@ -28,7 +28,7 @@ template <class buf_t>
 class Tausch {
 
 public:
-    Tausch(MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = nullptr, MPI_Comm comm = MPI_COMM_WORLD) {
+    Tausch(MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = NULL, MPI_Comm comm = MPI_COMM_WORLD) {
         tausch1 = new Tausch1D<buf_t>(mpiDataType, numBuffers, valuesPerPointPerBuffer, comm);
         tausch2 = new Tausch2D<buf_t>(mpiDataType, numBuffers, valuesPerPointPerBuffer, comm);
         tausch3 = new Tausch3D<buf_t>(mpiDataType, numBuffers, valuesPerPointPerBuffer, comm);
@@ -98,21 +98,21 @@ public:
 //    void postReceive3D_GwG(size_t haloId, int msgtag = -1);
 #endif
 
-    void postAllReceives1D_CwC(int *mpitag = nullptr) { tausch1->postAllReceivesCwC(mpitag); }
-    void postAllReceives2D_CwC(int *mpitag = nullptr) { tausch2->postAllReceivesCwC(mpitag); }
-    void postAllReceives3D_CwC(int *mpitag = nullptr) { tausch3->postAllReceivesCwC(mpitag); }
+    void postAllReceives1D_CwC(int *mpitag = NULL) { tausch1->postAllReceivesCwC(mpitag); }
+    void postAllReceives2D_CwC(int *mpitag = NULL) { tausch2->postAllReceivesCwC(mpitag); }
+    void postAllReceives3D_CwC(int *mpitag = NULL) { tausch3->postAllReceivesCwC(mpitag); }
 #ifdef TAUSCH_OPENCL
-    void postAllReceives1D_CwG(int *msgtag = nullptr) { tausch1->postAllReceivesCwG(msgtag); }
-    void postAllReceives2D_CwG(int *msgtag = nullptr) { tausch2->postAllReceivesCwG(msgtag); }
-    void postAllReceives3D_CwG(int *msgtag = nullptr) { tausch3->postAllReceivesCwG(msgtag); }
+    void postAllReceives1D_CwG(int *msgtag = NULL) { tausch1->postAllReceivesCwG(msgtag); }
+    void postAllReceives2D_CwG(int *msgtag = NULL) { tausch2->postAllReceivesCwG(msgtag); }
+    void postAllReceives3D_CwG(int *msgtag = NULL) { tausch3->postAllReceivesCwG(msgtag); }
 
-    void postAllReceives1D_GwC(int *msgtag = nullptr) { tausch1->postAllReceivesGwC(msgtag); }
-    void postAllReceives2D_GwC(int *msgtag = nullptr) { tausch2->postAllReceivesGwC(msgtag); }
-    void postAllReceives3D_GwC(int *msgtag = nullptr) { tausch3->postAllReceivesGwC(msgtag); }
+    void postAllReceives1D_GwC(int *msgtag = NULL) { tausch1->postAllReceivesGwC(msgtag); }
+    void postAllReceives2D_GwC(int *msgtag = NULL) { tausch2->postAllReceivesGwC(msgtag); }
+    void postAllReceives3D_GwC(int *msgtag = NULL) { tausch3->postAllReceivesGwC(msgtag); }
 
-//    void postAllReceives1D_GwG(int *msgtag = nullptr);
-    void postAllReceives2D_GwG(int *msgtag = nullptr) { tausch2->postAllReceivesGwG(msgtag); }
-//    void postAllReceives3D_GwG(int *msgtag = nullptr);
+//    void postAllReceives1D_GwG(int *msgtag = NULL);
+    void postAllReceives2D_GwG(int *msgtag = NULL) { tausch2->postAllReceivesGwG(msgtag); }
+//    void postAllReceives3D_GwG(int *msgtag = NULL);
 #endif
 
     void packSendBuffer1D_CwC(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) { tausch1->packSendBufferCwC(haloId, bufferId, buf, region); }

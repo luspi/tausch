@@ -7,7 +7,7 @@ extern "C" {
 #include "ctauschdouble.h"
 
 CTauschDouble *tausch_new_double(size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm) {
-    Tausch<double> *t = new Tausch<double>(MPI_DOUBLE, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
+    Tausch<double> *t = new Tausch<double>(MPI_DOUBLE, numBuffers, valuesPerPointPerBuffer, comm);
     return reinterpret_cast<CTauschDouble*>(t);
 }
 

@@ -12,7 +12,7 @@ template <class buf_t> Tausch3D<buf_t>::Tausch3D(MPI_Datatype mpiDataType,
     this->numBuffers = numBuffers;
 
     this->valuesPerPointPerBuffer = new size_t[numBuffers];
-    if(valuesPerPointPerBuffer == nullptr)
+    if(valuesPerPointPerBuffer == NULL)
         for(int i = 0; i < numBuffers; ++i)
             this->valuesPerPointPerBuffer[i] = 1;
     else
@@ -97,7 +97,7 @@ template <class buf_t> int Tausch3D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpec h
     for(int n = 0; n < numBuffers; ++n)
         bufsize += valuesPerPointPerBuffer[n]*haloSpec.haloWidth*haloSpec.haloHeight*haloSpec.haloDepth;
 
-    mpiSendBuffer.push_back(new buf_t[bufsize]{});
+    mpiSendBuffer.push_back(new buf_t[bufsize]());
 
     setupMpiSend.push_back(false);
 
@@ -210,7 +210,7 @@ template <class buf_t> int Tausch3D<buf_t>::addRemoteHaloInfoCwC(TauschHaloSpec 
     for(int n = 0; n < numBuffers; ++n)
         bufsize += valuesPerPointPerBuffer[n]*haloSpec.haloWidth*haloSpec.haloHeight*haloSpec.haloDepth;
 
-    mpiRecvBuffer.push_back(new buf_t[bufsize]{});
+    mpiRecvBuffer.push_back(new buf_t[bufsize]());
 
     setupMpiRecv.push_back(false);
 
@@ -350,7 +350,7 @@ template <class buf_t> void Tausch3D<buf_t>::postReceiveGwC(size_t haloId, int m
 
 template <class buf_t> void Tausch3D<buf_t>::postAllReceivesCwC(int *msgtag) {
 
-    if(msgtag == nullptr) {
+    if(msgtag == NULL) {
         msgtag = new int[remoteHaloSpecsCpu.size()];
         for(int id = 0; id < remoteHaloSpecsCpu.size(); ++id)
             msgtag[id] = -1;
@@ -366,8 +366,8 @@ template <class buf_t> void Tausch3D<buf_t>::postAllReceivesCwC(int *msgtag) {
 #ifdef TAUSCH_OPENCL
 template <class buf_t> void Tausch3D<buf_t>::postAllReceivesCwG(int *msgtag) {
 
-    if(msgtag == nullptr) {
-        std::cerr << "Tausch3D::postAllReceives :: ERROR :: msgtag cannot be nullptr for device " << TAUSCH_CPU+TAUSCH_WITHGPU << std::endl;
+    if(msgtag == NULL) {
+        std::cerr << "Tausch3D::postAllReceives :: ERROR :: msgtag cannot be NULL for device " << TAUSCH_CPU+TAUSCH_WITHGPU << std::endl;
         return;
     }
 
@@ -378,8 +378,8 @@ template <class buf_t> void Tausch3D<buf_t>::postAllReceivesCwG(int *msgtag) {
 
 template <class buf_t> void Tausch3D<buf_t>::postAllReceivesGwC(int *msgtag) {
 
-    if(msgtag == nullptr) {
-        std::cerr << "Tausch3D::postAllReceives :: ERROR :: msgtag cannot be nullptr for device " << TAUSCH_GPU << std::endl;
+    if(msgtag == NULL) {
+        std::cerr << "Tausch3D::postAllReceives :: ERROR :: msgtag cannot be NULL for device " << TAUSCH_GPU << std::endl;
         return;
     }
 
@@ -939,54 +939,53 @@ template <class buf_t> void Tausch3D<buf_t>::setupOpenCL(bool giveOpenCLDeviceNa
 
 template <class buf_t> void Tausch3D<buf_t>::compileKernels() {
 
-  std::string oclstr = R"d(
-kernel void packSendBuffer(global const size_t * restrict const haloSpecs,
-                           global const size_t * restrict const valuesPerPointPerBuffer, global int * restrict const bufferId,
-                           global double * restrict const haloBuffer, global const double * restrict const buffer) {
+    std::string oclstr =
+"kernel void packSendBuffer(global const size_t * restrict const haloSpecs,"
+"                           global const size_t * restrict const valuesPerPointPerBuffer, global int * restrict const bufferId,"
+"                           global double * restrict const haloBuffer, global const double * restrict const buffer) {"
 
-    const int current = get_global_id(0);
+"    const int current = get_global_id(0);"
 
-    int maxSize = haloSpecs[3]*haloSpecs[4]*haloSpecs[5];
+"    int maxSize = haloSpecs[3]*haloSpecs[4]*haloSpecs[5];"
 
-    if(current >= maxSize) return;
+"    if(current >= maxSize) return;"
 
-    int index = (current/(haloSpecs[3]*haloSpecs[4]) + haloSpecs[2])*haloSpecs[6]*haloSpecs[7] +
-                ((current%(haloSpecs[3]*haloSpecs[4]))/haloSpecs[3] + haloSpecs[1]) * haloSpecs[6] +
-                current%haloSpecs[3] + haloSpecs[0];
+"    int index = (current/(haloSpecs[3]*haloSpecs[4]) + haloSpecs[2])*haloSpecs[6]*haloSpecs[7] +"
+"                ((current%(haloSpecs[3]*haloSpecs[4]))/haloSpecs[3] + haloSpecs[1]) * haloSpecs[6] +"
+"                current%haloSpecs[3] + haloSpecs[0];"
 
-    for(int val = 0; val < valuesPerPointPerBuffer[*bufferId]; ++val) {
-        int offset = 0;
-        for(int b = 0; b < *bufferId; ++b)
-            offset += valuesPerPointPerBuffer[b]*maxSize;
-        haloBuffer[offset+ valuesPerPointPerBuffer[*bufferId]*current + val] = buffer[valuesPerPointPerBuffer[*bufferId]*index + val];
-    }
+"    for(int val = 0; val < valuesPerPointPerBuffer[*bufferId]; ++val) {"
+"        int offset = 0;"
+"        for(int b = 0; b < *bufferId; ++b)"
+"            offset += valuesPerPointPerBuffer[b]*maxSize;"
+"        haloBuffer[offset+ valuesPerPointPerBuffer[*bufferId]*current + val] = buffer[valuesPerPointPerBuffer[*bufferId]*index + val];"
+"    }"
 
-}
+"}"
 
-kernel void unpackRecvBuffer(global const size_t * restrict const haloSpecs,
-                             global const size_t * restrict const valuesPerPointPerBuffer, global int * restrict const bufferId,
-                             global const double * restrict const haloBuffer, global double * restrict const buffer) {
+"kernel void unpackRecvBuffer(global const size_t * restrict const haloSpecs,"
+"                             global const size_t * restrict const valuesPerPointPerBuffer, global int * restrict const bufferId,"
+"                             global const double * restrict const haloBuffer, global double * restrict const buffer) {"
 
-    const int current = get_global_id(0);
+"    const int current = get_global_id(0);"
 
-    int maxSize = haloSpecs[3]*haloSpecs[4]*haloSpecs[5];
+"    int maxSize = haloSpecs[3]*haloSpecs[4]*haloSpecs[5];"
 
-    if(current >= maxSize) return;
+"    if(current >= maxSize) return;"
 
-    int index = (current/(haloSpecs[3]*haloSpecs[4]) + haloSpecs[2])*haloSpecs[6]*haloSpecs[7] +
-                ((current%(haloSpecs[3]*haloSpecs[4]))/haloSpecs[3] + haloSpecs[1]) * haloSpecs[6] +
-                current%haloSpecs[3] + haloSpecs[0];
+"    int index = (current/(haloSpecs[3]*haloSpecs[4]) + haloSpecs[2])*haloSpecs[6]*haloSpecs[7] +"
+"                ((current%(haloSpecs[3]*haloSpecs[4]))/haloSpecs[3] + haloSpecs[1]) * haloSpecs[6] +"
+"                current%haloSpecs[3] + haloSpecs[0];"
 
-    for(int val = 0; val < valuesPerPointPerBuffer[*bufferId]; ++val) {
-        int offset = 0;
-        for(int b = 0; b < *bufferId; ++b)
-            offset += valuesPerPointPerBuffer[b]*maxSize;
-        buffer[valuesPerPointPerBuffer[*bufferId]*index + val] =
-                haloBuffer[offset + valuesPerPointPerBuffer[*bufferId]*current + val];
-    }
+"    for(int val = 0; val < valuesPerPointPerBuffer[*bufferId]; ++val) {"
+"        int offset = 0;"
+"        for(int b = 0; b < *bufferId; ++b)"
+"            offset += valuesPerPointPerBuffer[b]*maxSize;"
+"        buffer[valuesPerPointPerBuffer[*bufferId]*index + val] ="
+"                haloBuffer[offset + valuesPerPointPerBuffer[*bufferId]*current + val];"
+"    }"
 
-}
-      )d";
+"}";
 
     try {
         cl_programs = cl::Program(cl_context, oclstr, false);
@@ -1024,8 +1023,6 @@ kernel void unpackRecvBuffer(global const size_t * restrict const haloSpecs,
 
 
 template class Tausch3D<char>;
-template class Tausch3D<char16_t>;
-template class Tausch3D<char32_t>;
 template class Tausch3D<wchar_t>;
 template class Tausch3D<signed char>;
 template class Tausch3D<short int>;

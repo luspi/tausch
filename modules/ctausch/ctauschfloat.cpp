@@ -7,7 +7,7 @@ extern "C" {
 #include "ctauschfloat.h"
 
 CTauschFloat *tausch_new_float(size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm) {
-    Tausch<float> *t = new Tausch<float>(MPI_FLOAT, numBuffers, (valuesPerPointPerBuffer==NULL ? nullptr : valuesPerPointPerBuffer), comm);
+    Tausch<float> *t = new Tausch<float>(MPI_FLOAT, numBuffers, valuesPerPointPerBuffer, comm);
     return reinterpret_cast<CTauschFloat*>(t);
 }
 

@@ -7,9 +7,6 @@ set(CMAKE_PROJECT_NAME "Tausch - A general halo exchange library")
 # Default MPI compiler
 SET(CMAKE_CXX_COMPILER "mpic++")
 
-# Enable C++11 and optimisations
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
-
 # option to toggle OpenCL support
 option(OPENCL "Enable OpenCL support" ON)
 
@@ -19,11 +16,21 @@ include_directories(${MPI_INCLUDE_PATH})
 
 # find OpenCL
 if(OPENCL)
+
+    # Enable C++11 and optimisations
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
+
     find_package(OpenCL REQUIRED)
     include_directories(${OPENCL_INCLUDE_DIRS})
     configure_file("${CMAKE_CURRENT_SOURCE_DIR}/modules/tausch_opencl_yes.h" "${CMAKE_CURRENT_SOURCE_DIR}/modules/tausch_opencl.h" COPYONLY)
+
 else(not OPENCL)
+
+    # Enable C++03 and optimisations
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++03 -O3")
+
     configure_file("${CMAKE_CURRENT_SOURCE_DIR}/modules/tausch_opencl_no.h" "${CMAKE_CURRENT_SOURCE_DIR}/modules/tausch_opencl.h" COPYONLY)
+
 endif(OPENCL)
 
 # All headers and source files
