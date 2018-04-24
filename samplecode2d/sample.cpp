@@ -87,6 +87,9 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
         remoteHaloSpecsCpu[0].haloWidth = cpuHaloWidth[0]; remoteHaloSpecsCpu[0].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
         remoteHaloSpecsCpu[0].remoteMpiRank = left;
 
+        tausch->addLocalHaloInfo2D_CwC(localHaloSpecsCpu[0]);
+        tausch->addRemoteHaloInfo2D_CwC(remoteHaloSpecsCpu[0]);
+
         localHaloSpecsCpu[1].bufferWidth = tauschLocalDim[0]; localHaloSpecsCpu[1].bufferHeight = tauschLocalDim[1];
         localHaloSpecsCpu[1].haloX = localDim[0]; localHaloSpecsCpu[1].haloY = 0;
         localHaloSpecsCpu[1].haloWidth = cpuHaloWidth[0]; localHaloSpecsCpu[1].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
@@ -95,6 +98,9 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
         remoteHaloSpecsCpu[1].haloX = cpuHaloWidth[0]+localDim[0]; remoteHaloSpecsCpu[1].haloY = 0;
         remoteHaloSpecsCpu[1].haloWidth = cpuHaloWidth[1]; remoteHaloSpecsCpu[1].haloHeight = cpuHaloWidth[3]+localDim[1]+cpuHaloWidth[2];
         remoteHaloSpecsCpu[1].remoteMpiRank = right;
+
+        tausch->addLocalHaloInfo2D_CwC(localHaloSpecsCpu[1]);
+        tausch->addRemoteHaloInfo2D_CwC(remoteHaloSpecsCpu[1]);
 
         localHaloSpecsCpu[2].bufferWidth = tauschLocalDim[0]; localHaloSpecsCpu[2].bufferHeight = tauschLocalDim[1];
         localHaloSpecsCpu[2].haloX = 0; localHaloSpecsCpu[2].haloY = localDim[1];
@@ -105,6 +111,9 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
         remoteHaloSpecsCpu[2].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecsCpu[2].haloHeight = cpuHaloWidth[2];
         remoteHaloSpecsCpu[2].remoteMpiRank = top;
 
+        tausch->addLocalHaloInfo2D_CwC(localHaloSpecsCpu[2]);
+        tausch->addRemoteHaloInfo2D_CwC(remoteHaloSpecsCpu[2]);
+
         localHaloSpecsCpu[3].bufferWidth = tauschLocalDim[0]; localHaloSpecsCpu[3].bufferHeight = tauschLocalDim[1];
         localHaloSpecsCpu[3].haloX = 0; localHaloSpecsCpu[3].haloY = cpuHaloWidth[3];
         localHaloSpecsCpu[3].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; localHaloSpecsCpu[3].haloHeight = cpuHaloWidth[2];
@@ -114,8 +123,8 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
         remoteHaloSpecsCpu[3].haloWidth = cpuHaloWidth[0]+localDim[0]+cpuHaloWidth[1]; remoteHaloSpecsCpu[3].haloHeight = cpuHaloWidth[3];
         remoteHaloSpecsCpu[3].remoteMpiRank = bottom;
 
-        tausch->setLocalHaloInfo2D_CwC(4, localHaloSpecsCpu);
-        tausch->setRemoteHaloInfo2D_CwC(4, remoteHaloSpecsCpu);
+        tausch->addLocalHaloInfo2D_CwC(localHaloSpecsCpu[3]);
+        tausch->addRemoteHaloInfo2D_CwC(remoteHaloSpecsCpu[3]);
 
 #ifdef OPENCL
     }

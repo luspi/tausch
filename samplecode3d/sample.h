@@ -12,29 +12,36 @@ public:
     ~Sample();
 
     void launchCPU();
-    void launchGPU();
-
     void printCPU();
+
+#ifdef OPENCL
+    void launchGPU();
     void printGPU();
+#endif
 
 private:
     size_t localDim[3];
-    size_t gpuDim[3];
     size_t loops;
     size_t cpuHaloWidth[6];
+    size_t mpiNum[3];
+
+#ifdef OPENCL
+    size_t gpuDim[3];
     size_t gpuHaloWidth[6];
     size_t cpuForGpuHaloWidth[6];
-    size_t mpiNum[3];
     bool hybrid;
+#endif
 
     Tausch<double> *tausch;
 
     TauschHaloSpec *localHaloSpecs;
     TauschHaloSpec *remoteHaloSpecs;
+#ifdef OPENCL
     TauschHaloSpec *localHaloSpecsGpu;
     TauschHaloSpec *remoteHaloSpecsGpu;
     TauschHaloSpec *localHaloSpecsCpuForGpu;
     TauschHaloSpec *remoteHaloSpecsCpuForGpu;
+#endif
 
     double **dat;
     size_t numBuffers;
@@ -42,9 +49,11 @@ private:
 
     size_t left, right, top, bottom, front, back;
 
+#ifdef OPENCL
     double **gpudat;
     cl::Buffer *cl_gpudat;
     cl::Buffer cl_valuesPerPointPerBuffer;
+#endif
 
 };
 

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
 
 SET(CMAKE_CXX_COMPILER "mpic++")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -g")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 
 project(sample1d)
 

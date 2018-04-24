@@ -4,14 +4,16 @@ Sample::Sample(size_t localDim, size_t gpuDim, size_t loops, size_t *cpuHaloWidt
 
     this->hybrid = hybrid;
     this->localDim = localDim;
-    this->gpuDim = gpuDim;
     this->loops = loops;
     for(int i = 0; i < 2; ++i)
         this->cpuHaloWidth[i] = cpuHaloWidth[i];
+#ifdef OPENCL
+    this->gpuDim = gpuDim;
     for(int i = 0; i < 2; ++i)
         this->gpuHaloWidth[i] = gpuHaloWidth[i];
     for(int i = 0; i < 2; ++i)
         this->cpuForGpuHaloWidth[i] = cpuForGpuHaloWidth[i];
+#endif
 
     int mpiRank = 0, mpiSize = 1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -32,12 +34,15 @@ Sample::Sample(size_t localDim, size_t gpuDim, size_t loops, size_t *cpuHaloWidt
     for(int b = 0; b < numBuffers; ++b)
         dat[b] = new double[valuesPerPointPerBuffer[b]*(localDim + cpuHaloWidth[0] + cpuHaloWidth[1])]{};
 
+#ifdef OPENCL
     if(!hybrid) {
+#endif
         for(int i = 0; i < localDim; ++i) {
             for(int b = 0; b < numBuffers; ++b)
                 for(int val = 0; val < valuesPerPointPerBuffer[b]; ++val)
                     dat[b][valuesPerPointPerBuffer[b]*(i+cpuHaloWidth[0])+val] = (b*5 + i+1)*10+val;
         }
+#ifdef OPENCL
     } else {
         for(int i = 0; i < localDim; ++i) {
             if(i >= (localDim-gpuDim)/2 && i < (localDim-gpuDim)/2+gpuDim) continue;
@@ -46,6 +51,7 @@ Sample::Sample(size_t localDim, size_t gpuDim, size_t loops, size_t *cpuHaloWidt
                     dat[b][valuesPerPointPerBuffer[b]*(i+cpuHaloWidth[0])+val] = (b*5 + i+1)*10+val;
         }
     }
+#endif
 
     size_t tauschLocalDim = localDim+cpuHaloWidth[0]+cpuHaloWidth[1];
     tausch = new Tausch<double>(MPI_DOUBLE, numBuffers, valuesPerPointPerBuffer, MPI_COMM_WORLD);
@@ -64,6 +70,8 @@ Sample::Sample(size_t localDim, size_t gpuDim, size_t loops, size_t *cpuHaloWidt
     remoteHaloSpecs[0].haloWidth = cpuHaloWidth[0];
     remoteHaloSpecs[0].remoteMpiRank = left;
 
+    tausch->addLocalHaloInfo1D_CwC(localHaloSpecs[0]);
+    tausch->addRemoteHaloInfo1D_CwC(remoteHaloSpecs[0]);
 
     localHaloSpecs[1].bufferWidth = tauschLocalDim;
     localHaloSpecs[1].haloX = localDim;
@@ -74,10 +82,10 @@ Sample::Sample(size_t localDim, size_t gpuDim, size_t loops, size_t *cpuHaloWidt
     remoteHaloSpecs[1].haloWidth = cpuHaloWidth[1];
     remoteHaloSpecs[1].remoteMpiRank = right;
 
-    tausch->setLocalHaloInfo1D_CwC(2, localHaloSpecs);
-    tausch->setRemoteHaloInfo1D_CwC(2, remoteHaloSpecs);
+    tausch->addLocalHaloInfo1D_CwC(localHaloSpecs[1]);
+    tausch->addRemoteHaloInfo1D_CwC(remoteHaloSpecs[1]);
 
-
+#ifdef OPENCL
     if(hybrid) {
 
         size_t tauschGpuDim = gpuDim+gpuHaloWidth[0]+gpuHaloWidth[1];
@@ -149,6 +157,7 @@ Sample::Sample(size_t localDim, size_t gpuDim, size_t loops, size_t *cpuHaloWidt
         tausch->setRemoteHaloInfo1D_GwC(2, remoteHaloSpecsGpu);
 
     }
+#endif
 
 }
 
@@ -165,6 +174,7 @@ Sample::~Sample() {
 
 void Sample::launchCPU() {
 
+#ifdef OPENCL
     if(hybrid) {
 
         int sendtagsCpu[2] = {0, 1};
@@ -214,6 +224,8 @@ void Sample::launchCPU() {
 
     } else {
 
+#endif
+
         int sendtags[2] = {0, 1};
         int recvtags[2] = {1, 0};
 
@@ -239,10 +251,13 @@ void Sample::launchCPU() {
 
         }
 
+#ifdef OPENCL
     }
+#endif
 
 }
 
+#ifdef OPENCL
 void Sample::launchGPU() {
 
     int sendtags[2] = {0, 1};
@@ -276,6 +291,7 @@ void Sample::launchGPU() {
     }
 
 }
+#endif
 
 void Sample::printCPU() {
 
@@ -293,6 +309,7 @@ void Sample::printCPU() {
 
 }
 
+#ifdef OPENCL
 void Sample::printGPU() {
 
     for(int b = 0; b < numBuffers; ++b) {
@@ -308,3 +325,4 @@ void Sample::printGPU() {
     std::cout << std::endl;
 
 }
+#endif
