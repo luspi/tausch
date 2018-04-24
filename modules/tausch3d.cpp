@@ -21,7 +21,6 @@ template <class buf_t> Tausch3D<buf_t>::Tausch3D(MPI_Datatype mpiDataType,
 
     this->mpiDataType = mpiDataType;
 
-    setupCpuWithCpu = false;
 #ifdef TAUSCH_OPENCL
     setupCpuWithGpu = false;
     setupGpuWithCpu = false;
@@ -31,22 +30,14 @@ template <class buf_t> Tausch3D<buf_t>::Tausch3D(MPI_Datatype mpiDataType,
 
 template <class buf_t> Tausch3D<buf_t>::~Tausch3D() {
 
-    if(setupCpuWithCpu) {
-
-        for(int i = 0; i < localHaloNumParts; ++i)
+    for(int i = 0; i < mpiSendBuffer.size(); ++i) {
+        if(std::find(alreadyDeletedLocalHaloIds.begin(), alreadyDeletedLocalHaloIds.end(), i) == alreadyDeletedLocalHaloIds.end())
             delete[] mpiSendBuffer[i];
-        delete[] localHaloSpecsCpu;
-        delete[] mpiSendBuffer;
-        delete[] mpiSendRequests;
-        delete[] setupMpiSend;
+    }
 
-        for(int i = 0; i < remoteHaloNumParts; ++i)
+    for(int i = 0; i < mpiRecvBuffer.size(); ++i) {
+        if(std::find(alreadyDeletedRemoteHaloIds.begin(), alreadyDeletedRemoteHaloIds.end(), i) == alreadyDeletedRemoteHaloIds.end())
             delete[] mpiRecvBuffer[i];
-        delete[] remoteHaloSpecsCpu;
-        delete[] mpiRecvBuffer;
-        delete[] mpiRecvRequests;
-        delete[] setupMpiRecv;
-
     }
 
 #ifdef TAUSCH_OPENCL
@@ -98,38 +89,21 @@ template <class buf_t> Tausch3D<buf_t>::~Tausch3D() {
 ////////////////////////
 /// Set local halo info
 
-template <class buf_t> void Tausch3D<buf_t>::setLocalHaloInfoCwC(size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+template <class buf_t> int Tausch3D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpec haloSpec) {
 
-    localHaloNumParts = numHaloParts;
-    localHaloSpecsCpu = new TauschHaloSpec[numHaloParts];
-    mpiSendBuffer = new buf_t*[numHaloParts];
-    mpiSendRequests = new MPI_Request[numHaloParts];
-    setupMpiSend = new bool[numHaloParts];
+    localHaloSpecsCpu.push_back(haloSpec);
 
-    setupCpuWithCpu = true;
+    size_t bufsize = 0;
+    for(int n = 0; n < numBuffers; ++n)
+        bufsize += valuesPerPointPerBuffer[n]*haloSpec.haloWidth*haloSpec.haloHeight*haloSpec.haloDepth;
 
-    for(int i = 0; i < numHaloParts; ++i) {
+    mpiSendBuffer.push_back(new buf_t[bufsize]{});
 
-        localHaloSpecsCpu[i].bufferWidth = haloSpecs[i].bufferWidth;
-        localHaloSpecsCpu[i].bufferHeight = haloSpecs[i].bufferHeight;
-        localHaloSpecsCpu[i].bufferDepth = haloSpecs[i].bufferDepth;
-        localHaloSpecsCpu[i].haloX = haloSpecs[i].haloX;
-        localHaloSpecsCpu[i].haloY = haloSpecs[i].haloY;
-        localHaloSpecsCpu[i].haloZ = haloSpecs[i].haloZ;
-        localHaloSpecsCpu[i].haloWidth = haloSpecs[i].haloWidth;
-        localHaloSpecsCpu[i].haloHeight = haloSpecs[i].haloHeight;
-        localHaloSpecsCpu[i].haloDepth = haloSpecs[i].haloDepth;
-        localHaloSpecsCpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
+    setupMpiSend.push_back(false);
 
-        size_t bufsize = 0;
-        for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight*haloSpecs[i].haloDepth;
+    mpiSendRequests.push_back(MPI_Request());
 
-        mpiSendBuffer[i] = new buf_t[bufsize]{};
-
-        setupMpiSend[i] = false;
-
-    }
+    return mpiSendBuffer.size()-1;
 
 }
 
@@ -218,40 +192,31 @@ template <class buf_t> void Tausch3D<buf_t>::setLocalHaloInfoGwC(size_t numHaloP
 }
 #endif
 
+template <class buf_t> void Tausch3D<buf_t>::delLocalHaloInfoCwC(size_t haloId) {
+    delete[] mpiSendBuffer[haloId];
+    mpiSendRequests[haloId] = MPI_Request();
+    alreadyDeletedLocalHaloIds.push_back(haloId);
+}
+
 
 ////////////////////////
 /// Set remote halo info
 
-template <class buf_t> void Tausch3D<buf_t>::setRemoteHaloInfoCwC(size_t numHaloParts, TauschHaloSpec *haloSpecs) {
+template <class buf_t> int Tausch3D<buf_t>::addRemoteHaloInfoCwC(TauschHaloSpec haloSpec) {
 
-    remoteHaloNumParts = numHaloParts;
-    remoteHaloSpecsCpu = new TauschHaloSpec[numHaloParts];
-    mpiRecvBuffer = new buf_t*[numHaloParts];
-    mpiRecvRequests = new MPI_Request[numHaloParts];
-    setupMpiRecv = new bool[numHaloParts];
+    remoteHaloSpecsCpu.push_back(haloSpec);
 
-    for(int i = 0; i < numHaloParts; ++i) {
+    size_t bufsize = 0;
+    for(int n = 0; n < numBuffers; ++n)
+        bufsize += valuesPerPointPerBuffer[n]*haloSpec.haloWidth*haloSpec.haloHeight*haloSpec.haloDepth;
 
-        remoteHaloSpecsCpu[i].bufferWidth = haloSpecs[i].bufferWidth;
-        remoteHaloSpecsCpu[i].bufferHeight = haloSpecs[i].bufferHeight;
-        remoteHaloSpecsCpu[i].bufferDepth = haloSpecs[i].bufferDepth;
-        remoteHaloSpecsCpu[i].haloX = haloSpecs[i].haloX;
-        remoteHaloSpecsCpu[i].haloY = haloSpecs[i].haloY;
-        remoteHaloSpecsCpu[i].haloZ = haloSpecs[i].haloZ;
-        remoteHaloSpecsCpu[i].haloWidth = haloSpecs[i].haloWidth;
-        remoteHaloSpecsCpu[i].haloHeight = haloSpecs[i].haloHeight;
-        remoteHaloSpecsCpu[i].haloDepth = haloSpecs[i].haloDepth;
-        remoteHaloSpecsCpu[i].remoteMpiRank = haloSpecs[i].remoteMpiRank;
+    mpiRecvBuffer.push_back(new buf_t[bufsize]{});
 
-        size_t bufsize = 0;
-        for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight*haloSpecs[i].haloDepth;
+    setupMpiRecv.push_back(false);
 
-        mpiRecvBuffer[i] = new buf_t[bufsize]{};
+    mpiRecvRequests.push_back(MPI_Request());
 
-        setupMpiRecv[i] = false;
-
-    }
+    return mpiRecvBuffer.size()-1;
 
 }
 
@@ -333,6 +298,12 @@ template <class buf_t> void Tausch3D<buf_t>::setRemoteHaloInfoGwC(size_t numHalo
 }
 #endif
 
+template <class buf_t> void Tausch3D<buf_t>::delRemoteHaloInfoCwC(size_t haloId) {
+    delete[] mpiRecvBuffer[haloId];
+    mpiRecvRequests[haloId] = MPI_Request();
+    alreadyDeletedRemoteHaloIds.push_back(haloId);
+}
+
 
 ////////////////////////
 /// Post Receives
@@ -380,13 +351,15 @@ template <class buf_t> void Tausch3D<buf_t>::postReceiveGwC(size_t haloId, int m
 template <class buf_t> void Tausch3D<buf_t>::postAllReceivesCwC(int *msgtag) {
 
     if(msgtag == nullptr) {
-        msgtag = new int[remoteHaloNumParts];
-        for(int id = 0; id < remoteHaloNumParts; ++id)
+        msgtag = new int[remoteHaloSpecsCpu.size()];
+        for(int id = 0; id < remoteHaloSpecsCpu.size(); ++id)
             msgtag[id] = -1;
     }
 
-    for(int id = 0; id < remoteHaloNumParts; ++id)
-        postReceiveCwC(id,msgtag[id]);
+    for(int id = 0; id < remoteHaloSpecsCpu.size(); ++id) {
+        if(std::find(alreadyDeletedLocalHaloIds.begin(), alreadyDeletedLocalHaloIds.end(), id) == alreadyDeletedLocalHaloIds.end())
+            postReceiveCwC(id,msgtag[id]);
+    }
 
 }
 

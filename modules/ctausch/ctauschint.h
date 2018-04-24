@@ -61,7 +61,7 @@ void tausch_delete_int(CTauschInt *tC);
 
 int tausch_addLocalHaloInfo1D_CwC_int(CTauschInt *tC, TauschHaloSpec haloSpec);
 int tausch_addLocalHaloInfo2D_CwC_int(CTauschInt *tC, TauschHaloSpec haloSpec);
-void tausch_setLocalHaloInfo3D_CwC_int(CTauschInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
+int tausch_addLocalHaloInfo3D_CwC_int(CTauschInt *tC, TauschHaloSpec haloSpec);
 
 #ifdef TAUSCH_OPENCL
 
@@ -77,11 +77,19 @@ void tausch_setLocalHaloInfo3D_GwC_int(CTauschInt *tC, size_t numHaloParts, Taus
 
 
 /****************************************/
+// delLocalHaloInfo*
+
+void tausch_delLocalHaloInfo1D_CwC_int(CTauschInt *tC, size_t haloId);
+void tausch_delLocalHaloInfo2D_CwC_int(CTauschInt *tC, size_t haloId);
+void tausch_delLocalHaloInfo3D_CwC_int(CTauschInt *tC, size_t haloId);
+
+
+/****************************************/
 // setRemoteHaloInfo*
 
 int tausch_addRemoteHaloInfo1D_CwC_int(CTauschInt *tC, TauschHaloSpec haloSpec);
 int tausch_addRemoteHaloInfo2D_CwC_int(CTauschInt *tC, TauschHaloSpec haloSpec);
-void tausch_setRemoteHaloInfo3D_CwC_int(CTauschInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
+int tausch_addRemoteHaloInfo3D_CwC_int(CTauschInt *tC, TauschHaloSpec haloSpec);
 
 #ifdef TAUSCH_OPENCL
 
@@ -94,6 +102,14 @@ void tausch_setRemoteHaloInfo2D_GwC_int(CTauschInt *tC, size_t numHaloParts, Tau
 void tausch_setRemoteHaloInfo3D_GwC_int(CTauschInt *tC, size_t numHaloParts, TauschHaloSpec *haloSpecs);
 
 #endif
+
+
+/****************************************/
+// delLocalHaloInfo*
+
+void tausch_delRemoteHaloInfo1D_CwC_int(CTauschInt *tC, size_t haloId);
+void tausch_delRemoteHaloInfo2D_CwC_int(CTauschInt *tC, size_t haloId);
+void tausch_delRemoteHaloInfo3D_CwC_int(CTauschInt *tC, size_t haloId);
 
 
 /****************************************/
