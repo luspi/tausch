@@ -150,8 +150,8 @@ template <class buf_t> int Tausch2D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpec h
         for(size_t b = 0; b < nb; ++b)
             offset += valuesPerPointPerBuffer[b] * haloSpec.haloWidth * haloSpec.haloHeight;
         o += offset;
+        localBufferOffsetCwC.push_back(o);
     }
-    localBufferOffsetCwC.push_back(o);
 
     // The buffer sizes also do not change anymore
     double s = 0;
@@ -379,8 +379,8 @@ template <class buf_t> int Tausch2D<buf_t>::addRemoteHaloInfoCwC(TauschHaloSpec 
         for(size_t b = 0; b < nb; ++b)
             offset += valuesPerPointPerBuffer[b] * haloSpec.haloWidth * haloSpec.haloHeight;
         o += offset;
+        remoteBufferOffsetCwC.push_back(o);
     }
-    remoteBufferOffsetCwC.push_back(o);
 
     // The buffer sizes also do not change anymore
     double s = 0;
@@ -707,7 +707,7 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCwC(size_t haloId, si
 
     if(valuesPerPointPerBufferAllOne) {
 
-        mpiIndexBase += localBufferOffsetCwC[localHaloSpecsCpuWithCpu.size()*bufferId + haloId];
+        mpiIndexBase += localBufferOffsetCwC[numBuffers*haloId + bufferId];
 
         for(size_t h = 0; h < region.height; ++h) {
             int hbw = bufIndexBase + h*localHaloSpecsCpuWithCpu[haloId].bufferWidth;
@@ -726,7 +726,7 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCwC(size_t haloId, si
             for(size_t w = 0; w < region.width; ++w) {
 
                 int bufIndex = bufIndexBase + hbw + w;
-                int mpiIndex = localBufferOffsetCwC[localHaloSpecsCpuWithCpu.size()*bufferId + haloId] + valuesPerPointPerBuffer[bufferId]*(mpiIndexBase + hhw + w);
+                int mpiIndex = localBufferOffsetCwC[numBuffers*haloId + bufferId] + valuesPerPointPerBuffer[bufferId]*(mpiIndexBase + hhw + w);
 
                 for(size_t val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val)
                     mpiSendBufferCpuWithCpu[haloId][mpiIndex + val] =
@@ -997,7 +997,7 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCwC(size_t haloId, 
 
     if(valuesPerPointPerBufferAllOne) {
 
-        mpiIndexBase += remoteBufferOffsetCwC[remoteHaloSpecsCpuWithCpu.size()*bufferId + haloId];
+        mpiIndexBase += remoteBufferOffsetCwC[numBuffers*haloId + bufferId];
 
         for(size_t h = 0; h < region.height; ++h) {
 
@@ -1019,7 +1019,7 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCwC(size_t haloId, 
             for(size_t w = 0; w < region.width; ++w) {
 
                 int bufIndex = valuesPerPointPerBuffer[bufferId]* ( hbw + w );
-                int fullerOffset = remoteBufferOffsetCwC[remoteHaloSpecsCpuWithCpu.size()*bufferId + haloId] + valuesPerPointPerBuffer[bufferId]* ( hhw + w );
+                int fullerOffset = remoteBufferOffsetCwC[numBuffers*haloId + bufferId] + valuesPerPointPerBuffer[bufferId]* ( hhw + w );
 
                 for(size_t val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val)
                     buf[bufIndex + val] = mpiRecvBufferCpuWithCpu[haloId][fullerOffset + val];
