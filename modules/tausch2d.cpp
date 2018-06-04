@@ -675,8 +675,8 @@ template <class buf_t> void Tausch2D<buf_t>::postAllReceivesGwC(int *msgtag) {
 template <class buf_t> void Tausch2D<buf_t>::postAllReceivesGwG(int *msgtag) {
 
     if(msgtag == NULL) {
-        msgtag = new int[remoteHaloNumPartsCpuWithCpu];
-        for(size_t id = 0; id < remoteHaloNumPartsCpuWithCpu; ++id)
+        msgtag = new int[remoteHaloNumPartsGpuWithGpu];
+        for(size_t id = 0; id < remoteHaloNumPartsGpuWithGpu; ++id)
             msgtag[id] = -1;
     }
 
