@@ -792,7 +792,7 @@ template <class buf_t> void Tausch3D<buf_t>::recvCwG(size_t haloId) {
 
     syncCpuAndGpu();
 
-    int remoteid = obtainRemoteId(msgtagsGpuToCpu[haloId]);
+    size_t remoteid = obtainRemoteId(msgtagsGpuToCpu[haloId]);
 
     size_t bufsize = 0;
     for(size_t n = 0; n < numBuffers; ++n)
