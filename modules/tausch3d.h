@@ -60,7 +60,7 @@ public:
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      *
      */
-    Tausch3D(MPI_Datatype mpiDataType, int numBuffers = 1, size_t *valuesPerPointPerBuffer = NULL, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch3D(MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = NULL, MPI_Comm comm = MPI_COMM_WORLD);
 
     /*!
      * The destructor cleaning up all memory.
@@ -492,46 +492,62 @@ private:
     MPI_Comm TAUSCH_COMM;
     int mpiRank, mpiSize;
 
-    std::vector<TauschHaloSpec> localHaloSpecsCpu;
-    std::vector<TauschHaloSpec> remoteHaloSpecsCpu;
+    std::vector<TauschHaloSpec> localHaloSpecsCpuWithCpu;
+    std::vector<TauschHaloSpec> remoteHaloSpecsCpuWithCpu;
 
     size_t numBuffers;
     size_t *valuesPerPointPerBuffer;
+    bool valuesPerPointPerBufferAllOne;
 
-    std::vector<buf_t*> mpiRecvBuffer;
-    std::vector<buf_t*> mpiSendBuffer;
-    std::vector<MPI_Request> mpiRecvRequests;
-    std::vector<MPI_Request> mpiSendRequests;
+    std::vector<buf_t*> mpiRecvBufferCpuWithCpu;
+    std::vector<buf_t*> mpiSendBufferCpuWithCpu;
+    std::vector<MPI_Request> mpiRecvRequestsCpuWithCpu;
+    std::vector<MPI_Request> mpiSendRequestsCpuWithCpu;
     MPI_Datatype mpiDataType;
 
-    std::vector<bool> setupMpiSend;
-    std::vector<bool> setupMpiRecv;
+    std::vector<bool> setupMpiSendCpuWithCpu;
+    std::vector<bool> setupMpiRecvCpuWithCpu;
+
+    std::vector<int> localBufferOffsetCwC;
+    std::vector<int> remoteBufferOffsetCwC;
+    std::vector<int> localTotalBufferSizeCwC;
+    std::vector<int> remoteTotalBufferSizeCwC;
+
+    int *remoteBufferOffsetCwG;
+    int *localBufferOffsetCwG;
+    int *localTotalBufferSizeCwG;
+    int *remoteTotalBufferSizeCwG;
+
+    int *localBufferOffsetGwC;
+    int *remoteBufferOffsetGwC;
+    int *localTotalBufferSizeGwC;
+    int *remoteTotalBufferSizeGwC;
 
     std::vector<size_t> alreadyDeletedLocalHaloIds;
     std::vector<size_t> alreadyDeletedRemoteHaloIds;
 
 #ifdef TAUSCH_OPENCL
 
-    std::atomic<buf_t> **cpuToGpuSendBuffer;
-    std::atomic<buf_t> **gpuToCpuSendBuffer;
-    buf_t **cpuToGpuRecvBuffer;
-    buf_t **gpuToCpuRecvBuffer;
-    cl::Buffer *cl_gpuToCpuSendBuffer;
-    cl::Buffer *cl_cpuToGpuRecvBuffer;
+    std::atomic<buf_t> **sendBufferCpuWithGpu;
+    std::atomic<buf_t> **sendBufferGpuWithCpu;
+    buf_t **recvBufferGpuWithCpu;
+    buf_t **recvBufferCpuWithGpu;
+    cl::Buffer *cl_sendBufferGpuWithCpu;
+    cl::Buffer *cl_recvBufferGpuWithCpu;
 
     // gpu def
-    size_t localHaloNumPartsGpu;
-    TauschHaloSpec *localHaloSpecsGpu;
-    cl::Buffer *cl_localHaloSpecsGpu;
-    size_t remoteHaloNumPartsGpu;
-    TauschHaloSpec *remoteHaloSpecsGpu;
-    cl::Buffer *cl_remoteHaloSpecsGpu;
+    size_t localHaloNumPartsGpuWithCpu;
+    TauschHaloSpec *localHaloSpecsGpuWithCpu;
+    cl::Buffer *cl_localHaloSpecsGpuWithCpu;
+    size_t remoteHaloNumPartsGpuWithCpu;
+    TauschHaloSpec *remoteHaloSpecsGpuWithCpu;
+    cl::Buffer *cl_remoteHaloSpecsGpuWithCpu;
     // cpu def
-    size_t localHaloNumPartsCpuForGpu;
-    TauschHaloSpec *localHaloSpecsCpuForGpu;
+    size_t localHaloNumPartsCpuWithGpu;
+    TauschHaloSpec *localHaloSpecsCpuWithGpu;
     cl::Buffer *cl_localHaloSpecsCpuForGpu;
-    size_t remoteHaloNumPartsCpuForGpu;
-    TauschHaloSpec *remoteHaloSpecsCpuForGpu;
+    size_t remoteHaloNumPartsCpuWithGpu;
+    TauschHaloSpec *remoteHaloSpecsCpuWithGpu;
     cl::Buffer *cl_remoteHaloSpecsCpuForGpu;
 
 

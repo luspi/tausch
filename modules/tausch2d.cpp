@@ -144,7 +144,7 @@ template <class buf_t> int Tausch2D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpec h
     mpiSendRequestsCpuWithCpu.push_back(MPI_Request());
 
     // These are computed once as they don't change below
-    double o = 0;
+    int o = 0;
     for(size_t nb = 0; nb < numBuffers; ++nb) {
         int offset = 0;
         for(size_t b = 0; b < nb; ++b)
@@ -154,7 +154,7 @@ template <class buf_t> int Tausch2D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpec h
     }
 
     // The buffer sizes also do not change anymore
-    double s = 0;
+    int s = 0;
     for(size_t nb = 0; nb < numBuffers; ++nb)
         s += valuesPerPointPerBuffer[nb]*haloSpec.haloWidth*haloSpec.haloHeight;
     localTotalBufferSizeCwC.push_back(s);
@@ -241,7 +241,8 @@ template <class buf_t> void Tausch2D<buf_t>::setLocalHaloInfoGwC(size_t numHaloP
             bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight;
         sendBufferGpuWithCpu[i] = new std::atomic<buf_t>[bufsize]{};
 
-        size_t tmpHaloSpecs[6] = {haloSpecs[i].haloX, haloSpecs[i].haloY, haloSpecs[i].haloWidth, haloSpecs[i].haloHeight,
+        size_t tmpHaloSpecs[6] = {haloSpecs[i].haloX, haloSpecs[i].haloY,
+                                  haloSpecs[i].haloWidth, haloSpecs[i].haloHeight,
                                   haloSpecs[i].bufferWidth, haloSpecs[i].bufferHeight};
 
         try {
@@ -391,6 +392,7 @@ template <class buf_t> int Tausch2D<buf_t>::addRemoteHaloInfoCwC(TauschHaloSpec 
     return mpiRecvBufferCpuWithCpu.size()-1;
 
 }
+
 #ifdef TAUSCH_OPENCL
 template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoCwG(size_t numHaloParts, TauschHaloSpec *haloSpecs) {
 
@@ -463,7 +465,8 @@ template <class buf_t> void Tausch2D<buf_t>::setRemoteHaloInfoGwC(size_t numHalo
             bufsize += valuesPerPointPerBuffer[n]*haloSpecs[i].haloWidth*haloSpecs[i].haloHeight;
         recvBufferGpuWithCpu[i] = new buf_t[bufsize];
 
-        size_t tmpHaloSpecs[6] = {haloSpecs[i].haloX, haloSpecs[i].haloY, haloSpecs[i].haloWidth, haloSpecs[i].haloHeight,
+        size_t tmpHaloSpecs[6] = {haloSpecs[i].haloX, haloSpecs[i].haloY,
+                                  haloSpecs[i].haloWidth, haloSpecs[i].haloHeight,
                                   haloSpecs[i].bufferWidth, haloSpecs[i].bufferHeight, };
 
         try {
