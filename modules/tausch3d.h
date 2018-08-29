@@ -95,7 +95,7 @@ public:
      * after calling this function.
      *
      */
-    int addLocalHaloInfoCwC(TauschHaloSpec haloSpec);
+    size_t addLocalHaloInfoCwC(TauschHaloSpec haloSpec);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void setLocalHaloInfoCwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setLocalHaloInfoGwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
@@ -131,7 +131,7 @@ public:
      * after calling this function.
      *
      */
-    int addRemoteHaloInfoCwC(TauschHaloSpec haloSpec);
+    size_t addRemoteHaloInfoCwC(TauschHaloSpec haloSpec);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void setRemoteHaloInfoCwG(size_t numHaloParts, TauschHaloSpec *haloSpecs);
     void setRemoteHaloInfoGwC(size_t numHaloParts, TauschHaloSpec *haloSpecs);
@@ -464,9 +464,9 @@ public:
      * \param showOpenCLBuildLog
      *  If set, outputs the build log of the OpenCL compiler.
      */
-    void enableOpenCL(bool blockingSyncCpuGpu, int clLocalWorkgroupSize, bool giveOpenCLDeviceName, bool showOpenCLBuildLog);
+    void enableOpenCL(bool blockingSyncCpuGpu, size_t clLocalWorkgroupSize, bool giveOpenCLDeviceName, bool showOpenCLBuildLog);
     void enableOpenCL(cl::Device cl_defaultDevice, cl::Context cl_context, cl::CommandQueue cl_queue, bool blockingSyncCpuGpu,
-                      int clLocalWorkgroupSize, bool showOpenCLBuildLog);
+                      size_t clLocalWorkgroupSize, bool showOpenCLBuildLog);
 
     /*!
      * This provides an access to the OpenCL Context object, that is used internally by %Tausch3D. It allows the user to 'piggyback' onto the OpenCL
@@ -508,15 +508,15 @@ private:
     std::vector<bool> setupMpiSendCpuWithCpu;
     std::vector<bool> setupMpiRecvCpuWithCpu;
 
-    std::vector<int> localBufferOffsetCwC;
-    std::vector<int> remoteBufferOffsetCwC;
-    std::vector<int> localTotalBufferSizeCwC;
-    std::vector<int> remoteTotalBufferSizeCwC;
+    std::vector<size_t> localBufferOffsetCwC;
+    std::vector<size_t> remoteBufferOffsetCwC;
+    std::vector<size_t> localTotalBufferSizeCwC;
+    std::vector<size_t> remoteTotalBufferSizeCwC;
 
-    int *remoteBufferOffsetCwG;
+    size_t *remoteBufferOffsetCwG;
     int *localBufferOffsetCwG;
     int *localTotalBufferSizeCwG;
-    int *remoteTotalBufferSizeCwG;
+    size_t *remoteTotalBufferSizeCwG;
 
     int *localBufferOffsetGwC;
     int *remoteBufferOffsetGwC;
@@ -563,10 +563,10 @@ private:
     void compileKernels();
     void syncCpuAndGpu();
 
-    int obtainRemoteId(int msgtag);
+    size_t obtainRemoteId(int msgtag);
 
     bool blockingSyncCpuGpu;
-    int cl_kernelLocalSize;
+    size_t cl_kernelLocalSize;
     bool showOpenCLBuildLog;
 
     std::atomic<int> *msgtagsCpuToGpu;
