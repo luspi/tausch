@@ -148,13 +148,11 @@ template <class buf_t> size_t Tausch2D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpe
     mpiSendRequestsCpuWithCpu.push_back(MPI_Request());
 
     // These are computed once as they don't change below
-    size_t o = 0;
-    for(size_t nb = 0; nb < numBuffers; ++nb) {
-        size_t offset = 0;
-        for(size_t b = 0; b < nb; ++b)
-            offset += valuesPerPointPerBuffer[b] * haloSpec.haloWidth * haloSpec.haloHeight;
-        o += offset;
-        localBufferOffsetCwC.push_back(o);
+    size_t offset = 0;
+    localBufferOffsetCwC.push_back(0);
+    for(size_t nb = 1; nb < numBuffers; ++nb) {
+        offset += valuesPerPointPerBuffer[nb-1] * haloSpec.haloWidth * haloSpec.haloHeight;
+        localBufferOffsetCwC.push_back(offset);
     }
 
     // The buffer sizes also do not change anymore
@@ -378,13 +376,11 @@ template <class buf_t> size_t Tausch2D<buf_t>::addRemoteHaloInfoCwC(TauschHaloSp
     mpiRecvRequestsCpuWithCpu.push_back(MPI_Request());
 
     // These are computed once as they don't change below
-    size_t o = 0;
-    for(size_t nb = 0; nb < numBuffers; ++nb) {
-        size_t offset = 0;
-        for(size_t b = 0; b < nb; ++b)
-            offset += valuesPerPointPerBuffer[b] * haloSpec.haloWidth * haloSpec.haloHeight;
-        o += offset;
-        remoteBufferOffsetCwC.push_back(o);
+    size_t offset = 0;
+    remoteBufferOffsetCwC.push_back(0);
+    for(size_t nb = 1; nb < numBuffers; ++nb) {
+        offset += valuesPerPointPerBuffer[nb-1] * haloSpec.haloWidth * haloSpec.haloHeight;
+        remoteBufferOffsetCwC.push_back(offset);
     }
 
     // The buffer sizes also do not change anymore
