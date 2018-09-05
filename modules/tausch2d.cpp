@@ -753,17 +753,17 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCwC(size_t haloId, si
 
             for(size_t w = 0; w < region.width; ++w) {
 
-                size_t bufIndex = bufIndexBase + hbw + w;
+                size_t bufIndex = valuesPerPointPerBuffer[bufferId] * (bufIndexBase + hbw + w);
                 size_t mpiIndex = localBufferOffsetCwC[numBuffers*haloId + bufferId] + valuesPerPointPerBuffer[bufferId]*(mpiIndexBase + hhw + w);
 
 #if defined (USEMEMCPY)
-                memcpy(&mpiSendBufferCpuWithCpu[haloId][mpiIndex], &buf[valuesPerPointPerBuffer[bufferId]*bufIndex], valuesPerPointPerBuffer[bufferId]);
+                memcpy(&mpiSendBufferCpuWithCpu[haloId][mpiIndex], &buf[bufIndex], valuesPerPointPerBuffer[bufferId]);
 #elif defined (USESTLCPY)
-                std::copy(&buf[valuesPerPointPerBuffer[bufferId]*bufIndex], &buf[valuesPerPointPerBuffer[bufferId]*bufIndex + valuesPerPointPerBuffer[bufferId]], &mpiSendBufferCpuWithCpu[haloId][mpiIndex]);
+                std::copy(&buf[bufIndex], &buf[bufIndex + valuesPerPointPerBuffer[bufferId]], &mpiSendBufferCpuWithCpu[haloId][mpiIndex]);
 #else
                 for(size_t val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val)
                     mpiSendBufferCpuWithCpu[haloId][mpiIndex + val] =
-                            buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val];
+                            buf[bufIndex + val];
 #endif
 
             }
