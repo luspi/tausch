@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
     size_t localDim[2] = {5, 5};
-    size_t mpiNum[2] = {(size_t)std::sqrt(mpiSize), (size_t)std::sqrt(mpiSize)};
+    int mpiNum[2] = {static_cast<int>(std::sqrt(mpiSize)), static_cast<int>(std::sqrt(mpiSize))};
     size_t loops = 1;
     int printMpiRank = -1;
     size_t cpuHaloWidth[4] = {1,1,1,1};
@@ -38,20 +38,20 @@ int main(int argc, char** argv) {
         for(int i = 1; i < argc; ++i) {
 
             if(argv[i] == std::string("-x") && i < argc-1)
-                localDim[0] = atoi(argv[++i]);
+                localDim[0] = size_t(atoi(argv[++i]));
             else if(argv[i] == std::string("-y") && i < argc-1)
-                localDim[1] = atoi(argv[++i]);
+                localDim[1] = size_t(atoi(argv[++i]));
             else if(argv[i] == std::string("-xy") && i < argc-1) {
-                localDim[0] = atoi(argv[++i]);
+                localDim[0] = size_t(atoi(argv[++i]));
                 localDim[1] = localDim[0];
             }
 #ifdef OPENCL
             if(argv[i] == std::string("-gx") && i < argc-1)
-                gpuDim[0] = atoi(argv[++i]);
+                gpuDim[0] = size_t(atoi(argv[++i]));
             else if(argv[i] == std::string("-gy") && i < argc-1)
-                gpuDim[1] = atoi(argv[++i]);
+                gpuDim[1] = size_t(atoi(argv[++i]));
             else if(argv[i] == std::string("-gxy") && i < argc-1) {
-                gpuDim[0] = atoi(argv[++i]);
+                gpuDim[0] = size_t(atoi(argv[++i]));
                 gpuDim[1] = gpuDim[0];
             }
 #endif
@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
             else if(argv[i] == std::string("-mpiy") && i < argc-1)
                 mpiNum[1] = atoi(argv[++i]);
             else if(argv[i] == std::string("-num") && i < argc-1)
-                loops = atoi(argv[++i]);
+                loops = size_t(atoi(argv[++i]));
             else if(argv[i] == std::string("-print") && i < argc-1)
                 printMpiRank = atoi(argv[++i]);
 #ifdef OPENCL
@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
                     ++count;
                 }
                 if(count != 3) {
-                    int tmpHalo = 0;
+                    size_t tmpHalo = 0;
                     std::stringstream str;
                     str << arg;
                     str >> tmpHalo;
@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
                     ++count;
                 }
                 if(count != 3) {
-                    int tmpHalo = 0;
+                    size_t tmpHalo = 0;
                     std::stringstream str;
                     str << arg;
                     str >> tmpHalo;
@@ -130,7 +130,7 @@ int main(int argc, char** argv) {
                     ++count;
                 }
                 if(count != 3) {
-                    int tmpHalo = 0;
+                    size_t tmpHalo = 0;
                     std::stringstream str;
                     str << arg;
                     str >> tmpHalo;
@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
 #ifdef OPENCL
     Sample sample(localDim, gpuDim, loops, cpuHaloWidth, gpuHaloWidth, cpuForGpuHaloWidth, mpiNum, buildlog, (gpu&&!gpuonly), gpuonly);
 #else
-    Sample sample(localDim, nullptr, loops, cpuHaloWidth, nullptr, nullptr, mpiNum, false, false, false);
+    Sample sample(localDim, NULL, loops, cpuHaloWidth, NULL, NULL, mpiNum, false, false, false);
 #endif
 
     if(mpiRank == printMpiRank) {

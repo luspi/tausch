@@ -8,7 +8,7 @@
 class Sample {
 
 public:
-    explicit Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWidth, size_t *gpuHaloWidth, size_t *cpuForGpuHaloWidth, size_t *mpiNum, bool buildlog, bool hybrid, bool gpuonly);
+    explicit Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWidth, size_t *gpuHaloWidth, size_t *cpuForGpuHaloWidth, int *mpiNum, bool buildlog, bool hybrid, bool gpuonly);
     ~Sample();
 
     void launchCPU();
@@ -28,7 +28,7 @@ private:
 
     size_t localDim[2];
     size_t cpuHaloWidth[4];
-    size_t mpiNum[2];
+    int mpiNum[2];
     size_t loops;
 #ifdef OPENCL
     size_t gpuDim[2];
@@ -38,8 +38,6 @@ private:
 
     Tausch<double> *tausch;
 
-    TauschHaloSpec *localHaloSpecsCpu;
-    TauschHaloSpec *remoteHaloSpecsCpu;
 #ifdef OPENCL
     TauschHaloSpec *localHaloSpecsGpu;
     TauschHaloSpec *remoteHaloSpecsGpu;
@@ -52,7 +50,10 @@ private:
     size_t numBuffers;
     size_t *valuesPerPointPerBuffer;
 
-    size_t left, right, top, bottom;
+    std::map<int,size_t> allLocalHaloIds;
+    std::map<int,size_t> allRemoteHaloIds;
+
+    int left, right, top, bottom;
 
 #ifdef OPENCL
     double **gpudat;
