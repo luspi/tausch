@@ -14,6 +14,21 @@ option(OPENCL "Enable OpenCL support" ON)
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
 
+option(USEMEMCPY "Use memcpy" ON)
+option(USESTLCPY "Use std::copy" OFF)
+if(USEMEMCPY)
+    remove_definitions(-DUSESTLCPY)
+    add_definitions(-DUSEMEMCPY)
+else()
+    remove_definitions(-DUSEMEMCPY)
+endif()
+if(USESTLCPY)
+    remove_definitions(-DUSEMEMCPY)
+    add_definitions(-DUSESTLCPY)
+else()
+    remove_definitions(-DUSESTLCPY)
+endif()
+
 # find OpenCL
 if(OPENCL)
 

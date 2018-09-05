@@ -732,8 +732,16 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCwC(size_t haloId, si
         for(size_t h = 0; h < region.height; ++h) {
             size_t hbw = bufIndexBase + h*localHaloSpecsCpuWithCpu[haloId].bufferWidth;
             size_t hhw = mpiIndexBase + h*localHaloSpecsCpuWithCpu[haloId].haloWidth;
+
+#if defined (USEMEMCPY)
+            memcpy(&mpiSendBufferCpuWithCpu[haloId][hhw], &buf[hbw], region.width);
+#elif defined (USESTLCPY)
+            std::copy(&buf[hbw], &buf[hbw+region.width], &mpiSendBufferCpuWithCpu[haloId][hhw]);
+#else
             for(size_t w = 0; w < region.width; ++w)
                 mpiSendBufferCpuWithCpu[haloId][hhw + w] = buf[hbw + w];
+#endif
+
         }
 
     } else {
@@ -748,9 +756,15 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCwC(size_t haloId, si
                 size_t bufIndex = bufIndexBase + hbw + w;
                 size_t mpiIndex = localBufferOffsetCwC[numBuffers*haloId + bufferId] + valuesPerPointPerBuffer[bufferId]*(mpiIndexBase + hhw + w);
 
+#if defined (USEMEMCPY)
+                memcpy(&mpiSendBufferCpuWithCpu[haloId][mpiIndex], &buf[valuesPerPointPerBuffer[bufferId]*bufIndex], valuesPerPointPerBuffer[bufferId]);
+#elif defined (USESTLCPY)
+                std::copy(&buf[valuesPerPointPerBuffer[bufferId]*bufIndex], &buf[valuesPerPointPerBuffer[bufferId]*bufIndex + valuesPerPointPerBuffer[bufferId]], &mpiSendBufferCpuWithCpu[haloId][mpiIndex]);
+#else
                 for(size_t val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val)
                     mpiSendBufferCpuWithCpu[haloId][mpiIndex + val] =
                             buf[valuesPerPointPerBuffer[bufferId]*bufIndex + val];
+#endif
 
             }
 
@@ -1025,8 +1039,14 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCwC(size_t haloId, 
             size_t hbw = bufIndexBase + h*remoteHaloSpecsCpuWithCpu[haloId].bufferWidth;
             size_t hhw = mpiIndexBase + h*remoteHaloSpecsCpuWithCpu[haloId].haloWidth;
 
+#if defined (USEMEMCPY)
+            memcpy(&buf[hbw], &mpiRecvBufferCpuWithCpu[haloId][hhw], region.width);
+#elif defined (USESTLCPY)
+            std::copy(&mpiRecvBufferCpuWithCpu[haloId][hhw], &mpiRecvBufferCpuWithCpu[haloId][hhw+region.width], &buf[hbw]);
+#else
             for(size_t w = 0; w < region.width; ++w)
                 buf[hbw + w] = mpiRecvBufferCpuWithCpu[haloId][hhw + w];
+#endif
 
         }
 
@@ -1042,8 +1062,14 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCwC(size_t haloId, 
                 size_t bufIndex = valuesPerPointPerBuffer[bufferId]* ( hbw + w );
                 size_t fullerOffset = remoteBufferOffsetCwC[numBuffers*haloId + bufferId] + valuesPerPointPerBuffer[bufferId]* ( hhw + w );
 
+#if defined (USEMEMCPY)
+                memcpy(&buf[bufIndex], &mpiRecvBufferCpuWithCpu[haloId][fullerOffset], valuesPerPointPerBuffer[bufferId]);
+#elif defined (USESTLCPY)
+                std::copy(&mpiRecvBufferCpuWithCpu[haloId][fullerOffset], &mpiRecvBufferCpuWithCpu[haloId][fullerOffset+valuesPerPointPerBuffer[bufferId]], &buf[bufIndex]);
+#else
                 for(size_t val = 0; val < valuesPerPointPerBuffer[bufferId]; ++val)
                     buf[bufIndex + val] = mpiRecvBufferCpuWithCpu[haloId][fullerOffset + val];
+#endif
 
             }
 
