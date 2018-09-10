@@ -734,7 +734,7 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCwC(size_t haloId, si
             size_t hhw = mpiIndexBase + h*localHaloSpecsCpuWithCpu[haloId].haloWidth;
 
 #if defined (USEMEMCPY)
-            memcpy(&mpiSendBufferCpuWithCpu[haloId][hhw], &buf[hbw], region.width);
+            memcpy(&mpiSendBufferCpuWithCpu[haloId][hhw], &buf[hbw], region.width*sizeof(double));
 #elif defined (USESTLCPY)
             std::copy(&buf[hbw], &buf[hbw+region.width], &mpiSendBufferCpuWithCpu[haloId][hhw]);
 #else
@@ -757,7 +757,7 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCwC(size_t haloId, si
                 size_t mpiIndex = localBufferOffsetCwC[numBuffers*haloId + bufferId] + valuesPerPointPerBuffer[bufferId]*(mpiIndexBase + hhw + w);
 
 #if defined (USEMEMCPY)
-                memcpy(&mpiSendBufferCpuWithCpu[haloId][mpiIndex], &buf[bufIndex], valuesPerPointPerBuffer[bufferId]);
+                memcpy(&mpiSendBufferCpuWithCpu[haloId][mpiIndex], &buf[bufIndex], valuesPerPointPerBuffer[bufferId]*sizeof(double));
 #elif defined (USESTLCPY)
                 std::copy(&buf[bufIndex], &buf[bufIndex + valuesPerPointPerBuffer[bufferId]], &mpiSendBufferCpuWithCpu[haloId][mpiIndex]);
 #else
@@ -1040,7 +1040,7 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCwC(size_t haloId, 
             size_t hhw = mpiIndexBase + h*remoteHaloSpecsCpuWithCpu[haloId].haloWidth;
 
 #if defined (USEMEMCPY)
-            memcpy(&buf[hbw], &mpiRecvBufferCpuWithCpu[haloId][hhw], region.width);
+            memcpy(&buf[hbw], &mpiRecvBufferCpuWithCpu[haloId][hhw], region.width*sizeof(double));
 #elif defined (USESTLCPY)
             std::copy(&mpiRecvBufferCpuWithCpu[haloId][hhw], &mpiRecvBufferCpuWithCpu[haloId][hhw+region.width], &buf[hbw]);
 #else
@@ -1063,7 +1063,7 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCwC(size_t haloId, 
                 size_t fullerOffset = remoteBufferOffsetCwC[numBuffers*haloId + bufferId] + valuesPerPointPerBuffer[bufferId]* ( hhw + w );
 
 #if defined (USEMEMCPY)
-                memcpy(&buf[bufIndex], &mpiRecvBufferCpuWithCpu[haloId][fullerOffset], valuesPerPointPerBuffer[bufferId]);
+                memcpy(&buf[bufIndex], &mpiRecvBufferCpuWithCpu[haloId][fullerOffset], valuesPerPointPerBuffer[bufferId]*sizeof(double));
 #elif defined (USESTLCPY)
                 std::copy(&mpiRecvBufferCpuWithCpu[haloId][fullerOffset], &mpiRecvBufferCpuWithCpu[haloId][fullerOffset+valuesPerPointPerBuffer[bufferId]], &buf[bufIndex]);
 #else
