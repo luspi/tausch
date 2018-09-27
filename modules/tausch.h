@@ -279,7 +279,9 @@ public:
 
     TauschPackRegion createFilledPackRegion1D(size_t x, size_t width) { return tausch1->createFilledPackRegion(x, width); }
     TauschPackRegion createFilledPackRegion2D(size_t x, size_t y, size_t width, size_t height) { return tausch2->createFilledPackRegion(x, y, width, height); }
+    TauschPackRegion createFilledPackRegion2D(size_t startAtIndex, size_t endAtIndex) { return tausch2->createFilledPackRegion(startAtIndex, endAtIndex); }
     TauschPackRegion createFilledPackRegion3D(size_t x, size_t y, size_t z, size_t width, size_t height, size_t depth) { return tausch3->createFilledPackRegion(x, y, z, width, height, depth); }
+    TauschPackRegion createFilledPackRegion3D(size_t startAtIndex, size_t endAtIndex) { return tausch3->createFilledPackRegion(startAtIndex, endAtIndex); }
 
 private:
     Tausch1D<buf_t> *tausch1;

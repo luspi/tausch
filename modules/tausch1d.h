@@ -393,6 +393,7 @@ public:
      *
      */
     TauschHaloSpec createFilledHaloSpec(size_t bufferWidth, size_t haloX, size_t haloWidth, int remoteMpiRank);
+    TauschHaloSpec createFilledHaloSpec(std::vector<size_t> haloIndicesInBuffer, int remoteMpiRank);
 
 #ifdef TAUSCH_OPENCL
 

@@ -109,14 +109,20 @@ template <class buf_t> Tausch3D<buf_t>::~Tausch3D() {
 
 ////////////////////////
 /// Set local halo info
+///
 
 template <class buf_t> size_t Tausch3D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpec haloSpec) {
 
     localHaloSpecsCpuWithCpu.push_back(haloSpec);
 
+    size_t haloSize = haloSpec.haloWidth*haloSpec.haloHeight*haloSpec.haloDepth;
+    if(haloSpec.haloIndicesInBuffer.size() > 0)
+        haloSize = haloSpec.haloIndicesInBuffer.size();
+
     size_t bufsize = 0;
+
     for(size_t n = 0; n < numBuffers; ++n)
-        bufsize += valuesPerPointPerBuffer[n]*haloSpec.haloWidth*haloSpec.haloHeight*haloSpec.haloDepth;
+        bufsize += valuesPerPointPerBuffer[n]*haloSize;
     mpiSendBufferCpuWithCpu.push_back(new buf_t[bufsize]());
 
     setupMpiSendCpuWithCpu.push_back(false);
@@ -127,14 +133,14 @@ template <class buf_t> size_t Tausch3D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpe
     size_t offset = 0;
     localBufferOffsetCwC.push_back(0);
     for(size_t nb = 1; nb < numBuffers; ++nb) {
-        offset += valuesPerPointPerBuffer[nb-1] * haloSpec.haloWidth * haloSpec.haloHeight * haloSpec.haloDepth;
+        offset += valuesPerPointPerBuffer[nb-1] * haloSize;
         localBufferOffsetCwC.push_back(offset);
     }
 
     // The buffer sizes also do not change anymore
     size_t s = 0;
     for(size_t nb = 0; nb < numBuffers; ++nb)
-        s += valuesPerPointPerBuffer[nb]*haloSpec.haloWidth*haloSpec.haloHeight*haloSpec.haloDepth;
+        s += valuesPerPointPerBuffer[nb]*haloSize;
     localTotalBufferSizeCwC.push_back(s);
 
     return mpiSendBufferCpuWithCpu.size()-1;
@@ -276,9 +282,13 @@ template <class buf_t> size_t Tausch3D<buf_t>::addRemoteHaloInfoCwC(TauschHaloSp
 
     remoteHaloSpecsCpuWithCpu.push_back(haloSpec);
 
+    size_t haloSize = haloSpec.haloWidth*haloSpec.haloHeight*haloSpec.haloDepth;
+    if(haloSpec.haloIndicesInBuffer.size() > 0)
+        haloSize = haloSpec.haloIndicesInBuffer.size();
+
     size_t bufsize = 0;
     for(size_t n = 0; n < numBuffers; ++n)
-        bufsize += valuesPerPointPerBuffer[n]*haloSpec.haloWidth*haloSpec.haloHeight*haloSpec.haloDepth;
+        bufsize += valuesPerPointPerBuffer[n]*haloSize;
     mpiRecvBufferCpuWithCpu.push_back(new buf_t[bufsize]());
 
     setupMpiRecvCpuWithCpu.push_back(false);
@@ -289,14 +299,14 @@ template <class buf_t> size_t Tausch3D<buf_t>::addRemoteHaloInfoCwC(TauschHaloSp
     size_t offset = 0;
     remoteBufferOffsetCwC.push_back(0);
     for(size_t nb = 1; nb < numBuffers; ++nb) {
-        offset += valuesPerPointPerBuffer[nb-1] * haloSpec.haloWidth * haloSpec.haloHeight * haloSpec.haloDepth;
+        offset += valuesPerPointPerBuffer[nb-1] * haloSize;
         remoteBufferOffsetCwC.push_back(offset);
     }
 
     // The buffer sizes also do not change anymore
     size_t s = 0;
     for(size_t nb = 0; nb < numBuffers; ++nb)
-        s += valuesPerPointPerBuffer[nb]*haloSpec.haloWidth*haloSpec.haloHeight*haloSpec.haloDepth;
+        s += valuesPerPointPerBuffer[nb]*haloSize;
     remoteTotalBufferSizeCwC.push_back(s);
 
     return mpiRecvBufferCpuWithCpu.size()-1;
@@ -521,16 +531,30 @@ template <class buf_t> void Tausch3D<buf_t>::postAllReceivesGwC(int *msgtag) {
 
 template <class buf_t> void Tausch3D<buf_t>::packSendBufferCwC(size_t haloId, size_t bufferId, buf_t *buf) {
     TauschPackRegion region;
-    region.x = 0;
-    region.y = 0;
-    region.z = 0;
-    region.width = localHaloSpecsCpuWithCpu[haloId].haloWidth;
-    region.height = localHaloSpecsCpuWithCpu[haloId].haloHeight;
-    region.depth = localHaloSpecsCpuWithCpu[haloId].haloDepth;
+    if(localHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer.size() == 0) {
+        region.x = 0;
+        region.y = 0;
+        region.z = 0;
+        region.width = localHaloSpecsCpuWithCpu[haloId].haloWidth;
+        region.height = localHaloSpecsCpuWithCpu[haloId].haloHeight;
+        region.depth = localHaloSpecsCpuWithCpu[haloId].haloDepth;
+    } else {
+        region.startAtIndex = 0;
+        region.endAtIndex = localHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer.size();
+    }
     packSendBufferCwC(haloId, bufferId, buf, region);
 }
 
 template <class buf_t> void Tausch3D<buf_t>::packSendBufferCwC(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
+
+    if(localHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer.size() > 0) {
+
+        for(size_t index = region.startAtIndex; index < region.endAtIndex; ++index)
+            mpiSendBufferCpuWithCpu[haloId][index] = buf[localHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer[index]];
+
+        return;
+
+    }
 
     size_t bufIndexBase = (region.z + localHaloSpecsCpuWithCpu[haloId].haloZ)*localHaloSpecsCpuWithCpu[haloId].bufferWidth*localHaloSpecsCpuWithCpu[haloId].bufferHeight +
                              (region.y + localHaloSpecsCpuWithCpu[haloId].haloY)*localHaloSpecsCpuWithCpu[haloId].bufferWidth +
@@ -816,16 +840,30 @@ template <class buf_t> void Tausch3D<buf_t>::recvCwG(size_t haloId) {
 
 template <class buf_t> void Tausch3D<buf_t>::unpackRecvBufferCwC(size_t haloId, size_t bufferId, buf_t *buf) {
     TauschPackRegion region;
-    region.x = 0;
-    region.y = 0;
-    region.z = 0;
-    region.width = remoteHaloSpecsCpuWithCpu[haloId].haloWidth;
-    region.height = remoteHaloSpecsCpuWithCpu[haloId].haloHeight;
-    region.depth = remoteHaloSpecsCpuWithCpu[haloId].haloDepth;
+    if(remoteHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer.size() == 0) {
+        region.x = 0;
+        region.y = 0;
+        region.z = 0;
+        region.width = remoteHaloSpecsCpuWithCpu[haloId].haloWidth;
+        region.height = remoteHaloSpecsCpuWithCpu[haloId].haloHeight;
+        region.depth = remoteHaloSpecsCpuWithCpu[haloId].haloDepth;
+    } else {
+        region.startAtIndex = 0;
+        region.endAtIndex = remoteHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer.size();
+    }
     unpackRecvBufferCwC(haloId, bufferId, buf, region);
 }
 
 template <class buf_t> void Tausch3D<buf_t>::unpackRecvBufferCwC(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
+
+    if(remoteHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer.size() != 0) {
+
+        for(size_t index = region.startAtIndex; index < region.endAtIndex; ++index)
+            buf[remoteHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer[index]] = mpiRecvBufferCpuWithCpu[haloId][index];
+
+        return;
+
+    }
 
     size_t bufIndexBase = (region.z + remoteHaloSpecsCpuWithCpu[haloId].haloZ)*remoteHaloSpecsCpuWithCpu[haloId].bufferWidth*remoteHaloSpecsCpuWithCpu[haloId].bufferHeight +
                        (region.y + remoteHaloSpecsCpuWithCpu[haloId].haloY)*remoteHaloSpecsCpuWithCpu[haloId].bufferWidth +
@@ -1023,6 +1061,13 @@ template <class buf_t> TauschPackRegion Tausch3D<buf_t>::createFilledPackRegion(
     return region;
 }
 
+template <class buf_t> TauschPackRegion Tausch3D<buf_t>::createFilledPackRegion(size_t startAtIndex, size_t endAtIndex) {
+    TauschPackRegion region;
+    region.startAtIndex = startAtIndex;
+    region.endAtIndex = endAtIndex;
+    return region;
+}
+
 template <class buf_t> TauschHaloSpec Tausch3D<buf_t>::createFilledHaloSpec(size_t bufferWidth, size_t bufferHeight, size_t bufferDepth,
                                                                             size_t haloX, size_t haloY, size_t haloZ,
                                                                             size_t haloWidth, size_t haloHeight, size_t haloDepth, int remoteMpiRank) {
@@ -1036,6 +1081,13 @@ template <class buf_t> TauschHaloSpec Tausch3D<buf_t>::createFilledHaloSpec(size
     halo.haloWidth = haloWidth;
     halo.haloHeight = haloHeight;
     halo.haloDepth = haloDepth;
+    halo.remoteMpiRank = remoteMpiRank;
+    return halo;
+}
+
+template <class buf_t> TauschHaloSpec Tausch3D<buf_t>::createFilledHaloSpec(std::vector<size_t> haloIndicesInBuffer, int remoteMpiRank) {
+    TauschHaloSpec halo;
+    halo.haloIndicesInBuffer = haloIndicesInBuffer;
     halo.remoteMpiRank = remoteMpiRank;
     return halo;
 }

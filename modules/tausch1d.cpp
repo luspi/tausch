@@ -93,9 +93,13 @@ template <class buf_t> int Tausch1D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpec h
 
     localHaloSpecsCpu.push_back(haloSpec);
 
+    size_t haloSize = haloSpec.haloWidth;
+    if(haloSpec.haloIndicesInBuffer.size() > 0)
+        haloSize = haloSpec.haloIndicesInBuffer.size();
+
     size_t bufsize = 0;
     for(size_t n = 0; n < numBuffers; ++n)
-        bufsize += valuesPerPointPerBuffer[n]*haloSpec.haloWidth;
+        bufsize += valuesPerPointPerBuffer[n]*haloSize;
     mpiSendBuffer.push_back(new buf_t[bufsize]());
 
     setupMpiSend.push_back(false);
@@ -195,9 +199,13 @@ template <class buf_t> int Tausch1D<buf_t>::addRemoteHaloInfoCwC(TauschHaloSpec 
 
     remoteHaloSpecsCpu.push_back(haloSpec);
 
+    size_t haloSize = haloSpec.haloWidth;
+    if(haloSpec.haloIndicesInBuffer.size() > 0)
+        haloSize = haloSpec.haloIndicesInBuffer.size();
+
     size_t bufsize = 0;
     for(size_t n = 0; n < numBuffers; ++n)
-        bufsize += valuesPerPointPerBuffer[n]*haloSpec.haloWidth;
+        bufsize += valuesPerPointPerBuffer[n]*haloSize;
     mpiRecvBuffer.push_back(new buf_t[bufsize]());
 
     setupMpiRecv.push_back(false);
@@ -298,9 +306,13 @@ template <class buf_t> void Tausch1D<buf_t>::postReceiveCwC(size_t haloId, int m
 
         setupMpiRecv[haloId] = true;
 
+        size_t haloSize = remoteHaloSpecsCpu[haloId].haloWidth;
+        if(remoteHaloSpecsCpu[haloId].haloIndicesInBuffer.size() > 0)
+            haloSize = remoteHaloSpecsCpu[haloId].haloIndicesInBuffer.size();
+
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*remoteHaloSpecsCpu[haloId].haloWidth;
+            bufsize += valuesPerPointPerBuffer[n]*haloSize;
 
         MPI_Recv_init(&mpiRecvBuffer[haloId][0], bufsize, mpiDataType, remoteHaloSpecsCpu[haloId].remoteMpiRank,
                       msgtag, TAUSCH_COMM, &mpiRecvRequests[haloId]);
@@ -372,13 +384,26 @@ template <class buf_t> void Tausch1D<buf_t>::postAllReceivesGwC(int *msgtag) {
 
 template <class buf_t> void Tausch1D<buf_t>::packSendBufferCwC(size_t haloId, size_t bufferId, buf_t *buf) {
     TauschPackRegion region;
-    region.x = 0;
-    region.width = localHaloSpecsCpu[haloId].haloWidth;
+    if(localHaloSpecsCpu[haloId].haloIndicesInBuffer.size() == 0) {
+        region.x = 0;
+        region.width = localHaloSpecsCpu[haloId].haloWidth;
+    } else {
+        region.startAtIndex = 0;
+        region.endAtIndex = localHaloSpecsCpu[haloId].haloIndicesInBuffer.size();
+    }
     packSendBufferCwC(haloId, bufferId, buf, region);
 }
 
 template <class buf_t> void Tausch1D<buf_t>::packSendBufferCwC(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
 
+    if(localHaloSpecsCpu[haloId].haloIndicesInBuffer.size() > 0) {
+
+        for(size_t index = region.startAtIndex; index < region.endAtIndex; ++index)
+            mpiSendBuffer[haloId][index] = buf[localHaloSpecsCpu[haloId].haloIndicesInBuffer[index]];
+
+        return;
+
+    }
     for(int s = 0; s < region.width; ++s) {
         int bufIndex = localHaloSpecsCpu[haloId].haloX + s + region.x;
         int mpiIndex = s + region.x;
@@ -460,9 +485,13 @@ template <class buf_t> void Tausch1D<buf_t>::sendCwC(size_t haloId, int msgtag) 
 
         setupMpiSend[haloId] = true;
 
+        size_t haloSize = localHaloSpecsCpu[haloId].haloWidth;
+        if(localHaloSpecsCpu[haloId].haloIndicesInBuffer.size() > 0)
+            haloSize = localHaloSpecsCpu[haloId].haloIndicesInBuffer.size();
+
         size_t bufsize = 0;
         for(int n = 0; n < numBuffers; ++n)
-            bufsize += valuesPerPointPerBuffer[n]*localHaloSpecsCpu[haloId].haloWidth;
+            bufsize += valuesPerPointPerBuffer[n]*haloSize;
 
         MPI_Send_init(&mpiSendBuffer[haloId][0], bufsize, mpiDataType, localHaloSpecsCpu[haloId].remoteMpiRank,
                       msgtag, TAUSCH_COMM, &mpiSendRequests[haloId]);
@@ -557,12 +586,26 @@ template <class buf_t> void Tausch1D<buf_t>::recvCwG(size_t haloId) {
 
 template <class buf_t> void Tausch1D<buf_t>::unpackRecvBufferCwC(size_t haloId, size_t bufferId, buf_t *buf) {
     TauschPackRegion region;
-    region.x = 0;
-    region.width = remoteHaloSpecsCpu[haloId].haloWidth;
+    if(remoteHaloSpecsCpu[haloId].haloIndicesInBuffer.size() == 0) {
+        region.x = 0;
+        region.width = remoteHaloSpecsCpu[haloId].haloWidth;
+    } else {
+        region.startAtIndex = 0;
+        region.endAtIndex = remoteHaloSpecsCpu[haloId].haloIndicesInBuffer.size();
+    }
     unpackRecvBufferCwC(haloId, bufferId, buf, region);
 }
 
 template <class buf_t> void Tausch1D<buf_t>::unpackRecvBufferCwC(size_t haloId, size_t bufferId, buf_t *buf, TauschPackRegion region) {
+
+    if(remoteHaloSpecsCpu[haloId].haloIndicesInBuffer.size() != 0) {
+
+        for(size_t index = region.startAtIndex; index < region.endAtIndex; ++index)
+            buf[remoteHaloSpecsCpu[haloId].haloIndicesInBuffer[index]] = mpiRecvBuffer[haloId][index];
+
+        return;
+
+    }
 
     for(int s = 0; s < region.width; ++s) {
         int bufIndex = remoteHaloSpecsCpu[haloId].haloX + s + region.x;
@@ -691,6 +734,13 @@ template <class buf_t> TauschHaloSpec Tausch1D<buf_t>::createFilledHaloSpec(size
     halo.bufferWidth = bufferWidth;
     halo.haloX = haloX;
     halo.haloWidth = haloWidth;
+    halo.remoteMpiRank = remoteMpiRank;
+    return halo;
+}
+
+template <class buf_t> TauschHaloSpec Tausch1D<buf_t>::createFilledHaloSpec(std::vector<size_t> haloIndicesInBuffer, int remoteMpiRank) {
+    TauschHaloSpec halo;
+    halo.haloIndicesInBuffer = haloIndicesInBuffer;
     halo.remoteMpiRank = remoteMpiRank;
     return halo;
 }

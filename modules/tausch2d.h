@@ -427,6 +427,7 @@ public:
      *
      */
     TauschPackRegion createFilledPackRegion(size_t x, size_t y, size_t width, size_t height);
+    TauschPackRegion createFilledPackRegion(size_t startAtIndex, size_t endAtIndex);
 
     /*!
      *
@@ -454,6 +455,7 @@ public:
      */
     TauschHaloSpec createFilledHaloSpec(size_t bufferWidth, size_t bufferHeight, size_t haloX, size_t haloY,
                                         size_t haloWidth, size_t haloHeight, int remoteMpiRank);
+    TauschHaloSpec createFilledHaloSpec(std::vector<size_t> haloIndicesInBuffer, int remoteMpiRank);
 
 
 #ifdef TAUSCH_OPENCL

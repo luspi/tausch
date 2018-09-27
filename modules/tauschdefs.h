@@ -2,6 +2,7 @@
 #define TAUSCHDEFS_H
 
 #include <cstddef>
+#include <vector>
 
 // either one of tausch_opencl_yes.h or tausch_opencl_no.h will ne copied to this file when configuring the project with cmake
 // This takes care of making sure TAUSCH_OPENCL is defined (or not).
@@ -41,6 +42,11 @@ struct TauschHaloSpec {
                        haloX(0), haloY(0), haloZ(0),
                        haloWidth(0), haloHeight(0), haloDepth(0),
                        remoteMpiRank(0) {}
+
+    /*!
+     * The halo indices in the actual buffer. This in addition to remoteMpiRank is enough to specify a full halo region.
+     */
+    std::vector<size_t> haloIndicesInBuffer;
     /*!
      * The width of the underlying buffer.
      */
@@ -88,8 +94,19 @@ struct TauschHaloSpec {
  * A struct for specifying which region of a halo area to pack.
  */
 struct TauschPackRegion {
-    TauschPackRegion() : x(0), y(0), z(0),
-                       width(0), height(0), depth(0) {}
+    TauschPackRegion() : startAtIndex(0), endAtIndex(0),
+                         x(0), y(0), z(0),
+                         width(0), height(0), depth(0) {}
+    /*!
+     * If specified, this takes the passed on list of indices and packs starting at this position, up to (but not including) endAtIndex.
+     * The (region)x/y/z parameters are not used in that case and do not need to be specified!
+     */
+    size_t startAtIndex;
+    /*!
+     * If specified, this takes the passed on list of indices and packs starting at startAtIndex, up to (but not including) this value.
+     * The (region)x/y/z parameters are not used in that case and do not need to be specified!
+     */
+    size_t endAtIndex;
     /*!
      * The starting x coordinate of the region, relative to the halo area.
      */
