@@ -22,6 +22,7 @@
 #endif
 #include <vector>
 #include <algorithm>
+#include <cstring>
 
 #ifdef TAUSCH_OPENCL
 #define __CL_ENABLE_EXCEPTIONS
@@ -154,7 +155,7 @@ public:
      *  an MPI tag (and is, in fact, identical to it for MPI communication).
      *
      */
-    void postReceiveCwC(size_t haloId, int msgtag = -1);
+    void postReceiveCwC(size_t haloId, int msgtag = -1, int remoteMpiRank = -1, MPI_Comm communicator = NULL);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void postReceiveCwG(size_t haloId, int msgtag = -1);
     void postReceiveGwC(size_t haloId, int msgtag = -1);
@@ -173,7 +174,7 @@ public:
      *  an MPI tag (and is, in fact, identical to it for MPI communication).
      *
      */
-    void postAllReceivesCwC(int *msgtag = NULL);
+    void postAllReceivesCwC(int *msgtag = NULL, MPI_Comm communicator = NULL);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void postAllReceivesCwG(int *msgtag = NULL);
     void postAllReceivesGwC(int *msgtag = NULL);
@@ -240,9 +241,11 @@ public:
      *  The message tag to be used for this send. This information only has to be specified the first time the send for the halo region with
      *  the specified id is started. Each subsequent call, the message tag that was passed the very first call will be re-used. This works
      *  equivalently to an MPI tag (and is, in fact, identical to it for MPI communication).
+     * \param remoteMpiRank
+     *  Where to send it to. If this is set to -1, then Tausch will take the value stored in the respective halo spec.
      *
      */
-    void sendCwC(size_t haloId, int msgtag = -1);
+    void sendCwC(size_t haloId, int msgtag = -1, int remoteMpiRank = -1, MPI_Comm communicator = NULL);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void sendCwG(size_t haloId, int msgtag);
     void sendGwC(size_t haloId, int msgtag);
@@ -260,6 +263,7 @@ public:
      *
      */
     void recvCwC(size_t haloId);
+    void recvAllCwC();
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void recvCwG(size_t haloId);
     void recvGwC(size_t haloId);
@@ -439,7 +443,7 @@ public:
      */
     TauschHaloSpec createFilledHaloSpec(size_t bufferWidth, size_t bufferHeight, size_t bufferDepth, size_t haloX, size_t haloY, size_t haloZ,
                                         size_t haloWidth, size_t haloHeight, size_t haloDepth, int remoteMpiRank);
-    TauschHaloSpec createFilledHaloSpec(std::vector<size_t> haloIndicesInBuffer, int remoteMpiRank);
+    TauschHaloSpec createFilledHaloSpec(std::vector<size_t> haloIndicesInBuffer);
 
 #ifdef TAUSCH_OPENCL
 
@@ -488,6 +492,14 @@ public:
     ///@}
 
 #endif
+
+    size_t getNumBuffers() { return numBuffers; }
+    size_t getNumLocalHaloCpuWithCpu() { return mpiSendBufferCpuWithCpu.size(); }
+    size_t getNumRemoteHaloCpuWithCpu() { return mpiRecvBufferCpuWithCpu.size(); }
+    size_t getNumPointsLocalHaloCpuWithCpu(size_t id) { return localTotalBufferSizeCwC[id]; }
+    size_t getNumPointsRemoteHaloCpuWithCpu(size_t id) { return remoteTotalBufferSizeCwC[id]; }
+    buf_t *getSendBufferCpuWithCpu(size_t id) { return mpiSendBufferCpuWithCpu[id]; }
+    buf_t *getRecvBufferCpuWithCpu(size_t id) { return mpiRecvBufferCpuWithCpu[id]; }
 
 private:
 

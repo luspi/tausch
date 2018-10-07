@@ -81,9 +81,9 @@ public:
     void delRemoteHaloInfo2D_CwC(size_t haloId) { tausch2->delRemoteHaloInfoCwC(haloId); }
     void delRemoteHaloInfo3D_CwC(size_t haloId) { tausch3->delRemoteHaloInfoCwC(haloId); }
 
-    void postReceive1D_CwC(size_t haloId, int mpitag = -1) { tausch1->postReceiveCwC(haloId, mpitag); }
-    void postReceive2D_CwC(size_t haloId, int mpitag = -1) { tausch2->postReceiveCwC(haloId, mpitag); }
-    void postReceive3D_CwC(size_t haloId, int mpitag = -1) { tausch3->postReceiveCwC(haloId, mpitag); }
+    void postReceive1D_CwC(size_t haloId, int mpitag = -1, int remoteMpiRank = -1) { tausch1->postReceiveCwC(haloId, mpitag, remoteMpiRank); }
+    void postReceive2D_CwC(size_t haloId, int mpitag = -1, int remoteMpiRank = -1) { tausch2->postReceiveCwC(haloId, mpitag, remoteMpiRank); }
+    void postReceive3D_CwC(size_t haloId, int mpitag = -1, int remoteMpiRank = -1, MPI_Comm overwriteComm = NULL) { tausch3->postReceiveCwC(haloId, mpitag, remoteMpiRank, overwriteComm); }
 #ifdef TAUSCH_OPENCL
     void postReceive1D_CwG(size_t haloId, int msgtag = -1) { tausch1->postReceiveCwG(haloId, msgtag); }
     void postReceive2D_CwG(size_t haloId, int msgtag = -1) { tausch2->postReceiveCwG(haloId, msgtag); }
@@ -100,7 +100,7 @@ public:
 
     void postAllReceives1D_CwC(int *mpitag = NULL) { tausch1->postAllReceivesCwC(mpitag); }
     void postAllReceives2D_CwC(int *mpitag = NULL) { tausch2->postAllReceivesCwC(mpitag); }
-    void postAllReceives3D_CwC(int *mpitag = NULL) { tausch3->postAllReceivesCwC(mpitag); }
+    void postAllReceives3D_CwC(int *mpitag = NULL, MPI_Comm overwriteComm = NULL) { tausch3->postAllReceivesCwC(mpitag, overwriteComm); }
 #ifdef TAUSCH_OPENCL
     void postAllReceives1D_CwG(int *msgtag = NULL) { tausch1->postAllReceivesCwG(msgtag); }
     void postAllReceives2D_CwG(int *msgtag = NULL) { tausch2->postAllReceivesCwG(msgtag); }
@@ -140,9 +140,9 @@ public:
 //    void packSendBuffer3D_GwG(size_t haloId, size_t bufferId, cl::Buffer buf);
 #endif
 
-    void send1D_CwC(size_t haloId, int mpitag = -1) { tausch1->sendCwC(haloId, mpitag); }
-    void send2D_CwC(size_t haloId, int mpitag = -1) { tausch2->sendCwC(haloId, mpitag); }
-    void send3D_CwC(size_t haloId, int mpitag = -1) { tausch3->sendCwC(haloId, mpitag); }
+    void send1D_CwC(size_t haloId, int mpitag = -1, int remoteMpiRank = -1, MPI_Comm communicator = MPI_COMM_WORLD) { tausch1->sendCwC(haloId, mpitag, remoteMpiRank, communicator); }
+    void send2D_CwC(size_t haloId, int mpitag = -1, int remoteMpiRank = -1, MPI_Comm communicator = MPI_COMM_WORLD) { tausch2->sendCwC(haloId, mpitag, remoteMpiRank, communicator); }
+    void send3D_CwC(size_t haloId, int mpitag = -1, int remoteMpiRank = -1, MPI_Comm communicator = MPI_COMM_WORLD) { tausch3->sendCwC(haloId, mpitag, remoteMpiRank, communicator); }
 #ifdef TAUSCH_OPENCL
     void send1D_CwG(size_t haloId, int msgtag) { tausch1->sendCwG(haloId, msgtag); }
     void send2D_CwG(size_t haloId, int msgtag) { tausch2->sendCwG(haloId, msgtag); }
@@ -160,6 +160,9 @@ public:
     void recv1D_CwC(size_t haloId) { tausch1->recvCwC(haloId); }
     void recv2D_CwC(size_t haloId) { tausch2->recvCwC(haloId); }
     void recv3D_CwC(size_t haloId) { tausch3->recvCwC(haloId); }
+    void recvAll1D_CwC() { tausch1->recvAllCwC(); }
+    void recvAll2D_CwC() { tausch2->recvAllCwC(); }
+    void recvAll3D_CwC() { tausch3->recvAllCwC(); }
 #ifdef TAUSCH_OPENCL
     void recv1D_CwG(size_t haloId) { tausch1->recvCwG(haloId); }
     void recv2D_CwG(size_t haloId) { tausch2->recvCwG(haloId); }
@@ -277,11 +280,42 @@ public:
 
 #endif
 
+    size_t getNumBuffers1D() { return tausch1->getNumBuffers(); }
+    size_t getNumBuffers2D() { return tausch2->getNumBuffers(); }
+    size_t getNumBuffers3D() { return tausch3->getNumBuffers(); }
+
+    size_t getNumLocalHalo1D_CwC() { return tausch1->getNumLocalHalo(); }
+    size_t getNumLocalHalo2D_CwC() { return tausch2->getNumLocalHaloCpuWithCpu(); }
+    size_t getNumLocalHalo3D_CwC() { return tausch3->getNumLocalHaloCpuWithCpu(); }
+
+    size_t getNumRemoteHalo1D_CwC() { return tausch1->getNumRemoteHalo(); }
+    size_t getNumRemoteHalo2D_CwC() { return tausch2->getNumRemoteHaloCpuWithCpu(); }
+    size_t getNumRemoteHalo3D_CwC() { return tausch3->getNumRemoteHaloCpuWithCpu(); }
+
+    size_t getNumPointsLocalHalo2D(size_t id) { return tausch2->getNumPointsLocalHaloCpuWithCpu(id); }
+    size_t getNumPointsLocalHalo3D(size_t id) { return tausch3->getNumPointsLocalHaloCpuWithCpu(id); }
+    size_t getNumPointsRemoteHalo2D(size_t id) { return tausch2->getNumPointsRemoteHaloCpuWithCpu(id); }
+    size_t getNumPointsRemoteHalo3D(size_t id) { return tausch3->getNumPointsRemoteHaloCpuWithCpu(id); }
+
+    buf_t *getSendBuffer1D_CwC(size_t id) { return tausch1->getSendBufferCpuWithCpu(id); }
+    buf_t *getSendBuffer2D_CwC(size_t id) { return tausch2->getSendBufferCpuWithCpu(id); }
+    buf_t *getSendBuffer3D_CwC(size_t id) { return tausch3->getSendBufferCpuWithCpu(id); }
+    buf_t *getRecvBuffer1D_CwC(size_t id) { return tausch1->getRecvBufferCpuWithCpu(id); }
+    buf_t *getRecvBuffer2D_CwC(size_t id) { return tausch2->getRecvBufferCpuWithCpu(id); }
+    buf_t *getRecvBuffer3D_CwC(size_t id) { return tausch3->getRecvBufferCpuWithCpu(id); }
+
     TauschPackRegion createFilledPackRegion1D(size_t x, size_t width) { return tausch1->createFilledPackRegion(x, width); }
     TauschPackRegion createFilledPackRegion2D(size_t x, size_t y, size_t width, size_t height) { return tausch2->createFilledPackRegion(x, y, width, height); }
     TauschPackRegion createFilledPackRegion2D(size_t startAtIndex, size_t endAtIndex) { return tausch2->createFilledPackRegion(startAtIndex, endAtIndex); }
     TauschPackRegion createFilledPackRegion3D(size_t x, size_t y, size_t z, size_t width, size_t height, size_t depth) { return tausch3->createFilledPackRegion(x, y, z, width, height, depth); }
     TauschPackRegion createFilledPackRegion3D(size_t startAtIndex, size_t endAtIndex) { return tausch3->createFilledPackRegion(startAtIndex, endAtIndex); }
+
+    TauschHaloSpec createFilledHaloSpec1D(size_t valuesPerPoint, size_t bufferWidth, size_t haloX, size_t haloWidth, int remoteMpiRank) { return tausch1->createFilledHaloSpec(valuesPerPoint, bufferWidth, haloX, haloWidth, remoteMpiRank); }
+    TauschHaloSpec createFilledHaloSpec1D(std::vector<size_t> haloIndicesInBuffer) { return tausch1->createFilledHaloSpec(haloIndicesInBuffer); }
+    TauschHaloSpec createFilledHaloSpec2D(size_t valuesPerPoint, size_t bufferWidth, size_t bufferHeight, size_t haloX, size_t haloY, size_t haloWidth, size_t haloHeight, int remoteMpiRank) { return tausch2->createFilledHaloSpec(valuesPerPoint, bufferWidth, bufferHeight, haloX, haloY, haloWidth, haloHeight, remoteMpiRank); }
+    TauschHaloSpec createFilledHaloSpec2D(std::vector<size_t> haloIndicesInBuffer) { return tausch2->createFilledHaloSpec(haloIndicesInBuffer); }
+    TauschHaloSpec createFilledHaloSpec3D(size_t valuesPerPoint, size_t bufferWidth, size_t bufferHeight, size_t bufferDepth, size_t haloX, size_t haloY, size_t haloZ, size_t haloWidth, size_t haloHeight, size_t haloDepth, int remoteMpiRank) { return tausch3->createFilledHaloSpec(valuesPerPoint, bufferWidth, bufferHeight, bufferDepth, haloX, haloY, haloZ, haloWidth, haloHeight, haloDepth, remoteMpiRank); }
+    TauschHaloSpec createFilledHaloSpec3D(std::vector<size_t> haloIndicesInBuffer) { return tausch3->createFilledHaloSpec(haloIndicesInBuffer); }
 
 private:
     Tausch1D<buf_t> *tausch1;

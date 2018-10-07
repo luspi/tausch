@@ -294,7 +294,7 @@ template <class buf_t> void Tausch1D<buf_t>::delRemoteHaloInfoCwC(size_t haloId)
 ////////////////////////
 /// Post Receives
 
-template <class buf_t> void Tausch1D<buf_t>::postReceiveCwC(size_t haloId, int msgtag) {
+template <class buf_t> void Tausch1D<buf_t>::postReceiveCwC(size_t haloId, int msgtag, int remoteMpiRank) {
 
     if(!setupMpiRecv[haloId]) {
 
@@ -314,7 +314,10 @@ template <class buf_t> void Tausch1D<buf_t>::postReceiveCwC(size_t haloId, int m
         for(int n = 0; n < numBuffers; ++n)
             bufsize += valuesPerPointPerBuffer[n]*haloSize;
 
-        MPI_Recv_init(&mpiRecvBuffer[haloId][0], bufsize, mpiDataType, remoteHaloSpecsCpu[haloId].remoteMpiRank,
+        if(remoteMpiRank == -1)
+            remoteMpiRank = remoteHaloSpecsCpu[haloId].remoteMpiRank;
+
+        MPI_Recv_init(&mpiRecvBuffer[haloId][0], bufsize, mpiDataType, remoteMpiRank,
                       msgtag, TAUSCH_COMM, &mpiRecvRequests[haloId]);
 
     }
@@ -473,7 +476,7 @@ template <class buf_t> void Tausch1D<buf_t>::packSendBufferGwC(size_t haloId, si
 ////////////////////////
 /// Send data off
 
-template <class buf_t> void Tausch1D<buf_t>::sendCwC(size_t haloId, int msgtag) {
+template <class buf_t> void Tausch1D<buf_t>::sendCwC(size_t haloId, int msgtag, int remoteMpiRank, MPI_Comm communicator) {
 
     if(!setupMpiSend[haloId]) {
 
@@ -493,8 +496,15 @@ template <class buf_t> void Tausch1D<buf_t>::sendCwC(size_t haloId, int msgtag) 
         for(int n = 0; n < numBuffers; ++n)
             bufsize += valuesPerPointPerBuffer[n]*haloSize;
 
-        MPI_Send_init(&mpiSendBuffer[haloId][0], bufsize, mpiDataType, localHaloSpecsCpu[haloId].remoteMpiRank,
-                      msgtag, TAUSCH_COMM, &mpiSendRequests[haloId]);
+        int receiver = localHaloSpecsCpu[haloId].remoteMpiRank;
+        if(remoteMpiRank != -1)
+            receiver = remoteMpiRank;
+
+        if(communicator == MPI_COMM_WORLD)
+            communicator = TAUSCH_COMM;
+
+        MPI_Send_init(&mpiSendBuffer[haloId][0], bufsize, mpiDataType, receiver,
+                      msgtag, communicator, &mpiSendRequests[haloId]);
 
     } else
         MPI_Wait(&mpiSendRequests[haloId], MPI_STATUS_IGNORE);
@@ -540,6 +550,10 @@ template <class buf_t> void Tausch1D<buf_t>::sendGwC(size_t haloId, int msgtag) 
 
 template <class buf_t> void Tausch1D<buf_t>::recvCwC(size_t haloId) {
     MPI_Wait(&mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
+}
+
+template <class buf_t> void Tausch1D<buf_t>::recvAllCwC() {
+    MPI_Waitall(mpiRecvRequests.size(), mpiRecvRequests.data(), MPI_STATUSES_IGNORE);
 }
 
 #ifdef TAUSCH_OPENCL
@@ -738,10 +752,9 @@ template <class buf_t> TauschHaloSpec Tausch1D<buf_t>::createFilledHaloSpec(size
     return halo;
 }
 
-template <class buf_t> TauschHaloSpec Tausch1D<buf_t>::createFilledHaloSpec(std::vector<size_t> haloIndicesInBuffer, int remoteMpiRank) {
+template <class buf_t> TauschHaloSpec Tausch1D<buf_t>::createFilledHaloSpec(std::vector<size_t> haloIndicesInBuffer) {
     TauschHaloSpec halo;
     halo.haloIndicesInBuffer = haloIndicesInBuffer;
-    halo.remoteMpiRank = remoteMpiRank;
     return halo;
 }
 

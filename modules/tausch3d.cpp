@@ -23,7 +23,7 @@ template <class buf_t> Tausch3D<buf_t>::Tausch3D(MPI_Datatype mpiDataType,
     } else {
         valuesPerPointPerBufferAllOne = true;
         for(size_t i = 0; i < numBuffers; ++i) {
-            this->valuesPerPointPerBuffer[i] = valuesPerPointPerBuffer[i];
+            this->valuesPerPointPerBuffer[i] = std::max((size_t)1, valuesPerPointPerBuffer[i]);
             if(valuesPerPointPerBuffer[i] != 1)
                 valuesPerPointPerBufferAllOne = false;
         }
@@ -123,11 +123,15 @@ template <class buf_t> size_t Tausch3D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpe
 
     for(size_t n = 0; n < numBuffers; ++n)
         bufsize += valuesPerPointPerBuffer[n]*haloSize;
+
     mpiSendBufferCpuWithCpu.push_back(new buf_t[bufsize]());
+
+    // The buffer sizes also do not change anymore
+    localTotalBufferSizeCwC.push_back(bufsize);
 
     setupMpiSendCpuWithCpu.push_back(false);
 
-    mpiSendRequestsCpuWithCpu.push_back(MPI_Request());
+    mpiSendRequestsCpuWithCpu.push_back(MPI_REQUEST_NULL);
 
     // These are computed once as they don't change below
     size_t offset = 0;
@@ -136,12 +140,6 @@ template <class buf_t> size_t Tausch3D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpe
         offset += valuesPerPointPerBuffer[nb-1] * haloSize;
         localBufferOffsetCwC.push_back(offset);
     }
-
-    // The buffer sizes also do not change anymore
-    size_t s = 0;
-    for(size_t nb = 0; nb < numBuffers; ++nb)
-        s += valuesPerPointPerBuffer[nb]*haloSize;
-    localTotalBufferSizeCwC.push_back(s);
 
     return mpiSendBufferCpuWithCpu.size()-1;
 
@@ -268,7 +266,7 @@ template <class buf_t> void Tausch3D<buf_t>::setLocalHaloInfoGwC(size_t numHaloP
 
 template <class buf_t> void Tausch3D<buf_t>::delLocalHaloInfoCwC(size_t haloId) {
     delete[] mpiSendBufferCpuWithCpu[haloId];
-    mpiSendRequestsCpuWithCpu[haloId] = MPI_Request();
+    mpiSendRequestsCpuWithCpu[haloId] = MPI_REQUEST_NULL;
     localBufferOffsetCwC[haloId] = 0;
     localTotalBufferSizeCwC[haloId] = 0;
     alreadyDeletedLocalHaloIds.push_back(haloId);
@@ -289,11 +287,12 @@ template <class buf_t> size_t Tausch3D<buf_t>::addRemoteHaloInfoCwC(TauschHaloSp
     size_t bufsize = 0;
     for(size_t n = 0; n < numBuffers; ++n)
         bufsize += valuesPerPointPerBuffer[n]*haloSize;
-    mpiRecvBufferCpuWithCpu.push_back(new buf_t[bufsize]());
+    buf_t *newbuf = new buf_t[bufsize]{};
+    mpiRecvBufferCpuWithCpu.push_back(newbuf);
 
     setupMpiRecvCpuWithCpu.push_back(false);
 
-    mpiRecvRequestsCpuWithCpu.push_back(MPI_Request());
+    mpiRecvRequestsCpuWithCpu.push_back(MPI_REQUEST_NULL);
 
     // These are computed once as they don't change below
     size_t offset = 0;
@@ -427,7 +426,7 @@ template <class buf_t> void Tausch3D<buf_t>::setRemoteHaloInfoGwC(size_t numHalo
 
 template <class buf_t> void Tausch3D<buf_t>::delRemoteHaloInfoCwC(size_t haloId) {
     delete[] mpiRecvBufferCpuWithCpu[haloId];
-    mpiRecvRequestsCpuWithCpu[haloId] = MPI_Request();
+    mpiRecvRequestsCpuWithCpu[haloId] = MPI_REQUEST_NULL;
     remoteBufferOffsetCwC[haloId] = 0;
     remoteTotalBufferSizeCwC[haloId] = 0;
     alreadyDeletedRemoteHaloIds.push_back(haloId);
@@ -437,7 +436,7 @@ template <class buf_t> void Tausch3D<buf_t>::delRemoteHaloInfoCwC(size_t haloId)
 ////////////////////////
 /// Post Receives
 
-template <class buf_t> void Tausch3D<buf_t>::postReceiveCwC(size_t haloId, int msgtag) {
+template <class buf_t> void Tausch3D<buf_t>::postReceiveCwC(size_t haloId, int msgtag, int remoteMpiRank, MPI_Comm communicator) {
 
     if(!setupMpiRecvCpuWithCpu[haloId]) {
 
@@ -449,8 +448,15 @@ template <class buf_t> void Tausch3D<buf_t>::postReceiveCwC(size_t haloId, int m
 
         setupMpiRecvCpuWithCpu[haloId] = true;
 
+        if(remoteMpiRank == -1)
+            remoteMpiRank = remoteHaloSpecsCpuWithCpu[haloId].remoteMpiRank;
+
+        if(communicator == NULL)
+            communicator = TAUSCH_COMM;
+
         MPI_Recv_init(&mpiRecvBufferCpuWithCpu[haloId][0], int(remoteTotalBufferSizeCwC[haloId]), mpiDataType,
-                      remoteHaloSpecsCpuWithCpu[haloId].remoteMpiRank, msgtag, TAUSCH_COMM, &mpiRecvRequestsCpuWithCpu[haloId]);
+                      remoteMpiRank, msgtag, communicator, &mpiRecvRequestsCpuWithCpu[haloId]);
+
 
     }
 
@@ -472,7 +478,7 @@ template <class buf_t> void Tausch3D<buf_t>::postReceiveGwC(size_t haloId, int m
 ////////////////////////
 /// Post ALL Receives
 
-template <class buf_t> void Tausch3D<buf_t>::postAllReceivesCwC(int *msgtag) {
+template <class buf_t> void Tausch3D<buf_t>::postAllReceivesCwC(int *msgtag, MPI_Comm communicator) {
 
 #if __cplusplus >= 201103L
     if(msgtag == nullptr) {
@@ -486,7 +492,7 @@ template <class buf_t> void Tausch3D<buf_t>::postAllReceivesCwC(int *msgtag) {
 
     for(size_t id = 0; id < remoteHaloSpecsCpuWithCpu.size(); ++id) {
         if(std::find(alreadyDeletedRemoteHaloIds.begin(), alreadyDeletedRemoteHaloIds.end(), id) == alreadyDeletedRemoteHaloIds.end())
-            postReceiveCwC(id, msgtag[id]);
+            postReceiveCwC(id, msgtag[id], -1, communicator);
     }
 
 }
@@ -731,8 +737,7 @@ template <class buf_t> void Tausch3D<buf_t>::packSendBufferGwC(size_t haloId, si
 ////////////////////////
 /// Send data off
 
-template <class buf_t> void Tausch3D<buf_t>::sendCwC(size_t haloId, int msgtag) {
-
+template <class buf_t> void Tausch3D<buf_t>::sendCwC(size_t haloId, int msgtag, int remoteMpiRank, MPI_Comm communicator) {
 
     if(!setupMpiSendCpuWithCpu[haloId]) {
 
@@ -744,11 +749,19 @@ template <class buf_t> void Tausch3D<buf_t>::sendCwC(size_t haloId, int msgtag) 
 
         setupMpiSendCpuWithCpu[haloId] = true;
 
+        int receiver = localHaloSpecsCpuWithCpu[haloId].remoteMpiRank;
+        if(remoteMpiRank != -1)
+            receiver = remoteMpiRank;
+
+        if(communicator == NULL)
+            communicator = TAUSCH_COMM;
+
         MPI_Send_init(&mpiSendBufferCpuWithCpu[haloId][0], int(localTotalBufferSizeCwC[haloId]),
-                  mpiDataType, localHaloSpecsCpuWithCpu[haloId].remoteMpiRank, msgtag, TAUSCH_COMM, &mpiSendRequestsCpuWithCpu[haloId]);
+                  mpiDataType, receiver, msgtag, communicator, &mpiSendRequestsCpuWithCpu[haloId]);
 
     } else
         MPI_Wait(&mpiSendRequestsCpuWithCpu[haloId], MPI_STATUS_IGNORE);
+
 
     MPI_Start(&mpiSendRequestsCpuWithCpu[haloId]);
 
@@ -792,6 +805,15 @@ template <class buf_t> void Tausch3D<buf_t>::sendGwC(size_t haloId, int msgtag) 
 
 template <class buf_t> void Tausch3D<buf_t>::recvCwC(size_t haloId) {
     MPI_Wait(&mpiRecvRequestsCpuWithCpu[haloId], MPI_STATUS_IGNORE);
+}
+
+template <class buf_t> void Tausch3D<buf_t>::recvAllCwC() {
+
+    for(size_t i = 0; i < mpiRecvRequestsCpuWithCpu.size(); ++i) {
+        if(remoteTotalBufferSizeCwC[i] > 0)
+            MPI_Wait(&mpiRecvRequestsCpuWithCpu[i], MPI_STATUS_IGNORE);
+    }
+
 }
 
 #ifdef TAUSCH_OPENCL
@@ -864,6 +886,9 @@ template <class buf_t> void Tausch3D<buf_t>::unpackRecvBufferCwC(size_t haloId, 
         return;
 
     }
+
+    if(region.width*region.height*region.depth == 0)
+        return;
 
     size_t bufIndexBase = (region.z + remoteHaloSpecsCpuWithCpu[haloId].haloZ)*remoteHaloSpecsCpuWithCpu[haloId].bufferWidth*remoteHaloSpecsCpuWithCpu[haloId].bufferHeight +
                        (region.y + remoteHaloSpecsCpuWithCpu[haloId].haloY)*remoteHaloSpecsCpuWithCpu[haloId].bufferWidth +
@@ -1085,10 +1110,9 @@ template <class buf_t> TauschHaloSpec Tausch3D<buf_t>::createFilledHaloSpec(size
     return halo;
 }
 
-template <class buf_t> TauschHaloSpec Tausch3D<buf_t>::createFilledHaloSpec(std::vector<size_t> haloIndicesInBuffer, int remoteMpiRank) {
+template <class buf_t> TauschHaloSpec Tausch3D<buf_t>::createFilledHaloSpec(std::vector<size_t> haloIndicesInBuffer) {
     TauschHaloSpec halo;
     halo.haloIndicesInBuffer = haloIndicesInBuffer;
-    halo.remoteMpiRank = remoteMpiRank;
     return halo;
 }
 
