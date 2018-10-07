@@ -34,7 +34,8 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
     if(mpiRank >= mpiSize-mpiNum[0])
         top -= mpiSize;
 
-    numBuffers = 2;
+    // when changing this to anything but 1, re-adjust the launch() functions
+    numBuffers = 1;
 
     valuesPerPointPerBuffer = new size_t[numBuffers];
     for(size_t b = 0; b < numBuffers; ++b)
@@ -445,28 +446,34 @@ void Sample::launchCPU() {
             int sendtags[4] = {0, 1, 2, 3};
             int recvtags[4] = {1, 0, 3, 2};
 
-            tausch->postReceive2D_CwC(allRemoteHaloIds[0], recvtags[0]);
-            tausch->postReceive2D_CwC(allRemoteHaloIds[1], recvtags[1]);
-            tausch->postReceive2D_CwC(allRemoteHaloIds[2], recvtags[2]);
-            tausch->postReceive2D_CwC(allRemoteHaloIds[3], recvtags[3]);
+            tausch->postAllReceives2D_CwC(recvtags);
+
+//            tausch->postReceive2D_CwC(allRemoteHaloIds[0], recvtags[0]);
+//            tausch->postReceive2D_CwC(allRemoteHaloIds[1], recvtags[1]);
+//            tausch->postReceive2D_CwC(allRemoteHaloIds[2], recvtags[2]);
+//            tausch->postReceive2D_CwC(allRemoteHaloIds[3], recvtags[3]);
 
             for(size_t ver_hor = 0; ver_hor < 2; ++ver_hor) {
 
-                for(size_t b = 0; b < numBuffers; ++b)
-                    tausch->packSendBuffer2D_CwC(allLocalHaloIds[2*ver_hor], b, dat[b]);
-                tausch->send2D_CwC(allLocalHaloIds[2*ver_hor], sendtags[2*ver_hor]);
+                tausch->packAndSend2D_CwC(allLocalHaloIds[2*ver_hor], dat[0], sendtags[2*ver_hor]);
+//                for(size_t b = 0; b < numBuffers; ++b)
+//                    tausch->packSendBuffer2D_CwC(allLocalHaloIds[2*ver_hor], b, dat[b]);
+//                tausch->send2D_CwC(allLocalHaloIds[2*ver_hor], sendtags[2*ver_hor]);
 
-                for(size_t b = 0; b < numBuffers; ++b)
-                    tausch->packSendBuffer2D_CwC(allLocalHaloIds[2*ver_hor+1], b, dat[b]);
-                tausch->send2D_CwC(allLocalHaloIds[2*ver_hor+1], sendtags[2*ver_hor +1]);
+                tausch->packAndSend2D_CwC(allLocalHaloIds[2*ver_hor +1], dat[0], sendtags[2*ver_hor +1]);
+//                for(size_t b = 0; b < numBuffers; ++b)
+//                    tausch->packSendBuffer2D_CwC(allLocalHaloIds[2*ver_hor+1], b, dat[b]);
+//                tausch->send2D_CwC(allLocalHaloIds[2*ver_hor+1], sendtags[2*ver_hor +1]);
 
-                tausch->recv2D_CwC(allRemoteHaloIds[2*ver_hor]);
-                for(size_t b = 0; b < numBuffers; ++b)
-                    tausch->unpackRecvBuffer2D_CwC(allRemoteHaloIds[2*ver_hor], b, dat[b]);
+                tausch->recvAndUnpack2D_CwC(allRemoteHaloIds[2*ver_hor], dat[0]);
+//                tausch->recv2D_CwC(allRemoteHaloIds[2*ver_hor]);
+//                for(size_t b = 0; b < numBuffers; ++b)
+//                    tausch->unpackRecvBuffer2D_CwC(allRemoteHaloIds[2*ver_hor], b, dat[b]);
 
-                tausch->recv2D_CwC(allRemoteHaloIds[2*ver_hor+1]);
-                for(size_t b = 0; b < numBuffers; ++b)
-                    tausch->unpackRecvBuffer2D_CwC(allRemoteHaloIds[2*ver_hor+1], b, dat[b]);
+                tausch->recvAndUnpack2D_CwC(allRemoteHaloIds[2*ver_hor +1], dat[0]);
+//                tausch->recv2D_CwC(allRemoteHaloIds[2*ver_hor+1]);
+//                for(size_t b = 0; b < numBuffers; ++b)
+//                    tausch->unpackRecvBuffer2D_CwC(allRemoteHaloIds[2*ver_hor+1], b, dat[b]);
 
             }
 
