@@ -61,7 +61,7 @@ public:
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      *
      */
-    Tausch1D(MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = NULL, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch1D(MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = NULL, MPI_Comm comm = MPI_COMM_WORLD, bool duplicateCommunicator = true);
 
     /*!
      *
@@ -233,7 +233,7 @@ public:
      *  Where to send it to. If this is set to -1, then Tausch will take the value stored in the respective halo spec.
      *
      */
-    void sendCwC(size_t haloId, int msgtag = -1, int remoteMpiRank = -1, MPI_Comm communicator = MPI_COMM_WORLD);
+    void sendCwC(size_t haloId, int msgtag = -1, int remoteMpiRank = -1);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void sendCwG(size_t haloId, int msgtag);
     void sendGwC(size_t haloId, int msgtag);

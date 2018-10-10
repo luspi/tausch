@@ -1,9 +1,12 @@
 #include "tausch1d.h"
 
 template <class buf_t> Tausch1D<buf_t>::Tausch1D(MPI_Datatype mpiDataType,
-                                                   size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm) {
+                                                   size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, bool duplicateCommunicator) {
 
-    MPI_Comm_dup(comm, &TAUSCH_COMM);
+    if(duplicateCommunicator)
+        MPI_Comm_dup(comm, &TAUSCH_COMM);
+    else
+        TAUSCH_COMM = comm;
 
     // get MPI info
     MPI_Comm_rank(TAUSCH_COMM, &mpiRank);
@@ -476,7 +479,7 @@ template <class buf_t> void Tausch1D<buf_t>::packSendBufferGwC(size_t haloId, si
 ////////////////////////
 /// Send data off
 
-template <class buf_t> void Tausch1D<buf_t>::sendCwC(size_t haloId, int msgtag, int remoteMpiRank, MPI_Comm communicator) {
+template <class buf_t> void Tausch1D<buf_t>::sendCwC(size_t haloId, int msgtag, int remoteMpiRank) {
 
     if(!setupMpiSend[haloId]) {
 
@@ -500,11 +503,8 @@ template <class buf_t> void Tausch1D<buf_t>::sendCwC(size_t haloId, int msgtag, 
         if(remoteMpiRank != -1)
             receiver = remoteMpiRank;
 
-        if(communicator == MPI_COMM_WORLD)
-            communicator = TAUSCH_COMM;
-
         MPI_Send_init(&mpiSendBuffer[haloId][0], bufsize, mpiDataType, receiver,
-                      msgtag, communicator, &mpiSendRequests[haloId]);
+                      msgtag, TAUSCH_COMM, &mpiSendRequests[haloId]);
 
     } else
         MPI_Wait(&mpiSendRequests[haloId], MPI_STATUS_IGNORE);

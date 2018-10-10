@@ -1,9 +1,12 @@
 #include "tausch2d.h"
 
 template <class buf_t> Tausch2D<buf_t>::Tausch2D(MPI_Datatype mpiDataType,
-                                                 size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm) {
+                                                 size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, bool duplicateCommunicator) {
 
-    MPI_Comm_dup(comm, &TAUSCH_COMM);
+    if(duplicateCommunicator)
+        MPI_Comm_dup(comm, &TAUSCH_COMM);
+    else
+        TAUSCH_COMM = comm;
 
     // get MPI info
     MPI_Comm_rank(TAUSCH_COMM, &mpiRank);
@@ -143,28 +146,19 @@ template <class buf_t> size_t Tausch2D<buf_t>::addLocalHaloInfoCwC(TauschHaloSpe
         haloSize = haloSpec.haloIndicesInBuffer.size();
 
     size_t bufsize = 0;
-
-    for(size_t n = 0; n < numBuffers; ++n)
-        bufsize += valuesPerPointPerBuffer[n]*haloSize;
-    mpiSendBufferCpuWithCpu.push_back(new buf_t[bufsize]());
-
-    setupMpiSendCpuWithCpu.push_back(false);
-
-    mpiSendRequestsCpuWithCpu.push_back(MPI_Request());
-
-    // These are computed once as they don't change below
     size_t offset = 0;
-    localBufferOffsetCwC.push_back(0);
-    for(size_t nb = 1; nb < numBuffers; ++nb) {
-        offset += valuesPerPointPerBuffer[nb-1] * haloSize;
+
+    for(size_t n = 0; n < numBuffers; ++n) {
+        bufsize += valuesPerPointPerBuffer[n]*haloSize;
+        offset += valuesPerPointPerBuffer[n-1] * haloSize;
         localBufferOffsetCwC.push_back(offset);
     }
 
-    // The buffer sizes also do not change anymore
-    size_t s = 0;
-    for(size_t nb = 0; nb < numBuffers; ++nb)
-        s += valuesPerPointPerBuffer[nb] * haloSize;
-    localTotalBufferSizeCwC.push_back(s);
+    localTotalBufferSizeCwC.push_back(bufsize);
+    mpiSendBufferCpuWithCpu.push_back(new buf_t[bufsize]());
+    mpiSendRequestsCpuWithCpu.push_back(MPI_Request());
+
+    setupMpiSendCpuWithCpu.push_back(false);
 
     return mpiSendBufferCpuWithCpu.size()-1;
 
@@ -376,27 +370,19 @@ template <class buf_t> size_t Tausch2D<buf_t>::addRemoteHaloInfoCwC(TauschHaloSp
         haloSize = haloSpec.haloIndicesInBuffer.size();
 
     size_t bufsize = 0;
-    for(size_t n = 0; n < numBuffers; ++n)
-        bufsize += valuesPerPointPerBuffer[n]*haloSize;
-    mpiRecvBufferCpuWithCpu.push_back(new buf_t[bufsize]());
-
-    setupMpiRecvCpuWithCpu.push_back(false);
-
-    mpiRecvRequestsCpuWithCpu.push_back(MPI_Request());
-
-    // These are computed once as they don't change below
     size_t offset = 0;
-    remoteBufferOffsetCwC.push_back(0);
-    for(size_t nb = 1; nb < numBuffers; ++nb) {
-        offset += valuesPerPointPerBuffer[nb-1] * haloSize;
+
+    for(size_t n = 0; n < numBuffers; ++n) {
+        bufsize += valuesPerPointPerBuffer[n]*haloSize;
+        offset += valuesPerPointPerBuffer[n-1] * haloSize;
         remoteBufferOffsetCwC.push_back(offset);
     }
 
-    // The buffer sizes also do not change anymore
-    size_t s = 0;
-    for(size_t nb = 0; nb < numBuffers; ++nb)
-        s += valuesPerPointPerBuffer[nb]*haloSize;
-    remoteTotalBufferSizeCwC.push_back(s);
+    remoteTotalBufferSizeCwC.push_back(bufsize);
+    mpiRecvBufferCpuWithCpu.push_back(new buf_t[bufsize]());
+    mpiRecvRequestsCpuWithCpu.push_back(MPI_Request());
+
+    setupMpiRecvCpuWithCpu.push_back(false);
 
     return mpiRecvBufferCpuWithCpu.size()-1;
 
@@ -593,12 +579,6 @@ template <class buf_t> void Tausch2D<buf_t>::postReceiveCwC(size_t haloId, int m
 
     if(!setupMpiRecvCpuWithCpu[haloId]) {
 
-        if(msgtag == -1) {
-            std::cerr << "[Tausch2D] ERROR: MPI_Recv for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!"
-                      << std::endl;
-            exit(1);
-        }
-
         setupMpiRecvCpuWithCpu[haloId] = true;
 
         if(remoteMpiRank == -1)
@@ -649,16 +629,6 @@ template <class buf_t> void Tausch2D<buf_t>::postReceiveGwG(size_t haloId, int m
 /// Post ALL Receives
 
 template <class buf_t> void Tausch2D<buf_t>::postAllReceivesCwC(int *msgtag) {
-
-#if __cplusplus >= 201103L
-    if(msgtag == nullptr) {
-#else
-    if(msgtag == NULL) {
-#endif
-        msgtag = new int[remoteHaloSpecsCpuWithCpu.size()];
-        for(size_t id = 0; id < remoteHaloSpecsCpuWithCpu.size(); ++id)
-            msgtag[id] = -1;
-    }
 
     for(size_t id = 0; id < remoteHaloSpecsCpuWithCpu.size(); ++id) {
         if(std::find(alreadyDeletedRemoteHaloIds.begin(), alreadyDeletedRemoteHaloIds.end(), id) == alreadyDeletedRemoteHaloIds.end())
@@ -740,8 +710,10 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferCwC(size_t haloId, si
 
     if(localHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer.size() > 0) {
 
+        size_t haloSize = localHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer.size();
+
         for(size_t index = region.startAtIndex; index < region.endAtIndex; ++index)
-            mpiSendBufferCpuWithCpu[haloId][index] = buf[localHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer[index]];
+            mpiSendBufferCpuWithCpu[haloId][bufferId*haloSize + index] = buf[localHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer[index]];
 
         return;
 
@@ -904,28 +876,18 @@ template <class buf_t> void Tausch2D<buf_t>::packSendBufferGwG(size_t haloId, si
 ////////////////////////
 /// Send data off
 
-template <class buf_t> void Tausch2D<buf_t>::sendCwC(size_t haloId, int msgtag, int remoteMpiRank, MPI_Comm communicator) {
+template <class buf_t> void Tausch2D<buf_t>::sendCwC(size_t haloId, int msgtag, int remoteMpiRank) {
 
     if(!setupMpiSendCpuWithCpu[haloId]) {
 
-        if(msgtag == -1) {
-            std::cerr << "[Tausch2D] ERROR: MPI_Send for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!"
-                      << std::endl;
-            exit(1);
-        }
-
         setupMpiSendCpuWithCpu[haloId] = true;
 
-        int receiver = localHaloSpecsCpuWithCpu[haloId].remoteMpiRank;
-        if(remoteMpiRank != -1)
-            receiver = remoteMpiRank;
-
-        if(communicator == MPI_COMM_WORLD)
-            communicator = TAUSCH_COMM;
+        if(remoteMpiRank == -1)
+            remoteMpiRank = localHaloSpecsCpuWithCpu[haloId].remoteMpiRank;
 
         // MPI_Send_init expects 'count' parameter to be of type int
-        MPI_Send_init(&mpiSendBufferCpuWithCpu[haloId][0], int(localTotalBufferSizeCwC[haloId]), mpiDataType, receiver,
-                  msgtag, communicator, &mpiSendRequestsCpuWithCpu[haloId]);
+        MPI_Send_init(&mpiSendBufferCpuWithCpu[haloId][0], int(localTotalBufferSizeCwC[haloId]), mpiDataType, remoteMpiRank,
+                  msgtag, TAUSCH_COMM, &mpiSendRequestsCpuWithCpu[haloId]);
 
     } else
         MPI_Wait(&mpiSendRequestsCpuWithCpu[haloId], MPI_STATUS_IGNORE);
@@ -1069,8 +1031,10 @@ template <class buf_t> void Tausch2D<buf_t>::unpackRecvBufferCwC(size_t haloId, 
 
     if(remoteHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer.size() != 0) {
 
+        size_t haloSize = remoteHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer.size();
+
         for(size_t index = region.startAtIndex; index < region.endAtIndex; ++index)
-            buf[remoteHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer[index]] = mpiRecvBufferCpuWithCpu[haloId][index];
+            buf[remoteHaloSpecsCpuWithCpu[haloId].haloIndicesInBuffer[index]] = mpiRecvBufferCpuWithCpu[haloId][bufferId*haloSize + index];
 
         return;
 

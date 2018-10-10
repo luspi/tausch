@@ -1,9 +1,12 @@
 #include "tausch3d.h"
 
 template <class buf_t> Tausch3D<buf_t>::Tausch3D(MPI_Datatype mpiDataType,
-                                                 size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm) {
+                                                 size_t numBuffers, size_t *valuesPerPointPerBuffer, MPI_Comm comm, bool duplicateCommunicator) {
 
-    MPI_Comm_dup(comm, &TAUSCH_COMM);
+    if(duplicateCommunicator)
+        MPI_Comm_dup(comm, &TAUSCH_COMM);
+    else
+        TAUSCH_COMM = comm;
 
     // get MPI info
     MPI_Comm_rank(TAUSCH_COMM, &mpiRank);
@@ -23,7 +26,7 @@ template <class buf_t> Tausch3D<buf_t>::Tausch3D(MPI_Datatype mpiDataType,
     } else {
         valuesPerPointPerBufferAllOne = true;
         for(size_t i = 0; i < numBuffers; ++i) {
-            this->valuesPerPointPerBuffer[i] = std::max((size_t)1, valuesPerPointPerBuffer[i]);
+            this->valuesPerPointPerBuffer[i] = std::max(size_t(1), valuesPerPointPerBuffer[i]);
             if(valuesPerPointPerBuffer[i] != 1)
                 valuesPerPointPerBufferAllOne = false;
         }
@@ -436,26 +439,17 @@ template <class buf_t> void Tausch3D<buf_t>::delRemoteHaloInfoCwC(size_t haloId)
 ////////////////////////
 /// Post Receives
 
-template <class buf_t> void Tausch3D<buf_t>::postReceiveCwC(size_t haloId, int msgtag, int remoteMpiRank, MPI_Comm communicator) {
+template <class buf_t> void Tausch3D<buf_t>::postReceiveCwC(size_t haloId, int msgtag, int remoteMpiRank) {
 
     if(!setupMpiRecvCpuWithCpu[haloId]) {
-
-        if(msgtag == -1) {
-            std::cerr << "[Tausch3D] ERROR: MPI_Recv for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!"
-                      << std::endl;
-            exit(1);
-        }
 
         setupMpiRecvCpuWithCpu[haloId] = true;
 
         if(remoteMpiRank == -1)
             remoteMpiRank = remoteHaloSpecsCpuWithCpu[haloId].remoteMpiRank;
 
-        if(communicator == NULL)
-            communicator = TAUSCH_COMM;
-
         MPI_Recv_init(&mpiRecvBufferCpuWithCpu[haloId][0], int(remoteTotalBufferSizeCwC[haloId]), mpiDataType,
-                      remoteMpiRank, msgtag, communicator, &mpiRecvRequestsCpuWithCpu[haloId]);
+                      remoteMpiRank, msgtag, TAUSCH_COMM, &mpiRecvRequestsCpuWithCpu[haloId]);
 
 
     }
@@ -478,21 +472,11 @@ template <class buf_t> void Tausch3D<buf_t>::postReceiveGwC(size_t haloId, int m
 ////////////////////////
 /// Post ALL Receives
 
-template <class buf_t> void Tausch3D<buf_t>::postAllReceivesCwC(int *msgtag, MPI_Comm communicator) {
-
-#if __cplusplus >= 201103L
-    if(msgtag == nullptr) {
-#else
-    if(msgtag == NULL) {
-#endif
-        msgtag = new int[remoteHaloSpecsCpuWithCpu.size()];
-        for(size_t id = 0; id < remoteHaloSpecsCpuWithCpu.size(); ++id)
-            msgtag[id] = -1;
-    }
+template <class buf_t> void Tausch3D<buf_t>::postAllReceivesCwC(int *msgtag) {
 
     for(size_t id = 0; id < remoteHaloSpecsCpuWithCpu.size(); ++id) {
         if(std::find(alreadyDeletedRemoteHaloIds.begin(), alreadyDeletedRemoteHaloIds.end(), id) == alreadyDeletedRemoteHaloIds.end())
-            postReceiveCwC(id, msgtag[id], -1, communicator);
+            postReceiveCwC(id, msgtag[id], -1);
     }
 
 }
@@ -737,27 +721,17 @@ template <class buf_t> void Tausch3D<buf_t>::packSendBufferGwC(size_t haloId, si
 ////////////////////////
 /// Send data off
 
-template <class buf_t> void Tausch3D<buf_t>::sendCwC(size_t haloId, int msgtag, int remoteMpiRank, MPI_Comm communicator) {
+template <class buf_t> void Tausch3D<buf_t>::sendCwC(size_t haloId, int msgtag, int remoteMpiRank) {
 
     if(!setupMpiSendCpuWithCpu[haloId]) {
 
-        if(msgtag == -1) {
-            std::cerr << "[Tausch3D] ERROR: MPI_Send for halo region #" << haloId << " hasn't been posted before, missing mpitag... Abort!"
-                      << std::endl;
-            exit(1);
-        }
-
         setupMpiSendCpuWithCpu[haloId] = true;
 
-        int receiver = localHaloSpecsCpuWithCpu[haloId].remoteMpiRank;
-        if(remoteMpiRank != -1)
-            receiver = remoteMpiRank;
-
-        if(communicator == NULL)
-            communicator = TAUSCH_COMM;
+        if(remoteMpiRank == -1)
+            remoteMpiRank = localHaloSpecsCpuWithCpu[haloId].remoteMpiRank;
 
         MPI_Send_init(&mpiSendBufferCpuWithCpu[haloId][0], int(localTotalBufferSizeCwC[haloId]),
-                  mpiDataType, receiver, msgtag, communicator, &mpiSendRequestsCpuWithCpu[haloId]);
+                  mpiDataType, remoteMpiRank, msgtag, TAUSCH_COMM, &mpiSendRequestsCpuWithCpu[haloId]);
 
     } else
         MPI_Wait(&mpiSendRequestsCpuWithCpu[haloId], MPI_STATUS_IGNORE);
@@ -809,7 +783,7 @@ template <class buf_t> void Tausch3D<buf_t>::recvCwC(size_t haloId) {
 
 template <class buf_t> void Tausch3D<buf_t>::recvAllCwC() {
 
-    for(size_t i = 0; i < mpiRecvRequestsCpuWithCpu.size(); ++i) {
+    for(size_t i = 0; i < mpiRecvRequestsCpuWithCpu.size(); ++i){
         if(remoteTotalBufferSizeCwC[i] > 0)
             MPI_Wait(&mpiRecvRequestsCpuWithCpu[i], MPI_STATUS_IGNORE);
     }

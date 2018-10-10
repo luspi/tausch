@@ -23,8 +23,9 @@ private:
     int left, right, top, bottom;
 
     Tausch<double> *tausch;
-    TauschHaloSpec *remoteHaloSpecs;
-    TauschHaloSpec *localHaloSpecs;
+
+    int *localHaloIndices;
+    int *remoteHaloIndices;
 
     double *cpuData, *cpuStencil;
 

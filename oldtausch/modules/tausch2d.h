@@ -61,7 +61,7 @@ public:
      *  with the same communicator. By default, MPI_COMM_WORLD will be used.
      *
      */
-    Tausch2D(MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = NULL, MPI_Comm comm = MPI_COMM_WORLD);
+    Tausch2D(MPI_Datatype mpiDataType, size_t numBuffers = 1, size_t *valuesPerPointPerBuffer = NULL, MPI_Comm comm = MPI_COMM_WORLD, bool duplicateCommunicator = true);
 
     /*!
      * The destructor cleaning up all memory.
@@ -173,12 +173,10 @@ public:
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setRemoteHaloInfo().
      * \param msgtag
-     *  The message tag to be used for this receive. This information only has to be specified the first time the receive for the halo region with
-     *  the specified id is posted. Each subsequent call, the msgtag that was passed the very first call will be re-used. This works equivalently to
-     *  an MPI tag (and is, in fact, identical to it for MPI communication).
+     *  The message tag to be used for this receive.
      *
      */
-    void postReceiveCwC(size_t haloId, int msgtag = -1, int remoteMpiRank = -1);
+    void postReceiveCwC(size_t haloId, int msgtag, int remoteMpiRank = -1);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void postReceiveCwG(size_t haloId, int msgtag = -1);
     void postReceiveGwC(size_t haloId, int msgtag = -1);
@@ -193,12 +191,11 @@ public:
      * are GwC, CwG, and GwG.
      *
      * \param msgtag
-     *  An array containing the message tags, one for each halo region. This information only has to be specified the first time the receives are
-     *  posted. Each subsequent call, the message tags that were passed the very first call will be re-used. This works equivalently to
+     *  An array containing the message tags, one for each halo region. This works equivalently to
      *  an MPI tag (and is, in fact, identical to it for MPI communication).
      *
      */
-    void postAllReceivesCwC(int *msgtag = NULL);
+    void postAllReceivesCwC(int *msgtag);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void postAllReceivesCwG(int *msgtag = NULL);
     void postAllReceivesGwC(int *msgtag = NULL);
@@ -265,14 +262,12 @@ public:
      * \param haloId
      *  The id of the halo region. This is the index of this halo region in the local halo specification provided with setLocalHaloInfo().
      * \param msgtag
-     *  The message tag to be used for this send. This information only has to be specified the first time the send for the halo region with
-     *  the specified id is started. Each subsequent call, the message tag that was passed the very first call will be re-used. This works
-     *  equivalently to an MPI tag (and is, in fact, identical to it for MPI communication).
+     *  The message tag to be used for this send. This works equivalently to an MPI tag (and is, in fact, identical to it for MPI communication).
      * \param remoteMpiRank
      *  Where to send it to. If this is set to -1, then Tausch will take the value stored in the respective halo spec.
      *
      */
-    void sendCwC(size_t haloId, int msgtag = -1, int remoteMpiRank = -1, MPI_Comm communicator = MPI_COMM_WORLD);
+    void sendCwC(size_t haloId, int msgtag, int remoteMpiRank = -1);
 #ifdef TAUSCH_OPENCL /*! \cond DoxygenHideThis */
     void sendCwG(size_t haloId, int msgtag);
     void sendGwC(size_t haloId, int msgtag);

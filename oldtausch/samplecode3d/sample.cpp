@@ -41,10 +41,10 @@ Sample::Sample(size_t *localDim, size_t *gpuDim, size_t loops, size_t *cpuHaloWi
     if(mpiRank >= mpiSize-mpiNum[TAUSCH_X]*mpiNum[TAUSCH_Y])
         back -= mpiSize;
 
-    numBuffers = 2;
+    numBuffers = 1;
     valuesPerPointPerBuffer = new size_t[numBuffers];
     for(int b = 0; b < numBuffers; ++b)
-        valuesPerPointPerBuffer[b] = 1;
+        valuesPerPointPerBuffer[b] = 2;
 
     dat = new double*[numBuffers];
     for(int b = 0; b < numBuffers; ++b)
