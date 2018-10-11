@@ -70,6 +70,31 @@ public:
         tausch_cwc->recvAndUnpack(haloId, buf, msgtag, remoteMpiRank);
     }
 
+    size_t getNumLocalHalo() {
+        return tausch_cwc->getNumLocalHalo();
+    }
+    size_t getNumRemoteHalo() {
+        return tausch_cwc->getNumRemoteHalo();
+    }
+    size_t getSizeLocalHalo(size_t haloId) {
+        return tausch_cwc->getSizeLocalHalo(haloId);
+    }
+    size_t getSizeRemoteHalo(size_t haloId) {
+        return tausch_cwc->getSizeRemoteHalo(haloId);
+    }
+    size_t getNumBuffersLocal(size_t haloId) {
+        return tausch_cwc->getNumBuffersLocal(haloId);
+    }
+    size_t getNumBuffersRemote(size_t haloId) {
+        return tausch_cwc->getNumBuffersRemote(haloId);
+    }
+    buf_t *getSendBuffer(size_t haloId) {
+        return tausch_cwc->getSendBuffer(haloId);
+    }
+    buf_t *getRecvBuffer(size_t haloId) {
+        return tausch_cwc->getRecvBuffer(haloId);
+    }
+
 private:
     MPI_Comm TAUSCH_COMM;
 

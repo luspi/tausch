@@ -139,6 +139,9 @@ public:
 
     void send(const size_t haloId, const int msgtag, int remoteMpiRank) {
 
+        if(localHaloIndices[haloId].size() == 0)
+            return;
+
         if(!setupMpiSend[haloId]) {
 
             setupMpiSend[haloId] = true;
@@ -157,6 +160,9 @@ public:
     }
 
     void recv(const size_t haloId, const int msgtag, int remoteMpiRank) {
+
+        if(remoteHaloIndices[haloId].size() == 0)
+            return;
 
         if(!setupMpiRecv[haloId]) {
 
@@ -203,6 +209,32 @@ public:
         unpackRecvBuffer(haloId, 0, buf);
     }
 
+    size_t getNumLocalHalo() {
+        return mpiSendBuffer.size();
+    }
+    size_t getNumRemoteHalo() {
+        return mpiRecvBuffer.size();
+    }
+    size_t getSizeLocalHalo(size_t haloId) {
+        return localHaloIndices[haloId].size();
+    }
+    size_t getSizeRemoteHalo(size_t haloId) {
+        return remoteHaloIndices[haloId].size();
+    }
+    size_t getNumBuffersLocal(size_t haloId) {
+        return localHaloNumBuffers[haloId];
+    }
+    size_t getNumBuffersRemote(size_t haloId) {
+        return remoteHaloNumBuffers[haloId];
+    }
+    buf_t *getSendBuffer(size_t haloId) {
+        return mpiSendBuffer[haloId];
+    }
+    buf_t *getRecvBuffer(size_t haloId) {
+        std::cout << "*** TAUSCH *** getting recv buffer " << haloId << std::endl;
+        return mpiRecvBuffer[haloId];
+    }
+
 private:
     MPI_Datatype mpiDataType;
     MPI_Comm TAUSCH_COMM;
@@ -211,8 +243,8 @@ private:
     std::vector<std::vector<size_t> > remoteHaloIndices;
     std::vector<int> localHaloRemoteMpiRank;
     std::vector<int> remoteHaloRemoteMpiRank;
-    std::vector<unsigned int> localHaloNumBuffers;
-    std::vector<unsigned int> remoteHaloNumBuffers;
+    std::vector<size_t> localHaloNumBuffers;
+    std::vector<size_t> remoteHaloNumBuffers;
 
     std::vector<buf_t*> mpiRecvBuffer;
     std::vector<buf_t*> mpiSendBuffer;
