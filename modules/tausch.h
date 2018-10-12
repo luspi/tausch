@@ -42,8 +42,8 @@ public:
         tausch_cwc->packSendBuffer(haloId, bufferId, buf);
     }
 
-    void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf, const std::vector<size_t> overwriteHaloIndices, const size_t overwriteHaloOffset) {
-        tausch_cwc->packSendBuffer(haloId, bufferId, buf, overwriteHaloIndices, overwriteHaloOffset);
+    void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf, const std::vector<size_t> overwriteHaloSendIndices, const std::vector<size_t> overwriteHaloSourceIndices) {
+        tausch_cwc->packSendBuffer(haloId, bufferId, buf, overwriteHaloSendIndices, overwriteHaloSourceIndices);
     }
 
     void send(size_t haloId, int msgtag, int remoteMpiRank = -1) {
@@ -58,8 +58,8 @@ public:
         tausch_cwc->unpackRecvBuffer(haloId, bufferId, buf);
     }
 
-    void unpackRecvBuffer(size_t haloId, size_t bufferId, buf_t *buf, const std::vector<size_t> overwriteHaloIndices, const size_t overwriteHaloOffset) {
-        tausch_cwc->unpackRecvBuffer(haloId, bufferId, buf, overwriteHaloIndices, overwriteHaloOffset);
+    void unpackRecvBuffer(size_t haloId, size_t bufferId, buf_t *buf, const std::vector<size_t> overwriteHaloRecvIndices, const std::vector<size_t> overwriteHaloTargetIndices) {
+        tausch_cwc->unpackRecvBuffer(haloId, bufferId, buf, overwriteHaloRecvIndices, overwriteHaloTargetIndices);
     }
 
     void packAndSend(const size_t haloId, buf_t *buf, const int msgtag, int remoteMpiRank = -1) {

@@ -128,12 +128,12 @@ public:
 
     }
 
-    void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf, const std::vector<size_t> overwriteHaloIndices, const size_t overwriteHaloOffset) {
+    void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf, const std::vector<size_t> overwriteHaloSendIndices, const std::vector<size_t> overwriteHaloSourceIndices) {
 
         size_t haloSize = localHaloIndices[haloId].size();
 
-        for(size_t index = 0; index < overwriteHaloIndices.size(); ++index)
-            mpiSendBuffer[haloId][bufferId*haloSize + overwriteHaloOffset + index] = buf[overwriteHaloIndices[index]];
+        for(size_t index = 0; index < overwriteHaloSendIndices.size(); ++index)
+            mpiSendBuffer[haloId][bufferId*haloSize + overwriteHaloSendIndices[index]] = buf[overwriteHaloSourceIndices[index]];
 
     }
 
@@ -190,12 +190,12 @@ public:
 
     }
 
-    void unpackRecvBuffer(const size_t haloId, const size_t bufferId, buf_t *buf, const std::vector<size_t> overwriteHaloIndices, const size_t overwriteHaloOffset) {
+    void unpackRecvBuffer(const size_t haloId, const size_t bufferId, buf_t *buf, const std::vector<size_t> overwriteHaloRecvIndices, const std::vector<size_t> overwriteHaloTargetIndices) {
 
         size_t haloSize = remoteHaloIndices[haloId].size();
 
-        for(size_t index = 0; index < overwriteHaloIndices.size(); ++index)
-            buf[overwriteHaloIndices[index]] = mpiRecvBuffer[haloId][bufferId*haloSize + overwriteHaloOffset + index];
+        for(size_t index = 0; index < overwriteHaloRecvIndices.size(); ++index)
+            buf[overwriteHaloTargetIndices[index]] = mpiRecvBuffer[haloId][bufferId*haloSize + overwriteHaloRecvIndices[index]];
 
     }
 
