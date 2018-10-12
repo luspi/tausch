@@ -38,7 +38,7 @@ public:
         return tausch_cwc->addRemoteHaloInfo(haloIndices, numBuffers, remoteMpiRank);
     }
 
-    void packSendBuffer(size_t haloId, size_t bufferId, buf_t *buf) {
+    void packSendBuffer(size_t haloId, size_t bufferId, const buf_t *buf) {
         tausch_cwc->packSendBuffer(haloId, bufferId, buf);
     }
 
