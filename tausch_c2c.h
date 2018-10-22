@@ -1,22 +1,22 @@
-#ifndef TAUSCH_CWC_H
-#define TAUSCH_CWC_H
+#ifndef TAUSCH_C2C_H
+#define TAUSCH_C2C_H
 
 #include <mpi.h>
 #include <vector>
 #include "tauschdefs.h"
 
 template <class buf_t>
-class TauschCWC {
+class TauschC2C {
 
 public:
-    TauschCWC(const MPI_Datatype mpiDataType, const MPI_Comm comm) {
+    TauschC2C(const MPI_Datatype mpiDataType, const MPI_Comm comm) {
 
         this->mpiDataType = mpiDataType;
         TAUSCH_COMM = comm;
 
     }
 
-    ~TauschCWC() {
+    ~TauschC2C() {
 
         for(int i = 0; i < mpiSendBuffer.size(); ++i)
             delete mpiSendBuffer[i];
@@ -62,7 +62,7 @@ public:
         localHaloRemoteMpiRank.push_back(remoteMpiRank);
         localHaloNumBuffers.push_back(numBuffers);
 
-        mpiSendBuffer.push_back(new buf_t[numBuffers * haloIndices.size()]());
+        mpiSendBuffer.push_back(new buf_t[haloIndices.size()]);
 
         mpiSendRequests.push_back(MPI_REQUEST_NULL);
 
@@ -109,7 +109,7 @@ public:
         remoteHaloRemoteMpiRank.push_back(remoteMpiRank);
         remoteHaloNumBuffers.push_back(numBuffers);
 
-        mpiRecvBuffer.push_back(new buf_t[numBuffers * haloIndices.size()]());
+        mpiRecvBuffer.push_back(new buf_t[haloIndices.size()]);
 
         mpiRecvRequests.push_back(MPI_REQUEST_NULL);
 
@@ -231,7 +231,6 @@ public:
         return mpiSendBuffer[haloId];
     }
     buf_t *getRecvBuffer(size_t haloId) {
-        std::cout << "*** TAUSCH *** getting recv buffer " << haloId << std::endl;
         return mpiRecvBuffer[haloId];
     }
 
