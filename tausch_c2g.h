@@ -23,25 +23,21 @@ public:
 
         std::string oclstr = R"d(
 
-global void unpack(global const double * restrict inBuf, global double * restrict outBuf, global const double * restrict outIndices, const int numIndices) {
+kernel void unpack(global const double * restrict inBuf, global double * restrict outBuf, global const int * restrict outIndices, global const int *numIndices) {
 
     int gid = get_global_id(0);
 
-    if(gid >= numIndices)
-        return;
-
-    outBuf[outIndices[gid]] = inBuf[gid];
+    if(gid < *numIndices)
+        outBuf[outIndices[gid]] = inBuf[gid];
 
 }
 
-global void unpackSubRegion(global const double * restrict inBuf, global double * restrict outBuf, global const double * restrict inIndices, global const double * restrict outIndices, const int numIndices) {
+kernel void unpackSubRegion(global const double * restrict inBuf, global double * restrict outBuf, global const int * restrict inIndices, global const int * restrict outIndices, const int numIndices) {
 
     int gid = get_global_id(0);
 
-    if(gid >= numIndices)
-        return;
-
-    outBuf[outIndices[gid]] = inBuf[inIndices[gid]];
+    if(gid < numIndices)
+        outBuf[outIndices[gid]] = inBuf[inIndices[gid]];
 
 }
                              )d";
@@ -50,10 +46,10 @@ global void unpackSubRegion(global const double * restrict inBuf, global double 
             programs = cl::Program(context, oclstr, false);
             programs.build("");
 
-            std::string log = programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
-            std::cout << std::endl << " ******************** " << std::endl << " ** BUILD LOG" << std::endl
-                      << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** "
-                      << std::endl << std::endl;
+//            std::string log = programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+//            std::cout << std::endl << " ******************** " << std::endl << " ** BUILD LOG" << std::endl
+//                      << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** "
+//                      << std::endl << std::endl;
         } catch(cl::Error &e) {
             std::cout << "Tausch:CWG: TauschCWG(): OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
             if(e.err() == -11) {
@@ -74,34 +70,33 @@ global void unpackSubRegion(global const double * restrict inBuf, global double 
 
         for(int i = 0; i < sendBuffer.size(); ++i)
             delete sendBuffer[i];
-        for(int i = 0; i < recvBuffer.size(); ++i)
-            delete recvBuffer[i];
+        recvBuffer.clear();
 
     }
 
-    int addLocalHaloInfo(const TauschHaloRegion region, const size_t numBuffer) {
+    int addLocalHaloInfo(const TauschHaloRegion region, const int numBuffer) {
 
-        std::vector<size_t> haloIndices;
+        std::vector<int> haloIndices;
 
         // 1D
         if(region.haloDepth == 0 && region.haloHeight == 0) {
 
-            for(size_t x = 0; x < region.haloWidth; ++x)
+            for(int x = 0; x < region.haloWidth; ++x)
                 haloIndices.push_back(region.haloX+x);
 
         // 2D
         } else if(region.haloDepth == 0) {
 
-            for(size_t y = 0; y < region.haloHeight; ++y)
-                for(size_t x = 0; x < region.haloWidth; ++x)
+            for(int y = 0; y < region.haloHeight; ++y)
+                for(int x = 0; x < region.haloWidth; ++x)
                     haloIndices.push_back((region.haloY+y)*region.bufferWidth + region.haloX+x);
 
         // 3D
         } else {
 
-            for(size_t z = 0; z < region.haloDepth; ++z)
-                for(size_t y = 0; y < region.haloHeight; ++y)
-                    for(size_t x = 0; x < region.haloWidth; ++x)
+            for(int z = 0; z < region.haloDepth; ++z)
+                for(int y = 0; y < region.haloHeight; ++y)
+                    for(int x = 0; x < region.haloWidth; ++x)
                         haloIndices.push_back((region.haloZ+z)*region.bufferWidth*region.bufferHeight + (region.haloY+y)*region.bufferWidth + region.haloX+x);
 
         }
@@ -110,7 +105,7 @@ global void unpackSubRegion(global const double * restrict inBuf, global double 
 
     }
 
-    int addLocalHaloInfo(const std::vector<size_t> haloIndices, const size_t numBuffers) {
+    int addLocalHaloInfo(const std::vector<int> haloIndices, const int numBuffers) {
 
         localHaloIndices.push_back(haloIndices);
         localHaloNumBuffers.push_back(numBuffers);
@@ -123,29 +118,29 @@ global void unpackSubRegion(global const double * restrict inBuf, global double 
 
     }
 
-    int addRemoteHaloInfo(const TauschHaloRegion region, const size_t numBuffer) {
+    int addRemoteHaloInfo(const TauschHaloRegion region, const int numBuffer) {
 
-        std::vector<size_t> haloIndices;
+        std::vector<int> haloIndices;
 
         // 1D
         if(region.haloDepth == 0 && region.haloHeight == 0) {
 
-            for(size_t x = 0; x < region.haloWidth; ++x)
+            for(int x = 0; x < region.haloWidth; ++x)
                 haloIndices.push_back(region.haloX+x);
 
         // 2D
         } else if(region.haloDepth == 0) {
 
-            for(size_t y = 0; y < region.haloHeight; ++y)
-                for(size_t x = 0; x < region.haloWidth; ++x)
+            for(int y = 0; y < region.haloHeight; ++y)
+                for(int x = 0; x < region.haloWidth; ++x)
                     haloIndices.push_back((region.haloY+y)*region.bufferWidth + region.haloX+x);
 
         // 3D
         } else {
 
-            for(size_t z = 0; z < region.haloDepth; ++z)
-                for(size_t y = 0; y < region.haloHeight; ++y)
-                    for(size_t x = 0; x < region.haloWidth; ++x)
+            for(int z = 0; z < region.haloDepth; ++z)
+                for(int y = 0; y < region.haloHeight; ++y)
+                    for(int x = 0; x < region.haloWidth; ++x)
                         haloIndices.push_back((region.haloZ+z)*region.bufferWidth*region.bufferHeight + (region.haloY+y)*region.bufferWidth + region.haloX+x);
 
         }
@@ -154,7 +149,7 @@ global void unpackSubRegion(global const double * restrict inBuf, global double 
 
     }
 
-    int addRemoteHaloInfo(const std::vector<size_t> haloIndices, const size_t numBuffers) {
+    int addRemoteHaloInfo(std::vector<int> haloIndices, int numBuffers) {
 
         try {
 
@@ -176,42 +171,42 @@ global void unpackSubRegion(global const double * restrict inBuf, global double 
 
     }
 
-    void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf) {
+    void packSendBuffer(const int haloId, const int bufferId, const buf_t *buf) {
 
-        size_t haloSize = localHaloIndices[haloId].size();
+        int haloSize = localHaloIndices[haloId].size();
 
-        for(size_t index = 0; index < haloSize; ++index)
+        for(int index = 0; index < haloSize; ++index)
             sendBuffer[haloId][bufferId*haloSize + index] = buf[localHaloIndices[haloId][index]];
 
     }
 
-    void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf, const std::vector<size_t> overwriteHaloSendIndices, const std::vector<size_t> overwriteHaloSourceIndices) {
+    void packSendBuffer(const int haloId, const int bufferId, const buf_t *buf, const std::vector<int> overwriteHaloSendIndices, const std::vector<int> overwriteHaloSourceIndices) {
 
-        size_t haloSize = localHaloIndices[haloId].size();
+        int haloSize = localHaloIndices[haloId].size();
 
-        for(size_t index = 0; index < overwriteHaloSendIndices.size(); ++index)
+        for(int index = 0; index < overwriteHaloSendIndices.size(); ++index)
             sendBuffer[haloId][bufferId*haloSize + overwriteHaloSendIndices[index]] = buf[overwriteHaloSourceIndices[index]];
 
     }
 
-    void send(const size_t haloId, int msgtag) {
+    void send(const int haloId, int msgtag) {
 
         msgtags_keys.push_back(std::atomic<int>(msgtag));
-        msgtags_vals.push_back(std::atomic<size_t>(haloId));
+        msgtags_vals.push_back(std::atomic<int>(haloId));
 
-        dataSent[haloId].store(1);
+        dataSent[haloId] = 1;
 
     }
 
-    void recv(const size_t haloId, int msgtag) {
+    void recv(const int haloId, int msgtag) {
 
-        while(dataSent[haloId].load() == 0)
+        while(dataSent[haloId] != 1)
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        dataSent[haloId].store(0);
+        dataSent[haloId] = 0;
 
         int pos = -1;
         for(int i = 0; i < msgtags_keys.size(); ++i) {
-            if(msgtags_keys[i].load() == msgtag) {
+            if(msgtags_keys[i] == msgtag) {
                 pos = i;
                 break;
             }
@@ -221,32 +216,68 @@ global void unpackSubRegion(global const double * restrict inBuf, global double 
             return;
         }
 
-        size_t id = msgtags_vals[pos];
-        cl::copy(&(sendBuffer[id][0]), &(sendBuffer[id][localHaloIndices[id].size()]), recvBuffer[haloId]);
+        int id = msgtags_vals[pos];
+        cl::copy(queue, sendBuffer[id].begin(), sendBuffer[id].end(), recvBuffer[haloId]);
 
     }
 
-    void unpackRecvBuffer(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
+    void unpackRecvBuffer(const int haloId, int bufferId, cl::Buffer buf) {
 
         try {
-            auto kernel_unpack = cl::make_kernel<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer>
+
+            int haloSize = remoteHaloIndicesSize[haloId];
+            cl::Buffer clHaloSize(context, &haloSize, (&haloSize)+1, true);
+
+            cl::Kernel kernel_unpack(programs, "unpack");
+
+            try {
+                kernel_unpack.setArg(0, recvBuffer[haloId]);
+            } catch(cl::Error &e) {
+                std::cout << "Error at 0" << std::endl;
+            }
+            try {
+                kernel_unpack.setArg(1, buf);
+            } catch(cl::Error &e) {
+                std::cout << "Error at 1" << std::endl;
+            }
+            try {
+                kernel_unpack.setArg(2, remoteHaloIndices[haloId]);
+            } catch(cl::Error &e) {
+                std::cout << "Error at 2" << std::endl;
+            }
+            try {
+                kernel_unpack.setArg(3, clHaloSize);
+            } catch(cl::Error &e) {
+                std::cout << "Error at 3" << std::endl;
+            }
+
+            int globalsize = (remoteHaloIndicesSize[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
+
+            queue.enqueueNDRangeKernel(kernel_unpack,cl::NDRange(globalsize),cl::NDRange(clKernelLocalSize));
+            queue.finish();
+/*
+            auto kernel_unpack = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>
                                                     (programs, "unpack");
 
 
-            size_t globalsize = (remoteHaloIndicesSize[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
+            int globalsize = (remoteHaloIndicesSize[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
 
-            cl::Buffer clBufferId(context, &bufferId, (&bufferId)+1, true);
+//            cl::Buffer clBufferId(context, CL_MEM_READ_ONLY, 1*sizeof(int));
+//            cl::copy(queue, &bufferId, (&bufferId)+1, clBufferId);
+//            cl::Buffer haloSize(context, &remoteHaloIndicesSize[haloId], (&remoteHaloIndicesSize[haloId])+1, true);
+            int haloSize = remoteHaloIndicesSize[haloId];
+            cl::Buffer clHaloSize(context, &haloSize, (&haloSize)+1, true);
 
             kernel_unpack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
-                          recvBuffer[haloId], buf, remoteHaloIndices[haloId], remoteHaloNumBuffers[haloId]);
-
+                        recvBuffer[haloId], buf, remoteHaloIndices[haloId], clHaloSize);
+*/
         } catch(cl::Error &e) {
             std::cerr << "Tausch:C2G: unpackRecvBuffer() :: OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
         }
 
     }
 
-    void unpackRecvBuffer(const size_t haloId, const size_t bufferId, cl::Buffer buf, const std::vector<size_t> overwriteHaloRecvIndices, const std::vector<size_t> overwriteHaloTargetIndices) {
+    void unpackRecvBuffer(const int haloId, int bufferId, cl::Buffer buf, const std::vector<int> overwriteHaloRecvIndices, const std::vector<int> overwriteHaloTargetIndices) {
 
         try {
             auto kernel_unpack = cl::make_kernel<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer>
@@ -255,12 +286,13 @@ global void unpackSubRegion(global const double * restrict inBuf, global double 
             cl::Buffer clHaloIndicesIn(context, overwriteHaloRecvIndices.begin(), overwriteHaloRecvIndices.end(), true);
             cl::Buffer clHaloIndicesOut(context, overwriteHaloTargetIndices.begin(), overwriteHaloTargetIndices.end(), true);
 
-            size_t globalsize = (remoteHaloIndicesSize[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
+            int globalsize = (remoteHaloIndicesSize[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
 
             cl::Buffer clBufferId(context, &bufferId, (&bufferId)+1, true);
+            cl::Buffer haloSize(context, &remoteHaloIndicesSize[haloId], (&remoteHaloIndicesSize[haloId])+1, true);
 
             kernel_unpack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
-                          recvBuffer[haloId], buf, clHaloIndicesIn, clHaloIndicesOut, remoteHaloNumBuffers[haloId]);
+                          recvBuffer[haloId], buf, clHaloIndicesIn, clHaloIndicesOut, haloSize);
 
         } catch(cl::Error &e) {
             std::cerr << "Tausch:C2G: unpackRecvBuffer() :: OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
@@ -268,38 +300,38 @@ global void unpackSubRegion(global const double * restrict inBuf, global double 
 
     }
 
-    void packAndSend(const size_t haloId, buf_t *buf, const int msgtag) {
+    void packAndSend(const int haloId, buf_t *buf, const int msgtag) {
         packSendBuffer(haloId, 0, buf);
         send(haloId, msgtag);
     }
 
-    void recvAndUnpack(const size_t haloId, cl::Buffer buf, const int msgtag) {
+    void recvAndUnpack(const int haloId, cl::Buffer buf, const int msgtag) {
         recv(haloId, msgtag);
         unpackRecvBuffer(haloId, 0, buf);
     }
 
-    size_t getNumLocalHalo() {
+    int getNumLocalHalo() {
         return sendBuffer.size();
     }
-    size_t getNumRemoteHalo() {
+    int getNumRemoteHalo() {
         return recvBuffer.size();
     }
-    size_t getSizeLocalHalo(size_t haloId) {
+    int getSizeLocalHalo(int haloId) {
         return localHaloIndices[haloId].size();
     }
-    size_t getSizeRemoteHalo(size_t haloId) {
+    int getSizeRemoteHalo(int haloId) {
         return remoteHaloIndicesSize[haloId];
     }
-    size_t getNumBuffersLocal(size_t haloId) {
+    int getNumBuffersLocal(int haloId) {
         return localHaloNumBuffers[haloId];
     }
-    cl::Buffer getNumBuffersRemote(size_t haloId) {
+    cl::Buffer getNumBuffersRemote(int haloId) {
         return remoteHaloNumBuffers[haloId];
     }
-    buf_t *getSendBuffer(size_t haloId) {
+    buf_t *getSendBuffer(int haloId) {
         return sendBuffer[haloId];
     }
-    cl::Buffer getRecvBuffer(size_t haloId) {
+    cl::Buffer getRecvBuffer(int haloId) {
         return recvBuffer[haloId];
     }
 
@@ -310,17 +342,17 @@ private:
     cl::Context context;
     cl::CommandQueue queue;
     cl::Program programs;
-    size_t clKernelLocalSize;
+    int clKernelLocalSize;
 
-    std::vector<std::atomic<int>> msgtags_keys;
-    std::vector<std::atomic<size_t>> msgtags_vals;
+    std::vector<int> msgtags_keys;
+    std::vector<int> msgtags_vals;
 
-    std::vector<std::atomic<size_t> > dataSent;
+    std::vector<int > dataSent;
 
-    std::vector<std::vector<size_t> > localHaloIndices;
+    std::vector<std::vector<int> > localHaloIndices;
     std::vector<cl::Buffer> remoteHaloIndices;
-    std::vector<size_t> remoteHaloIndicesSize;
-    std::vector<size_t> localHaloNumBuffers;
+    std::vector<int> remoteHaloIndicesSize;
+    std::vector<int> localHaloNumBuffers;
     std::vector<cl::Buffer> remoteHaloNumBuffers;
 
     std::vector<cl::Buffer> recvBuffer;

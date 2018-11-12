@@ -1,8 +1,6 @@
 #ifndef TAUSCH_H
 #define TAUSCH_H
 
-#define TAUSCH_OPENCL
-
 #include "tausch_c2c.h"
 #ifdef TAUSCH_OPENCL
 #include "tausch_c2g.h"
@@ -26,13 +24,23 @@ public:
 
 #ifdef TAUSCH_OPENCL
     void requestOpenCLSupport(cl::Device device, cl::Context context, cl::CommandQueue queue) {
+
         tausch_c2g = new TauschC2G<buf_t>(device, context, queue);
         tausch_g2c = new TauschG2C<buf_t>(device, context, queue);
+
+        gpu = true;
+
     }
 #endif
 
     ~Tausch() {
         delete tausch_cwc;
+#ifdef TAUSCH_OPENCL
+        if(gpu) {
+            delete tausch_c2g;
+            delete tausch_g2c;
+        }
+#endif
     }
 
     TauschC2C<buf_t> *tausch_cwc;
@@ -41,7 +49,7 @@ public:
         return tausch_cwc->addLocalHaloInfo(region, numBuffer, remoteMpiRank);
     }
 
-    int addLocalHaloInfo(std::vector<size_t> haloIndices, const size_t numBuffers = 1, int remoteMpiRank = -1) {
+    int addLocalHaloInfo(std::vector<int> haloIndices, const size_t numBuffers = 1, int remoteMpiRank = -1) {
         return tausch_cwc->addLocalHaloInfo(haloIndices, numBuffers, remoteMpiRank);
     }
 
@@ -49,7 +57,7 @@ public:
         return tausch_cwc->addRemoteHaloInfo(region, numBuffer, remoteMpiRank);
     }
 
-    int addRemoteHaloInfo(std::vector<size_t> haloIndices, const size_t numBuffers = 1, int remoteMpiRank = -1) {
+    int addRemoteHaloInfo(std::vector<int> haloIndices, const size_t numBuffers = 1, int remoteMpiRank = -1) {
         return tausch_cwc->addRemoteHaloInfo(haloIndices, numBuffers, remoteMpiRank);
     }
 
@@ -110,43 +118,47 @@ public:
         return tausch_cwc->getRecvBuffer(haloId);
     }
 
+    std::vector<std::array<int, 3> > extractHaloIndicesWithStride(std::vector<size_t> indices) {
+        return tausch_cwc->extractHaloIndicesWithStride(indices);
+    }
+
 #ifdef TAUSCH_OPENCL
     TauschC2G<buf_t> *tausch_c2g;
 
-    int addLocalHaloInfoC2G(const TauschHaloRegion region, const size_t numBuffer) {
+    int addLocalHaloInfoC2G(const TauschHaloRegion region, const int numBuffer = 1) {
         return tausch_c2g->addLocalHaloInfo(region, numBuffer);
     }
-    int addLocalHaloInfoC2G(const std::vector<size_t> haloIndices, const size_t numBuffers) {
+    int addLocalHaloInfoC2G(const std::vector<int> haloIndices, const int numBuffers = 1) {
         return tausch_c2g->addLocalHaloInfo(haloIndices, numBuffers);
     }
-    int addRemoteHaloInfoC2G(const TauschHaloRegion region, const size_t numBuffer) {
+    int addRemoteHaloInfoC2G(const TauschHaloRegion region, int numBuffer = 1) {
         return tausch_c2g->addRemoteHaloInfo(region, numBuffer);
     }
-    int addRemoteHaloInfoC2G(const std::vector<size_t> haloIndices, const size_t numBuffers) {
+    int addRemoteHaloInfoC2G(std::vector<int> haloIndices, int numBuffers = 1) {
         return tausch_c2g->addRemoteHaloInfo(haloIndices, numBuffers);
     }
-    void packSendBufferC2G(const size_t haloId, const size_t bufferId, const buf_t *buf) {
+    void packSendBufferC2G(const int haloId, const int bufferId, const buf_t *buf) {
         tausch_c2g->packSendBuffer(haloId, bufferId, buf);
     }
-    void packSendBufferC2G(const size_t haloId, const size_t bufferId, const buf_t *buf, const std::vector<size_t> overwriteHaloSendIndices, const std::vector<size_t> overwriteHaloSourceIndices) {
+    void packSendBufferC2G(const int haloId, const int bufferId, const buf_t *buf, const std::vector<int> overwriteHaloSendIndices, const std::vector<int> overwriteHaloSourceIndices) {
         tausch_c2g->packSendBuffer(haloId, bufferId, buf, overwriteHaloSendIndices, overwriteHaloSourceIndices);
     }
-    void sendC2G(const size_t haloId, int msgtag) {
+    void sendC2G(const int haloId, int msgtag) {
         tausch_c2g->send(haloId, msgtag);
     }
-    void recvC2G(const size_t haloId, int msgtag) {
+    void recvC2G(const int haloId, int msgtag) {
         tausch_c2g->recv(haloId, msgtag);
     }
-    void unpackRecvBufferC2G(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
+    void unpackRecvBufferC2G(const int haloId, int bufferId, cl::Buffer buf) {
         tausch_c2g->unpackRecvBuffer(haloId, bufferId, buf);
     }
-    void unpackRecvBufferC2G(const size_t haloId, const size_t bufferId, cl::Buffer buf, const std::vector<size_t> overwriteHaloRecvIndices, const std::vector<size_t> overwriteHaloTargetIndices) {
-        tausch_c2g->unpackRecvBuffer(haloId, bufferId, overwriteHaloRecvIndices, overwriteHaloTargetIndices);
+    void unpackRecvBufferC2G(const int haloId, int bufferId, cl::Buffer buf, const std::vector<int> overwriteHaloRecvIndices, const std::vector<int> overwriteHaloTargetIndices) {
+        tausch_c2g->unpackRecvBuffer(haloId, bufferId, buf, overwriteHaloRecvIndices, overwriteHaloTargetIndices);
     }
-    void packAndSendC2G(const size_t haloId, buf_t *buf, const int msgtag) {
+    void packAndSendC2G(const int haloId, buf_t *buf, const int msgtag) {
         tausch_c2g->packAndSend(haloId, buf, msgtag);
     }
-    void recvAndUnpackC2G(const size_t haloId, buf_t *buf, const int msgtag) {
+    void recvAndUnpackC2G(const int haloId, buf_t *buf, const int msgtag) {
         tausch_c2g->recvAndUnpack(haloId, buf, msgtag);
     }
 
@@ -193,6 +205,7 @@ public:
 
 private:
     MPI_Comm TAUSCH_COMM;
+    bool gpu;
 
 };
 

@@ -23,25 +23,21 @@ public:
 
         std::string oclstr = R"d(
 
-global void pack(global const double * restrict inBuf, global double * restrict outBuf, global const double * restrict inIndices, const int numIndices) {
+kernel void pack(global const double * restrict inBuf, global double * restrict outBuf, global const int * restrict inIndices, const int numIndices) {
 
     int gid = get_global_id(0);
 
-    if(gid >= numIndices)
-        return;
-
-    outBuf[gid] = inBuf[inIndices[gid]];
+    if(gid < numIndices)
+        outBuf[gid] = inBuf[inIndices[gid]];
 
 }
 
-global void packSubRegion(global const double * restrict inBuf, global double * restrict outBuf, global const double * restrict inIndices, global const double * restrict outIndices, const int numIndices) {
+kernel void packSubRegion(global const double * restrict inBuf, global double * restrict outBuf, global const int * restrict inIndices, global const int * restrict outIndices, const int numIndices) {
 
     int gid = get_global_id(0);
 
-    if(gid >= numIndices)
-        return;
-
-    outBuf[outIndices[gid]] = inBuf[inIndices[gid]];
+    if(gid < numIndices)
+        outBuf[outIndices[gid]] = inBuf[inIndices[gid]];
 
 }
                              )d";
@@ -50,10 +46,10 @@ global void packSubRegion(global const double * restrict inBuf, global double * 
             programs = cl::Program(context, oclstr, false);
             programs.build("");
 
-            std::string log = programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
-            std::cout << std::endl << " ******************** " << std::endl << " ** BUILD LOG" << std::endl
-                      << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** "
-                      << std::endl << std::endl;
+//            std::string log = programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+//            std::cout << std::endl << " ******************** " << std::endl << " ** BUILD LOG" << std::endl
+//                      << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** "
+//                      << std::endl << std::endl;
         } catch(cl::Error &e) {
             std::cout << "Tausch:G2C: TauschG2C(): OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
             if(e.err() == -11) {
@@ -72,8 +68,7 @@ global void packSubRegion(global const double * restrict inBuf, global double * 
 
     ~TauschG2C() {
 
-        for(int i = 0; i < sendBuffer.size(); ++i)
-            delete sendBuffer[i];
+        sendBuffer.clear();
         for(int i = 0; i < recvBuffer.size(); ++i)
             delete recvBuffer[i];
 

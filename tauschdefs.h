@@ -43,6 +43,7 @@ struct TauschHaloRegion {
      * The depth of the halo region.
      */
     size_t haloDepth;
+    size_t remoteMpiRank;
 };
 
 #endif
