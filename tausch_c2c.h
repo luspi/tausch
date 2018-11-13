@@ -169,16 +169,17 @@ public:
 
         size_t mpiSendBufferIndex = 0;
         for(size_t region = 0; region < localHaloIndices[haloId].size(); ++region) {
-            std::array<int, 3> vals = localHaloIndices[haloId][region];
+            const std::array<int, 3> vals = localHaloIndices[haloId][region];
 
             if(vals[2] == 1) {
                 memcpy(&mpiSendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex], &buf[vals[0]], vals[1]*sizeof(buf_t));
                 mpiSendBufferIndex += vals[1];
-            } else
-                for(int i = 0; i < vals[1]; ++i) {
-                    mpiSendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex] = buf[vals[0]+i*vals[2]];
-                    ++mpiSendBufferIndex;
-                }
+            } else {
+                int mpiSendBufferIndexBASE = mpiSendBufferIndex;
+                for(int i = 0; i < vals[1]; ++i)
+                    mpiSendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndexBASE + i] = buf[vals[0]+i*vals[2]];
+                mpiSendBufferIndex += vals[1];
+            }
 
         }
 
@@ -243,16 +244,17 @@ public:
 
         size_t mpiRecvBufferIndex = 0;
         for(size_t region = 0; region < remoteHaloIndices[haloId].size(); ++region) {
-            std::array<int, 3> vals = remoteHaloIndices[haloId][region];
+            const std::array<int, 3> vals = remoteHaloIndices[haloId][region];
 
             if(vals[2] == 1) {
                 memcpy(&buf[vals[0]], &mpiRecvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex], vals[1]*sizeof(buf_t));
                 mpiRecvBufferIndex += vals[1];
-            } else
-                for(int i = 0; i < vals[1]; ++i) {
-                    buf[vals[0]+i*vals[2]] = mpiRecvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex];
-                    ++mpiRecvBufferIndex;
-                }
+            } else {
+                size_t mpirecvBufferIndexBASE = mpiRecvBufferIndex;
+                for(int i = 0; i < vals[1]; ++i)
+                    buf[vals[0]+i*vals[2]] = mpiRecvBuffer[haloId][bufferId*haloSize + mpirecvBufferIndexBASE + i];
+                mpiRecvBufferIndex += vals[1];
+            }
 
         }
 
