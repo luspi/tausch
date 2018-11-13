@@ -45,20 +45,28 @@ public:
 
     TauschC2C<buf_t> *tausch_cwc;
 
-    int addLocalHaloInfo(TauschHaloRegion region, const size_t numBuffer = 1, int remoteMpiRank = -1) {
+    int addLocalHaloInfo(TauschHaloRegion region, const size_t numBuffer = 1, const int remoteMpiRank = -1) {
         return tausch_cwc->addLocalHaloInfo(region, numBuffer, remoteMpiRank);
     }
 
-    int addLocalHaloInfo(std::vector<int> haloIndices, const size_t numBuffers = 1, int remoteMpiRank = -1) {
+    int addLocalHaloInfo(std::vector<int> haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1) {
         return tausch_cwc->addLocalHaloInfo(haloIndices, numBuffers, remoteMpiRank);
     }
 
-    int addRemoteHaloInfo(TauschHaloRegion region, const size_t numBuffer = 1, int remoteMpiRank = -1) {
+    int addLocalHaloInfo(std::vector<size_t> haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1) {
+        return tausch_cwc->addLocalHaloInfo(std::vector<int>(haloIndices.begin(), haloIndices.end()), numBuffers, remoteMpiRank);
+    }
+
+    int addRemoteHaloInfo(TauschHaloRegion region, const size_t numBuffer = 1, const int remoteMpiRank = -1) {
         return tausch_cwc->addRemoteHaloInfo(region, numBuffer, remoteMpiRank);
     }
 
-    int addRemoteHaloInfo(std::vector<int> haloIndices, const size_t numBuffers = 1, int remoteMpiRank = -1) {
+    int addRemoteHaloInfo(std::vector<int> haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1) {
         return tausch_cwc->addRemoteHaloInfo(haloIndices, numBuffers, remoteMpiRank);
+    }
+
+    int addRemoteHaloInfo(std::vector<size_t> haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1) {
+        return tausch_cwc->addRemoteHaloInfo(std::vector<int>(haloIndices.begin(), haloIndices.end()), numBuffers, remoteMpiRank);
     }
 
     void packSendBuffer(size_t haloId, size_t bufferId, const buf_t *buf) {

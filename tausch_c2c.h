@@ -62,7 +62,7 @@ public:
 
     }
 
-    int addLocalHaloInfo(const std::vector<int> haloIndices, const size_t numBuffers, const int remoteMpiRank) {
+    int addLocalHaloInfo(std::vector<int> haloIndices, const size_t numBuffers, const int remoteMpiRank) {
 
         return addLocalHaloInfo(extractHaloIndicesWithStride(haloIndices), numBuffers, remoteMpiRank);
 
@@ -131,7 +131,7 @@ public:
 
     }
 
-    int addRemoteHaloInfo(const std::vector<int> haloIndices, const size_t numBuffers, const int remoteMpiRank) {
+    int addRemoteHaloInfo(std::vector<int> haloIndices, const size_t numBuffers, const int remoteMpiRank) {
 
         return addRemoteHaloInfo(extractHaloIndicesWithStride(haloIndices), numBuffers, remoteMpiRank);
 
