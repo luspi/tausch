@@ -13,17 +13,20 @@ template <class buf_t>
 class TauschG2C {
 
 public:
-    TauschG2C(cl::Device device, cl::Context context, cl::CommandQueue queue) {
+    TauschG2C(cl::Device device, cl::Context context, cl::CommandQueue queue, std::string cName4BufT) {
 
         this->device = device;
         this->context = context;
         this->queue = queue;
+        this->cName4BufT = cName4BufT;
 
         clKernelLocalSize = 512;
 
-        std::string oclstr = R"d(
+        std::string oclstr = "typedef "+cName4BufT+" buf_t;";
 
-kernel void pack(global const double * restrict inBuf, global double * restrict outBuf, global const int * restrict inIndices, const int numIndices) {
+        oclstr += R"d(
+
+kernel void pack(global const buf_t * restrict inBuf, global buf_t * restrict outBuf, global const int * restrict inIndices, const int numIndices) {
 
     int gid = get_global_id(0);
 
@@ -32,7 +35,7 @@ kernel void pack(global const double * restrict inBuf, global double * restrict 
 
 }
 
-kernel void packSubRegion(global const double * restrict inBuf, global double * restrict outBuf, global const int * restrict inIndices, global const int * restrict outIndices, const int numIndices) {
+kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * restrict outBuf, global const int * restrict inIndices, global const int * restrict outIndices, const int numIndices) {
 
     int gid = get_global_id(0);
 
@@ -192,7 +195,7 @@ kernel void packSubRegion(global const double * restrict inBuf, global double * 
 
     }
 
-    void packRecvBuffer(const size_t haloId, const size_t bufferId, buf_t *buf, const std::vector<size_t> overwriteHaloSendIndices, const std::vector<size_t> overwriteHaloSourceIndices) {
+    void packRecvBuffer(const size_t haloId, const size_t bufferId, cl::Buffer *buf, const std::vector<size_t> overwriteHaloSendIndices, const std::vector<size_t> overwriteHaloSourceIndices) {
 
         try {
             auto kernel_pack = cl::make_kernel<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer>
@@ -309,6 +312,7 @@ private:
     cl::CommandQueue queue;
     cl::Program programs;
     size_t clKernelLocalSize;
+    std::string cName4BufT;
 
     std::vector<std::atomic<int>> msgtags_keys;
     std::vector<std::atomic<size_t>> msgtags_vals;

@@ -1,6 +1,8 @@
 #ifndef TAUSCH_H
 #define TAUSCH_H
 
+#define TAUSCH_OPENCL
+
 #include "tausch_c2c.h"
 #ifdef TAUSCH_OPENCL
 #include "tausch_c2g.h"
@@ -23,10 +25,10 @@ public:
     }
 
 #ifdef TAUSCH_OPENCL
-    void requestOpenCLSupport(cl::Device device, cl::Context context, cl::CommandQueue queue) {
+    void requestOpenCLSupport(cl::Device device, cl::Context context, cl::CommandQueue queue, std::string cName4BufT) {
 
-        tausch_c2g = new TauschC2G<buf_t>(device, context, queue);
-        tausch_g2c = new TauschG2C<buf_t>(device, context, queue);
+        tausch_c2g = new TauschC2G<buf_t>(device, context, queue, cName4BufT);
+        tausch_g2c = new TauschG2C<buf_t>(device, context, queue, cName4BufT);
 
         gpu = true;
 
@@ -166,7 +168,7 @@ public:
     void packAndSendC2G(const int haloId, buf_t *buf, const int msgtag) {
         tausch_c2g->packAndSend(haloId, buf, msgtag);
     }
-    void recvAndUnpackC2G(const int haloId, buf_t *buf, const int msgtag) {
+    void recvAndUnpackC2G(const int haloId, cl::Buffer buf, const int msgtag) {
         tausch_c2g->recvAndUnpack(haloId, buf, msgtag);
     }
 
@@ -202,7 +204,7 @@ public:
     void unpackRecvBufferG2C(const size_t haloId, const size_t bufferId, buf_t *buf, const std::vector<size_t> overwriteHaloRecvIndices, const std::vector<size_t> overwriteHaloTargetIndices) {
         tausch_g2c->unpackRecvBuffer(haloId, bufferId, overwriteHaloRecvIndices, overwriteHaloTargetIndices);
     }
-    void packAndSendG2C(const size_t haloId, buf_t *buf, const int msgtag) {
+    void packAndSendG2C(const size_t haloId, cl::Buffer buf, const int msgtag) {
         tausch_g2c->packAndSend(haloId, buf, msgtag);
     }
     void recvAndUnpackG2C(const size_t haloId, buf_t *buf, const int msgtag) {

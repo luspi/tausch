@@ -6,7 +6,7 @@
 struct TauschHaloRegion {
     TauschHaloRegion() : bufferWidth(0), bufferHeight(0), bufferDepth(0),
                        haloX(0), haloY(0), haloZ(0),
-                       haloWidth(0), haloHeight(0), haloDepth(0) {}
+                       haloWidth(0), haloHeight(0), haloDepth(0), remoteMpiRank(-1) {}
     /*!
      * The width of the underlying buffer.
      */
@@ -43,7 +43,10 @@ struct TauschHaloRegion {
      * The depth of the halo region.
      */
     size_t haloDepth;
-    size_t remoteMpiRank;
+    /*!
+     * Optional: Receiving/Sending MPI rank
+     */
+    int remoteMpiRank;
 };
 
 #endif

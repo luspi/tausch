@@ -58,7 +58,7 @@ public:
 
         }
 
-        return addLocalHaloInfo(haloIndices, numBuffer, remoteMpiRank);
+        return addLocalHaloInfo(haloIndices, numBuffer, (region.remoteMpiRank==-1 ? remoteMpiRank : region.remoteMpiRank));
 
     }
 
@@ -127,7 +127,7 @@ public:
 
         }
 
-        return addRemoteHaloInfo(haloIndices, numBuffer, remoteMpiRank);
+        return addRemoteHaloInfo(haloIndices, numBuffer, (region.remoteMpiRank==-1 ? remoteMpiRank : region.remoteMpiRank));
 
     }
 
