@@ -197,8 +197,8 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     void send(const int haloId, int msgtag) {
 
-        msgtags_keys.push_back(std::atomic<int>(msgtag));
-        msgtags_vals.push_back(std::atomic<int>(haloId));
+        msgtags_keys.push_back(msgtag);
+        msgtags_vals.push_back(haloId);
 
         dataSent[haloId] = 1;
 

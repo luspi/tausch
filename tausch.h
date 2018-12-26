@@ -174,40 +174,40 @@ public:
 
     TauschG2C<buf_t> *tausch_g2c;
 
-    int addLocalHaloInfoG2C(const TauschHaloRegion region, const size_t numBuffer) {
+    int addLocalHaloInfoG2C(const TauschHaloRegion region, int numBuffer = 1) {
         return tausch_g2c->addLocalHaloInfo(region, numBuffer);
     }
-    int addLocalHaloInfoG2C(const std::vector<size_t> haloIndices, const size_t numBuffers) {
+    int addLocalHaloInfoG2C(std::vector<int> haloIndices, int numBuffers = 1) {
         return tausch_g2c->addLocalHaloInfo(haloIndices, numBuffers);
     }
-    int addRemoteHaloInfoG2C(const TauschHaloRegion region, const size_t numBuffer) {
+    int addRemoteHaloInfoG2C(const TauschHaloRegion region, const int numBuffer = 1) {
         return tausch_g2c->addRemoteHaloInfo(region, numBuffer);
     }
-    int addRemoteHaloInfoG2C(const std::vector<size_t> haloIndices, const size_t numBuffers) {
+    int addRemoteHaloInfoG2C(const std::vector<int> haloIndices, const int numBuffers = 1) {
         return tausch_g2c->addRemoteHaloInfo(haloIndices, numBuffers);
     }
-    void packSendBufferG2C(const size_t haloId, const size_t bufferId, const cl::Buffer buf) {
+    void packSendBufferG2C(const int haloId, int bufferId, const cl::Buffer buf) {
         tausch_g2c->packSendBuffer(haloId, bufferId, buf);
     }
-    void packSendBufferG2C(const size_t haloId, const size_t bufferId, const cl::Buffer buf, const std::vector<size_t> overwriteHaloSendIndices, const std::vector<size_t> overwriteHaloSourceIndices) {
+    void packSendBufferG2C(const int haloId, int bufferId, const cl::Buffer buf, const std::vector<int> overwriteHaloSendIndices, const std::vector<int> overwriteHaloSourceIndices) {
         tausch_g2c->packSendBuffer(haloId, bufferId, buf, overwriteHaloSendIndices, overwriteHaloSourceIndices);
     }
-    void sendG2C(const size_t haloId, int msgtag) {
+    void sendG2C(const int haloId, int msgtag) {
         tausch_g2c->send(haloId, msgtag);
     }
-    void recvG2C(const size_t haloId, int msgtag) {
+    void recvG2C(const int haloId, int msgtag) {
         tausch_g2c->recv(haloId, msgtag);
     }
-    void unpackRecvBufferG2C(const size_t haloId, const size_t bufferId, buf_t *buf) {
+    void unpackRecvBufferG2C(const int haloId, const int bufferId, buf_t *buf) {
         tausch_g2c->unpackRecvBuffer(haloId, bufferId, buf);
     }
-    void unpackRecvBufferG2C(const size_t haloId, const size_t bufferId, buf_t *buf, const std::vector<size_t> overwriteHaloRecvIndices, const std::vector<size_t> overwriteHaloTargetIndices) {
+    void unpackRecvBufferG2C(const int haloId, const int bufferId, buf_t *buf, const std::vector<int> overwriteHaloRecvIndices, const std::vector<int> overwriteHaloTargetIndices) {
         tausch_g2c->unpackRecvBuffer(haloId, bufferId, overwriteHaloRecvIndices, overwriteHaloTargetIndices);
     }
-    void packAndSendG2C(const size_t haloId, cl::Buffer buf, const int msgtag) {
+    void packAndSendG2C(const int haloId, cl::Buffer buf, const int msgtag) {
         tausch_g2c->packAndSend(haloId, buf, msgtag);
     }
-    void recvAndUnpackG2C(const size_t haloId, buf_t *buf, const int msgtag) {
+    void recvAndUnpackG2C(const int haloId, buf_t *buf, const int msgtag) {
         tausch_g2c->recvAndUnpack(haloId, buf, msgtag);
     }
 
