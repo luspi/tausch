@@ -1,8 +1,6 @@
 #ifndef TAUSCH_H
 #define TAUSCH_H
 
-#define TAUSCH_OPENCL
-
 #include "tausch_c2c.h"
 #ifdef TAUSCH_OPENCL
 #include "tausch_c2g.h"

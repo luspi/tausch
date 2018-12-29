@@ -13,4 +13,18 @@ set_target_properties(tausch PROPERTIES LINKER_LANGUAGE CXX)
 install(FILES "tausch.h" "tausch_c2c.h" "tausch_c2g.h" "tausch_g2c.h" "tausch_g2g.h" "tauschdefs.h"
         DESTINATION "include/tausch")
 
+option(TESTING "Enable Unit Tests" ON)
+
+set(CMAKE_BUILD_TYPE "Debug")
+
+if(TESTING)
+    enable_testing()
+    find_package(MPI REQUIRED)
+
+    add_executable(testing_c2c testing/c2c.cpp)
+    target_link_libraries(testing_c2c "${MPI_C_LIBRARIES}")
+    target_link_libraries(testing_c2c "${MPI_CXX_LIBRARIES}")
+    add_test(testing_c2c testing_c2c)
+
+endif(TESTING)
 
