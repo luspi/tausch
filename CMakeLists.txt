@@ -32,5 +32,11 @@ if(TESTING)
     target_link_libraries(testing_c2g "OpenCL")
     add_test(testing_c2g testing_c2g)
 
+    add_executable(testing_g2c testing/g2c.cpp)
+    target_link_libraries(testing_g2c "${MPI_C_LIBRARIES}")
+    target_link_libraries(testing_g2c "${MPI_CXX_LIBRARIES}")
+    target_link_libraries(testing_g2c "OpenCL")
+    add_test(testing_g2c testing_g2c)
+
 endif(TESTING)
 

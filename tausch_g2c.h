@@ -26,21 +26,21 @@ public:
 
         oclstr += R"d(
 
-kernel void pack(global const buf_t * restrict inBuf, global buf_t * restrict outBuf, global const int * restrict inIndices, global const int * restrict const numIndices) {
+kernel void pack(global const buf_t * restrict inBuf, global buf_t * restrict outBuf, global const int * restrict inIndices, global const int * restrict const numIndices, global const int * restrict const bufferId) {
 
     int gid = get_global_id(0);
 
     if(gid < *numIndices)
-        outBuf[gid] = inBuf[inIndices[gid]];
+        outBuf[(*bufferId)*(*numIndices) + gid] = inBuf[inIndices[gid]];
 
 }
 
-kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * restrict outBuf, global const int * restrict inIndices, global const int * restrict outIndices, global const int * restrict const numIndices) {
+kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * restrict outBuf, global const int * restrict inIndices, global const int * restrict outIndices, global const int * restrict const numIndices, global const int * restrict const bufferId) {
 
     int gid = get_global_id(0);
 
     if(gid < *numIndices)
-        outBuf[outIndices[gid]] = inBuf[inIndices[gid]];
+        outBuf[(*bufferId)*(*numIndices) + outIndices[gid]] = inBuf[inIndices[gid]];
 
 }
                              )d";
@@ -112,15 +112,31 @@ kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * re
 
         try {
 
-            cl::Buffer clHaloIndices(context, haloIndices.begin(), haloIndices.end(), true);
-            localHaloIndices.push_back(clHaloIndices);
-            localHaloIndicesSize.push_back(haloIndices.size());
+            if(haloIndices.size() == 0) {
 
-            cl::Buffer clNumBuffers(context, &numBuffers, (&numBuffers)+1, true);
-            localHaloNumBuffers.push_back(clNumBuffers);
+                cl::Buffer clHaloIndices(context, CL_MEM_READ_WRITE, sizeof(buf_t));
+                localHaloIndices.push_back(clHaloIndices);
+                localHaloIndicesSize.push_back(haloIndices.size());
 
-            cl::Buffer clSendBuffer(context, CL_MEM_READ_WRITE, haloIndices.size()*sizeof(buf_t));
-            sendBuffer.push_back(clSendBuffer);
+                cl::Buffer clNumBuffers(context, &numBuffers, (&numBuffers)+1, true);
+                localHaloNumBuffers.push_back(clNumBuffers);
+
+                cl::Buffer clRecvBuffer(context, CL_MEM_READ_WRITE, sizeof(buf_t));
+                sendBuffer.push_back(clRecvBuffer);
+
+            } else {
+
+                cl::Buffer clHaloIndices(context, haloIndices.begin(), haloIndices.end(), true);
+                localHaloIndices.push_back(clHaloIndices);
+                localHaloIndicesSize.push_back(haloIndices.size());
+
+                cl::Buffer clNumBuffers(context, &numBuffers, (&numBuffers)+1, true);
+                localHaloNumBuffers.push_back(clNumBuffers);
+
+                cl::Buffer clSendBuffer(context, CL_MEM_READ_WRITE, numBuffers*haloIndices.size()*sizeof(buf_t));
+                sendBuffer.push_back(clSendBuffer);
+
+            }
 
         } catch(cl::Error &e) {
             std::cout << "Tausch:G2C: addLocalHaloInfo(): OpenCL error: " << e.what() << " (" << e.err() << ")" << std::endl;
@@ -168,7 +184,7 @@ kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * re
 
         dataSent.push_back(0);
 
-        recvBuffer.push_back(new buf_t[haloIndices.size()]);
+        recvBuffer.push_back(new buf_t[numBuffers*haloIndices.size()]);
 
         return recvBuffer.size()-1;
 
@@ -177,7 +193,7 @@ kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * re
     void packSendBuffer(const int haloId, int bufferId, cl::Buffer buf) {
 
         try {
-            auto kernel_pack = cl::make_kernel<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer>
+            auto kernel_pack = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>
                                                     (programs, "pack");
 
 
@@ -189,7 +205,7 @@ kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * re
             cl::Buffer clHaloSize(context, &haloSize, (&haloSize)+1, true);
 
             kernel_pack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
-                          buf, sendBuffer[haloId], localHaloIndices[haloId], clHaloSize);
+                          buf, sendBuffer[haloId], localHaloIndices[haloId], clHaloSize, clBufferId);
 
         } catch(cl::Error &e) {
             std::cerr << "Tausch:G2C: packSendBuffer() [1] :: OpenCL exception caught: " << e.what()
@@ -201,7 +217,7 @@ kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * re
     void packSendBuffer(const int haloId, int bufferId, cl::Buffer buf, const std::vector<int> overwriteHaloSendIndices, const std::vector<int> overwriteHaloSourceIndices) {
 
         try {
-            auto kernel_pack = cl::make_kernel<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer>
+            auto kernel_pack = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>
                                                     (programs, "pack");
 
             cl::Buffer clHaloIndicesIn(context, overwriteHaloSourceIndices.begin(), overwriteHaloSourceIndices.end(), true);
@@ -215,7 +231,7 @@ kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * re
             cl::Buffer clHaloSize(context, &haloSize, (&haloSize)+1, true);
 
             kernel_pack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
-                          buf, sendBuffer[haloId], clHaloIndicesIn, clHaloIndicesOut, clHaloSize);
+                          buf, sendBuffer[haloId], clHaloIndicesIn, clHaloIndicesOut, clHaloSize,clBufferId);
 
         } catch(cl::Error &e) {
             std::cerr << "Tausch:G2C: packSendBuffer() [2] :: OpenCL exception caught: " << e.what()
@@ -253,7 +269,7 @@ kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * re
 
         int id = msgtags_vals[pos];
 
-        cl::copy(queue, sendBuffer[id], &(recvBuffer[haloId][0]), &(recvBuffer[haloId][remoteHaloIndices[haloId].size()]));
+        cl::copy(queue, sendBuffer[id], &(recvBuffer[haloId][0]), &(recvBuffer[haloId][remoteHaloNumBuffers[haloId]*remoteHaloIndices[haloId].size()]));
 
     }
 
