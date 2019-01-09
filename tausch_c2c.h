@@ -163,20 +163,24 @@ public:
 
     void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf) {
 
-        size_t haloSize = localHaloIndicesSize[haloId];
+        const size_t haloSize = localHaloIndicesSize[haloId];
 
         size_t mpiSendBufferIndex = 0;
         for(size_t region = 0; region < localHaloIndices[haloId].size(); ++region) {
             const std::array<int, 3> vals = localHaloIndices[haloId][region];
 
-            if(vals[2] == 1) {
-                memcpy(&mpiSendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex], &buf[vals[0]], vals[1]*sizeof(buf_t));
-                mpiSendBufferIndex += vals[1];
+            const int val_start = vals[0];
+            const int val_howmany = vals[1];
+            const int val_stride = vals[2];
+
+            if(val_stride == 1) {
+                memcpy(&mpiSendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex], &buf[val_start], val_howmany*sizeof(buf_t));
+                mpiSendBufferIndex += val_howmany;
             } else {
-                int mpiSendBufferIndexBASE = mpiSendBufferIndex;
-                for(int i = 0; i < vals[1]; ++i)
-                    mpiSendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndexBASE + i] = buf[vals[0]+i*vals[2]];
-                mpiSendBufferIndex += vals[1];
+                const int mpiSendBufferIndexBASE = bufferId*haloSize + mpiSendBufferIndex;
+                for(int i = 0; i < val_howmany; ++i)
+                    mpiSendBuffer[haloId][mpiSendBufferIndexBASE + i] = buf[val_start+i*val_stride];
+                mpiSendBufferIndex += val_howmany;
             }
 
         }
@@ -244,14 +248,18 @@ public:
         for(size_t region = 0; region < remoteHaloIndices[haloId].size(); ++region) {
             const std::array<int, 3> vals = remoteHaloIndices[haloId][region];
 
-            if(vals[2] == 1) {
-                memcpy(&buf[vals[0]], &mpiRecvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex], vals[1]*sizeof(buf_t));
-                mpiRecvBufferIndex += vals[1];
+            const int val_start = vals[0];
+            const int val_howmany = vals[1];
+            const int val_stride = vals[2];
+
+            if(val_stride == 1) {
+                memcpy(&buf[val_start], &mpiRecvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex], val_howmany*sizeof(buf_t));
+                mpiRecvBufferIndex += val_howmany;
             } else {
-                size_t mpirecvBufferIndexBASE = mpiRecvBufferIndex;
-                for(int i = 0; i < vals[1]; ++i)
-                    buf[vals[0]+i*vals[2]] = mpiRecvBuffer[haloId][bufferId*haloSize + mpirecvBufferIndexBASE + i];
-                mpiRecvBufferIndex += vals[1];
+                const size_t mpirecvBufferIndexBASE = bufferId*haloSize + mpiRecvBufferIndex;
+                for(int i = 0; i < val_howmany; ++i)
+                    buf[val_start+i*val_stride] = mpiRecvBuffer[haloId][mpirecvBufferIndexBASE + i];
+                mpiRecvBufferIndex += val_howmany;
             }
 
         }
