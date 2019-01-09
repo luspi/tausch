@@ -173,18 +173,34 @@ kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * re
 
         }
 
-        return addRemoteHaloInfo(haloIndices, numBuffer);
+        return addRemoteHaloInfo(extractHaloIndicesWithStride(haloIndices), numBuffer);
 
     }
 
     int addRemoteHaloInfo(const std::vector<int> haloIndices, const int numBuffers) {
+
+        return addRemoteHaloInfo(extractHaloIndicesWithStride(haloIndices), numBuffers);
+
+    }
+
+    int addRemoteHaloInfo(const std::vector<std::array<int, 3> > haloIndices, const int numBuffers) {
 
         remoteHaloIndices.push_back(haloIndices);
         remoteHaloNumBuffers.push_back(numBuffers);
 
         dataSent.push_back(0);
 
-        recvBuffer.push_back(new buf_t[numBuffers*haloIndices.size()]);
+        size_t bufsize = 0;
+        for(size_t i = 0; i < haloIndices.size(); ++i)
+            bufsize += static_cast<size_t>(haloIndices.at(i)[1]);
+        remoteHaloIndicesSize.push_back(bufsize);
+
+        void *newbuf = NULL;
+        posix_memalign(&newbuf, 64, numBuffers*bufsize*sizeof(buf_t));
+        buf_t *newbuf_buft = reinterpret_cast<buf_t*>(newbuf);
+        double zero = 0;
+        std::fill_n(newbuf_buft, numBuffers*bufsize, zero);
+        recvBuffer.push_back(newbuf_buft);
 
         return recvBuffer.size()-1;
 
@@ -269,16 +285,33 @@ kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * re
 
         int id = msgtags_vals[pos];
 
-        cl::copy(queue, sendBuffer[id], &(recvBuffer[haloId][0]), &(recvBuffer[haloId][remoteHaloNumBuffers[haloId]*remoteHaloIndices[haloId].size()]));
+        cl::copy(queue, sendBuffer[id], &(recvBuffer[haloId][0]), &(recvBuffer[haloId][remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId]]));
 
     }
 
     void unpackRecvBuffer(const int haloId, const int bufferId, buf_t *buf) {
 
-        int haloSize = remoteHaloIndices[haloId].size();
+        int haloSize = remoteHaloIndicesSize[haloId];
 
-        for(int index = 0; index < haloSize; ++index)
-            buf[remoteHaloIndices[haloId][index]] = recvBuffer[haloId][bufferId*haloSize + index];
+        int recvBufferIndex = 0;
+        for(int region = 0; region < remoteHaloIndices[haloId].size(); ++region) {
+            const std::array<int, 3> vals = remoteHaloIndices[haloId][region];
+
+            const int val_start = vals[0];
+            const int val_howmany = vals[1];
+            const int val_stride = vals[2];
+
+            if(val_stride == 1) {
+                memcpy(&buf[val_start], &recvBuffer[haloId][bufferId*haloSize + recvBufferIndex], val_howmany*sizeof(buf_t));
+                recvBufferIndex += val_howmany;
+            } else {
+                const int recvBufferIndexBASE = bufferId*haloSize + recvBufferIndex;
+                for(int i = 0; i < val_howmany; ++i)
+                    buf[val_start+i*val_stride] = recvBuffer[haloId][recvBufferIndexBASE + i];
+                recvBufferIndex += val_howmany;
+            }
+
+        }
 
     }
 
@@ -299,6 +332,72 @@ kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * re
     void recvAndUnpack(const int haloId, buf_t *buf, const int msgtag) {
         recv(haloId, msgtag);
         unpackRecvBuffer(haloId, 0, buf);
+    }
+
+    std::vector<std::array<int, 3> > extractHaloIndicesWithStride(std::vector<int> indices) {
+
+        std::vector<std::array<int, 3> > ret;
+
+        // special cases: 0, 1, 2 entries only
+
+        if(indices.size() == 0)
+            return ret;
+        else if(indices.size() == 1) {
+            std::array<int, 3> val = {static_cast<int>(indices[0]), 1, 1};
+            ret.push_back(val);
+            return ret;
+        } else if(indices.size() == 2) {
+            std::array<int, 3> val = {static_cast<int>(indices[0]), 2, static_cast<int>(indices[1])-static_cast<int>(indices[0])};
+            ret.push_back(val);
+            return ret;
+        }
+
+        // compute strides (first entry assumes to have same stride as second entry)
+        std::vector<int> strides;
+        strides.push_back(indices[1]-indices[0]);
+        for(size_t i = 1; i < indices.size(); ++i)
+            strides.push_back(indices[i]-indices[i-1]);
+
+        // the current start/size/stride
+        int curStart = static_cast<int>(indices[0]);
+        int curStride = static_cast<int>(indices[1])-static_cast<int>(indices[0]);
+        int curNum = 1;
+
+        for(size_t ind = 1; ind < indices.size(); ++ind) {
+
+            // the stride has changed
+            if(strides[ind] != curStride) {
+
+                // store everything up to now as region with same stride
+                std::array<int, 3> vals = {curStart, curNum, curStride};
+                ret.push_back(vals);
+
+                // one stray element at the end
+                if(ind == indices.size()-1) {
+                    std::array<int, 3> val = {static_cast<int>(indices[ind]), 1, 1};
+                    ret.push_back(val);
+                } else {
+                    // update/reset start/stride/size
+                    curStart = static_cast<int>(indices[ind]);
+                    curStride = strides[ind+1];
+                    curNum = 1;
+                }
+
+            // same stride again
+            } else {
+                // one more item
+                ++curNum;
+                // if we reached the end, save region before finishing
+                if(ind == indices.size()-1) {
+                    std::array<int, 3> vals = {curStart, curNum, curStride};
+                    ret.push_back(vals);
+                }
+            }
+
+        }
+
+        return ret;
+
     }
 
     int getNumLocalHalo() {
@@ -342,7 +441,8 @@ private:
     std::vector<int> dataSent;
 
     std::vector<cl::Buffer> localHaloIndices;
-    std::vector<std::vector<int> > remoteHaloIndices;
+    std::vector<std::vector<std::array<int, 3> > > remoteHaloIndices;
+    std::vector<int> remoteHaloIndicesSize;
     std::vector<int> remoteHaloNumBuffers;
     std::vector<int> localHaloIndicesSize;
     std::vector<cl::Buffer> localHaloNumBuffers;

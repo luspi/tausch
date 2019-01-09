@@ -108,18 +108,35 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         }
 
-        return addLocalHaloInfo(haloIndices, numBuffer);
+        return addLocalHaloInfo(extractHaloIndicesWithStride(haloIndices), numBuffer);
 
     }
 
     int addLocalHaloInfo(const std::vector<int> haloIndices, const int numBuffers) {
+
+        return addLocalHaloInfo(extractHaloIndicesWithStride(haloIndices), numBuffers);
+
+    }
+
+    int addLocalHaloInfo(const std::vector<std::array<int, 3> > haloIndices, const int numBuffers) {
 
         localHaloIndices.push_back(haloIndices);
         localHaloNumBuffers.push_back(numBuffers);
 
         dataSent.push_back(0);
 
-        sendBuffer.push_back(new buf_t[numBuffers*haloIndices.size()]);
+        size_t bufsize = 0;
+        for(size_t i = 0; i < haloIndices.size(); ++i)
+            bufsize += static_cast<size_t>(haloIndices.at(i)[1]);
+
+        localHaloIndicesSize.push_back(bufsize);
+
+        void *newbuf = NULL;
+        posix_memalign(&newbuf, 64, numBuffers*bufsize*sizeof(buf_t));
+        buf_t *newbuf_buft = reinterpret_cast<buf_t*>(newbuf);
+        double zero = 0;
+        std::fill_n(newbuf_buft, numBuffers*bufsize, zero);
+        sendBuffer.push_back(newbuf_buft);
 
         return sendBuffer.size()-1;
 
@@ -196,10 +213,27 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     void packSendBuffer(const int haloId, const int bufferId, const buf_t *buf) {
 
-        int haloSize = localHaloIndices[haloId].size();
+        const int haloSize = localHaloIndicesSize[haloId];
 
-        for(int index = 0; index < haloSize; ++index)
-            sendBuffer[haloId][bufferId*haloSize + index] = buf[localHaloIndices[haloId][index]];
+        int sendBufferIndex = 0;
+        for(int region = 0; region < localHaloIndices[haloId].size(); ++region) {
+            const std::array<int, 3> vals = localHaloIndices[haloId][region];
+
+            const int val_start = vals[0];
+            const int val_howmany = vals[1];
+            const int val_stride = vals[2];
+
+            if(val_stride == 1) {
+                memcpy(&sendBuffer[haloId][bufferId*haloSize + sendBufferIndex], &buf[val_start], val_howmany*sizeof(buf_t));
+                sendBufferIndex += val_howmany;
+            } else {
+                const int sendBufferIndexBASE = bufferId*haloSize + sendBufferIndex;
+                for(int i = 0; i < val_howmany; ++i)
+                    sendBuffer[haloId][sendBufferIndexBASE + i] = buf[val_start+i*val_stride];
+                sendBufferIndex += val_howmany;
+            }
+
+        }
 
     }
 
@@ -296,6 +330,72 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
         unpackRecvBuffer(haloId, 0, buf);
     }
 
+    std::vector<std::array<int, 3> > extractHaloIndicesWithStride(std::vector<int> indices) {
+
+        std::vector<std::array<int, 3> > ret;
+
+        // special cases: 0, 1, 2 entries only
+
+        if(indices.size() == 0)
+            return ret;
+        else if(indices.size() == 1) {
+            std::array<int, 3> val = {static_cast<int>(indices[0]), 1, 1};
+            ret.push_back(val);
+            return ret;
+        } else if(indices.size() == 2) {
+            std::array<int, 3> val = {static_cast<int>(indices[0]), 2, static_cast<int>(indices[1])-static_cast<int>(indices[0])};
+            ret.push_back(val);
+            return ret;
+        }
+
+        // compute strides (first entry assumes to have same stride as second entry)
+        std::vector<int> strides;
+        strides.push_back(indices[1]-indices[0]);
+        for(size_t i = 1; i < indices.size(); ++i)
+            strides.push_back(indices[i]-indices[i-1]);
+
+        // the current start/size/stride
+        int curStart = static_cast<int>(indices[0]);
+        int curStride = static_cast<int>(indices[1])-static_cast<int>(indices[0]);
+        int curNum = 1;
+
+        for(size_t ind = 1; ind < indices.size(); ++ind) {
+
+            // the stride has changed
+            if(strides[ind] != curStride) {
+
+                // store everything up to now as region with same stride
+                std::array<int, 3> vals = {curStart, curNum, curStride};
+                ret.push_back(vals);
+
+                // one stray element at the end
+                if(ind == indices.size()-1) {
+                    std::array<int, 3> val = {static_cast<int>(indices[ind]), 1, 1};
+                    ret.push_back(val);
+                } else {
+                    // update/reset start/stride/size
+                    curStart = static_cast<int>(indices[ind]);
+                    curStride = strides[ind+1];
+                    curNum = 1;
+                }
+
+            // same stride again
+            } else {
+                // one more item
+                ++curNum;
+                // if we reached the end, save region before finishing
+                if(ind == indices.size()-1) {
+                    std::array<int, 3> vals = {curStart, curNum, curStride};
+                    ret.push_back(vals);
+                }
+            }
+
+        }
+
+        return ret;
+
+    }
+
     int getNumLocalHalo() {
         return sendBuffer.size();
     }
@@ -336,7 +436,8 @@ private:
 
     std::vector<int > dataSent;
 
-    std::vector<std::vector<int> > localHaloIndices;
+    std::vector<std::vector<std::array<int, 3> > > localHaloIndices;
+    std::vector<int> localHaloIndicesSize;
     std::vector<cl::Buffer> remoteHaloIndices;
     std::vector<int> remoteHaloIndicesSize;
     std::vector<int> localHaloNumBuffers;
