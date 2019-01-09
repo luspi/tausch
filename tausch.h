@@ -233,10 +233,10 @@ public:
     void recvG2G(const int haloId, int msgtag) {
         tausch_g2g->recv(haloId, msgtag);
     }
-    void unpackRecvBufferG2G(const int haloId, const int bufferId, cl::Buffer buf) {
+    void unpackRecvBufferG2G(const int haloId, int bufferId, cl::Buffer buf) {
         tausch_g2g->unpackRecvBuffer(haloId, bufferId, buf);
     }
-    void unpackRecvBufferG2G(const int haloId, const int bufferId, cl::Buffer buf, const std::vector<int> overwriteHaloRecvIndices, const std::vector<int> overwriteHaloTargetIndices) {
+    void unpackRecvBufferG2G(const int haloId, int bufferId, cl::Buffer buf, const std::vector<int> overwriteHaloRecvIndices, const std::vector<int> overwriteHaloTargetIndices) {
         tausch_g2g->unpackRecvBuffer(haloId, bufferId, overwriteHaloRecvIndices, overwriteHaloTargetIndices);
     }
     void packAndSendG2G(const int haloId, cl::Buffer buf, const int msgtag) {
