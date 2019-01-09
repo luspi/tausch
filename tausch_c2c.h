@@ -5,8 +5,6 @@
 #include <vector>
 #include "tauschdefs.h"
 
-//#define TAUSCH_OLD
-
 template <class buf_t>
 class TauschC2C {
 
