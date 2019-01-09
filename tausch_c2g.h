@@ -15,9 +15,9 @@ class TauschC2G {
 public:
     TauschC2G(cl::Device device, cl::Context context, cl::CommandQueue queue, std::string cName4BufT) {
 
-        this->device = device;
-        this->context = context;
-        this->queue = queue;
+        this->tauschcl_device = device;
+        this->tauschcl_context = context;
+        this->tauschcl_queue = queue;
         this->cName4BufT = cName4BufT;
 
         clKernelLocalSize = 256;
@@ -29,27 +29,28 @@ public:
 kernel void unpack(global const buf_t * restrict const inBuf,
                    global buf_t * restrict const outBuf,
                    global const int * restrict const outIndices,
-                   global const int * restrict const numIndices) {
+                   global const int * restrict const numIndices,
+                   global const int * restrict const bufferId) {
 
     int gid = get_global_id(0);
 
     if(gid < *numIndices)
-        outBuf[outIndices[gid]] = inBuf[gid];
+        outBuf[outIndices[gid]] = inBuf[(*bufferId) * (*numIndices) + gid];
 
 }
 
-kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * restrict outBuf, global const int * restrict inIndices, global const int * restrict outIndices, const int numIndices) {
+kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * restrict outBuf, global const int * restrict inIndices, global const int * restrict outIndices, const int numIndices, const int bufferId) {
 
     int gid = get_global_id(0);
 
     if(gid < numIndices)
-        outBuf[outIndices[gid]] = inBuf[inIndices[gid]];
+        outBuf[outIndices[gid]] = inBuf[bufferId*numIndices + inIndices[gid]];
 
 }
                              )d";
 
         try {
-            programs = cl::Program(context, oclstr, false);
+            programs = cl::Program(tauschcl_context, oclstr, false);
             programs.build("");
 
 //            std::string log = programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
@@ -60,7 +61,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             std::cout << "Tausch:CWG: TauschCWG(): OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
             if(e.err() == -11) {
                 try {
-                    std::string log = programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
+                    std::string log = programs.getBuildInfo<CL_PROGRAM_BUILD_LOG>(tauschcl_device);
                     std::cout << std::endl << " ******************** " << std::endl << " ** BUILD LOG" << std::endl
                               << " ******************** " << std::endl << log << std::endl << std::endl << " ******************** "
                               << std::endl << std::endl;
@@ -75,7 +76,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
     ~TauschC2G() {
 
         for(int i = 0; i < sendBuffer.size(); ++i)
-            delete sendBuffer[i];
+            delete[] sendBuffer[i];
         recvBuffer.clear();
 
     }
@@ -118,7 +119,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         dataSent.push_back(0);
 
-        sendBuffer.push_back(new buf_t[haloIndices.size()]);
+        sendBuffer.push_back(new buf_t[numBuffers*haloIndices.size()]);
 
         return sendBuffer.size()-1;
 
@@ -159,15 +160,31 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         try {
 
-            cl::Buffer clHaloIndices(context, haloIndices.begin(), haloIndices.end(), true);
-            remoteHaloIndices.push_back(clHaloIndices);
-            remoteHaloIndicesSize.push_back(haloIndices.size());
+            if(haloIndices.size() == 0) {
 
-            cl::Buffer clNumBuffers(context, &numBuffers, (&numBuffers)+1, true);
-            remoteHaloNumBuffers.push_back(clNumBuffers);
+                cl::Buffer clHaloIndices(tauschcl_context, CL_MEM_READ_WRITE, sizeof(buf_t));
+                remoteHaloIndices.push_back(clHaloIndices);
+                remoteHaloIndicesSize.push_back(haloIndices.size());
 
-            cl::Buffer clRecvBuffer(context, CL_MEM_READ_WRITE, haloIndices.size()*sizeof(buf_t));
-            recvBuffer.push_back(clRecvBuffer);
+                cl::Buffer clNumBuffers(tauschcl_context, &numBuffers, (&numBuffers)+1, true);
+                remoteHaloNumBuffers.push_back(clNumBuffers);
+
+                cl::Buffer clRecvBuffer(tauschcl_context, CL_MEM_READ_WRITE, sizeof(buf_t));
+                recvBuffer.push_back(clRecvBuffer);
+
+            } else {
+
+                cl::Buffer clHaloIndices(tauschcl_context, haloIndices.begin(), haloIndices.end(), true);
+                remoteHaloIndices.push_back(clHaloIndices);
+                remoteHaloIndicesSize.push_back(haloIndices.size());
+
+                cl::Buffer clNumBuffers(tauschcl_context, &numBuffers, (&numBuffers)+1, true);
+                remoteHaloNumBuffers.push_back(clNumBuffers);
+
+                cl::Buffer clRecvBuffer(tauschcl_context, CL_MEM_READ_WRITE, numBuffers*haloIndices.size()*sizeof(buf_t));
+                recvBuffer.push_back(clRecvBuffer);
+
+            }
 
         } catch(cl::Error &e) {
             std::cout << "Tausch:C2G: addRemoteHaloInfo(): OpenCL error: " << e.what() << " (" << e.err() << ")" << std::endl;
@@ -223,21 +240,22 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
         }
 
         int id = msgtags_vals[pos];
-        cl::copy(queue, &sendBuffer[id][0], &sendBuffer[id][remoteHaloIndicesSize[id]], recvBuffer[haloId]);
+        cl::copy(tauschcl_queue, &sendBuffer[id][0], &sendBuffer[id][localHaloNumBuffers[id]*remoteHaloIndicesSize[id]], recvBuffer[haloId]);
 
     }
 
     void unpackRecvBuffer(const int haloId, int bufferId, cl::Buffer buf) {
 
         try {
-            auto kernel_unpack = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>
+            auto kernel_unpack = cl::make_kernel<cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&, cl::Buffer&>
                                                     (programs, "unpack");
 
             int globalsize = (remoteHaloIndicesSize[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
             int haloSize = remoteHaloIndicesSize[haloId];
-            cl::Buffer clHaloSize(context, &haloSize, (&haloSize)+1, true);
-            kernel_unpack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
-                        recvBuffer[haloId], buf, remoteHaloIndices[haloId], clHaloSize);
+            cl::Buffer clHaloSize(tauschcl_context, &haloSize, (&haloSize)+1, true);
+            cl::Buffer clBufferId(tauschcl_context, &bufferId, (&bufferId)+1, true);
+            kernel_unpack(cl::EnqueueArgs(tauschcl_queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
+                        recvBuffer[haloId], buf, remoteHaloIndices[haloId], clHaloSize, clBufferId);
 
         } catch(cl::Error &e) {
             std::cerr << "Tausch:C2G: unpackRecvBuffer() :: OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
@@ -251,15 +269,15 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             auto kernel_unpack = cl::make_kernel<cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer, cl::Buffer>
                                                     (programs, "unpackSubRegion");
 
-            cl::Buffer clHaloIndicesIn(context, overwriteHaloRecvIndices.begin(), overwriteHaloRecvIndices.end(), true);
-            cl::Buffer clHaloIndicesOut(context, overwriteHaloTargetIndices.begin(), overwriteHaloTargetIndices.end(), true);
+            cl::Buffer clHaloIndicesIn(tauschcl_context, overwriteHaloRecvIndices.begin(), overwriteHaloRecvIndices.end(), true);
+            cl::Buffer clHaloIndicesOut(tauschcl_context, overwriteHaloTargetIndices.begin(), overwriteHaloTargetIndices.end(), true);
 
             int globalsize = (remoteHaloIndicesSize[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
 
-            cl::Buffer clBufferId(context, &bufferId, (&bufferId)+1, true);
-            cl::Buffer haloSize(context, &remoteHaloIndicesSize[haloId], (&remoteHaloIndicesSize[haloId])+1, true);
+            cl::Buffer clBufferId(tauschcl_context, &bufferId, (&bufferId)+1, true);
+            cl::Buffer haloSize(tauschcl_context, &remoteHaloIndicesSize[haloId], (&remoteHaloIndicesSize[haloId])+1, true);
 
-            kernel_unpack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
+            kernel_unpack(cl::EnqueueArgs(tauschcl_queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
                           recvBuffer[haloId], buf, clHaloIndicesIn, clHaloIndicesOut, haloSize);
 
         } catch(cl::Error e) {
@@ -306,9 +324,9 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 private:
     int alignedsize;
 
-    cl::Device device;
-    cl::Context context;
-    cl::CommandQueue queue;
+    cl::Device tauschcl_device;
+    cl::Context tauschcl_context;
+    cl::CommandQueue tauschcl_queue;
     cl::Program programs;
     int clKernelLocalSize;
     std::string cName4BufT;

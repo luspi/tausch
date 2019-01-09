@@ -5,31 +5,43 @@
 #define TAUSCH_OPENCL
 #include "../tausch.h"
 
+static cl::Device tauschcl_device;
+static cl::Context tauschcl_context;
+static cl::CommandQueue tauschcl_queue;
+
+void setupOpenCL();
+
 int testC2C_1buf(std::vector<int> sendIndices, std::vector<int> recvIndices, double *expected) {
 
-    Tausch<double> *tausch = new Tausch<double>(MPI_DOUBLE, MPI_COMM_WORLD, true);
+    Tausch<double> *tausch = new Tausch<double>(tauschcl_device, tauschcl_context, tauschcl_queue, "double",
+                                                MPI_DOUBLE, MPI_COMM_WORLD, true);
 
     double *buf1 = new double[10]{};
     for(int i = 0; i < 10; ++i)
         buf1[i] = i + 1;
+    cl::Buffer clbuf(tauschcl_context, &buf1[0], &buf1[10], false);
 
-    tausch->addLocalHaloInfo(sendIndices);
-    tausch->addRemoteHaloInfo(recvIndices);
+    tausch->addLocalHaloInfoC2G(sendIndices);
+    tausch->addRemoteHaloInfoC2G(recvIndices);
 
-    tausch->packSendBuffer(0, 0, buf1);
+    tausch->packSendBufferC2G(0, 0, buf1);
 
-    tausch->send(0, 0, 0);
-    tausch->recv(0, 0, 0);
+    tausch->sendC2G(0, 0);
+    tausch->recvC2G(0, 0);
 
-    tausch->unpackRecvBuffer(0, 0, buf1);
+    tausch->unpackRecvBufferC2G(0, 0, clbuf);
 
     delete tausch;
 
+    double *_clbuf = new double[10]{};
+    cl::copy(tauschcl_queue, clbuf, &_clbuf[0], &_clbuf[10]);
+
     for(int i = 0; i < 10; ++i)
-        if(fabs(expected[i]-buf1[i]) > 1e-10)
+        if(fabs(expected[i]-_clbuf[i]) > 1e-10)
             return 1;
 
     delete[] buf1;
+    delete[] _clbuf;
 
     return 0;
 
@@ -37,7 +49,8 @@ int testC2C_1buf(std::vector<int> sendIndices, std::vector<int> recvIndices, dou
 
 int testC2C_2buf(std::vector<int> sendIndices, std::vector<int> recvIndices, double *expected1, double *expected2) {
 
-    Tausch<double> *tausch = new Tausch<double>(MPI_DOUBLE, MPI_COMM_WORLD, true);
+    Tausch<double> *tausch = new Tausch<double>(tauschcl_device, tauschcl_context, tauschcl_queue, "double",
+                                                MPI_DOUBLE, MPI_COMM_WORLD, true);
 
     double *buf1 = new double[10]{};
     double *buf2 = new double[10]{};
@@ -45,39 +58,52 @@ int testC2C_2buf(std::vector<int> sendIndices, std::vector<int> recvIndices, dou
         buf1[i] = i + 1;
         buf2[i] = i + 11;
     }
+    cl::Buffer clbuf1(tauschcl_context, &buf1[0], &buf1[10], false);
+    cl::Buffer clbuf2(tauschcl_context, &buf2[0], &buf2[10], false);
 
-    tausch->addLocalHaloInfo(sendIndices, 2);
-    tausch->addRemoteHaloInfo(recvIndices, 2);
+    tausch->addLocalHaloInfoC2G(sendIndices, 2);
+    tausch->addRemoteHaloInfoC2G(recvIndices, 2);
 
-    tausch->packSendBuffer(0, 0, buf1);
-    tausch->packSendBuffer(0, 1, buf2);
+    tausch->packSendBufferC2G(0, 0, buf1);
+    tausch->packSendBufferC2G(0, 1, buf2);
 
-    tausch->send(0, 0, 0);
-    tausch->recv(0, 0, 0);
+    tausch->sendC2G(0, 0);
+    tausch->recvC2G(0, 0);
 
-    tausch->unpackRecvBuffer(0, 0, buf2);
-    tausch->unpackRecvBuffer(0, 1, buf1);
+    tausch->unpackRecvBufferC2G(0, 0, clbuf2);
+    tausch->unpackRecvBufferC2G(0, 1, clbuf1);
 
     delete tausch;
 
+    double *_clbuf1 = new double[10]{};
+    double *_clbuf2 = new double[10]{};
+    cl::copy(tauschcl_queue, clbuf1, &_clbuf1[0], &_clbuf1[10]);
+    cl::copy(tauschcl_queue, clbuf2, &_clbuf2[0], &_clbuf2[10]);
+
     for(int i = 0; i < 10; ++i) {
-        if(fabs(expected1[i]-buf1[i]) > 1e-10)
+        if(fabs(expected1[i]-_clbuf1[i]) > 1e-10)
             return 1;
-        if(fabs(expected2[i]-buf2[i]) > 1e-10)
+        if(fabs(expected2[i]-_clbuf2[i]) > 1e-10)
             return 1;
     }
 
     delete[] buf1;
     delete[] buf2;
+    delete[] _clbuf1;
+    delete[] _clbuf2;
 
     return 0;
 
 }
 
+
+
 int main(int argc, char** argv) {
 
     int provided;
     MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &provided);
+
+    setupOpenCL();
 
     int result = Catch::Session().run(argc, argv);
 
@@ -106,7 +132,7 @@ TEST_CASE("1 buffer data exchange") {
     std::vector<int> sendIndices4 = {};
     std::vector<int> recvIndices4 = {};
     double *expected4 = new double[10]{1,2,3,4,5,6,7,8,9,10};
-//    REQUIRE(testC2C_1buf(sendIndices4, recvIndices4, expected4) == 0);
+    REQUIRE(testC2C_1buf(sendIndices4, recvIndices4, expected4) == 0);
 
     delete[] expected1;
     delete[] expected2;
@@ -133,13 +159,13 @@ TEST_CASE("2 buffer data exchange") {
     std::vector<int> recvIndices3 = {0,2,4,7};
     double *expected3_1 = new double[10]{11,2,13,4,15,6,7,18,9,10};
     double *expected3_2 = new double[10]{1,12,3,14,5,16,17,8,19,20};
-//    REQUIRE(testC2C_2buf(sendIndices3, recvIndices3, expected3_1, expected3_2) == 0);
+    REQUIRE(testC2C_2buf(sendIndices3, recvIndices3, expected3_1, expected3_2) == 0);
 
     std::vector<int> sendIndices4 = {};
     std::vector<int> recvIndices4 = {};
     double *expected4_1 = new double[10]{1,2,3,4,5,6,7,8,9,10};
     double *expected4_2 = new double[10]{11,12,13,14,15,16,17,18,19,20};
-//    REQUIRE(testC2C_2buf(sendIndices4, recvIndices4, expected4_1, expected4_2) == 0);
+    REQUIRE(testC2C_2buf(sendIndices4, recvIndices4, expected4_1, expected4_2) == 0);
 
     delete[] expected1_1;
     delete[] expected1_2;
@@ -149,5 +175,29 @@ TEST_CASE("2 buffer data exchange") {
     delete[] expected3_2;
     delete[] expected4_1;
     delete[] expected4_2;
+
+}
+
+void setupOpenCL() {
+    try {
+
+        std::vector<cl::Platform> all_platforms;
+        cl::Platform::get(&all_platforms);
+        cl::Platform tauschcl_platform = all_platforms[0];
+
+        std::vector<cl::Device> all_devices;
+        tauschcl_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
+        tauschcl_device = all_devices[0];
+
+        std::cout << "Using OpenCL device " << tauschcl_device.getInfo<CL_DEVICE_NAME>() << std::endl;
+
+        // Create context and queue
+        tauschcl_context = cl::Context({tauschcl_device});
+        tauschcl_queue = cl::CommandQueue(tauschcl_context,tauschcl_device);
+
+    } catch(cl::Error error) {
+        std::cout << "[setup] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+        exit(1);
+    }
 
 }

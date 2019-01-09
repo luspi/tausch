@@ -12,7 +12,12 @@ template <class buf_t>
 class Tausch {
 
 public:
+#ifndef TAUSCH_OPENCL
     Tausch(const MPI_Datatype mpiDataType, const MPI_Comm comm = MPI_COMM_WORLD, const bool useDuplicateOfCommunicator = true) {
+#else
+    Tausch(cl::Device device, cl::Context context, cl::CommandQueue queue, std::string cName4BufT,
+            const MPI_Datatype mpiDataType, const MPI_Comm comm = MPI_COMM_WORLD, const bool useDuplicateOfCommunicator = true) {
+#endif
 
         if(useDuplicateOfCommunicator)
             MPI_Comm_dup(comm, &TAUSCH_COMM);
@@ -20,29 +25,19 @@ public:
             TAUSCH_COMM = comm;
 
         tausch_cwc = new TauschC2C<buf_t>(mpiDataType, TAUSCH_COMM);
-
-    }
-
 #ifdef TAUSCH_OPENCL
-    void requestOpenCLSupport(cl::Device device, cl::Context context, cl::CommandQueue queue, std::string cName4BufT) {
-
         tausch_c2g = new TauschC2G<buf_t>(device, context, queue, cName4BufT);
         tausch_g2c = new TauschG2C<buf_t>(device, context, queue, cName4BufT);
         tausch_g2g = new TauschG2G<buf_t>(device, context, queue, cName4BufT);
-
-        gpu = true;
-
-    }
 #endif
+    }
 
     ~Tausch() {
         delete tausch_cwc;
 #ifdef TAUSCH_OPENCL
-        if(gpu) {
-            delete tausch_c2g;
-            delete tausch_g2c;
-            delete tausch_g2g;
-        }
+        delete tausch_c2g;
+        delete tausch_g2c;
+        delete tausch_g2g;
 #endif
     }
 
@@ -255,7 +250,6 @@ public:
 
 private:
     MPI_Comm TAUSCH_COMM;
-    bool gpu;
 
 };
 
