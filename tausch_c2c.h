@@ -218,10 +218,10 @@ public:
 
     }
 
-    void recv(const size_t haloId, const int msgtag, int remoteMpiRank) {
+    MPI_Request recv(const size_t haloId, const int msgtag, int remoteMpiRank, bool blocking) {
 
         if(remoteHaloIndices[haloId].size() == 0)
-            return;
+            return MPI_REQUEST_NULL;
 
         if(!setupMpiRecv[haloId]) {
 
@@ -236,7 +236,10 @@ public:
         }
 
         MPI_Start(&mpiRecvRequests[haloId]);
-        MPI_Wait(&mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
+        if(blocking)
+            MPI_Wait(&mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
+
+        return mpiRecvRequests[haloId];
 
     }
 

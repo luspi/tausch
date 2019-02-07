@@ -79,8 +79,8 @@ public:
         tausch_cwc->send(haloId, msgtag, remoteMpiRank);
     }
 
-    void recv(size_t haloId, int msgtag, int remoteMpiRank = -1) {
-        tausch_cwc->recv(haloId, msgtag, remoteMpiRank);
+    MPI_Request recv(size_t haloId, int msgtag, int remoteMpiRank = -1, bool blocking = true) {
+        return tausch_cwc->recv(haloId, msgtag, remoteMpiRank, blocking);
     }
 
     void unpackRecvBuffer(size_t haloId, size_t bufferId, buf_t *buf) {
