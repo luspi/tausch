@@ -5,6 +5,7 @@
 #include <vector>
 #include <array>
 #include <cstring>
+#include <iostream>
 #include "tauschdefs.h"
 
 template <class buf_t>
@@ -61,7 +62,7 @@ public:
             }
 
         } else
-            std::cout << "[Tausch] ERROR: Invalid dimension specified in TauschHaloRegion!" << std::endl;
+            std::cerr << "[Tausch] ERROR: Invalid dimension specified in TauschHaloRegion!" << std::endl;
 
         return addLocalHaloInfo(haloIndices, numBuffer, (region.remoteMpiRank==-1 ? remoteMpiRank : region.remoteMpiRank));
 
