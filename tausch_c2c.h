@@ -198,10 +198,10 @@ public:
 
     }
 
-    void send(const size_t haloId, const int msgtag, int remoteMpiRank) {
+    MPI_Request *send(const size_t haloId, const int msgtag, int remoteMpiRank) {
 
         if(localHaloIndices[haloId].size() == 0)
-            return;
+            return (new MPI_Request());
 
         if(!setupMpiSend[haloId]) {
 
@@ -218,12 +218,14 @@ public:
 
         MPI_Start(&mpiSendRequests[haloId]);
 
+        return &mpiSendRequests[haloId];
+
     }
 
-    MPI_Request recv(const size_t haloId, const int msgtag, int remoteMpiRank, bool blocking) {
+    MPI_Request *recv(const size_t haloId, const int msgtag, int remoteMpiRank, bool blocking) {
 
         if(remoteHaloIndices[haloId].size() == 0)
-            return MPI_REQUEST_NULL;
+            return (new MPI_Request());
 
         if(!setupMpiRecv[haloId]) {
 
@@ -241,7 +243,7 @@ public:
         if(blocking)
             MPI_Wait(&mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
 
-        return mpiRecvRequests[haloId];
+        return &mpiRecvRequests[haloId];
 
     }
 

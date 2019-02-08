@@ -75,11 +75,11 @@ public:
         tausch_cwc->packSendBuffer(haloId, bufferId, buf, overwriteHaloSendIndices, overwriteHaloSourceIndices);
     }
 
-    void send(size_t haloId, int msgtag, int remoteMpiRank = -1) {
-        tausch_cwc->send(haloId, msgtag, remoteMpiRank);
+    MPI_Request *send(size_t haloId, int msgtag, int remoteMpiRank = -1) {
+        return tausch_cwc->send(haloId, msgtag, remoteMpiRank);
     }
 
-    MPI_Request recv(size_t haloId, int msgtag, int remoteMpiRank = -1, bool blocking = true) {
+    MPI_Request *recv(size_t haloId, int msgtag, int remoteMpiRank = -1, bool blocking = true) {
         return tausch_cwc->recv(haloId, msgtag, remoteMpiRank, blocking);
     }
 
