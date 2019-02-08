@@ -87,7 +87,7 @@ public:
         std::fill_n(newbuf_buft, numBuffers*bufsize, zero);
         mpiSendBuffer.push_back(newbuf_buft);
 
-        mpiSendRequests.push_back(MPI_Request());
+        mpiSendRequests.push_back(new MPI_Request());
 
         setupMpiSend.push_back(false);
 
@@ -155,7 +155,7 @@ public:
         std::fill_n(newbuf_buft, numBuffers*bufsize, zero);
         mpiRecvBuffer.push_back(newbuf_buft);
 
-        mpiRecvRequests.push_back(MPI_Request());
+        mpiRecvRequests.push_back(new MPI_Request());
 
         setupMpiRecv.push_back(false);
 
@@ -211,14 +211,14 @@ public:
                 remoteMpiRank = localHaloRemoteMpiRank[haloId];
 
             MPI_Send_init(&mpiSendBuffer[haloId][0], localHaloNumBuffers[haloId]*localHaloIndicesSize[haloId], mpiDataType, remoteMpiRank,
-                      msgtag, TAUSCH_COMM, &mpiSendRequests[haloId]);
+                      msgtag, TAUSCH_COMM, mpiSendRequests[haloId]);
 
         } else
-            MPI_Wait(&mpiSendRequests[haloId], MPI_STATUS_IGNORE);
+            MPI_Wait(mpiSendRequests[haloId], MPI_STATUS_IGNORE);
 
-        MPI_Start(&mpiSendRequests[haloId]);
+        MPI_Start(mpiSendRequests[haloId]);
 
-        return &mpiSendRequests[haloId];
+        return mpiSendRequests[haloId];
 
     }
 
@@ -235,15 +235,15 @@ public:
                 remoteMpiRank = remoteHaloRemoteMpiRank[haloId];
 
             MPI_Recv_init(&mpiRecvBuffer[haloId][0], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId], mpiDataType,
-                          remoteMpiRank, msgtag, TAUSCH_COMM, &mpiRecvRequests[haloId]);
+                          remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequests[haloId]);
 
         }
 
-        MPI_Start(&mpiRecvRequests[haloId]);
+        MPI_Start(mpiRecvRequests[haloId]);
         if(blocking)
-            MPI_Wait(&mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
+            MPI_Wait(mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
 
-        return &mpiRecvRequests[haloId];
+        return mpiRecvRequests[haloId];
 
     }
 
@@ -403,8 +403,8 @@ private:
 
     std::vector<buf_t*> mpiRecvBuffer;
     std::vector<buf_t*> mpiSendBuffer;
-    std::vector<MPI_Request> mpiRecvRequests;
-    std::vector<MPI_Request> mpiSendRequests;
+    std::vector<MPI_Request*> mpiRecvRequests;
+    std::vector<MPI_Request*> mpiSendRequests;
 
     std::vector<bool> setupMpiSend;
     std::vector<bool> setupMpiRecv;
