@@ -36,13 +36,13 @@ public:
         std::vector<std::array<int, 3> > haloIndices;
 
         // 1D
-        if(region.haloDepth == 0 && region.haloHeight == 0) {
+        if(region.dimensions == 1) {
 
             std::array<int, 3> vals = {static_cast<int>(region.haloX), static_cast<int>(region.haloWidth), 1};
             haloIndices.push_back(vals);
 
         // 2D
-        } else if(region.haloDepth == 0) {
+        } else if(region.dimensions == 2) {
 
             for(size_t y = 0; y < region.haloHeight; ++y) {
                 std::array<int, 3> vals = {static_cast<int>((region.haloY+y)*region.bufferWidth + region.haloX), static_cast<int>(region.haloWidth), 1};
@@ -50,7 +50,7 @@ public:
             }
 
         // 3D
-        } else {
+        } else if(region.dimensions == 3) {
 
             for(size_t z = 0; z < region.haloDepth; ++z) {
                 for(size_t y = 0; y < region.haloHeight; ++y) {
@@ -60,7 +60,8 @@ public:
                 }
             }
 
-        }
+        } else
+            std::cerr << "[Tausch] ERROR: Invalid dimension specified in TauschHaloRegion!" << std::endl;
 
         return addLocalHaloInfo(haloIndices, numBuffer, (region.remoteMpiRank==-1 ? remoteMpiRank : region.remoteMpiRank));
 

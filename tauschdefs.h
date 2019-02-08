@@ -8,6 +8,10 @@ struct TauschHaloRegion {
                        haloX(0), haloY(0), haloZ(0),
                        haloWidth(0), haloHeight(0), haloDepth(0), remoteMpiRank(-1) {}
     /*!
+     * How many dimensions. Possible values: 1, 2, 3
+     */
+    size_t dimensions;
+    /*!
      * The width of the underlying buffer.
      */
     size_t bufferWidth;
