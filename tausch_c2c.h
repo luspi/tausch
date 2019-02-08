@@ -205,7 +205,7 @@ public:
     MPI_Request *send(const size_t haloId, const int msgtag, int remoteMpiRank) {
 
         if(localHaloIndices[haloId].size() == 0)
-            return (new MPI_Request());
+            return nullptr;
 
         if(!setupMpiSend[haloId]) {
 
@@ -229,7 +229,7 @@ public:
     MPI_Request *recv(const size_t haloId, const int msgtag, int remoteMpiRank, bool blocking) {
 
         if(remoteHaloIndices[haloId].size() == 0)
-            return (new MPI_Request());
+            return nullptr;
 
         if(!setupMpiRecv[haloId]) {
 
