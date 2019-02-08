@@ -3,6 +3,7 @@
 
 #include <mpi.h>
 #include <vector>
+#include <array>
 #include "tauschdefs.h"
 #include <thread>
 
