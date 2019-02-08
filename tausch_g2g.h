@@ -2,7 +2,6 @@
 #define TAUSCH_G2G_H
 
 #include <vector>
-#include <array>
 #include "tauschdefs.h"
 
 #define __CL_ENABLE_EXCEPTIONS

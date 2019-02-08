@@ -4,6 +4,7 @@
 #include <mpi.h>
 #include <vector>
 #include <array>
+#include <cstring>
 #include "tauschdefs.h"
 
 template <class buf_t>
