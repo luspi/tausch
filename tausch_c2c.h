@@ -24,6 +24,10 @@ public:
             free(mpiSendBuffer[i]);
         for(size_t i = 0; i < mpiRecvBuffer.size(); ++i)
             free(mpiRecvBuffer[i]);
+        for(size_t i = 0; i < mpiSendRequests.size(); ++i)
+            delete mpiSendRequests[i];
+        for(size_t i = 0; i < mpiRecvRequests.size(); ++i)
+            delete mpiRecvRequests[i];
 
     }
 
