@@ -55,7 +55,7 @@ public:
         return tausch_cwc->addLocalHaloInfo(std::vector<int>(haloIndices.begin(), haloIndices.end()), numBuffers, remoteMpiRank);
     }
 
-    int addLocalHaloInfo(std::vector<std::array<int, 3> > haloIndices, const size_t numBuffers, const int remoteMpiRank) {
+    int addLocalHaloInfo(std::vector<std::array<int, 3> > haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1) {
         return tausch_cwc->addLocalHaloInfo(haloIndices, numBuffers, remoteMpiRank);
     }
 
