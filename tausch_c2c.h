@@ -32,7 +32,7 @@ public:
 
     }
 
-    int addLocalHaloInfo(const TauschHaloRegion region, const size_t numBuffer, const int remoteMpiRank) {
+    inline int addLocalHaloInfo(const TauschHaloRegion region, const size_t numBuffer, const int remoteMpiRank) {
 
         std::vector<std::array<int, 3> > haloIndices;
 
@@ -68,13 +68,13 @@ public:
 
     }
 
-    int addLocalHaloInfo(std::vector<int> haloIndices, const size_t numBuffers, const int remoteMpiRank) {
+    inline int addLocalHaloInfo(std::vector<int> haloIndices, const size_t numBuffers, const int remoteMpiRank) {
 
         return addLocalHaloInfo(extractHaloIndicesWithStride(haloIndices), numBuffers, remoteMpiRank);
 
     }
 
-    int addLocalHaloInfo(const std::vector<std::array<int, 3> > haloIndices, const size_t numBuffers, const int remoteMpiRank) {
+    inline int addLocalHaloInfo(std::vector<std::array<int, 3> > haloIndices, const size_t numBuffers, const int remoteMpiRank) {
 
         localHaloIndices.push_back(haloIndices);
         localHaloRemoteMpiRank.push_back(remoteMpiRank);
@@ -101,7 +101,7 @@ public:
 
     }
 
-    int addRemoteHaloInfo(const TauschHaloRegion region, const size_t numBuffer, const int remoteMpiRank) {
+    inline int addRemoteHaloInfo(const TauschHaloRegion region, const size_t numBuffer, const int remoteMpiRank) const {
 
         std::vector<std::array<int, 3> > haloIndices;
 
@@ -137,13 +137,13 @@ public:
 
     }
 
-    int addRemoteHaloInfo(std::vector<int> haloIndices, const size_t numBuffers, const int remoteMpiRank) {
+    inline int addRemoteHaloInfo(std::vector<int> haloIndices, const size_t numBuffers, const int remoteMpiRank) {
 
         return addRemoteHaloInfo(extractHaloIndicesWithStride(haloIndices), numBuffers, remoteMpiRank);
 
     }
 
-    int addRemoteHaloInfo(const std::vector<std::array<int, 3> > haloIndices, const size_t numBuffers, const int remoteMpiRank) {
+    inline int addRemoteHaloInfo(std::vector<std::array<int, 3> > haloIndices, const size_t numBuffers, const int remoteMpiRank) {
 
         remoteHaloIndices.push_back(haloIndices);
         remoteHaloRemoteMpiRank.push_back(remoteMpiRank);
@@ -169,7 +169,7 @@ public:
 
     }
 
-    void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf) {
+    inline void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf) const {
 
         const size_t haloSize = localHaloIndicesSize[haloId];
 
@@ -195,7 +195,7 @@ public:
 
     }
 
-    void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf, const std::vector<size_t> overwriteHaloSendIndices, const std::vector<size_t> overwriteHaloSourceIndices) {
+    inline void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf, std::vector<size_t> overwriteHaloSendIndices, std::vector<size_t> overwriteHaloSourceIndices) const {
 
         size_t haloSize = localHaloIndicesSize[haloId];
 
@@ -204,7 +204,7 @@ public:
 
     }
 
-    MPI_Request *send(const size_t haloId, const int msgtag, int remoteMpiRank) {
+    inline MPI_Request *send(size_t haloId, const int msgtag, int remoteMpiRank) {
 
         if(localHaloIndices[haloId].size() == 0)
             return nullptr;
@@ -228,7 +228,7 @@ public:
 
     }
 
-    MPI_Request *recv(const size_t haloId, const int msgtag, int remoteMpiRank, bool blocking) {
+    inline MPI_Request *recv(size_t haloId, const int msgtag, int remoteMpiRank, const bool blocking) {
 
         if(remoteHaloIndices[haloId].size() == 0)
             return nullptr;
@@ -253,7 +253,7 @@ public:
 
     }
 
-    void unpackRecvBuffer(const size_t haloId, const size_t bufferId, buf_t *buf) {
+    inline void unpackRecvBuffer(const size_t haloId, const size_t bufferId, buf_t *buf) const {
 
         size_t haloSize = remoteHaloIndicesSize[haloId];
 
@@ -279,7 +279,7 @@ public:
 
     }
 
-    void unpackRecvBuffer(const size_t haloId, const size_t bufferId, buf_t *buf, const std::vector<size_t> overwriteHaloRecvIndices, const std::vector<size_t> overwriteHaloTargetIndices) {
+    inline void unpackRecvBuffer(const size_t haloId, const size_t bufferId, buf_t *buf, std::vector<size_t> overwriteHaloRecvIndices, std::vector<size_t> overwriteHaloTargetIndices) const {
 
         size_t haloSize = remoteHaloIndicesSize[haloId];
 
@@ -288,17 +288,17 @@ public:
 
     }
 
-    void packAndSend(const size_t haloId, buf_t *buf, const int msgtag, int remoteMpiRank) {
+    inline void packAndSend(const size_t haloId, const buf_t *buf, const int msgtag, const int remoteMpiRank) const {
         packSendBuffer(haloId, 0, buf);
         send(haloId, msgtag, remoteMpiRank);
     }
 
-    void recvAndUnpack(const size_t haloId, buf_t *buf, const int msgtag, int remoteMpiRank) {
+    inline void recvAndUnpack(const size_t haloId, buf_t *buf, const int msgtag, const int remoteMpiRank) const {
         recv(haloId, msgtag, remoteMpiRank);
         unpackRecvBuffer(haloId, 0, buf);
     }
 
-    std::vector<std::array<int, 3> > extractHaloIndicesWithStride(std::vector<int> indices) {
+    inline std::vector<std::array<int, 3> > extractHaloIndicesWithStride(std::vector<int> indices) const {
 
         std::vector<std::array<int, 3> > ret;
 
@@ -364,28 +364,28 @@ public:
 
     }
 
-    size_t getNumLocalHalo() {
+    inline size_t getNumLocalHalo() const {
         return mpiSendBuffer.size();
     }
-    size_t getNumRemoteHalo() {
+    inline size_t getNumRemoteHalo() const {
         return mpiRecvBuffer.size();
     }
-    size_t getSizeLocalHalo(size_t haloId) {
+    inline size_t getSizeLocalHalo(const size_t haloId) const {
         return localHaloIndices[haloId].size();
     }
-    size_t getSizeRemoteHalo(size_t haloId) {
+    inline size_t getSizeRemoteHalo(const size_t haloId) const {
         return remoteHaloIndices[haloId].size();
     }
-    size_t getNumBuffersLocal(size_t haloId) {
+    inline size_t getNumBuffersLocal(const size_t haloId) const {
         return localHaloNumBuffers[haloId];
     }
-    size_t getNumBuffersRemote(size_t haloId) {
+    inline size_t getNumBuffersRemote(const size_t haloId) const {
         return remoteHaloNumBuffers[haloId];
     }
-    buf_t *getSendBuffer(size_t haloId) {
+    inline buf_t *getSendBuffer(const size_t haloId) const {
         return mpiSendBuffer[haloId];
     }
-    buf_t *getRecvBuffer(size_t haloId) {
+    inline buf_t *getRecvBuffer(const size_t haloId) const {
         return mpiRecvBuffer[haloId];
     }
 
