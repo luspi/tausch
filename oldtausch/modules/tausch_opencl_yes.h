@@ -1,1 +1,0 @@
-#define TAUSCH_OPENCL
