@@ -1,8 +1,6 @@
 #ifndef TAUSCH_H
 #define TAUSCH_H
 
-//#define TAUSCH_CUDA
-
 #include <mpi.h>
 #include <vector>
 
@@ -633,7 +631,9 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             localHaloRemoteMpiRankCUDA.push_back(remoteMpiRank);
 
             buf_t *recvBuffer_d;
-            cudaMalloc(&recvBuffer_d, sizeof(buf_t));
+            cudaError_t err = cudaMalloc(&recvBuffer_d, sizeof(buf_t));
+            if(err != cudaSuccess)
+                std::cout << "Tausch::addLocalHaloInfoCUDA(): CUDA error detected: " << err << std::endl;
             sendBufferCUDA_d.push_back(recvBuffer_d);
             sendBufferCUDA_h.push_back(new buf_t[1]{});
 
@@ -656,7 +656,9 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             localHaloRemoteMpiRankCUDA.push_back(remoteMpiRank);
 
             buf_t *sendBuffer_d;
-            cudaMalloc(&sendBuffer_d, numBuffers*bufsize*sizeof(buf_t));
+            cudaError_t err = cudaMalloc(&sendBuffer_d, numBuffers*bufsize*sizeof(buf_t));
+            if(err != cudaSuccess)
+                std::cout << "Tausch::addLocalHaloInfoCUDA(): CUDA error detected: " << err << std::endl;
             sendBufferCUDA_d.push_back(sendBuffer_d);
             sendBufferCUDA_h.push_back(new buf_t[numBuffers*bufsize]{});
 
@@ -694,7 +696,9 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             remoteHaloRemoteMpiRankCUDA.push_back(remoteMpiRank);
 
             buf_t *recvBuffer_d;
-            cudaMalloc(&recvBuffer_d, sizeof(buf_t));
+            cudaError_t err = cudaMalloc(&recvBuffer_d, sizeof(buf_t));
+            if(err != cudaSuccess)
+                std::cout << "Tausch::addRemoteHaloInfoCUDA(): CUDA error detected: " << err << std::endl;
             recvBufferCUDA_d.push_back(recvBuffer_d);
             recvBufferCUDA_h.push_back(new buf_t[1]{});
 
@@ -717,7 +721,9 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             remoteHaloRemoteMpiRankCUDA.push_back(remoteMpiRank);
 
             buf_t *recvBuffer_d;
-            cudaMalloc(&recvBuffer_d, numBuffers*bufsize*sizeof(buf_t));
+            cudaError_t err = cudaMalloc(&recvBuffer_d, numBuffers*bufsize*sizeof(buf_t));
+            if(err != cudaSuccess)
+                std::cout << "Tausch::addRemoteHaloInfoCUDA(): CUDA error detected: " << err << std::endl;
             recvBufferCUDA_d.push_back(recvBuffer_d);
             recvBufferCUDA_h.push_back(new buf_t[numBuffers*bufsize]{});
 
@@ -744,9 +750,12 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             const int val_howmany = vals[1];
             const int val_stride = vals[2];
 
-            cudaMemcpy2D(&sendBufferCUDA_h[haloId][bufferId*haloSize + mpiSendBufferIndex], sizeof(buf_t),
-                         &buf_d[val_start], val_stride*sizeof(buf_t),
-                         sizeof(buf_t), val_howmany, cudaMemcpyDeviceToHost);
+            cudaError_t err = cudaMemcpy2D(&sendBufferCUDA_h[haloId][bufferId*haloSize + mpiSendBufferIndex], sizeof(buf_t),
+                                           &buf_d[val_start], val_stride*sizeof(buf_t),
+                                           sizeof(buf_t), val_howmany, cudaMemcpyDeviceToHost);
+            if(err != cudaSuccess)
+                std::cout << "Tausch::packSendBufferCUDA(): CUDA error detected: " << err << std::endl;
+
             mpiSendBufferIndex += val_howmany;
 
         }
@@ -814,9 +823,12 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             const int val_howmany = vals[1];
             const int val_stride = vals[2];
 
-            cudaMemcpy2D(&buf_d[val_start], val_stride*sizeof(buf_t),
-                         &recvBufferCUDA_h[haloId][bufferId*haloSize + mpiRecvBufferIndex], sizeof(buf_t),
-                         sizeof(buf_t), val_howmany, cudaMemcpyHostToDevice);
+            cudaError_t err = cudaMemcpy2D(&buf_d[val_start], val_stride*sizeof(buf_t),
+                                           &recvBufferCUDA_h[haloId][bufferId*haloSize + mpiRecvBufferIndex], sizeof(buf_t),
+                                           sizeof(buf_t), val_howmany, cudaMemcpyHostToDevice);
+            if(err != cudaSuccess)
+                std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << err << std::endl;
+
             mpiRecvBufferIndex += val_howmany;
 
         }
