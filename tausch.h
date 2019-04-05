@@ -323,24 +323,27 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
 #ifdef TAUSCH_OPENCL
 
-    inline int addLocalHaloInfoOCL(std::vector<std::array<int, 3> > haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1) {
-        std::vector<int> indices;
-        for(auto tuple : haloIndices) {
-            for(int i = 0; i < tuple[1]; ++i)
-                indices.push_back(tuple[0]+i*tuple[2]);
-        }
-        return addLocalHaloInfoOCL(indices, numBuffers, remoteMpiRank);
+    inline int addLocalHaloInfoOCL(std::vector<int> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1) {
+        return addLocalHaloInfoOCL(extractHaloIndicesWithStride(haloIndices),
+                                   numBuffers, remoteMpiRank);
     }
 
     inline int addLocalHaloInfoOCL(std::vector<size_t> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1) {
-        return addLocalHaloInfoOCL(std::vector<int>(haloIndices.begin(), haloIndices.end()), numBuffers, remoteMpiRank);
+        return addLocalHaloInfoOCL(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end())),
+                                   numBuffers, remoteMpiRank);
     }
 
-    inline int addLocalHaloInfoOCL(std::vector<int> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1) {
+    inline int addLocalHaloInfoOCL(std::vector<std::array<int, 3> > haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1) {
+
+        std::vector<int> consecutiveHaloIndices;
+        for(auto tuple : haloIndices) {
+            for(int i = 0; i < tuple[1]; ++i)
+                consecutiveHaloIndices.push_back(tuple[0]+i*tuple[2]);
+        }
 
         try {
 
-            if(haloIndices.size() == 0) {
+            if(consecutiveHaloIndices.size() == 0) {
 
                 cl::Buffer clHaloIndices(context, CL_MEM_READ_WRITE, sizeof(buf_t));
                 localHaloIndicesOCL_d.push_back(clHaloIndices);
@@ -362,19 +365,19 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
             } else {
 
-                cl::Buffer clHaloIndices(context, haloIndices.begin(), haloIndices.end(), true);
+                cl::Buffer clHaloIndices(context, consecutiveHaloIndices.begin(), consecutiveHaloIndices.end(), true);
                 localHaloIndicesOCL_d.push_back(clHaloIndices);
                 localHaloIndicesOCL_h.push_back(haloIndices);
 
-                localHaloIndicesSizeOCL.push_back(haloIndices.size());
+                localHaloIndicesSizeOCL.push_back(consecutiveHaloIndices.size());
 
                 localHaloNumBuffersOCL.push_back(numBuffers);
 
                 localHaloRemoteMpiRankOCL.push_back(remoteMpiRank);
 
-                cl::Buffer clSendBuffer(context, CL_MEM_READ_WRITE, numBuffers*haloIndices.size()*sizeof(buf_t));
+                cl::Buffer clSendBuffer(context, CL_MEM_READ_WRITE, numBuffers*consecutiveHaloIndices.size()*sizeof(buf_t));
                 sendBufferOCL_d.push_back(clSendBuffer);
-                sendBufferOCL_h.push_back(new buf_t[numBuffers*haloIndices.size()]{});
+                sendBufferOCL_h.push_back(new buf_t[numBuffers*consecutiveHaloIndices.size()]{});
 
                 mpiSendRequestsOCL.push_back(new MPI_Request());
 
@@ -390,30 +393,33 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     }
 
-    inline int addRemoteHaloInfoOCL(std::vector<std::array<int, 3> > haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1) {
-        std::vector<int> indices;
-        for(auto tuple : haloIndices) {
-            for(int i = 0; i < tuple[1]; ++i)
-                indices.push_back(tuple[0]+i*tuple[2]);
-        }
-        return addRemoteHaloInfoOCL(indices, numBuffers, remoteMpiRank);
+    inline int addRemoteHaloInfoOCL(std::vector<int> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1) {
+        return addRemoteHaloInfoOCL(extractHaloIndicesWithStride(haloIndices),
+                                    numBuffers, remoteMpiRank);
     }
 
     inline int addRemoteHaloInfoOCL(std::vector<size_t> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1) {
-        return addRemoteHaloInfoOCL(std::vector<int>(haloIndices.begin(), haloIndices.end()), numBuffers, remoteMpiRank);
+        return addRemoteHaloInfoOCL(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end())),
+                                    numBuffers, remoteMpiRank);
     }
 
-    inline int addRemoteHaloInfoOCL(std::vector<int> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1) {
+    inline int addRemoteHaloInfoOCL(std::vector<std::array<int, 3> > haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1) {
+
+        std::vector<int> consecutiveHaloIndices;
+        for(auto tuple : haloIndices) {
+            for(int i = 0; i < tuple[1]; ++i)
+                consecutiveHaloIndices.push_back(tuple[0]+i*tuple[2]);
+        }
 
         try {
 
-            if(haloIndices.size() == 0) {
+            if(consecutiveHaloIndices.size() == 0) {
 
                 cl::Buffer clHaloIndices(context, CL_MEM_READ_WRITE, sizeof(buf_t));
                 remoteHaloIndicesOCL_d.push_back(clHaloIndices);
                 remoteHaloIndicesOCL_h.push_back({});
 
-                remoteHaloIndicesSizeOCL.push_back(haloIndices.size());
+                remoteHaloIndicesSizeOCL.push_back(consecutiveHaloIndices.size());
 
                 remoteHaloNumBuffersOCL.push_back(numBuffers);
 
@@ -429,17 +435,17 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
             } else {
 
-                cl::Buffer clHaloIndices(context, haloIndices.begin(), haloIndices.end(), true);
+                cl::Buffer clHaloIndices(context, consecutiveHaloIndices.begin(), consecutiveHaloIndices.end(), true);
                 remoteHaloIndicesOCL_d.push_back(clHaloIndices);
                 remoteHaloIndicesOCL_h.push_back(haloIndices);
 
-                remoteHaloIndicesSizeOCL.push_back(haloIndices.size());
+                remoteHaloIndicesSizeOCL.push_back(consecutiveHaloIndices.size());
 
                 remoteHaloNumBuffersOCL.push_back(numBuffers);
 
-                cl::Buffer clRecvBuffer(context, CL_MEM_READ_WRITE, numBuffers*haloIndices.size()*sizeof(buf_t));
+                cl::Buffer clRecvBuffer(context, CL_MEM_READ_WRITE, numBuffers*consecutiveHaloIndices.size()*sizeof(buf_t));
                 recvBufferOCL_d.push_back(clRecvBuffer);
-                recvBufferOCL_h.push_back(new buf_t[numBuffers*haloIndices.size()]{});
+                recvBufferOCL_h.push_back(new buf_t[numBuffers*consecutiveHaloIndices.size()]{});
 
                 mpiRecvRequestsOCL.push_back(new MPI_Request());
 
@@ -458,14 +464,53 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
     void packSendBufferOCL(const int haloId, int bufferId, cl::Buffer buf) {
 
         try {
-            auto kernel_pack = cl::make_kernel
-                                    <const cl::Buffer &, cl::Buffer &, const cl::Buffer &, const int &, const int &>
-                                    (programs, "pack");
 
-            int globalsize = (localHaloIndicesSizeOCL[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
+            const size_t haloSize = localHaloIndicesSizeOCL[haloId];
 
-            kernel_pack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
-                          buf, sendBufferOCL_d[haloId], localHaloIndicesOCL_d[haloId], localHaloIndicesSizeOCL[haloId], bufferId);
+            size_t mpiSendBufferIndex = 0;
+            for(size_t iRegion = 0; iRegion < localHaloIndicesOCL_h[haloId].size(); ++iRegion) {
+                const std::array<int, 3> vals = localHaloIndicesOCL_h[haloId][iRegion];
+
+                const int val_start = vals[0];
+                const int val_howmany = vals[1];
+                const int val_stride = vals[2];
+
+                cl::size_t<3> buffer_offset;
+                buffer_offset[0] = val_start*sizeof(buf_t); buffer_offset[1] = 0; buffer_offset[2] = 0;
+                cl::size_t<3> host_offset;
+                host_offset[0] = (bufferId*haloSize + mpiSendBufferIndex)*sizeof(buf_t); host_offset[1] = 0; host_offset[2] = 0;
+
+                cl::size_t<3> region;
+                region[0] = sizeof(buf_t); region[1] = val_howmany; region[2] = 1;
+
+                queue.enqueueReadBufferRect(buf,
+                                            CL_TRUE,
+                                            buffer_offset,
+                                            host_offset,
+                                            region,
+                                            val_stride*sizeof(buf_t),
+                                            0,
+                                            sizeof(buf_t),
+                                            0,
+                                            sendBufferOCL_h[haloId]);
+
+                mpiSendBufferIndex += val_howmany;
+
+            }
+
+            // This code packs using a kernel
+
+//            auto kernel_pack = cl::make_kernel
+//                                    <const cl::Buffer &, cl::Buffer &, const cl::Buffer &, const int &, const int &>
+//                                    (programs, "pack");
+
+//            int globalsize = (localHaloIndicesSizeOCL[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
+
+//            kernel_pack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
+//                          buf, sendBufferOCL_d[haloId], localHaloIndicesOCL_d[haloId], localHaloIndicesSizeOCL[haloId], bufferId);
+
+//            cl::copy(queue, sendBufferOCL_d[haloId], &sendBufferOCL_h[haloId][0],
+//                    &sendBufferOCL_h[haloId][localHaloNumBuffersOCL[haloId]*localHaloIndicesSizeOCL[haloId]]);
 
         } catch(cl::Error &e) {
             std::cerr << "Tausch::packSendBufferOCL(): OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
@@ -513,13 +558,6 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
         } else
             MPI_Wait(mpiSendRequestsOCL[haloId], MPI_STATUS_IGNORE);
 
-        try {
-            cl::copy(queue, sendBufferOCL_d[haloId], &sendBufferOCL_h[haloId][0],
-                    &sendBufferOCL_h[haloId][localHaloNumBuffersOCL[haloId]*localHaloIndicesSizeOCL[haloId]]);
-        } catch(cl::Error &e) {
-            std::cerr << "Tausch::sendOCL(): OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
-        }
-
         MPI_Start(mpiSendRequestsOCL[haloId]);
 
         return mpiSendRequestsOCL[haloId];
@@ -546,26 +584,58 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
         MPI_Start(mpiRecvRequestsOCL[haloId]);
         MPI_Wait(mpiRecvRequestsOCL[haloId], MPI_STATUS_IGNORE);
 
-        try {
-            cl::copy(queue, &recvBufferOCL_h[haloId][0],
-                     &recvBufferOCL_h[haloId][remoteHaloNumBuffersOCL[haloId]*remoteHaloIndicesSizeOCL[haloId]], recvBufferOCL_d[haloId]);
-        } catch(cl::Error &e) {
-            std::cerr << "Tausch::recvOCL(): OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
-        }
-
     }
 
     void unpackRecvBufferOCL(const int haloId, const int bufferId, cl::Buffer buf) {
 
         try {
-            auto kernel_unpack = cl::make_kernel
-                                    <const cl::Buffer &, cl::Buffer &, const cl::Buffer &, const int &, const int &>
-                                    (programs, "unpack");
 
-            int globalsize = (remoteHaloIndicesSizeOCL[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
+            const size_t haloSize = remoteHaloIndicesSizeOCL[haloId];
 
-            kernel_unpack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
-                          recvBufferOCL_d[haloId], buf, remoteHaloIndicesOCL_d[haloId], remoteHaloIndicesSizeOCL[haloId], bufferId);
+            size_t mpiRecvBufferIndex = 0;
+            for(size_t iRegion = 0; iRegion < remoteHaloIndicesOCL_h[haloId].size(); ++iRegion) {
+                const std::array<int, 3> vals = remoteHaloIndicesOCL_h[haloId][iRegion];
+
+                const int val_start = vals[0];
+                const int val_howmany = vals[1];
+                const int val_stride = vals[2];
+
+                cl::size_t<3> buffer_offset;
+                buffer_offset[0] = val_start*sizeof(buf_t); buffer_offset[1] = 0; buffer_offset[2] = 0;
+                cl::size_t<3> host_offset;
+                host_offset[0] = (bufferId*haloSize + mpiRecvBufferIndex)*sizeof(buf_t); host_offset[1] = 0; host_offset[2] = 0;
+
+                cl::size_t<3> region;
+                region[0] = sizeof(buf_t); region[1] = val_howmany; region[2] = 1;
+
+                queue.enqueueWriteBufferRect(buf,
+                                             CL_TRUE,
+                                             buffer_offset,
+                                             host_offset,
+                                             region,
+                                             val_stride*sizeof(buf_t),
+                                             0,
+                                             sizeof(buf_t),
+                                             0,
+                                             recvBufferOCL_h[haloId]);
+
+                mpiRecvBufferIndex += val_howmany;
+
+            }
+
+            // This code unpacks using a kernel
+
+//            cl::copy(queue, &recvBufferOCL_h[haloId][0],
+//                     &recvBufferOCL_h[haloId][remoteHaloNumBuffersOCL[haloId]*remoteHaloIndicesSizeOCL[haloId]], recvBufferOCL_d[haloId]);
+
+//            auto kernel_unpack = cl::make_kernel
+//                                    <const cl::Buffer &, cl::Buffer &, const cl::Buffer &, const int &, const int &>
+//                                    (programs, "unpack");
+
+//            int globalsize = (remoteHaloIndicesSizeOCL[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
+
+//            kernel_unpack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
+//                          recvBufferOCL_d[haloId], buf, remoteHaloIndicesOCL_d[haloId], remoteHaloIndicesSizeOCL[haloId], bufferId);
 
         } catch(cl::Error &e) {
             std::cerr << "Tausch::unpackRecvBufferOCL() :: OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
@@ -938,13 +1008,13 @@ private:
     int clKernelLocalSize;
     std::string cName4BufT;
 
-    std::vector<std::vector<int> > localHaloIndicesOCL_h;
-    std::vector<std::vector<int> > remoteHaloIndicesOCL_h;
+    std::vector<std::vector<std::array<int, 3> > > localHaloIndicesOCL_h;
+    std::vector<std::vector<std::array<int, 3> > > remoteHaloIndicesOCL_h;
     std::vector<cl::Buffer> localHaloIndicesOCL_d;
     std::vector<cl::Buffer> remoteHaloIndicesOCL_d;
 
-    std::vector<int> remoteHaloIndicesSizeOCL;
     std::vector<int> localHaloIndicesSizeOCL;
+    std::vector<int> remoteHaloIndicesSizeOCL;
 
     std::vector<int> localHaloRemoteMpiRankOCL;
     std::vector<int> remoteHaloRemoteMpiRankOCL;
@@ -964,6 +1034,8 @@ private:
     std::vector<bool> setupMpiRecvOCL;
 
 #endif
+
+#ifdef TAUSCH_CUDA
 
     std::vector<std::vector<std::array<int, 3> > > localHaloIndicesCUDA_h;
     std::vector<std::vector<std::array<int, 3> > > remoteHaloIndicesCUDA_h;
@@ -987,7 +1059,7 @@ private:
 
     std::vector<bool> setupMpiSendCUDA;
     std::vector<bool> setupMpiRecvCUDA;
-
+#endif
 
 };
 
