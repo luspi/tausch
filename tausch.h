@@ -212,6 +212,13 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             if(remoteMpiRank == -1)
                 remoteMpiRank = localHaloRemoteMpiRank[haloId];
 
+            // if we stay on the same rank, we don't need to use MPI
+            int myRank;
+            MPI_Comm_rank(TAUSCH_COMM, &myRank);
+            if(remoteMpiRank == myRank) {
+                msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
+                return nullptr;
+            }
 
             setupMpiSend[haloId] = true;
 
@@ -237,18 +244,38 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             if(remoteMpiRank == -1)
                 remoteMpiRank = remoteHaloRemoteMpiRank[haloId];
 
-            setupMpiRecv[haloId] = true;
+            // if we stay on the same rank, we don't need to use MPI
+            int myRank;
+            MPI_Comm_rank(TAUSCH_COMM, &myRank);
 
-            MPI_Recv_init(&recvBuffer[haloId][0], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId], mpiDataType,
-                          remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequests[haloId]);
+            if(remoteMpiRank == myRank) {
+
+                const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
+
+                memcpy(recvBuffer[haloId], sendBuffer[remoteHaloId], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId]*sizeof(buf_t));
+
+            } else {
+
+                setupMpiRecv[haloId] = true;
+
+                MPI_Recv_init(&recvBuffer[haloId][0], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId], mpiDataType,
+                              remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequests[haloId]);
+            }
 
         }
 
-        MPI_Start(mpiRecvRequests[haloId]);
-        if(blocking)
-            MPI_Wait(mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
+        // this will remain false if we remained on the same mpi rank
+        if(setupMpiRecv[haloId]) {
 
-        return mpiRecvRequests[haloId];
+            MPI_Start(mpiRecvRequests[haloId]);
+            if(blocking)
+                MPI_Wait(mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
+
+            return mpiRecvRequests[haloId];
+
+        } else
+
+            return nullptr;
 
     }
 
@@ -486,6 +513,14 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             if(remoteMpiRank == -1)
                 remoteMpiRank = localHaloRemoteMpiRank[haloId];
 
+            // if we stay on the same rank, we don't need to use MPI
+            int myRank;
+            MPI_Comm_rank(TAUSCH_COMM, &myRank);
+            if(remoteMpiRank == myRank) {
+                msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
+                return nullptr;
+            }
+
             setupMpiSend[haloId] = true;
 
             MPI_Send_init(&sendBuffer[haloId][0], localHaloNumBuffers[haloId]*localHaloIndicesSize[haloId],
@@ -510,15 +545,34 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             if(remoteMpiRank == -1)
                 remoteMpiRank = remoteHaloRemoteMpiRank[haloId];
 
-            setupMpiRecv[haloId] = true;
+            // if we stay on the same rank, we don't need to use MPI
+            int myRank;
+            MPI_Comm_rank(TAUSCH_COMM, &myRank);
 
-            MPI_Recv_init(&recvBuffer[haloId][0], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId], mpiDataType,
-                          remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequests[haloId]);
+            if(remoteMpiRank == myRank) {
+
+                const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
+
+                memcpy(recvBuffer[haloId], sendBuffer[remoteHaloId], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId]*sizeof(buf_t));
+
+            } else {
+
+                setupMpiRecv[haloId] = true;
+
+                MPI_Recv_init(&recvBuffer[haloId][0], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId], mpiDataType,
+                              remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequests[haloId]);
+
+            }
 
         }
 
-        MPI_Start(mpiRecvRequests[haloId]);
-        MPI_Wait(mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
+        // this will remain false if we remained on the same mpi rank
+        if(setupMpiRecv[haloId]) {
+
+            MPI_Start(mpiRecvRequests[haloId]);
+            MPI_Wait(mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
+
+        }
 
     }
 
@@ -729,10 +783,18 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         if(!setupMpiSend[haloId]) {
 
-            setupMpiSend[haloId] = true;
-
             if(remoteMpiRank == -1)
                 remoteMpiRank = localHaloRemoteMpiRank[haloId];
+
+            // if we stay on the same rank, we don't need to use MPI
+            int myRank;
+            MPI_Comm_rank(TAUSCH_COMM, &myRank);
+            if(remoteMpiRank == myRank) {
+                msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
+                return nullptr;
+            }
+
+            setupMpiSend[haloId] = true;
 
             MPI_Send_init(&sendBuffer[haloId][0], localHaloNumBuffers[haloId]*localHaloIndicesSize[haloId], mpiDataType,
                           remoteMpiRank, msgtag, TAUSCH_COMM, mpiSendRequests[haloId]);
@@ -753,21 +815,41 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         if(!setupMpiRecv[haloId]) {
 
-            setupMpiRecv[haloId] = true;
-
             if(remoteMpiRank == -1)
                 remoteMpiRank = remoteHaloRemoteMpiRank[haloId];
 
-            MPI_Recv_init(&recvBuffer[haloId][0], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId], mpiDataType,
-                          remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequests[haloId]);
+            // if we stay on the same rank, we don't need to use MPI
+            int myRank;
+            MPI_Comm_rank(TAUSCH_COMM, &myRank);
+
+            if(remoteMpiRank == myRank) {
+
+                const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
+
+                memcpy(recvBuffer[haloId], sendBuffer[remoteHaloId], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId]*sizeof(buf_t));
+
+            } else {
+
+                setupMpiRecv[haloId] = true;
+
+                MPI_Recv_init(&recvBuffer[haloId][0], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId], mpiDataType,
+                              remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequests[haloId]);
+
+            }
 
         }
 
-        MPI_Start(mpiRecvRequests[haloId]);
-        if(blocking)
-            MPI_Wait(mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
+        // this will remain false if we remained on the same mpi rank
+        if(setupMpiRecv[haloId]) {
 
-        return mpiRecvRequests[haloId];
+            MPI_Start(mpiRecvRequests[haloId]);
+            if(blocking)
+                MPI_Wait(mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
+
+            return mpiRecvRequests[haloId];
+
+        } else
+            return nullptr;
 
     }
 
@@ -888,6 +970,10 @@ private:
 
     std::vector<bool> setupMpiSend;
     std::vector<bool> setupMpiRecv;
+
+
+    // this is used for exchanges on same mpi rank
+    std::map<int, int> msgtagToHaloId;
 
 #ifdef TAUSCH_OPENCL
 
