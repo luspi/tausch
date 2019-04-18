@@ -43,47 +43,25 @@ public:
 
         oclstr += R"d(
 
-kernel void pack(global const buf_t * restrict inBuf, global buf_t * restrict outBuf,
-                 global const int * restrict inIndices, const int numIndices, const int bufferId) {
-
-    int gid = get_global_id(0);
-
-    if(gid < numIndices)
-        outBuf[bufferId*numIndices + gid] = inBuf[inIndices[gid]];
-
-}
-
 kernel void packSubRegion(global const buf_t * restrict inBuf, global buf_t * restrict outBuf,
-                          global const int * restrict inIndices, global const int * restrict outIndices,
-                          const int numIndices, const int bufferId) {
+                          global const int * restrict inIndices, const int numIndices,
+                          const int bufferOffset) {
 
     int gid = get_global_id(0);
 
     if(gid < numIndices)
-        outBuf[bufferId*numIndices + outIndices[gid]] = inBuf[inIndices[gid]];
-
-}
-
-kernel void unpack(global const buf_t * restrict const inBuf,
-                   global buf_t * restrict const outBuf,
-                   global const int * restrict const outIndices,
-                   const int numIndices, const int bufferId) {
-
-    int gid = get_global_id(0);
-
-    if(gid < numIndices)
-        outBuf[outIndices[gid]] = inBuf[bufferId*numIndices + gid];
+        outBuf[gid] = inBuf[bufferOffset + inIndices[gid]];
 
 }
 
 kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * restrict outBuf,
-                            global const int * restrict inIndices, global const int * restrict outIndices,
-                            const int numIndices, const int bufferId) {
+                            global const int * restrict outIndices, const int numIndices,
+                            const int bufferOffset) {
 
     int gid = get_global_id(0);
 
     if(gid < numIndices)
-      outBuf[outIndices[gid]] = inBuf[bufferId*numIndices + inIndices[gid]];
+      outBuf[bufferOffset + outIndices[gid]] = inBuf[gid];
 
 }
                              )d";
@@ -127,28 +105,28 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     inline int addLocalHaloInfo(std::vector<std::array<int, 3> > haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1) {
 
-        localHaloIndicesCPU.push_back(haloIndices);
-        localHaloRemoteMpiRankCPU.push_back(remoteMpiRank);
-        localHaloNumBuffersCPU.push_back(numBuffers);
+        localHaloIndices.push_back(haloIndices);
+        localHaloRemoteMpiRank.push_back(remoteMpiRank);
+        localHaloNumBuffers.push_back(numBuffers);
 
         size_t bufsize = 0;
         for(size_t i = 0; i < haloIndices.size(); ++i)
             bufsize += static_cast<size_t>(haloIndices.at(i)[1]);
 
-        localHaloIndicesSizeCPU.push_back(bufsize);
+        localHaloIndicesSize.push_back(bufsize);
 
         void *newbuf = NULL;
         posix_memalign(&newbuf, 64, numBuffers*bufsize*sizeof(buf_t));
         buf_t *newbuf_buft = reinterpret_cast<buf_t*>(newbuf);
         double zero = 0;
         std::fill_n(newbuf_buft, numBuffers*bufsize, zero);
-        sendBufferCPU.push_back(newbuf_buft);
+        sendBuffer.push_back(newbuf_buft);
 
-        mpiSendRequestsCPU.push_back(new MPI_Request());
+        mpiSendRequests.push_back(new MPI_Request());
 
-        setupMpiSendCPU.push_back(false);
+        setupMpiSend.push_back(false);
 
-        return sendBufferCPU.size()-1;
+        return sendBuffer.size()-1;
 
     }
 
@@ -164,49 +142,49 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     inline int addRemoteHaloInfo(std::vector<std::array<int, 3> > haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1) {
 
-        remoteHaloIndicesCPU.push_back(haloIndices);
-        remoteHaloRemoteMpiRankCPU.push_back(remoteMpiRank);
-        remoteHaloNumBuffersCPU.push_back(numBuffers);
+        remoteHaloIndices.push_back(haloIndices);
+        remoteHaloRemoteMpiRank.push_back(remoteMpiRank);
+        remoteHaloNumBuffers.push_back(numBuffers);
 
         size_t bufsize = 0;
         for(size_t i = 0; i < haloIndices.size(); ++i)
             bufsize += static_cast<size_t>(haloIndices.at(i)[1]);
-        remoteHaloIndicesSizeCPU.push_back(bufsize);
+        remoteHaloIndicesSize.push_back(bufsize);
 
         void *newbuf = NULL;
         posix_memalign(&newbuf, 64, numBuffers*bufsize*sizeof(buf_t));
         buf_t *newbuf_buft = reinterpret_cast<buf_t*>(newbuf);
         double zero = 0;
         std::fill_n(newbuf_buft, numBuffers*bufsize, zero);
-        recvBufferCPU.push_back(newbuf_buft);
+        recvBuffer.push_back(newbuf_buft);
 
-        mpiRecvRequestsCPU.push_back(new MPI_Request());
+        mpiRecvRequests.push_back(new MPI_Request());
 
-        setupMpiRecvCPU.push_back(false);
+        setupMpiRecv.push_back(false);
 
-        return recvBufferCPU.size()-1;
+        return recvBuffer.size()-1;
 
     }
 
     inline void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf) const {
 
-        const size_t haloSize = localHaloIndicesSizeCPU[haloId];
+        const size_t haloSize = localHaloIndicesSize[haloId];
 
         size_t mpiSendBufferIndex = 0;
-        for(size_t region = 0; region < localHaloIndicesCPU[haloId].size(); ++region) {
-            const std::array<int, 3> vals = localHaloIndicesCPU[haloId][region];
+        for(size_t region = 0; region < localHaloIndices[haloId].size(); ++region) {
+            const std::array<int, 3> vals = localHaloIndices[haloId][region];
 
             const int val_start = vals[0];
             const int val_howmany = vals[1];
             const int val_stride = vals[2];
 
             if(val_stride == 1) {
-                memcpy(&sendBufferCPU[haloId][bufferId*haloSize + mpiSendBufferIndex], &buf[val_start], val_howmany*sizeof(buf_t));
+                memcpy(&sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex], &buf[val_start], val_howmany*sizeof(buf_t));
                 mpiSendBufferIndex += val_howmany;
             } else {
                 const int mpiSendBufferIndexBASE = bufferId*haloSize + mpiSendBufferIndex;
                 for(int i = 0; i < val_howmany; ++i)
-                    sendBufferCPU[haloId][mpiSendBufferIndexBASE + i] = buf[val_start+i*val_stride];
+                    sendBuffer[haloId][mpiSendBufferIndexBASE + i] = buf[val_start+i*val_stride];
                 mpiSendBufferIndex += val_howmany;
             }
 
@@ -217,81 +195,82 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
     inline void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf,
                                std::vector<size_t> overwriteHaloSendIndices, std::vector<size_t> overwriteHaloSourceIndices) const {
 
-        size_t haloSize = localHaloIndicesSizeCPU[haloId];
+        size_t haloSize = localHaloIndicesSize[haloId];
 
         for(size_t index = 0; index < overwriteHaloSendIndices.size(); ++index)
-            sendBufferCPU[haloId][bufferId*haloSize + overwriteHaloSendIndices[index]] = buf[overwriteHaloSourceIndices[index]];
+            sendBuffer[haloId][bufferId*haloSize + overwriteHaloSendIndices[index]] = buf[overwriteHaloSourceIndices[index]];
 
     }
 
     inline MPI_Request *send(size_t haloId, const int msgtag, int remoteMpiRank = -1) {
 
-        if(localHaloIndicesCPU[haloId].size() == 0)
+        if(localHaloIndices[haloId].size() == 0)
             return nullptr;
 
-        if(!setupMpiSendCPU[haloId]) {
-
-            setupMpiSendCPU[haloId] = true;
+        if(!setupMpiSend[haloId]) {
 
             if(remoteMpiRank == -1)
-                remoteMpiRank = localHaloRemoteMpiRankCPU[haloId];
+                remoteMpiRank = localHaloRemoteMpiRank[haloId];
 
-            MPI_Send_init(&sendBufferCPU[haloId][0], localHaloNumBuffersCPU[haloId]*localHaloIndicesSizeCPU[haloId], mpiDataType, remoteMpiRank,
-                      msgtag, TAUSCH_COMM, mpiSendRequestsCPU[haloId]);
+
+            setupMpiSend[haloId] = true;
+
+            MPI_Send_init(&sendBuffer[haloId][0], localHaloNumBuffers[haloId]*localHaloIndicesSize[haloId], mpiDataType, remoteMpiRank,
+                      msgtag, TAUSCH_COMM, mpiSendRequests[haloId]);
 
         } else
-            MPI_Wait(mpiSendRequestsCPU[haloId], MPI_STATUS_IGNORE);
+            MPI_Wait(mpiSendRequests[haloId], MPI_STATUS_IGNORE);
 
-        MPI_Start(mpiSendRequestsCPU[haloId]);
+        MPI_Start(mpiSendRequests[haloId]);
 
-        return mpiSendRequestsCPU[haloId];
+        return mpiSendRequests[haloId];
 
     }
 
     inline MPI_Request *recv(size_t haloId, const int msgtag, int remoteMpiRank = -1, const bool blocking = true) {
 
-        if(remoteHaloIndicesCPU[haloId].size() == 0)
+        if(remoteHaloIndices[haloId].size() == 0)
             return nullptr;
 
-        if(!setupMpiRecvCPU[haloId]) {
-
-            setupMpiRecvCPU[haloId] = true;
+        if(!setupMpiRecv[haloId]) {
 
             if(remoteMpiRank == -1)
-                remoteMpiRank = remoteHaloRemoteMpiRankCPU[haloId];
+                remoteMpiRank = remoteHaloRemoteMpiRank[haloId];
 
-            MPI_Recv_init(&recvBufferCPU[haloId][0], remoteHaloNumBuffersCPU[haloId]*remoteHaloIndicesSizeCPU[haloId], mpiDataType,
-                          remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequestsCPU[haloId]);
+            setupMpiRecv[haloId] = true;
+
+            MPI_Recv_init(&recvBuffer[haloId][0], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId], mpiDataType,
+                          remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequests[haloId]);
 
         }
 
-        MPI_Start(mpiRecvRequestsCPU[haloId]);
+        MPI_Start(mpiRecvRequests[haloId]);
         if(blocking)
-            MPI_Wait(mpiRecvRequestsCPU[haloId], MPI_STATUS_IGNORE);
+            MPI_Wait(mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
 
-        return mpiRecvRequestsCPU[haloId];
+        return mpiRecvRequests[haloId];
 
     }
 
     inline void unpackRecvBuffer(const size_t haloId, const size_t bufferId, buf_t *buf) const {
 
-        size_t haloSize = remoteHaloIndicesSizeCPU[haloId];
+        size_t haloSize = remoteHaloIndicesSize[haloId];
 
         size_t mpiRecvBufferIndex = 0;
-        for(size_t region = 0; region < remoteHaloIndicesCPU[haloId].size(); ++region) {
-            const std::array<int, 3> vals = remoteHaloIndicesCPU[haloId][region];
+        for(size_t region = 0; region < remoteHaloIndices[haloId].size(); ++region) {
+            const std::array<int, 3> vals = remoteHaloIndices[haloId][region];
 
             const int val_start = vals[0];
             const int val_howmany = vals[1];
             const int val_stride = vals[2];
 
             if(val_stride == 1) {
-                memcpy(&buf[val_start], &recvBufferCPU[haloId][bufferId*haloSize + mpiRecvBufferIndex], val_howmany*sizeof(buf_t));
+                memcpy(&buf[val_start], &recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex], val_howmany*sizeof(buf_t));
                 mpiRecvBufferIndex += val_howmany;
             } else {
                 const size_t mpirecvBufferIndexBASE = bufferId*haloSize + mpiRecvBufferIndex;
                 for(int i = 0; i < val_howmany; ++i)
-                    buf[val_start+i*val_stride] = recvBufferCPU[haloId][mpirecvBufferIndexBASE + i];
+                    buf[val_start+i*val_stride] = recvBuffer[haloId][mpirecvBufferIndexBASE + i];
                 mpiRecvBufferIndex += val_howmany;
             }
 
@@ -302,10 +281,10 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
     inline void unpackRecvBuffer(const size_t haloId, const size_t bufferId, buf_t *buf,
                                  std::vector<size_t> overwriteHaloRecvIndices, std::vector<size_t> overwriteHaloTargetIndices) const {
 
-        size_t haloSize = remoteHaloIndicesSizeCPU[haloId];
+        size_t haloSize = remoteHaloIndicesSize[haloId];
 
         for(size_t index = 0; index < overwriteHaloRecvIndices.size(); ++index)
-            buf[overwriteHaloTargetIndices[index]] = recvBufferCPU[haloId][bufferId*haloSize + overwriteHaloRecvIndices[index]];
+            buf[overwriteHaloTargetIndices[index]] = recvBuffer[haloId][bufferId*haloSize + overwriteHaloRecvIndices[index]];
 
     }
 
@@ -335,53 +314,33 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     inline int addLocalHaloInfoOCL(std::vector<std::array<int, 3> > haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1) {
 
-        std::vector<int> consecutiveHaloIndices;
-        for(auto tuple : haloIndices) {
-            for(int i = 0; i < tuple[1]; ++i)
-                consecutiveHaloIndices.push_back(tuple[0]+i*tuple[2]);
-        }
+        int haloSize = 0;
+        for(auto tuple : haloIndices)
+            haloSize += tuple[1];
 
         try {
 
-            if(consecutiveHaloIndices.size() == 0) {
+            if(haloSize == 0) {
 
-                cl::Buffer clHaloIndices(context, CL_MEM_READ_WRITE, sizeof(buf_t));
-                localHaloIndicesOCL_d.push_back(clHaloIndices);
-                localHaloIndicesOCL_h.push_back({});
+                localHaloIndices.push_back({});
+                localHaloIndicesSize.push_back(haloIndices.size());
+                localHaloNumBuffers.push_back(numBuffers);
+                localHaloRemoteMpiRank.push_back(remoteMpiRank);
 
-                localHaloIndicesSizeOCL.push_back(haloIndices.size());
-
-                localHaloNumBuffersOCL.push_back(numBuffers);
-
-                localHaloRemoteMpiRankOCL.push_back(remoteMpiRank);
-
-                cl::Buffer clRecvBuffer(context, CL_MEM_READ_WRITE, sizeof(buf_t));
-                sendBufferOCL_d.push_back(clRecvBuffer);
-                sendBufferOCL_h.push_back(new buf_t[1]{});
-
-                mpiSendRequestsOCL.push_back(new MPI_Request());
-
-                setupMpiSendOCL.push_back(false);
+                sendBuffer.push_back(new buf_t[1]{});
+                mpiSendRequests.push_back(new MPI_Request());
+                setupMpiSend.push_back(false);
 
             } else {
 
-                cl::Buffer clHaloIndices(context, consecutiveHaloIndices.begin(), consecutiveHaloIndices.end(), true);
-                localHaloIndicesOCL_d.push_back(clHaloIndices);
-                localHaloIndicesOCL_h.push_back(haloIndices);
+                localHaloIndices.push_back(haloIndices);
+                localHaloIndicesSize.push_back(haloSize);
+                localHaloNumBuffers.push_back(numBuffers);
+                localHaloRemoteMpiRank.push_back(remoteMpiRank);
 
-                localHaloIndicesSizeOCL.push_back(consecutiveHaloIndices.size());
-
-                localHaloNumBuffersOCL.push_back(numBuffers);
-
-                localHaloRemoteMpiRankOCL.push_back(remoteMpiRank);
-
-                cl::Buffer clSendBuffer(context, CL_MEM_READ_WRITE, numBuffers*consecutiveHaloIndices.size()*sizeof(buf_t));
-                sendBufferOCL_d.push_back(clSendBuffer);
-                sendBufferOCL_h.push_back(new buf_t[numBuffers*consecutiveHaloIndices.size()]{});
-
-                mpiSendRequestsOCL.push_back(new MPI_Request());
-
-                setupMpiSendOCL.push_back(false);
+                sendBuffer.push_back(new buf_t[numBuffers*haloSize]{});
+                mpiSendRequests.push_back(new MPI_Request());
+                setupMpiSend.push_back(false);
 
             }
 
@@ -389,7 +348,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             std::cout << "Tausch::addLocalHaloInfoOCL(): OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
         }
 
-        return sendBufferOCL_d.size()-1;
+        return sendBuffer.size()-1;
 
     }
 
@@ -405,51 +364,33 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     inline int addRemoteHaloInfoOCL(std::vector<std::array<int, 3> > haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1) {
 
-        std::vector<int> consecutiveHaloIndices;
-        for(auto tuple : haloIndices) {
-            for(int i = 0; i < tuple[1]; ++i)
-                consecutiveHaloIndices.push_back(tuple[0]+i*tuple[2]);
-        }
+        int haloSize = 0;
+        for(auto tuple : haloIndices)
+            haloSize += tuple[1];
 
         try {
 
-            if(consecutiveHaloIndices.size() == 0) {
+            if(haloSize == 0) {
 
-                cl::Buffer clHaloIndices(context, CL_MEM_READ_WRITE, sizeof(buf_t));
-                remoteHaloIndicesOCL_d.push_back(clHaloIndices);
-                remoteHaloIndicesOCL_h.push_back({});
+                remoteHaloIndices.push_back({});
+                remoteHaloIndicesSize.push_back(0);
+                remoteHaloNumBuffers.push_back(numBuffers);
+                remoteHaloRemoteMpiRank.push_back(remoteMpiRank);
 
-                remoteHaloIndicesSizeOCL.push_back(consecutiveHaloIndices.size());
-
-                remoteHaloNumBuffersOCL.push_back(numBuffers);
-
-                remoteHaloRemoteMpiRankOCL.push_back(remoteMpiRank);
-
-                cl::Buffer clRecvBuffer(context, CL_MEM_READ_WRITE, sizeof(buf_t));
-                recvBufferOCL_d.push_back(clRecvBuffer);
-                recvBufferOCL_h.push_back(new buf_t[1]{});
-
-                mpiRecvRequestsOCL.push_back(new MPI_Request());
-
-                setupMpiRecvOCL.push_back(false);
+                recvBuffer.push_back(new buf_t[1]{});
+                mpiRecvRequests.push_back(new MPI_Request());
+                setupMpiRecv.push_back(false);
 
             } else {
 
-                cl::Buffer clHaloIndices(context, consecutiveHaloIndices.begin(), consecutiveHaloIndices.end(), true);
-                remoteHaloIndicesOCL_d.push_back(clHaloIndices);
-                remoteHaloIndicesOCL_h.push_back(haloIndices);
+                remoteHaloIndices.push_back(haloIndices);
+                remoteHaloIndicesSize.push_back(haloSize);
+                remoteHaloNumBuffers.push_back(numBuffers);
+                remoteHaloRemoteMpiRank.push_back(remoteMpiRank);
 
-                remoteHaloIndicesSizeOCL.push_back(consecutiveHaloIndices.size());
-
-                remoteHaloNumBuffersOCL.push_back(numBuffers);
-
-                cl::Buffer clRecvBuffer(context, CL_MEM_READ_WRITE, numBuffers*consecutiveHaloIndices.size()*sizeof(buf_t));
-                recvBufferOCL_d.push_back(clRecvBuffer);
-                recvBufferOCL_h.push_back(new buf_t[numBuffers*consecutiveHaloIndices.size()]{});
-
-                mpiRecvRequestsOCL.push_back(new MPI_Request());
-
-                setupMpiRecvOCL.push_back(false);
+                recvBuffer.push_back(new buf_t[numBuffers*haloSize]{});
+                mpiRecvRequests.push_back(new MPI_Request());
+                setupMpiRecv.push_back(false);
 
             }
 
@@ -457,7 +398,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             std::cout << "Tausch::addRemoteHaloInfoOCL(): OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
         }
 
-        return recvBufferOCL_d.size()-1;
+        return recvBuffer.size()-1;
 
     }
 
@@ -465,11 +406,11 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         try {
 
-            const size_t haloSize = localHaloIndicesSizeOCL[haloId];
+            const size_t haloSize = localHaloIndicesSize[haloId];
 
             size_t mpiSendBufferIndex = 0;
-            for(size_t iRegion = 0; iRegion < localHaloIndicesOCL_h[haloId].size(); ++iRegion) {
-                const std::array<int, 3> vals = localHaloIndicesOCL_h[haloId][iRegion];
+            for(size_t iRegion = 0; iRegion < localHaloIndices[haloId].size(); ++iRegion) {
+                const std::array<int, 3> vals = localHaloIndices[haloId][iRegion];
 
                 const int val_start = vals[0];
                 const int val_howmany = vals[1];
@@ -492,25 +433,11 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                                             0,
                                             sizeof(buf_t),
                                             0,
-                                            sendBufferOCL_h[haloId]);
+                                            sendBuffer[haloId]);
 
                 mpiSendBufferIndex += val_howmany;
 
             }
-
-            // This code packs using a kernel
-
-//            auto kernel_pack = cl::make_kernel
-//                                    <const cl::Buffer &, cl::Buffer &, const cl::Buffer &, const int &, const int &>
-//                                    (programs, "pack");
-
-//            int globalsize = (localHaloIndicesSizeOCL[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
-
-//            kernel_pack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
-//                          buf, sendBufferOCL_d[haloId], localHaloIndicesOCL_d[haloId], localHaloIndicesSizeOCL[haloId], bufferId);
-
-//            cl::copy(queue, sendBufferOCL_d[haloId], &sendBufferOCL_h[haloId][0],
-//                    &sendBufferOCL_h[haloId][localHaloNumBuffersOCL[haloId]*localHaloIndicesSizeOCL[haloId]]);
 
         } catch(cl::Error &e) {
             std::cerr << "Tausch::packSendBufferOCL(): OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
@@ -521,18 +448,27 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
     void packSendBufferOCL(const int haloId, int bufferId, cl::Buffer buf,
                            const std::vector<int> overwriteHaloSendIndices, const std::vector<int> overwriteHaloSourceIndices) {
 
+        const size_t haloSize = localHaloIndicesSize[haloId];
+
         try {
             auto kernel_pack = cl::make_kernel
-                                    <const cl::Buffer &, cl::Buffer &, const cl::Buffer &, const cl::Buffer &, const int &, const int &>
+                                    <const cl::Buffer &, cl::Buffer &, const cl::Buffer &, const int &, const int &>
                                     (programs, "packSubRegion");
 
             cl::Buffer clHaloIndicesIn(context, overwriteHaloSourceIndices.begin(), overwriteHaloSourceIndices.end(), true);
-            cl::Buffer clHaloIndicesOut(context, overwriteHaloSendIndices.begin(), overwriteHaloSendIndices.end(), true);
 
-            int globalsize = (localHaloIndicesSizeOCL[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
+            int globalsize = (overwriteHaloSourceIndices.size()/clKernelLocalSize +1)*clKernelLocalSize;
+
+            cl::Buffer tmpSendBuffer_d(context, CL_MEM_READ_WRITE, overwriteHaloSourceIndices.size()*sizeof(buf_t));
 
             kernel_pack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
-                          buf, sendBufferOCL_d[haloId], clHaloIndicesIn, clHaloIndicesOut, localHaloIndicesSizeOCL[haloId], bufferId);
+                          buf, tmpSendBuffer_d, clHaloIndicesIn, overwriteHaloSourceIndices.size(), bufferId*haloSize);
+
+            buf_t *tmpSendBuffer_h = new buf_t[overwriteHaloSourceIndices.size()];
+            cl::copy(queue, tmpSendBuffer_d, &tmpSendBuffer_h[0], &tmpSendBuffer_h[overwriteHaloSourceIndices.size()]);
+
+            for(size_t i = 0; i < overwriteHaloSendIndices.size(); ++i)
+                sendBuffer[haloId][bufferId*haloSize + overwriteHaloSendIndices[i]] = tmpSendBuffer_h[i];
 
         } catch(cl::Error &e) {
             std::cerr << "Tausch::packSendBufferOCL(): OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
@@ -542,47 +478,47 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     MPI_Request *sendOCL(const int haloId, const int msgtag, int remoteMpiRank = -1) {
 
-        if(localHaloIndicesSizeOCL[haloId] == 0)
+        if(localHaloIndicesSize[haloId] == 0)
             return nullptr;
 
-        if(!setupMpiSendOCL[haloId]) {
-
-            setupMpiSendOCL[haloId] = true;
+        if(!setupMpiSend[haloId]) {
 
             if(remoteMpiRank == -1)
-                remoteMpiRank = localHaloRemoteMpiRankOCL[haloId];
+                remoteMpiRank = localHaloRemoteMpiRank[haloId];
 
-            MPI_Send_init(&sendBufferOCL_h[haloId][0], localHaloNumBuffersOCL[haloId]*localHaloIndicesSizeOCL[haloId],
-                          mpiDataType, remoteMpiRank, msgtag, TAUSCH_COMM, mpiSendRequestsOCL[haloId]);
+            setupMpiSend[haloId] = true;
+
+            MPI_Send_init(&sendBuffer[haloId][0], localHaloNumBuffers[haloId]*localHaloIndicesSize[haloId],
+                          mpiDataType, remoteMpiRank, msgtag, TAUSCH_COMM, mpiSendRequests[haloId]);
 
         } else
-            MPI_Wait(mpiSendRequestsOCL[haloId], MPI_STATUS_IGNORE);
+            MPI_Wait(mpiSendRequests[haloId], MPI_STATUS_IGNORE);
 
-        MPI_Start(mpiSendRequestsOCL[haloId]);
+        MPI_Start(mpiSendRequests[haloId]);
 
-        return mpiSendRequestsOCL[haloId];
+        return mpiSendRequests[haloId];
 
     }
 
     void recvOCL(const int haloId, const int msgtag, int remoteMpiRank = -1) {
 
-        if(remoteHaloIndicesSizeOCL[haloId] == 0)
+        if(remoteHaloIndicesSize[haloId] == 0)
             return;
 
-        if(!setupMpiRecvOCL[haloId]) {
-
-            setupMpiRecvOCL[haloId] = true;
+        if(!setupMpiRecv[haloId]) {
 
             if(remoteMpiRank == -1)
-                remoteMpiRank = remoteHaloRemoteMpiRankOCL[haloId];
+                remoteMpiRank = remoteHaloRemoteMpiRank[haloId];
 
-            MPI_Recv_init(&recvBufferOCL_h[haloId][0], remoteHaloNumBuffersOCL[haloId]*remoteHaloIndicesSizeOCL[haloId], mpiDataType,
-                          remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequestsOCL[haloId]);
+            setupMpiRecv[haloId] = true;
+
+            MPI_Recv_init(&recvBuffer[haloId][0], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId], mpiDataType,
+                          remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequests[haloId]);
 
         }
 
-        MPI_Start(mpiRecvRequestsOCL[haloId]);
-        MPI_Wait(mpiRecvRequestsOCL[haloId], MPI_STATUS_IGNORE);
+        MPI_Start(mpiRecvRequests[haloId]);
+        MPI_Wait(mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
 
     }
 
@@ -590,11 +526,11 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         try {
 
-            const size_t haloSize = remoteHaloIndicesSizeOCL[haloId];
+            const size_t haloSize = remoteHaloIndicesSize[haloId];
 
             size_t mpiRecvBufferIndex = 0;
-            for(size_t iRegion = 0; iRegion < remoteHaloIndicesOCL_h[haloId].size(); ++iRegion) {
-                const std::array<int, 3> vals = remoteHaloIndicesOCL_h[haloId][iRegion];
+            for(size_t iRegion = 0; iRegion < remoteHaloIndices[haloId].size(); ++iRegion) {
+                const std::array<int, 3> vals = remoteHaloIndices[haloId][iRegion];
 
                 const int val_start = vals[0];
                 const int val_howmany = vals[1];
@@ -617,25 +553,11 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                                              0,
                                              sizeof(buf_t),
                                              0,
-                                             recvBufferOCL_h[haloId]);
+                                             recvBuffer[haloId]);
 
                 mpiRecvBufferIndex += val_howmany;
 
             }
-
-            // This code unpacks using a kernel
-
-//            cl::copy(queue, &recvBufferOCL_h[haloId][0],
-//                     &recvBufferOCL_h[haloId][remoteHaloNumBuffersOCL[haloId]*remoteHaloIndicesSizeOCL[haloId]], recvBufferOCL_d[haloId]);
-
-//            auto kernel_unpack = cl::make_kernel
-//                                    <const cl::Buffer &, cl::Buffer &, const cl::Buffer &, const int &, const int &>
-//                                    (programs, "unpack");
-
-//            int globalsize = (remoteHaloIndicesSizeOCL[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
-
-//            kernel_unpack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
-//                          recvBufferOCL_d[haloId], buf, remoteHaloIndicesOCL_d[haloId], remoteHaloIndicesSizeOCL[haloId], bufferId);
 
         } catch(cl::Error &e) {
             std::cerr << "Tausch::unpackRecvBufferOCL() :: OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
@@ -646,19 +568,27 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
     void unpackRecvBufferOCL(const int haloId, int bufferId, cl::Buffer buf,
                           const std::vector<int> overwriteHaloRecvIndices, const std::vector<int> overwriteHaloTargetIndices) {
 
+        const size_t haloSize = localHaloIndicesSize[haloId];
+
         try {
 
             auto kernel_unpack = cl::make_kernel
-                                    <const cl::Buffer &, cl::Buffer &, const cl::Buffer &, const cl::Buffer &, const int &, const int &>
+                                    <const cl::Buffer &, cl::Buffer &, const cl::Buffer &, const int &, const int &>
                                     (programs, "unpackSubRegion");
 
-            cl::Buffer clHaloIndicesIn(context, overwriteHaloRecvIndices.begin(), overwriteHaloRecvIndices.end(), true);
             cl::Buffer clHaloIndicesOut(context, overwriteHaloTargetIndices.begin(), overwriteHaloTargetIndices.end(), true);
 
-            int globalsize = (remoteHaloIndicesSizeOCL[haloId]/clKernelLocalSize +1)*clKernelLocalSize;
+            buf_t *tmpRecvBuffer_h = new buf_t[overwriteHaloTargetIndices.size()];
+            for(size_t i = 0; i < overwriteHaloTargetIndices.size(); ++i)
+                tmpRecvBuffer_h[i] = recvBuffer[haloId][bufferId*haloSize + overwriteHaloRecvIndices[i]];
+
+            cl::Buffer tmpRecvBuffer_d(context, CL_MEM_READ_WRITE, overwriteHaloRecvIndices.size()*sizeof(buf_t));
+            cl::copy(queue, &tmpRecvBuffer_h[0], &tmpRecvBuffer_h[overwriteHaloRecvIndices.size()], tmpRecvBuffer_d);
+
+            int globalsize = (overwriteHaloRecvIndices.size()/clKernelLocalSize +1)*clKernelLocalSize;
 
             kernel_unpack(cl::EnqueueArgs(queue, cl::NDRange(globalsize), cl::NDRange(clKernelLocalSize)),
-                          recvBufferOCL_d[haloId], buf, clHaloIndicesIn, clHaloIndicesOut, remoteHaloIndicesSizeOCL[haloId], bufferId);
+                          tmpRecvBuffer_d, buf, clHaloIndicesOut, overwriteHaloTargetIndices.size(), bufferId*haloSize);
 
         } catch(cl::Error &e) {
             std::cerr << "Tausch::unpackRecvBufferOCL() :: OpenCL exception caught: " << e.what() << " (" << e.err() << ")" << std::endl;
@@ -690,55 +620,35 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
     inline int addLocalHaloInfoCUDA(std::vector<std::array<int, 3> > haloIndices,
                                     const size_t numBuffers = 1, const int remoteMpiRank = -1) {
 
-        if(haloIndices.size() == 0) {
+        int haloSize = 0;
+        for(auto tuple : haloIndices)
+            haloSize += tuple[1];
 
-            localHaloIndicesCUDA_h.push_back({});
+        if(haloSize == 0) {
 
-            localHaloIndicesSizeCUDA.push_back(0);
+            localHaloIndices.push_back({});
+            localHaloIndicesSize.push_back(0);
+            localHaloNumBuffers.push_back(numBuffers);
+            localHaloRemoteMpiRank.push_back(remoteMpiRank);
 
-            localHaloNumBuffersCUDA.push_back(numBuffers);
-
-            localHaloRemoteMpiRankCUDA.push_back(remoteMpiRank);
-
-            buf_t *recvBuffer_d;
-            cudaError_t err = cudaMalloc(&recvBuffer_d, sizeof(buf_t));
-            if(err != cudaSuccess)
-                std::cout << "Tausch::addLocalHaloInfoCUDA(): CUDA error detected: " << err << std::endl;
-            sendBufferCUDA_d.push_back(recvBuffer_d);
-            sendBufferCUDA_h.push_back(new buf_t[1]{});
-
-            mpiSendRequestsCUDA.push_back(new MPI_Request());
-
-            setupMpiSendCUDA.push_back(false);
+            sendBuffer.push_back(new buf_t[1]{});
+            mpiSendRequests.push_back(new MPI_Request());
+            setupMpiSend.push_back(false);
 
         } else {
 
-            size_t bufsize = 0;
-            for(size_t i = 0; i < haloIndices.size(); ++i)
-                bufsize += static_cast<size_t>(haloIndices.at(i)[1]);
+            localHaloIndices.push_back(haloIndices);
+            localHaloIndicesSize.push_back(haloSize);
+            localHaloNumBuffers.push_back(numBuffers);
+            localHaloRemoteMpiRank.push_back(remoteMpiRank);
 
-            localHaloIndicesCUDA_h.push_back(haloIndices);
-
-            localHaloIndicesSizeCUDA.push_back(bufsize);
-
-            localHaloNumBuffersCUDA.push_back(numBuffers);
-
-            localHaloRemoteMpiRankCUDA.push_back(remoteMpiRank);
-
-            buf_t *sendBuffer_d;
-            cudaError_t err = cudaMalloc(&sendBuffer_d, numBuffers*bufsize*sizeof(buf_t));
-            if(err != cudaSuccess)
-                std::cout << "Tausch::addLocalHaloInfoCUDA(): CUDA error detected: " << err << std::endl;
-            sendBufferCUDA_d.push_back(sendBuffer_d);
-            sendBufferCUDA_h.push_back(new buf_t[numBuffers*bufsize]{});
-
-            mpiSendRequestsCUDA.push_back(new MPI_Request());
-
-            setupMpiSendCUDA.push_back(false);
+            sendBuffer.push_back(new buf_t[numBuffers*haloSize]{});
+            mpiSendRequests.push_back(new MPI_Request());
+            setupMpiSend.push_back(false);
 
         }
 
-        return sendBufferCUDA_d.size()-1;
+        return sendBuffer.size()-1;
 
     }
 
@@ -755,72 +665,52 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
     inline int addRemoteHaloInfoCUDA(std::vector<std::array<int, 3> > haloIndices,
                                      const int numBuffers = 1, const int remoteMpiRank = -1) {
 
-        if(haloIndices.size() == 0) {
+        int haloSize = 0;
+        for(auto tuple : haloIndices)
+            haloSize += tuple[1];
 
-            remoteHaloIndicesCUDA_h.push_back({});
+        if(haloSize == 0) {
 
-            remoteHaloIndicesSizeCUDA.push_back(0);
+            remoteHaloIndices.push_back({});
+            remoteHaloIndicesSize.push_back(0);
+            remoteHaloNumBuffers.push_back(numBuffers);
+            remoteHaloRemoteMpiRank.push_back(remoteMpiRank);
 
-            remoteHaloNumBuffersCUDA.push_back(numBuffers);
-
-            remoteHaloRemoteMpiRankCUDA.push_back(remoteMpiRank);
-
-            buf_t *recvBuffer_d;
-            cudaError_t err = cudaMalloc(&recvBuffer_d, sizeof(buf_t));
-            if(err != cudaSuccess)
-                std::cout << "Tausch::addRemoteHaloInfoCUDA(): CUDA error detected: " << err << std::endl;
-            recvBufferCUDA_d.push_back(recvBuffer_d);
-            recvBufferCUDA_h.push_back(new buf_t[1]{});
-
-            mpiRecvRequestsCUDA.push_back(new MPI_Request());
-
-            setupMpiRecvCUDA.push_back(false);
+            recvBuffer.push_back(new buf_t[1]{});
+            mpiRecvRequests.push_back(new MPI_Request());
+            setupMpiRecv.push_back(false);
 
         } else {
 
-            size_t bufsize = 0;
-            for(size_t i = 0; i < haloIndices.size(); ++i)
-                bufsize += static_cast<size_t>(haloIndices.at(i)[1]);
+            remoteHaloIndices.push_back(haloIndices);
+            remoteHaloIndicesSize.push_back(haloSize);
+            remoteHaloNumBuffers.push_back(numBuffers);
+            remoteHaloRemoteMpiRank.push_back(remoteMpiRank);
 
-            remoteHaloIndicesCUDA_h.push_back(haloIndices);
-
-            remoteHaloIndicesSizeCUDA.push_back(bufsize);
-
-            remoteHaloNumBuffersCUDA.push_back(numBuffers);
-
-            remoteHaloRemoteMpiRankCUDA.push_back(remoteMpiRank);
-
-            buf_t *recvBuffer_d;
-            cudaError_t err = cudaMalloc(&recvBuffer_d, numBuffers*bufsize*sizeof(buf_t));
-            if(err != cudaSuccess)
-                std::cout << "Tausch::addRemoteHaloInfoCUDA(): CUDA error detected: " << err << std::endl;
-            recvBufferCUDA_d.push_back(recvBuffer_d);
-            recvBufferCUDA_h.push_back(new buf_t[numBuffers*bufsize]{});
-
-            mpiRecvRequestsCUDA.push_back(new MPI_Request());
-
-            setupMpiRecvCUDA.push_back(false);
+            recvBuffer.push_back(new buf_t[numBuffers*haloSize]{});
+            mpiRecvRequests.push_back(new MPI_Request());
+            setupMpiRecv.push_back(false);
 
         }
 
-        return recvBufferCUDA_d.size()-1;
+        return recvBuffer.size()-1;
 
     }
 
 
     void packSendBufferCUDA(const int haloId, int bufferId, buf_t *buf_d) {
 
-        const size_t haloSize = localHaloIndicesSizeCUDA[haloId];
+        const size_t haloSize = localHaloIndicesSize[haloId];
 
         size_t mpiSendBufferIndex = 0;
-        for(size_t region = 0; region < localHaloIndicesCUDA_h[haloId].size(); ++region) {
-            const std::array<int, 3> vals = localHaloIndicesCUDA_h[haloId][region];
+        for(size_t region = 0; region < localHaloIndices[haloId].size(); ++region) {
+            const std::array<int, 3> vals = localHaloIndices[haloId][region];
 
             const int val_start = vals[0];
             const int val_howmany = vals[1];
             const int val_stride = vals[2];
 
-            cudaError_t err = cudaMemcpy2D(&sendBufferCUDA_h[haloId][bufferId*haloSize + mpiSendBufferIndex], sizeof(buf_t),
+            cudaError_t err = cudaMemcpy2D(&sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex], sizeof(buf_t),
                                            &buf_d[val_start], val_stride*sizeof(buf_t),
                                            sizeof(buf_t), val_howmany, cudaMemcpyDeviceToHost);
             if(err != cudaSuccess)
@@ -834,67 +724,67 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     inline MPI_Request *sendCUDA(size_t haloId, const int msgtag, int remoteMpiRank = -1) {
 
-        if(localHaloIndicesSizeCUDA[haloId] == 0)
+        if(localHaloIndicesSize[haloId] == 0)
             return nullptr;
 
-        if(!setupMpiSendCUDA[haloId]) {
+        if(!setupMpiSend[haloId]) {
 
-            setupMpiSendCUDA[haloId] = true;
+            setupMpiSend[haloId] = true;
 
             if(remoteMpiRank == -1)
-                remoteMpiRank = localHaloRemoteMpiRankCUDA[haloId];
+                remoteMpiRank = localHaloRemoteMpiRank[haloId];
 
-            MPI_Send_init(&sendBufferCUDA_h[haloId][0], localHaloNumBuffersCUDA[haloId]*localHaloIndicesSizeCUDA[haloId], mpiDataType,
-                          remoteMpiRank, msgtag, TAUSCH_COMM, mpiSendRequestsCUDA[haloId]);
+            MPI_Send_init(&sendBuffer[haloId][0], localHaloNumBuffers[haloId]*localHaloIndicesSize[haloId], mpiDataType,
+                          remoteMpiRank, msgtag, TAUSCH_COMM, mpiSendRequests[haloId]);
 
         } else
-            MPI_Wait(mpiSendRequestsCUDA[haloId], MPI_STATUS_IGNORE);
+            MPI_Wait(mpiSendRequests[haloId], MPI_STATUS_IGNORE);
 
-        MPI_Start(mpiSendRequestsCUDA[haloId]);
+        MPI_Start(mpiSendRequests[haloId]);
 
-        return mpiSendRequestsCUDA[haloId];
+        return mpiSendRequests[haloId];
 
     }
 
     inline MPI_Request *recvCUDA(size_t haloId, const int msgtag, int remoteMpiRank = -1, const bool blocking = true) {
 
-        if(remoteHaloIndicesSizeCUDA[haloId] == 0)
+        if(remoteHaloIndicesSize[haloId] == 0)
             return nullptr;
 
-        if(!setupMpiRecvCUDA[haloId]) {
+        if(!setupMpiRecv[haloId]) {
 
-            setupMpiRecvCUDA[haloId] = true;
+            setupMpiRecv[haloId] = true;
 
             if(remoteMpiRank == -1)
-                remoteMpiRank = remoteHaloRemoteMpiRankCUDA[haloId];
+                remoteMpiRank = remoteHaloRemoteMpiRank[haloId];
 
-            MPI_Recv_init(&recvBufferCUDA_h[haloId][0], remoteHaloNumBuffersCUDA[haloId]*remoteHaloIndicesSizeCUDA[haloId], mpiDataType,
-                          remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequestsCUDA[haloId]);
+            MPI_Recv_init(&recvBuffer[haloId][0], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId], mpiDataType,
+                          remoteMpiRank, msgtag, TAUSCH_COMM, mpiRecvRequests[haloId]);
 
         }
 
-        MPI_Start(mpiRecvRequestsCUDA[haloId]);
+        MPI_Start(mpiRecvRequests[haloId]);
         if(blocking)
-            MPI_Wait(mpiRecvRequestsCUDA[haloId], MPI_STATUS_IGNORE);
+            MPI_Wait(mpiRecvRequests[haloId], MPI_STATUS_IGNORE);
 
-        return mpiRecvRequestsCUDA[haloId];
+        return mpiRecvRequests[haloId];
 
     }
 
     inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, buf_t *buf_d) const {
 
-        size_t haloSize = remoteHaloIndicesSizeCUDA[haloId];
+        size_t haloSize = remoteHaloIndicesSize[haloId];
 
         size_t mpiRecvBufferIndex = 0;
-        for(size_t region = 0; region < remoteHaloIndicesCUDA_h[haloId].size(); ++region) {
-            const std::array<int, 3> vals = remoteHaloIndicesCUDA_h[haloId][region];
+        for(size_t region = 0; region < remoteHaloIndices[haloId].size(); ++region) {
+            const std::array<int, 3> vals = remoteHaloIndices[haloId][region];
 
             const int val_start = vals[0];
             const int val_howmany = vals[1];
             const int val_stride = vals[2];
 
             cudaError_t err = cudaMemcpy2D(&buf_d[val_start], val_stride*sizeof(buf_t),
-                                           &recvBufferCUDA_h[haloId][bufferId*haloSize + mpiRecvBufferIndex], sizeof(buf_t),
+                                           &recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex], sizeof(buf_t),
                                            sizeof(buf_t), val_howmany, cudaMemcpyHostToDevice);
             if(err != cudaSuccess)
                 std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << err << std::endl;
@@ -978,26 +868,26 @@ private:
     MPI_Comm TAUSCH_COMM;
     MPI_Datatype mpiDataType;
 
-    std::vector<std::vector<std::array<int, 3> > > localHaloIndicesCPU;
-    std::vector<std::vector<std::array<int, 3> > > remoteHaloIndicesCPU;
+    std::vector<std::vector<std::array<int, 3> > > localHaloIndices;
+    std::vector<std::vector<std::array<int, 3> > > remoteHaloIndices;
 
-    std::vector<size_t> localHaloIndicesSizeCPU;
-    std::vector<size_t> remoteHaloIndicesSizeCPU;
+    std::vector<size_t> localHaloIndicesSize;
+    std::vector<size_t> remoteHaloIndicesSize;
 
-    std::vector<int> localHaloRemoteMpiRankCPU;
-    std::vector<int> remoteHaloRemoteMpiRankCPU;
+    std::vector<int> localHaloRemoteMpiRank;
+    std::vector<int> remoteHaloRemoteMpiRank;
 
-    std::vector<size_t> localHaloNumBuffersCPU;
-    std::vector<size_t> remoteHaloNumBuffersCPU;
+    std::vector<size_t> localHaloNumBuffers;
+    std::vector<size_t> remoteHaloNumBuffers;
 
-    std::vector<buf_t*> sendBufferCPU;
-    std::vector<buf_t*> recvBufferCPU;
+    std::vector<buf_t*> sendBuffer;
+    std::vector<buf_t*> recvBuffer;
 
-    std::vector<MPI_Request*> mpiSendRequestsCPU;
-    std::vector<MPI_Request*> mpiRecvRequestsCPU;
+    std::vector<MPI_Request*> mpiSendRequests;
+    std::vector<MPI_Request*> mpiRecvRequests;
 
-    std::vector<bool> setupMpiSendCPU;
-    std::vector<bool> setupMpiRecvCPU;
+    std::vector<bool> setupMpiSend;
+    std::vector<bool> setupMpiRecv;
 
 #ifdef TAUSCH_OPENCL
 
@@ -1008,57 +898,6 @@ private:
     int clKernelLocalSize;
     std::string cName4BufT;
 
-    std::vector<std::vector<std::array<int, 3> > > localHaloIndicesOCL_h;
-    std::vector<std::vector<std::array<int, 3> > > remoteHaloIndicesOCL_h;
-    std::vector<cl::Buffer> localHaloIndicesOCL_d;
-    std::vector<cl::Buffer> remoteHaloIndicesOCL_d;
-
-    std::vector<int> localHaloIndicesSizeOCL;
-    std::vector<int> remoteHaloIndicesSizeOCL;
-
-    std::vector<int> localHaloRemoteMpiRankOCL;
-    std::vector<int> remoteHaloRemoteMpiRankOCL;
-
-    std::vector<int> localHaloNumBuffersOCL;
-    std::vector<int> remoteHaloNumBuffersOCL;
-
-    std::vector<cl::Buffer> sendBufferOCL_d;
-    std::vector<buf_t*> sendBufferOCL_h;
-    std::vector<cl::Buffer> recvBufferOCL_d;
-    std::vector<buf_t*> recvBufferOCL_h;
-
-    std::vector<MPI_Request*> mpiSendRequestsOCL;
-    std::vector<MPI_Request*> mpiRecvRequestsOCL;
-
-    std::vector<bool> setupMpiSendOCL;
-    std::vector<bool> setupMpiRecvOCL;
-
-#endif
-
-#ifdef TAUSCH_CUDA
-
-    std::vector<std::vector<std::array<int, 3> > > localHaloIndicesCUDA_h;
-    std::vector<std::vector<std::array<int, 3> > > remoteHaloIndicesCUDA_h;
-
-    std::vector<int> remoteHaloIndicesSizeCUDA;
-    std::vector<int> localHaloIndicesSizeCUDA;
-
-    std::vector<int> localHaloRemoteMpiRankCUDA;
-    std::vector<int> remoteHaloRemoteMpiRankCUDA;
-
-    std::vector<int> localHaloNumBuffersCUDA;
-    std::vector<int> remoteHaloNumBuffersCUDA;
-
-    std::vector<buf_t*> sendBufferCUDA_d;
-    std::vector<buf_t*> sendBufferCUDA_h;
-    std::vector<buf_t*> recvBufferCUDA_d;
-    std::vector<buf_t*> recvBufferCUDA_h;
-
-    std::vector<MPI_Request*> mpiSendRequestsCUDA;
-    std::vector<MPI_Request*> mpiRecvRequestsCUDA;
-
-    std::vector<bool> setupMpiSendCUDA;
-    std::vector<bool> setupMpiRecvCUDA;
 #endif
 
 };
