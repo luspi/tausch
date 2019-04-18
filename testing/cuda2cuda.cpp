@@ -16,8 +16,8 @@ int test_1buf(std::vector<int> sendIndices, std::vector<int> recvIndices, double
     cudaMalloc(&cudabuf, 10*sizeof(double));
     cudaMemcpy(cudabuf, buf, 10*sizeof(double), cudaMemcpyHostToDevice);
 
-    tausch->addLocalHaloInfoCUDA(sendIndices);
-    tausch->addRemoteHaloInfoCUDA(recvIndices);
+    tausch->addLocalHaloInfoCUDA(sendIndices, 1, -1, TauschOptimizationHint::StaysOnDeviceAndMpiRank);
+    tausch->addRemoteHaloInfoCUDA(recvIndices, 1, -1, TauschOptimizationHint::StaysOnDeviceAndMpiRank);
 
     tausch->packSendBufferCUDA(0, 0, cudabuf);
 
@@ -57,8 +57,8 @@ int test_2buf(std::vector<int> sendIndices, std::vector<int> recvIndices, double
     cudaMemcpy(cudabuf1, buf1, 10*sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(cudabuf2, buf2, 10*sizeof(double), cudaMemcpyHostToDevice);
 
-    tausch->addLocalHaloInfoCUDA(sendIndices, 2);
-    tausch->addRemoteHaloInfoCUDA(recvIndices, 2);
+    tausch->addLocalHaloInfoCUDA(sendIndices, 2, -1, TauschOptimizationHint::StaysOnDeviceAndMpiRank);
+    tausch->addRemoteHaloInfoCUDA(recvIndices, 2, -1, TauschOptimizationHint::StaysOnDeviceAndMpiRank);
 
     tausch->packSendBufferCUDA(0, 0, cudabuf1);
     tausch->packSendBufferCUDA(0, 1, cudabuf2);
