@@ -16,8 +16,7 @@
 enum TauschOptimizationHint {
     NoHints = 1,
     StaysOnDevice = 2,
-    StaysOnMpiRank = 4,
-    StaysOnDeviceAndMpiRank = 6,
+    DoesNotStayOnDevice = 4,
 };
 
 template <class buf_t>
@@ -782,7 +781,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         const size_t haloSize = localHaloIndicesSize[haloId];
 
-        if((localOptHints[haloId]&TauschOptimizationHint::StaysOnDeviceAndMpiRank) == TauschOptimizationHint::StaysOnDeviceAndMpiRank) {
+        if(localOptHints[haloId] == TauschOptimizationHint::StaysOnDevice) {
 
             if(sendCommunicationBufferKeptOnCuda.find(haloId) == sendCommunicationBufferKeptOnCuda.end()) {
 
@@ -847,7 +846,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             // if we stay on the same rank, we don't need to use MPI
             int myRank;
             MPI_Comm_rank(TAUSCH_COMM, &myRank);
-            if((localOptHints[haloId]&TauschOptimizationHint::StaysOnDeviceAndMpiRank) == TauschOptimizationHint::StaysOnDeviceAndMpiRank || remoteMpiRank == myRank) {
+            if(remoteMpiRank == myRank) {
                 msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
                 return nullptr;
             }
@@ -881,7 +880,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
             const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
 
-            if((remoteOptHints[haloId]&TauschOptimizationHint::StaysOnDeviceAndMpiRank) == TauschOptimizationHint::StaysOnDeviceAndMpiRank) {
+            if(remoteMpiRank == myRank && remoteOptHints[haloId] == TauschOptimizationHint::StaysOnDevice) {
 
                 buf_t *cudabuf;
                 cudaMalloc(&cudabuf, remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId]*sizeof(buf_t));
@@ -921,7 +920,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         size_t haloSize = remoteHaloIndicesSize[haloId];
 
-        if((remoteOptHints[haloId]&TauschOptimizationHint::StaysOnDeviceAndMpiRank) == TauschOptimizationHint::StaysOnDeviceAndMpiRank) {
+        if(remoteOptHints[haloId] == TauschOptimizationHint::StaysOnDevice) {
 
             size_t mpiRecvBufferIndex = 0;
             for(size_t region = 0; region < remoteHaloIndices[haloId].size(); ++region) {
