@@ -109,7 +109,10 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                                 numBuffers, remoteMpiRank, hints);
     }
 
-    inline int addLocalHaloInfo(std::vector<std::array<int, 3> > haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
+    inline int addLocalHaloInfo(std::vector<std::array<int, 4> > haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
+
+        for(size_t i = 0; i < haloIndices.size(); ++i)
+            std::cout << i << " :: " << haloIndices[i][0] << " / " << haloIndices[i][1] << " / " << haloIndices[i][2] << "|" << haloIndices[i][3] << std::endl;
 
         int haloSize = 0;
         for(auto tuple : haloIndices)
@@ -147,7 +150,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                                  numBuffers, remoteMpiRank, hints);
     }
 
-    inline int addRemoteHaloInfo(std::vector<std::array<int, 3> > haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
+    inline int addRemoteHaloInfo(std::vector<std::array<int, 4> > haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
 
         int haloSize = 0;
         for(auto tuple : haloIndices)
@@ -181,19 +184,28 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         size_t mpiSendBufferIndex = 0;
         for(size_t region = 0; region < localHaloIndices[haloId].size(); ++region) {
-            const std::array<int, 3> vals = localHaloIndices[haloId][region];
+            const std::array<int, 4> vals = localHaloIndices[haloId][region];
 
             const int val_start = vals[0];
             const int val_howmany = vals[1];
-            const int val_stride = vals[2];
+            const int val_stride1 = vals[2];
+            const int val_stride2 = vals[3];
 
-            if(val_stride == 1) {
+            if(val_stride1 == 1 && val_stride2 > 1) {
+
+                for(int c = 0; c < val_howmany/2; ++c) {
+                    sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex + 0] = buf[val_start+c*(val_stride1+val_stride2)   ];
+                    sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex + 1] = buf[val_start+c*(val_stride1+val_stride2) +1];
+                    mpiSendBufferIndex += 2;
+                }
+
+            } else if(val_stride1 == 1 && val_stride2 == 0) {
                 memcpy(&sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex], &buf[val_start], val_howmany*sizeof(buf_t));
                 mpiSendBufferIndex += val_howmany;
             } else {
                 const int mpiSendBufferIndexBASE = bufferId*haloSize + mpiSendBufferIndex;
                 for(int i = 0; i < val_howmany; ++i)
-                    sendBuffer[haloId][mpiSendBufferIndexBASE + i] = buf[val_start+i*val_stride];
+                    sendBuffer[haloId][mpiSendBufferIndexBASE + i] = buf[val_start+i*val_stride1];
                 mpiSendBufferIndex += val_howmany;
             }
 
@@ -294,19 +306,28 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         size_t mpiRecvBufferIndex = 0;
         for(size_t region = 0; region < remoteHaloIndices[haloId].size(); ++region) {
-            const std::array<int, 3> vals = remoteHaloIndices[haloId][region];
+            const std::array<int, 4> vals = remoteHaloIndices[haloId][region];
 
             const int val_start = vals[0];
             const int val_howmany = vals[1];
-            const int val_stride = vals[2];
+            const int val_stride1 = vals[2];
+            const int val_stride2 = vals[3];
 
-            if(val_stride == 1) {
+            if(val_stride1 == 1 && val_stride2 > 1) {
+
+                for(int c = 0; c < val_howmany/2; ++c) {
+                    buf[val_start+c*(val_stride1+val_stride2)    ] = recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex + 0];
+                    buf[val_start+c*(val_stride1+val_stride2) + 1] = recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex + 1];
+                    mpiRecvBufferIndex += 2;
+                }
+
+            } else if(val_stride1 == 1 && val_stride2 == 0) {
                 memcpy(&buf[val_start], &recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex], val_howmany*sizeof(buf_t));
                 mpiRecvBufferIndex += val_howmany;
             } else {
                 const size_t mpirecvBufferIndexBASE = bufferId*haloSize + mpiRecvBufferIndex;
                 for(int i = 0; i < val_howmany; ++i)
-                    buf[val_start+i*val_stride] = recvBuffer[haloId][mpirecvBufferIndexBASE + i];
+                    buf[val_start+i*val_stride1] = recvBuffer[haloId][mpirecvBufferIndexBASE + i];
                 mpiRecvBufferIndex += val_howmany;
             }
 
@@ -339,16 +360,16 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 #ifdef TAUSCH_OPENCL
 
     inline int addLocalHaloInfoOCL(std::vector<int> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addLocalHaloInfoOCL(extractHaloIndicesWithStride(haloIndices),
+        return addLocalHaloInfoOCL(extractHaloIndicesWithStride(haloIndices, true),
                                    numBuffers, remoteMpiRank, hints);
     }
 
     inline int addLocalHaloInfoOCL(std::vector<size_t> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addLocalHaloInfoOCL(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end())),
+        return addLocalHaloInfoOCL(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end()), true),
                                    numBuffers, remoteMpiRank, hints);
     }
 
-    inline int addLocalHaloInfoOCL(std::vector<std::array<int, 3> > haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
+    inline int addLocalHaloInfoOCL(std::vector<std::array<int, 4> > haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
 
         int haloSize = 0;
         for(auto tuple : haloIndices)
@@ -393,16 +414,16 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
     }
 
     inline int addRemoteHaloInfoOCL(std::vector<int> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addRemoteHaloInfoOCL(extractHaloIndicesWithStride(haloIndices),
+        return addRemoteHaloInfoOCL(extractHaloIndicesWithStride(haloIndices, true),
                                     numBuffers, remoteMpiRank, hints);
     }
 
     inline int addRemoteHaloInfoOCL(std::vector<size_t> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addRemoteHaloInfoOCL(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end())),
+        return addRemoteHaloInfoOCL(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end()), true),
                                     numBuffers, remoteMpiRank, hints);
     }
 
-    inline int addRemoteHaloInfoOCL(std::vector<std::array<int, 3> > haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
+    inline int addRemoteHaloInfoOCL(std::vector<std::array<int, 4> > haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
 
         int haloSize = 0;
         for(auto tuple : haloIndices)
@@ -454,7 +475,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
             size_t mpiSendBufferIndex = 0;
             for(size_t iRegion = 0; iRegion < localHaloIndices[haloId].size(); ++iRegion) {
-                const std::array<int, 3> vals = localHaloIndices[haloId][iRegion];
+                const std::array<int, 4> vals = localHaloIndices[haloId][iRegion];
 
                 const int val_start = vals[0];
                 const int val_howmany = vals[1];
@@ -601,7 +622,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
             size_t mpiRecvBufferIndex = 0;
             for(size_t iRegion = 0; iRegion < remoteHaloIndices[haloId].size(); ++iRegion) {
-                const std::array<int, 3> vals = remoteHaloIndices[haloId][iRegion];
+                const std::array<int, 4> vals = remoteHaloIndices[haloId][iRegion];
 
                 const int val_start = vals[0];
                 const int val_howmany = vals[1];
@@ -682,13 +703,13 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     inline int addLocalHaloInfoCUDA(std::vector<int> haloIndices,
                                     const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addLocalHaloInfoCUDA(extractHaloIndicesWithStride(haloIndices), numBuffers, remoteMpiRank, hints);
+        return addLocalHaloInfoCUDA(extractHaloIndicesWithStride(haloIndices, true), numBuffers, remoteMpiRank, hints);
     }
     inline int addLocalHaloInfoCUDA(std::vector<size_t> haloIndices,
                                     const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addLocalHaloInfoCUDA(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end())), remoteMpiRank, hints);
+        return addLocalHaloInfoCUDA(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end()), true), remoteMpiRank, hints);
     }
-    inline int addLocalHaloInfoCUDA(std::vector<std::array<int, 3> > haloIndices,
+    inline int addLocalHaloInfoCUDA(std::vector<std::array<int, 4> > haloIndices,
                                     const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
 
         int haloSize = 0;
@@ -729,15 +750,15 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     inline int addRemoteHaloInfoCUDA(std::vector<int> haloIndices,
                                      const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addRemoteHaloInfoCUDA(extractHaloIndicesWithStride(haloIndices), numBuffers, remoteMpiRank, hints);
+        return addRemoteHaloInfoCUDA(extractHaloIndicesWithStride(haloIndices, true), numBuffers, remoteMpiRank, hints);
     }
 
     inline int addRemoteHaloInfoCUDA(std::vector<size_t> haloIndices,
                                      const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addRemoteHaloInfoCUDA(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end())), numBuffers, remoteMpiRank, hints);
+        return addRemoteHaloInfoCUDA(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end()), true), numBuffers, remoteMpiRank, hints);
     }
 
-    inline int addRemoteHaloInfoCUDA(std::vector<std::array<int, 3> > haloIndices,
+    inline int addRemoteHaloInfoCUDA(std::vector<std::array<int, 4> > haloIndices,
                                      const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
 
         int haloSize = 0;
@@ -793,7 +814,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
             size_t mpiSendBufferIndex = 0;
             for(size_t region = 0; region < localHaloIndices[haloId].size(); ++region) {
-                const std::array<int, 3> vals = localHaloIndices[haloId][region];
+                const std::array<int, 4> vals = localHaloIndices[haloId][region];
 
                 const int val_start = vals[0];
                 const int val_howmany = vals[1];
@@ -815,7 +836,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         size_t mpiSendBufferIndex = 0;
         for(size_t region = 0; region < localHaloIndices[haloId].size(); ++region) {
-            const std::array<int, 3> vals = localHaloIndices[haloId][region];
+            const std::array<int, 4> vals = localHaloIndices[haloId][region];
 
             const int val_start = vals[0];
             const int val_howmany = vals[1];
@@ -924,7 +945,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
             size_t mpiRecvBufferIndex = 0;
             for(size_t region = 0; region < remoteHaloIndices[haloId].size(); ++region) {
-                const std::array<int, 3> vals = remoteHaloIndices[haloId][region];
+                const std::array<int, 4> vals = remoteHaloIndices[haloId][region];
 
                 const int val_start = vals[0];
                 const int val_howmany = vals[1];
@@ -944,7 +965,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
             size_t mpiRecvBufferIndex = 0;
             for(size_t region = 0; region < remoteHaloIndices[haloId].size(); ++region) {
-                const std::array<int, 3> vals = remoteHaloIndices[haloId][region];
+                const std::array<int, 4> vals = remoteHaloIndices[haloId][region];
 
                 const int val_start = vals[0];
                 const int val_howmany = vals[1];
@@ -968,67 +989,226 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
 private:
 
-    inline std::vector<std::array<int, 3> > extractHaloIndicesWithStride(std::vector<int> indices) const {
-
-        std::vector<std::array<int, 3> > ret;
+    inline std::vector<std::array<int, 4> > extractHaloIndicesWithStride(std::vector<int> indices, bool gpu = false) const {
 
         // special cases: 0, 1, 2 entries only
 
         if(indices.size() == 0)
-            return ret;
-        else if(indices.size() == 1) {
-            std::array<int, 3> val = {static_cast<int>(indices[0]), 1, 1};
-            ret.push_back(val);
-            return ret;
-        } else if(indices.size() == 2) {
-            std::array<int, 3> val = {static_cast<int>(indices[0]), 2, static_cast<int>(indices[1])-static_cast<int>(indices[0])};
-            ret.push_back(val);
-            return ret;
-        }
 
-        // compute strides (first entry assumes to have same stride as second entry)
-        std::vector<int> strides;
-        strides.push_back(indices[1]-indices[0]);
-        for(size_t i = 1; i < indices.size(); ++i)
-            strides.push_back(indices[i]-indices[i-1]);
+            return std::vector<std::array<int, 4> >();
 
-        // the current start/size/stride
-        int curStart = static_cast<int>(indices[0]);
-        int curStride = static_cast<int>(indices[1])-static_cast<int>(indices[0]);
-        int curNum = 1;
+        else if(indices.size() == 1)
 
-        for(size_t ind = 1; ind < indices.size(); ++ind) {
+            return {{indices[0], 1, 1, 0}};
 
-            // the stride has changed
-            if(strides[ind] != curStride) {
+        else if(indices.size() == 2)
 
-                // store everything up to now as region with same stride
-                std::array<int, 3> vals = {curStart, curNum, curStride};
-                ret.push_back(vals);
+            return {{indices[0], 2, indices[1]-indices[0], 0}};
 
-                // one stray element at the end
-                if(ind == indices.size()-1) {
-                    std::array<int, 3> val = {static_cast<int>(indices[ind]), 1, 1};
-                    ret.push_back(val);
+        // more than 2 entries
+
+        std::vector<std::array<int, 4> > ret;
+
+        // these keep track of our current position in the array and the nature of the current values
+        int start = -1;
+        int howMany = 0;
+        int stride1 = 0;
+        int stride2 = 0;
+
+        // whichCase can be 1 or 2 for the two cases (see below)
+        int whichCase = -1;
+
+        // our index in the array
+        int ind = 0;
+
+        // we stop one before end, as we need at least two values to compute stride.
+        // this leaves the possibility of a trailing entry at end of array -> taken care of at the end
+        while(ind < indices.size()-1) {
+
+            // compute three strides (based on four values
+            int curStride0 = -1, curStride1 = -1, curStride2 = -1;
+
+            curStride0 = indices[ind+1]-indices[ind];
+            if(ind < indices.size()-2)
+                curStride1 = indices[ind+2]-indices[ind+1];
+            if(ind < indices.size()-3)
+                curStride2 = indices[ind+3]-indices[ind+2];
+
+            // halo width of 2 (stride pattern: 1, x, 1, x, 1, etc.
+            if(!gpu && curStride0 == 1 && curStride1 > 1 && curStride2 == 1) {
+
+                // new halo region
+                if(start == -1) {
+
+                    start = indices[ind];
+                    howMany = 4;
+                    stride1 = 1;
+                    stride2 = curStride1;
+
+                    ind += 4;
+
+                // something currently stored in temp variables
                 } else {
-                    // update/reset start/stride/size
-                    curStart = static_cast<int>(indices[ind]);
-                    curStride = strides[ind+1];
-                    curNum = 1;
+
+                    // we had a similar case before
+                    if(whichCase == 1) {
+
+                        // same case as before
+                        if(indices[ind]-indices[ind-1] == stride2) {
+
+                            howMany += 2;
+                            ind += 2;
+
+                            // and the next couple also fits the bill
+                            if(curStride1 == stride2) {
+
+                                howMany += 2;
+                                ind += 2;
+
+                            }
+
+
+                        }
+
+                    // before we had case #2
+                    } else {
+
+                        // store previous setup
+                        ret.push_back({start, howMany, stride1, stride2});
+
+                        // reset values for new case
+                        start = indices[ind];
+                        howMany = 4;
+                        stride1 = 1;
+                        stride2 = curStride1;
+
+                        ind += 4;
+
+                    }
+
                 }
 
-            // same stride again
+                // end of case #1
+                whichCase = 1;
+
             } else {
-                // one more item
-                ++curNum;
-                // if we reached the end, save region before finishing
-                if(ind == indices.size()-1) {
-                    std::array<int, 3> vals = {curStart, curNum, curStride};
-                    ret.push_back(vals);
+
+                // new halo region
+                if(start == -1) {
+
+                    // base values reset
+                    start = indices[ind];
+                    howMany = 0;
+                    stride1 = curStride0;
+                    stride2 = 0;
+
+                } else {
+
+                    // same case as before
+                    if(whichCase == 2) {
+
+                        // continuation from before
+                        if(indices[ind]-indices[ind-1] == stride1) {
+
+                            // only the first value fits the bill, the rest is different
+                            if(curStride0 != stride1) {
+
+                                howMany += 1;
+                                ind += 1;
+
+                                continue;
+
+                                // to ease the complexity of this function, we let the next iteration take care of the other three values that we ignore here
+
+                            }
+
+                        // the stride has changed
+                        } else {
+
+                            // store previous setup
+                            ret.push_back({start, howMany, stride1, stride2});
+
+                            // base values reset
+                            start = indices[ind];
+                            howMany = 0;
+                            stride1 = curStride0;
+                            stride2 = 0;
+
+                        }
+
+                    // before we had case #1
+                    } else {
+
+                        // store previous setup
+                        ret.push_back({start, howMany, stride1, stride2});
+
+                        // base values reset
+                        start = indices[ind];
+                        howMany = 0;
+                        stride1= curStride0;
+                        stride2 = 0;
+
+                    }
+
                 }
+
+                // four values that have the same stride
+                if(curStride0 == curStride1 && curStride1 == curStride2 && curStride1 != -1 && curStride2 != -1) {
+
+                    howMany += 4;
+                    ind += 4;
+
+                // three values
+                } else if(curStride0 == curStride1 && curStride1 != -1) {
+
+                    howMany += 3;
+                    ind += 3;
+
+                // only two values
+                } else {
+
+                    // there might be a pattern up ahead -> add current value as single entry!
+                    if(!gpu && (curStride1 == 1 && curStride2 > 1 || curStride1 == curStride2)) {
+
+                        // store previous setup
+                        ret.push_back({start, howMany, stride1, stride2});
+
+                        // only move pointer by 1
+                        ind += 1;
+                        start = -1;
+                        stride1 = curStride1;
+                        stride2 = 0;
+
+                    // no pattern coming up right away (afawct)
+                    } else {
+
+                        howMany += 2;
+                        ind += 2;
+
+                    }
+
+                }
+
+                // end of case #2
+                whichCase = 2;
+
             }
 
         }
+
+        // if the last value fits the previous setup, add to it
+        if(ind == indices.size()-1 && howMany > 0 && stride2 == 0 && stride1 == indices[ind]-indices[ind-1]) {
+            ++howMany;
+            ++ind;
+        }
+
+        // store final setup (if something is left)
+        if(howMany > 0)
+            ret.push_back({start, howMany, stride1, stride2});
+
+        // possibly trailing entry at end -> add as single entry
+        if(ind == indices.size()-1)
+            ret.push_back({indices[ind], 1, 1, 0});
 
         return ret;
 
@@ -1037,8 +1217,8 @@ private:
     MPI_Comm TAUSCH_COMM;
     MPI_Datatype mpiDataType;
 
-    std::vector<std::vector<std::array<int, 3> > > localHaloIndices;
-    std::vector<std::vector<std::array<int, 3> > > remoteHaloIndices;
+    std::vector<std::vector<std::array<int, 4> > > localHaloIndices;
+    std::vector<std::vector<std::array<int, 4> > > remoteHaloIndices;
 
     std::vector<size_t> localHaloIndicesSize;
     std::vector<size_t> remoteHaloIndicesSize;
