@@ -1093,11 +1093,24 @@ private:
                 // new halo region
                 if(start == -1) {
 
-                    // base values reset
-                    start = indices[ind];
-                    howMany = 0;
-                    stride1 = curStride0;
-                    stride2 = 0;
+                    if(!gpu && ((curStride1 == 1 && curStride2 > 1) || curStride1 == curStride2)) {
+
+                        ret.push_back({indices[ind], 1, 1, 0});
+
+                        ind += 1;
+                        howMany = 0;
+
+                        continue;
+
+                    } else {
+
+                        // base values reset
+                        start = indices[ind];
+                        howMany = 0;
+                        stride1 = curStride0;
+                        stride2 = 0;
+
+                    }
 
                 } else {
 
@@ -1165,7 +1178,7 @@ private:
                 } else {
 
                     // there might be a pattern up ahead -> add current value as single entry!
-                    if(!gpu && (curStride1 == 1 && curStride2 > 1 || curStride1 == curStride2)) {
+                    if(!gpu && ((curStride1 == 1 && curStride2 > 1) || curStride1 == curStride2)) {
 
                         // store previous setup
                         ret.push_back({start, howMany, stride1, stride2});
