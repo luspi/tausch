@@ -111,9 +111,6 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     inline int addLocalHaloInfo(std::vector<std::array<int, 4> > haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
 
-        for(size_t i = 0; i < haloIndices.size(); ++i)
-            std::cout << i << " :: " << haloIndices[i][0] << " / " << haloIndices[i][1] << " / " << haloIndices[i][2] << "|" << haloIndices[i][3] << std::endl;
-
         int haloSize = 0;
         for(auto tuple : haloIndices)
             haloSize += tuple[1];
