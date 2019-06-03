@@ -188,10 +188,29 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             const int val_howmanyrows = vals[2];
             const int val_stridecol = vals[3];
 
-            for(int rows = 0; rows < val_howmanyrows; ++rows) {
+            if(val_howmanycols == 1) {
 
-                memcpy(&sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex], &buf[val_start + rows*val_stridecol], val_howmanycols*sizeof(buf_t));
-                mpiSendBufferIndex += val_howmanycols;
+                for(int rows = 0; rows < val_howmanyrows; ++rows) {
+                    sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex] = buf[val_start + rows*val_stridecol];
+                    ++mpiSendBufferIndex;
+                }
+
+            } else if(val_howmanycols == 2) {
+
+                for(int rows = 0; rows < val_howmanyrows; ++rows) {
+                    sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex  ] = buf[val_start + rows*val_stridecol   ];
+                    sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex+1] = buf[val_start + rows*val_stridecol +1];
+                    mpiSendBufferIndex += 2;
+                }
+
+            } else {
+
+                for(int rows = 0; rows < val_howmanyrows; ++rows) {
+
+                    memcpy(&sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex], &buf[val_start + rows*val_stridecol], val_howmanycols*sizeof(buf_t));
+                    mpiSendBufferIndex += val_howmanycols;
+
+                }
 
             }
 
@@ -299,10 +318,29 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             const int val_howmanyrows = vals[2];
             const int val_stridecol = vals[3];
 
-            for(int rows = 0; rows < val_howmanyrows; ++rows) {
+            if(val_howmanycols == 1) {
 
-                memcpy(&buf[val_start + rows*val_stridecol], &recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex], val_howmanycols*sizeof(buf_t));
-                mpiRecvBufferIndex += val_howmanycols;
+                for(int rows = 0; rows < val_howmanyrows; ++rows) {
+                    buf[val_start + rows*val_stridecol] = recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex];
+                    ++mpiRecvBufferIndex;
+                }
+
+            } else if(val_howmanycols == 2) {
+
+                for(int rows = 0; rows < val_howmanyrows; ++rows) {
+                    buf[val_start + rows*val_stridecol   ] = recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex   ];
+                    buf[val_start + rows*val_stridecol +1] = recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex +1];
+                    mpiRecvBufferIndex += 2;
+                }
+
+            } else {
+
+                for(int rows = 0; rows < val_howmanyrows; ++rows) {
+
+                    memcpy(&buf[val_start + rows*val_stridecol], &recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex], val_howmanycols*sizeof(buf_t));
+                    mpiRecvBufferIndex += val_howmanycols;
+
+                }
 
             }
 
