@@ -335,12 +335,12 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 #ifdef TAUSCH_OPENCL
 
     inline int addLocalHaloInfoOCL(std::vector<int> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addLocalHaloInfoOCL(extractHaloIndicesWithStride(haloIndices, true),
+        return addLocalHaloInfoOCL(extractHaloIndicesWithStride(haloIndices),
                                    numBuffers, remoteMpiRank, hints);
     }
 
     inline int addLocalHaloInfoOCL(std::vector<size_t> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addLocalHaloInfoOCL(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end()), true),
+        return addLocalHaloInfoOCL(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end())),
                                    numBuffers, remoteMpiRank, hints);
     }
 
@@ -348,7 +348,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         int haloSize = 0;
         for(auto tuple : haloIndices)
-            haloSize += tuple[1];
+            haloSize += tuple[1]*tuple[2];
 
         try {
 
@@ -389,12 +389,12 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
     }
 
     inline int addRemoteHaloInfoOCL(std::vector<int> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addRemoteHaloInfoOCL(extractHaloIndicesWithStride(haloIndices, true),
+        return addRemoteHaloInfoOCL(extractHaloIndicesWithStride(haloIndices),
                                     numBuffers, remoteMpiRank, hints);
     }
 
     inline int addRemoteHaloInfoOCL(std::vector<size_t> haloIndices, const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addRemoteHaloInfoOCL(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end()), true),
+        return addRemoteHaloInfoOCL(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end())),
                                     numBuffers, remoteMpiRank, hints);
     }
 
@@ -402,7 +402,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         int haloSize = 0;
         for(auto tuple : haloIndices)
-            haloSize += tuple[1];
+            haloSize += tuple[1]*tuple[2];
 
         try {
 
@@ -453,29 +453,33 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                 const std::array<int, 4> vals = localHaloIndices[haloId][iRegion];
 
                 const int val_start = vals[0];
-                const int val_howmany = vals[1];
-                const int val_stride = vals[2];
+                const int val_howmanycols = vals[1];
+                const int val_howmanyrows = vals[2];
+                const int val_striderows = vals[3];
 
-                cl::size_t<3> buffer_offset;
-                buffer_offset[0] = val_start*sizeof(buf_t); buffer_offset[1] = 0; buffer_offset[2] = 0;
-                cl::size_t<3> host_offset;
-                host_offset[0] = (bufferId*haloSize + mpiSendBufferIndex)*sizeof(buf_t); host_offset[1] = 0; host_offset[2] = 0;
+                for(int rows = 0; rows < val_howmanyrows; ++rows) {
 
-                cl::size_t<3> region;
-                region[0] = sizeof(buf_t); region[1] = val_howmany; region[2] = 1;
+                    cl::size_t<3> buffer_offset;
+                    buffer_offset[0] = (val_start+rows*val_striderows)*sizeof(buf_t); buffer_offset[1] = 0; buffer_offset[2] = 0;
+                    cl::size_t<3> host_offset;
+                    host_offset[0] = (bufferId*haloSize + mpiSendBufferIndex)*sizeof(buf_t); host_offset[1] = 0; host_offset[2] = 0;
 
-                queue.enqueueReadBufferRect(buf,
-                                            CL_TRUE,
-                                            buffer_offset,
-                                            host_offset,
-                                            region,
-                                            val_stride*sizeof(buf_t),
-                                            0,
-                                            sizeof(buf_t),
-                                            0,
-                                            sendBuffer[haloId]);
+                    cl::size_t<3> region;
+                    region[0] = sizeof(buf_t); region[1] = val_howmanycols; region[2] = 1;
 
-                mpiSendBufferIndex += val_howmany;
+                    queue.enqueueReadBufferRect(buf,
+                                                CL_TRUE,
+                                                buffer_offset,
+                                                host_offset,
+                                                region,
+                                                sizeof(buf_t),
+                                                0,
+                                                sizeof(buf_t),
+                                                0,
+                                                sendBuffer[haloId]);
+
+                    mpiSendBufferIndex += val_howmanycols;
+                }
 
             }
 
@@ -600,29 +604,34 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                 const std::array<int, 4> vals = remoteHaloIndices[haloId][iRegion];
 
                 const int val_start = vals[0];
-                const int val_howmany = vals[1];
-                const int val_stride = vals[2];
+                const int val_howmanycols = vals[1];
+                const int val_howmanyrows = vals[2];
+                const int val_striderows = vals[3];
 
-                cl::size_t<3> buffer_offset;
-                buffer_offset[0] = val_start*sizeof(buf_t); buffer_offset[1] = 0; buffer_offset[2] = 0;
-                cl::size_t<3> host_offset;
-                host_offset[0] = (bufferId*haloSize + mpiRecvBufferIndex)*sizeof(buf_t); host_offset[1] = 0; host_offset[2] = 0;
+                for(int rows = 0; rows < val_howmanyrows; ++rows) {
 
-                cl::size_t<3> region;
-                region[0] = sizeof(buf_t); region[1] = val_howmany; region[2] = 1;
+                    cl::size_t<3> buffer_offset;
+                    buffer_offset[0] = (val_start+rows*val_striderows)*sizeof(buf_t); buffer_offset[1] = 0; buffer_offset[2] = 0;
+                    cl::size_t<3> host_offset;
+                    host_offset[0] = (bufferId*haloSize + mpiRecvBufferIndex)*sizeof(buf_t); host_offset[1] = 0; host_offset[2] = 0;
 
-                queue.enqueueWriteBufferRect(buf,
-                                             CL_TRUE,
-                                             buffer_offset,
-                                             host_offset,
-                                             region,
-                                             val_stride*sizeof(buf_t),
-                                             0,
-                                             sizeof(buf_t),
-                                             0,
-                                             recvBuffer[haloId]);
+                    cl::size_t<3> region;
+                    region[0] = sizeof(buf_t); region[1] = val_howmanycols; region[2] = 1;
 
-                mpiRecvBufferIndex += val_howmany;
+                    queue.enqueueWriteBufferRect(buf,
+                                                 CL_TRUE,
+                                                 buffer_offset,
+                                                 host_offset,
+                                                 region,
+                                                 sizeof(buf_t),
+                                                 0,
+                                                 sizeof(buf_t),
+                                                 0,
+                                                 recvBuffer[haloId]);
+
+                    mpiRecvBufferIndex += val_howmanycols;
+
+                }
 
             }
 
