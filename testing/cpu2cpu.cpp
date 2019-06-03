@@ -24,9 +24,10 @@ int test_1buf(std::vector<int> sendIndices, std::vector<int> recvIndices, double
 
     delete tausch;
 
-    for(int i = 0; i < 10; ++i)
+    for(int i = 0; i < 10; ++i) {
         if(fabs(expected[i]-buf1[i]) > 1e-10)
             return 1;
+    }
 
     delete[] buf1;
 
@@ -107,10 +108,16 @@ TEST_CASE("1 buffer data exchange") {
     double *expected4 = new double[10]{1,2,3,4,5,6,7,8,9,10};
     REQUIRE(test_1buf(sendIndices4, recvIndices4, expected4) == 0);
 
+    std::vector<int> sendIndices5 = {0,3,4,6,7};
+    std::vector<int> recvIndices5 = {1,2,3,4,5};
+    double *expected5 = new double[10]{1,1,4,5,7,8,7,8,9,10};
+    REQUIRE(test_1buf(sendIndices5, recvIndices5, expected5) == 0);
+
     delete[] expected1;
     delete[] expected2;
     delete[] expected3;
     delete[] expected4;
+    delete[] expected5;
 
 }
 
@@ -140,6 +147,12 @@ TEST_CASE("2 buffer data exchange") {
     double *expected4_2 = new double[10]{11,12,13,14,15,16,17,18,19,20};
     REQUIRE(test_2buf(sendIndices4, recvIndices4, expected4_1, expected4_2) == 0);
 
+    std::vector<int> sendIndices5 = {0,3,4,6,7};
+    std::vector<int> recvIndices5 = {1,2,3,4,5};
+    double *expected5_1 = new double[10]{1,11,14,15,17,18,7,8,9,10};
+    double *expected5_2 = new double[10]{11,1,4,5,7,8,17,18,19,20};
+    REQUIRE(test_2buf(sendIndices5, recvIndices5, expected5_1, expected5_2) == 0);
+
     delete[] expected1_1;
     delete[] expected1_2;
     delete[] expected2_1;
@@ -148,5 +161,9 @@ TEST_CASE("2 buffer data exchange") {
     delete[] expected3_2;
     delete[] expected4_1;
     delete[] expected4_2;
+    delete[] expected5_1;
+    delete[] expected5_2;
 
 }
+
+
