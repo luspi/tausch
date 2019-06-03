@@ -113,7 +113,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         int haloSize = 0;
         for(auto tuple : haloIndices)
-            haloSize += tuple[1];
+            haloSize += tuple[1]*tuple[2];
 
         localHaloIndices.push_back(haloIndices);
         localHaloIndicesSize.push_back(haloSize);
@@ -151,7 +151,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         int haloSize = 0;
         for(auto tuple : haloIndices)
-            haloSize += tuple[1];
+            haloSize += tuple[1]*tuple[2];
 
         remoteHaloIndices.push_back(haloIndices);
         remoteHaloIndicesSize.push_back(haloSize);
@@ -184,26 +184,15 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             const std::array<int, 4> vals = localHaloIndices[haloId][region];
 
             const int val_start = vals[0];
-            const int val_howmany = vals[1];
-            const int val_stride1 = vals[2];
-            const int val_stride2 = vals[3];
+            const int val_howmanycols = vals[1];
+            const int val_howmanyrows = vals[2];
+            const int val_stridecol = vals[3];
 
-            if(val_stride1 == 1 && val_stride2 > 1) {
+            for(int rows = 0; rows < val_howmanyrows; ++rows) {
 
-                for(int c = 0; c < val_howmany/2; ++c) {
-                    sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex + 0] = buf[val_start+c*(val_stride1+val_stride2)   ];
-                    sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex + 1] = buf[val_start+c*(val_stride1+val_stride2) +1];
-                    mpiSendBufferIndex += 2;
-                }
+                memcpy(&sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex], &buf[val_start + rows*val_stridecol], val_howmanycols*sizeof(buf_t));
+                mpiSendBufferIndex += val_howmanycols;
 
-            } else if(val_stride1 == 1 && val_stride2 == 0) {
-                memcpy(&sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex], &buf[val_start], val_howmany*sizeof(buf_t));
-                mpiSendBufferIndex += val_howmany;
-            } else {
-                const int mpiSendBufferIndexBASE = bufferId*haloSize + mpiSendBufferIndex;
-                for(int i = 0; i < val_howmany; ++i)
-                    sendBuffer[haloId][mpiSendBufferIndexBASE + i] = buf[val_start+i*val_stride1];
-                mpiSendBufferIndex += val_howmany;
             }
 
         }
@@ -306,26 +295,15 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             const std::array<int, 4> vals = remoteHaloIndices[haloId][region];
 
             const int val_start = vals[0];
-            const int val_howmany = vals[1];
-            const int val_stride1 = vals[2];
-            const int val_stride2 = vals[3];
+            const int val_howmanycols = vals[1];
+            const int val_howmanyrows = vals[2];
+            const int val_stridecol = vals[3];
 
-            if(val_stride1 == 1 && val_stride2 > 1) {
+            for(int rows = 0; rows < val_howmanyrows; ++rows) {
 
-                for(int c = 0; c < val_howmany/2; ++c) {
-                    buf[val_start+c*(val_stride1+val_stride2)    ] = recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex + 0];
-                    buf[val_start+c*(val_stride1+val_stride2) + 1] = recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex + 1];
-                    mpiRecvBufferIndex += 2;
-                }
+                memcpy(&buf[val_start + rows*val_stridecol], &recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex], val_howmanycols*sizeof(buf_t));
+                mpiRecvBufferIndex += val_howmanycols;
 
-            } else if(val_stride1 == 1 && val_stride2 == 0) {
-                memcpy(&buf[val_start], &recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex], val_howmany*sizeof(buf_t));
-                mpiRecvBufferIndex += val_howmany;
-            } else {
-                const size_t mpirecvBufferIndexBASE = bufferId*haloSize + mpiRecvBufferIndex;
-                for(int i = 0; i < val_howmany; ++i)
-                    buf[val_start+i*val_stride1] = recvBuffer[haloId][mpirecvBufferIndexBASE + i];
-                mpiRecvBufferIndex += val_howmany;
             }
 
         }
@@ -984,241 +962,58 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
 #endif
 
-private:
+    inline std::vector<std::array<int, 4> > extractHaloIndicesWithStride(std::vector<int> indices) {
 
-    inline std::vector<std::array<int, 4> > extractHaloIndicesWithStride(std::vector<int> indices, bool gpu = false) const {
-
-        // special cases: 0, 1, 2 entries only
-
+        // nothing to do
         if(indices.size() == 0)
-
             return std::vector<std::array<int, 4> >();
 
-        else if(indices.size() == 1)
+        // first we build a collection of all consecutive rows
+        std::vector<std::array<int, 2> > rows;
 
-            return {{indices[0], 1, 1, 0}};
+        int curIndex = 1;
+        int start = indices[0];
+        int howmany = 1;
+        while(curIndex < indices.size()) {
 
-        else if(indices.size() == 2)
+            if(indices[curIndex]-indices[curIndex-1] == 1)
+                ++howmany;
+            else {
 
-            return {{indices[0], 2, indices[1]-indices[0], 0}};
+                rows.push_back({start, howmany});
 
-        // more than 2 entries
-
-        std::vector<std::array<int, 4> > ret;
-
-        // these keep track of our current position in the array and the nature of the current values
-        int start = -1;
-        int howMany = 0;
-        int stride1 = 0;
-        int stride2 = 0;
-
-        // whichCase can be 1 or 2 for the two cases (see below)
-        int whichCase = -1;
-
-        // our index in the array
-        int ind = 0;
-
-        // we stop one before end, as we need at least two values to compute stride.
-        // this leaves the possibility of a trailing entry at end of array -> taken care of at the end
-        while(ind < indices.size()-1) {
-
-            // compute three strides (based on four values
-            int curStride0 = -1, curStride1 = -1, curStride2 = -1;
-
-            curStride0 = indices[ind+1]-indices[ind];
-            if(ind < indices.size()-2)
-                curStride1 = indices[ind+2]-indices[ind+1];
-            if(ind < indices.size()-3)
-                curStride2 = indices[ind+3]-indices[ind+2];
-
-            // halo width of 2 (stride pattern: 1, x, 1, x, 1, etc.
-            if(!gpu && curStride0 == 1 && curStride1 > 1 && curStride2 == 1) {
-
-                // new halo region
-                if(start == -1) {
-
-                    start = indices[ind];
-                    howMany = 4;
-                    stride1 = 1;
-                    stride2 = curStride1;
-
-                    ind += 4;
-
-                // something currently stored in temp variables
-                } else {
-
-                    // we had a similar case before
-                    if(whichCase == 1) {
-
-                        // same case as before
-                        if(indices[ind]-indices[ind-1] == stride2) {
-
-                            howMany += 2;
-                            ind += 2;
-
-                            // and the next couple also fits the bill
-                            if(curStride1 == stride2) {
-
-                                howMany += 2;
-                                ind += 2;
-
-                            }
-
-
-                        }
-
-                    // before we had case #2
-                    } else {
-
-                        // store previous setup
-                        ret.push_back({start, howMany, stride1, stride2});
-
-                        // reset values for new case
-                        start = indices[ind];
-                        howMany = 4;
-                        stride1 = 1;
-                        stride2 = curStride1;
-
-                        ind += 4;
-
-                    }
-
-                }
-
-                // end of case #1
-                whichCase = 1;
-
-            } else {
-
-                // new halo region
-                if(start == -1) {
-
-                    if(!gpu && ((curStride1 == 1 && curStride2 > 1) || curStride1 == curStride2)) {
-
-                        ret.push_back({indices[ind], 1, 1, 0});
-
-                        ind += 1;
-                        howMany = 0;
-
-                        continue;
-
-                    } else {
-
-                        // base values reset
-                        start = indices[ind];
-                        howMany = 0;
-                        stride1 = curStride0;
-                        stride2 = 0;
-
-                    }
-
-                } else {
-
-                    // same case as before
-                    if(whichCase == 2) {
-
-                        // continuation from before
-                        if(indices[ind]-indices[ind-1] == stride1) {
-
-                            // only the first value fits the bill, the rest is different
-                            if(curStride0 != stride1) {
-
-                                howMany += 1;
-                                ind += 1;
-
-                                continue;
-
-                                // to ease the complexity of this function, we let the next iteration take care of the other three values that we ignore here
-
-                            }
-
-                        // the stride has changed
-                        } else {
-
-                            // store previous setup
-                            ret.push_back({start, howMany, stride1, stride2});
-
-                            // base values reset
-                            start = indices[ind];
-                            howMany = 0;
-                            stride1 = curStride0;
-                            stride2 = 0;
-
-                        }
-
-                    // before we had case #1
-                    } else {
-
-                        // store previous setup
-                        ret.push_back({start, howMany, stride1, stride2});
-
-                        // base values reset
-                        start = indices[ind];
-                        howMany = 0;
-                        stride1= curStride0;
-                        stride2 = 0;
-
-                    }
-
-                }
-
-                // four values that have the same stride
-                if(curStride0 == curStride1 && curStride1 == curStride2 && curStride1 != -1 && curStride2 != -1) {
-
-                    howMany += 4;
-                    ind += 4;
-
-                // three values
-                } else if(curStride0 == curStride1 && curStride1 != -1) {
-
-                    howMany += 3;
-                    ind += 3;
-
-                // only two values
-                } else {
-
-                    // there might be a pattern up ahead -> add current value as single entry!
-                    if(!gpu && ((curStride1 == 1 && curStride2 > 1) || curStride1 == curStride2)) {
-
-                        // store previous setup
-                        ret.push_back({start, howMany, stride1, stride2});
-
-                        // only move pointer by 1
-                        ind += 1;
-                        start = -1;
-                        stride1 = curStride1;
-                        stride2 = 0;
-
-                    // no pattern coming up right away (afawct)
-                    } else {
-
-                        howMany += 2;
-                        ind += 2;
-
-                    }
-
-                }
-
-                // end of case #2
-                whichCase = 2;
+                start = indices[curIndex];
+                howmany = 1;
 
             }
 
+            ++curIndex;
+
         }
 
-        // if the last value fits the previous setup, add to it
-        if(ind == indices.size()-1 && howMany > 0 && stride2 == 0 && stride1 == indices[ind]-indices[ind-1]) {
-            ++howMany;
-            ++ind;
+        rows.push_back({start, howmany});
+
+        // second we look for simple patterns within these rows
+        std::vector<std::array<int, 4> > ret;
+
+        ret.push_back({rows[0][0], rows[0][1], 1, 0});
+
+        for(int currow = 1; currow < rows.size(); ++currow) {
+
+            if(rows[currow][1] == ret.back()[1] && (ret.back()[3] == 0 || rows[currow][0]-(ret.back()[0]+(ret.back()[2]-1)*ret.back()[3]) == ret.back()[3])) {
+
+                if(ret.back()[3] == 0) {
+                    ++ret.back()[2];
+                    ret.back()[3] = rows[currow][0]-ret.back()[0];
+                } else
+                    ++ret.back()[2];
+
+            } else {
+
+                ret.push_back({rows[currow][0], rows[currow][1], 1, 0});
+            }
+
         }
-
-        // store final setup (if something is left)
-        if(howMany > 0)
-            ret.push_back({start, howMany, stride1, stride2});
-
-        // possibly trailing entry at end -> add as single entry
-        if(ind == indices.size()-1)
-            ret.push_back({indices[ind], 1, 1, 0});
 
         return ret;
 
