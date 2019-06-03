@@ -687,18 +687,18 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     inline int addLocalHaloInfoCUDA(std::vector<int> haloIndices,
                                     const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addLocalHaloInfoCUDA(extractHaloIndicesWithStride(haloIndices, true), numBuffers, remoteMpiRank, hints);
+        return addLocalHaloInfoCUDA(extractHaloIndicesWithStride(haloIndices), numBuffers, remoteMpiRank, hints);
     }
     inline int addLocalHaloInfoCUDA(std::vector<size_t> haloIndices,
                                     const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addLocalHaloInfoCUDA(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end()), true), remoteMpiRank, hints);
+        return addLocalHaloInfoCUDA(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end())), remoteMpiRank, hints);
     }
     inline int addLocalHaloInfoCUDA(std::vector<std::array<int, 4> > haloIndices,
                                     const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
 
         int haloSize = 0;
         for(auto tuple : haloIndices)
-            haloSize += tuple[1];
+            haloSize += tuple[1]*tuple[2];
 
         if(haloSize == 0) {
 
@@ -734,12 +734,12 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     inline int addRemoteHaloInfoCUDA(std::vector<int> haloIndices,
                                      const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addRemoteHaloInfoCUDA(extractHaloIndicesWithStride(haloIndices, true), numBuffers, remoteMpiRank, hints);
+        return addRemoteHaloInfoCUDA(extractHaloIndicesWithStride(haloIndices), numBuffers, remoteMpiRank, hints);
     }
 
     inline int addRemoteHaloInfoCUDA(std::vector<size_t> haloIndices,
                                      const int numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
-        return addRemoteHaloInfoCUDA(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end()), true), numBuffers, remoteMpiRank, hints);
+        return addRemoteHaloInfoCUDA(extractHaloIndicesWithStride(std::vector<int>(haloIndices.begin(), haloIndices.end())), numBuffers, remoteMpiRank, hints);
     }
 
     inline int addRemoteHaloInfoCUDA(std::vector<std::array<int, 4> > haloIndices,
@@ -747,7 +747,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         int haloSize = 0;
         for(auto tuple : haloIndices)
-            haloSize += tuple[1];
+            haloSize += tuple[1]*tuple[2];
 
         if(haloSize == 0) {
 
@@ -801,16 +801,21 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                 const std::array<int, 4> vals = localHaloIndices[haloId][region];
 
                 const int val_start = vals[0];
-                const int val_howmany = vals[1];
-                const int val_stride = vals[2];
+                const int val_howmanycols = vals[1];
+                const int val_howmanyrows = vals[2];
+                const int val_striderows = vals[3];
 
-                cudaError_t err = cudaMemcpy2D(&sendCommunicationBufferKeptOnCuda[haloId][bufferId*haloSize + mpiSendBufferIndex], sizeof(buf_t),
-                                               &buf_d[val_start], val_stride*sizeof(buf_t),
-                                               sizeof(buf_t), val_howmany, cudaMemcpyDeviceToDevice);
-                if(err != cudaSuccess)
-                    std::cout << "Tausch::packSendBufferCUDA() 1: CUDA error detected: " << err << std::endl;
+                for(int rows = 0; rows < val_howmanyrows; ++rows) {
 
-                mpiSendBufferIndex += val_howmany;
+                    cudaError_t err = cudaMemcpy2D(&sendCommunicationBufferKeptOnCuda[haloId][bufferId*haloSize + mpiSendBufferIndex], sizeof(buf_t),
+                                                   &buf_d[val_start+rows*val_striderows], sizeof(buf_t),
+                                                   sizeof(buf_t), val_howmanycols, cudaMemcpyDeviceToDevice);
+                    if(err != cudaSuccess)
+                        std::cout << "Tausch::packSendBufferCUDA() 1: CUDA error detected: " << err << std::endl;
+
+                    mpiSendBufferIndex += val_howmanycols;
+
+                }
 
             }
 
@@ -823,16 +828,21 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             const std::array<int, 4> vals = localHaloIndices[haloId][region];
 
             const int val_start = vals[0];
-            const int val_howmany = vals[1];
-            const int val_stride = vals[2];
+            const int val_howmanycols = vals[1];
+            const int val_howmanyrows = vals[2];
+            const int val_striderows = vals[3];
 
-            cudaError_t err = cudaMemcpy2D(&sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex], sizeof(buf_t),
-                                           &buf_d[val_start], val_stride*sizeof(buf_t),
-                                           sizeof(buf_t), val_howmany, cudaMemcpyDeviceToHost);
-            if(err != cudaSuccess)
-                std::cout << "Tausch::packSendBufferCUDA() 2: CUDA error detected: " << err << std::endl;
+            for(int rows = 0; rows < val_howmanyrows; ++rows) {
 
-            mpiSendBufferIndex += val_howmany;
+                cudaError_t err = cudaMemcpy2D(&sendBuffer[haloId][bufferId*haloSize + mpiSendBufferIndex], sizeof(buf_t),
+                                               &buf_d[val_start+rows*val_striderows], sizeof(buf_t),
+                                               sizeof(buf_t), val_howmanycols, cudaMemcpyDeviceToHost);
+                if(err != cudaSuccess)
+                    std::cout << "Tausch::packSendBufferCUDA() 2: CUDA error detected: " << err << std::endl;
+
+                mpiSendBufferIndex += val_howmanycols;
+
+            }
 
         }
 
@@ -932,16 +942,21 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                 const std::array<int, 4> vals = remoteHaloIndices[haloId][region];
 
                 const int val_start = vals[0];
-                const int val_howmany = vals[1];
-                const int val_stride = vals[2];
+                const int val_howmanycols = vals[1];
+                const int val_howmanyrows = vals[2];
+                const int val_striderows = vals[3];
 
-                cudaError_t err = cudaMemcpy2D(&buf_d[val_start], val_stride*sizeof(buf_t),
-                                               &recvCommunicationBufferKeptOnCuda[haloId][bufferId*haloSize + mpiRecvBufferIndex], sizeof(buf_t),
-                                               sizeof(buf_t), val_howmany, cudaMemcpyDeviceToDevice);
-                if(err != cudaSuccess)
-                    std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << err << std::endl;
+                for(int rows = 0; rows < val_howmanyrows; ++rows) {
 
-                mpiRecvBufferIndex += val_howmany;
+                    cudaError_t err = cudaMemcpy2D(&buf_d[val_start+rows*val_striderows], sizeof(buf_t),
+                                                   &recvCommunicationBufferKeptOnCuda[haloId][bufferId*haloSize + mpiRecvBufferIndex], sizeof(buf_t),
+                                                   sizeof(buf_t), val_howmanycols, cudaMemcpyDeviceToDevice);
+                    if(err != cudaSuccess)
+                        std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << err << std::endl;
+
+                    mpiRecvBufferIndex += val_howmanycols;
+
+                }
 
             }
 
@@ -952,16 +967,21 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                 const std::array<int, 4> vals = remoteHaloIndices[haloId][region];
 
                 const int val_start = vals[0];
-                const int val_howmany = vals[1];
-                const int val_stride = vals[2];
+                const int val_howmanycols = vals[1];
+                const int val_howmanyrows = vals[2];
+                const int val_striderows = vals[3];
 
-                cudaError_t err = cudaMemcpy2D(&buf_d[val_start], val_stride*sizeof(buf_t),
-                                               &recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex], sizeof(buf_t),
-                                               sizeof(buf_t), val_howmany, cudaMemcpyHostToDevice);
-                if(err != cudaSuccess)
-                    std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << err << std::endl;
+                for(int rows = 0; rows < val_howmanyrows; ++rows) {
 
-                mpiRecvBufferIndex += val_howmany;
+                    cudaError_t err = cudaMemcpy2D(&buf_d[val_start+rows*val_striderows], sizeof(buf_t),
+                                                   &recvBuffer[haloId][bufferId*haloSize + mpiRecvBufferIndex], sizeof(buf_t),
+                                                   sizeof(buf_t), val_howmanycols, cudaMemcpyHostToDevice);
+                    if(err != cudaSuccess)
+                        std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << err << std::endl;
+
+                    mpiRecvBufferIndex += val_howmanycols;
+
+                }
 
             }
 
