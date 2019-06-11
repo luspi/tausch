@@ -138,10 +138,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                 MPI_Type_vector(haloIndices[block][2], haloIndices[block][1], haloIndices[block][3], mpiDataType, &vec);
                 MPI_Type_commit(&vec);
                 tmp[block] = vec;
-                if(block == 0)
-                    displacement[block] = haloIndices[block][0]*sizeof(buf_t);
-                else
-                    displacement[block] = haloIndices[block][0]*sizeof(buf_t)-displacement[block-1];
+                displacement[block] = haloIndices[block][0]*sizeof(buf_t);
                 blocklength[block] = 1;
 
             }
@@ -210,10 +207,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                 MPI_Type_vector(haloIndices[block][2], haloIndices[block][1], haloIndices[block][3], mpiDataType, &vec);
                 MPI_Type_commit(&vec);
                 tmp[block] = vec;
-                if(block == 0)
-                    displacement[block] = haloIndices[block][0]*sizeof(buf_t);
-                else
-                    displacement[block] = haloIndices[block][0]*sizeof(buf_t)-displacement[block-1];
+                displacement[block] = haloIndices[block][0]*sizeof(buf_t);
                 blocklength[block] = 1;
 
             }
