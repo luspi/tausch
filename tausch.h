@@ -141,7 +141,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                 if(block == 0)
                     displacement[block] = haloIndices[block][0]*sizeof(buf_t);
                 else
-                    displacement[block] = (haloIndices[block][0]-displacement[block-1])*sizeof(buf_t);
+                    displacement[block] = haloIndices[block][0]*sizeof(buf_t)-displacement[block-1];
                 blocklength[block] = 1;
 
             }
@@ -210,7 +210,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                 if(block == 0)
                     displacement[block] = haloIndices[block][0]*sizeof(buf_t);
                 else
-                    displacement[block] = (haloIndices[block][0]-displacement[block-1])*sizeof(buf_t);
+                    displacement[block] = haloIndices[block][0]*sizeof(buf_t)-displacement[block-1];
                 blocklength[block] = 1;
 
             }
