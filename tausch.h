@@ -128,27 +128,29 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         if(hints & UseMpiDerivedDatatype) {
 
-            int count = 0;
+            MPI_Datatype *tmp = new MPI_Datatype[haloIndices.size()];
+            MPI_Aint *displacement = new MPI_Aint[haloIndices.size()];
+            int *blocklength = new int[haloIndices.size()];
 
-            for(int block = 0; block < haloIndices.size(); ++block)
-                count += haloIndices[block][2];
-
-            int *blocklengths = new int[count];
-            int *displacements = new int[count];
-            int c = 0;
             for(int block = 0; block < haloIndices.size(); ++block) {
-                for(int row = 0; row < haloIndices[block][2]; ++row) {
-                    blocklengths[c] = haloIndices[block][1];
-                    displacements[c] = haloIndices[block][0]+row*haloIndices[block][3];
-                    ++c;
-                }
+
+                MPI_Datatype vec;
+                MPI_Type_vector(haloIndices[block][2], haloIndices[block][1], haloIndices[block][3], mpiDataType, &vec);
+                MPI_Type_commit(&vec);
+                tmp[block] = vec;
+                if(block == 0)
+                    displacement[block] = haloIndices[block][0]*sizeof(buf_t);
+                else
+                    displacement[block] = (haloIndices[block][0]-displacement[block-1])*sizeof(buf_t);
+                blocklength[block] = 1;
+
             }
 
-            MPI_Datatype newdatatype;
-            MPI_Type_indexed(count, blocklengths, displacements, MPI_DOUBLE, &newdatatype);
-            MPI_Type_commit(&newdatatype);
+            MPI_Datatype newtype;
+            MPI_Type_create_struct(haloIndices.size(), blocklength, displacement, tmp, &newtype);
+            MPI_Type_commit(&newtype);
 
-            sendDatatype.push_back(newdatatype);
+            sendDatatype.push_back(newtype);
 
 
         } else {
@@ -195,27 +197,29 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         if(hints & UseMpiDerivedDatatype) {
 
-            int count = 0;
+            MPI_Datatype *tmp = new MPI_Datatype[haloIndices.size()];
+            MPI_Aint *displacement = new MPI_Aint[haloIndices.size()];
+            int *blocklength = new int[haloIndices.size()];
 
-            for(int block = 0; block < haloIndices.size(); ++block)
-                count += haloIndices[block][2];
-
-            int *blocklengths = new int[count];
-            int *displacements = new int[count];
-            int c = 0;
             for(int block = 0; block < haloIndices.size(); ++block) {
-                for(int row = 0; row < haloIndices[block][2]; ++row) {
-                    blocklengths[c] = haloIndices[block][1];
-                    displacements[c] = haloIndices[block][0]+row*haloIndices[block][3];
-                    ++c;
-                }
+
+                MPI_Datatype vec;
+                MPI_Type_vector(haloIndices[block][2], haloIndices[block][1], haloIndices[block][3], mpiDataType, &vec);
+                MPI_Type_commit(&vec);
+                tmp[block] = vec;
+                if(block == 0)
+                    displacement[block] = haloIndices[block][0]*sizeof(buf_t);
+                else
+                    displacement[block] = (haloIndices[block][0]-displacement[block-1])*sizeof(buf_t);
+                blocklength[block] = 1;
+
             }
 
-            MPI_Datatype newdatatype;
-            MPI_Type_indexed(count, blocklengths, displacements, MPI_DOUBLE, &newdatatype);
-            MPI_Type_commit(&newdatatype);
+            MPI_Datatype newtype;
+            MPI_Type_create_struct(haloIndices.size(), blocklength, displacement, tmp, &newtype);
+            MPI_Type_commit(&newtype);
 
-            recvDatatype.push_back(newdatatype);
+            recvDatatype.push_back(newtype);
 
         } else {
 
