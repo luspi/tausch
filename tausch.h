@@ -102,7 +102,16 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
     }
 
-    ~Tausch() { }
+    ~Tausch() {
+
+        for(int i = 0; i < sendBuffer.size(); ++i) {
+            delete[] sendBuffer[i];
+            delete[] recvBuffer[i];
+            delete mpiSendRequests[i];
+            delete mpiRecvRequests[i];
+        }
+
+    }
 
     inline int addLocalHaloInfo(std::vector<int> haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
         return addLocalHaloInfo(extractHaloIndicesWithStride(haloIndices), numBuffers, remoteMpiRank, hints);
@@ -128,9 +137,9 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         if(hints & UseMpiDerivedDatatype) {
 
-            MPI_Datatype *tmp = new MPI_Datatype[haloIndices.size()];
-            MPI_Aint *displacement = new MPI_Aint[haloIndices.size()];
-            int *blocklength = new int[haloIndices.size()];
+            MPI_Datatype tmp[haloIndices.size()];
+            MPI_Aint displacement[haloIndices.size()];
+            int blocklength[haloIndices.size()];
 
             for(int block = 0; block < haloIndices.size(); ++block) {
 
@@ -197,9 +206,9 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
         if(hints & UseMpiDerivedDatatype) {
 
-            MPI_Datatype *tmp = new MPI_Datatype[haloIndices.size()];
-            MPI_Aint *displacement = new MPI_Aint[haloIndices.size()];
-            int *blocklength = new int[haloIndices.size()];
+            MPI_Datatype tmp[haloIndices.size()];
+            MPI_Aint displacement[haloIndices.size()];
+            int blocklength[haloIndices.size()];
 
             for(int block = 0; block < haloIndices.size(); ++block) {
 
