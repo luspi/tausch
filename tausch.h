@@ -152,6 +152,9 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
 
             sendDatatype.push_back(newtype);
 
+            buf_t *empty = new buf_t[1];
+            sendBuffer.push_back(empty);
+
 
         } else {
 
@@ -220,6 +223,9 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             MPI_Type_commit(&newtype);
 
             recvDatatype.push_back(newtype);
+
+            buf_t *empty = new buf_t[1];
+            recvBuffer.push_back(empty);
 
         } else {
 
