@@ -3,6 +3,9 @@
 
 #include <mpi.h>
 #include <vector>
+#include <array>
+#include <map>
+#include <cstring>
 
 #ifdef TAUSCH_OPENCL
 #define __CL_ENABLE_EXCEPTIONS
