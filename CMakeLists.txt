@@ -12,16 +12,24 @@ if(TESTING)
 
     set(CMAKE_BUILD_TYPE "Debug")
 
+    function(add_mpi_test name files num_mpi_proc)
+        separate_arguments(files_list UNIX_COMMAND ${files})
+        add_executable(${name} ${files_list})
+        target_link_libraries(${name} ${MPI_C_LIBRARIES})
+        target_link_libraries(${name} ${MPI_CXX_LIBRARIES})
+        add_test(NAME ${name} COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${num_mpi_proc} "./${name}")
+    endfunction(add_mpi_test)
+
     find_package(MPI REQUIRED)
     find_package(CUDA REQUIRED)
     find_package(OpenCL REQUIRED)
 
     # cpu -> cpu
-    add_executable(testing_cpu2cpu testing/cpu2cpu.cpp)
-    target_include_directories(testing_cpu2cpu PUBLIC "${MPI_C_INCLUDE_DIRS}")
-    target_link_libraries(testing_cpu2cpu "${MPI_C_LIBRARIES}")
-    target_link_libraries(testing_cpu2cpu "${MPI_CXX_LIBRARIES}")
-    add_test(cpu2cpu testing_cpu2cpu)
+
+    add_mpi_test(cpu2cpu_1 "testing/cpu2cpu/cpu2cpu_main.cpp testing/cpu2cpu/cpu2cpu_derived.cpp testing/cpu2cpu/cpu2cpu_packunpack.cpp testing/cpu2cpu/cpu2cpu_empty.cpp testing/cpu2cpu/cpu2cpu_randomaccess.cpp" 1)
+    add_mpi_test(cpu2cpu_2 "testing/cpu2cpu/cpu2cpu_main.cpp testing/cpu2cpu/cpu2cpu_derived.cpp testing/cpu2cpu/cpu2cpu_packunpack.cpp testing/cpu2cpu/cpu2cpu_empty.cpp testing/cpu2cpu/cpu2cpu_randomaccess.cpp" 2)
+    add_mpi_test(cpu2cpu_4 "testing/cpu2cpu/cpu2cpu_main.cpp testing/cpu2cpu/cpu2cpu_derived.cpp testing/cpu2cpu/cpu2cpu_packunpack.cpp testing/cpu2cpu/cpu2cpu_empty.cpp testing/cpu2cpu/cpu2cpu_randomaccess.cpp" 4)
+
 
     # cpu -> opencl
     add_executable(testing_cpu2ocl testing/cpu2ocl.cpp)
