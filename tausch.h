@@ -22,6 +22,7 @@ enum TauschOptimizationHint {
     UseMpiDerivedDatatype = 2,
     StaysOnDevice = 4,
     DoesNotStayOnDevice = 8,
+    SenderUsesMpiDerivedDatatype = 16,
 };
 
 template <class buf_t>
@@ -709,7 +710,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
             int myRank;
             MPI_Comm_rank(TAUSCH_COMM, &myRank);
 
-            if(remoteMpiRank == myRank) {
+            if(remoteMpiRank == myRank && !(remoteOptHints[haloId] & TauschOptimizationHint::SenderUsesMpiDerivedDatatype)) {
 
                 const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
 
@@ -1045,7 +1046,7 @@ kernel void unpackSubRegion(global const buf_t * restrict inBuf, global buf_t * 
                 cudaMemcpy(cudabuf, sendCommunicationBufferKeptOnCuda[remoteHaloId], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId]*sizeof(buf_t), cudaMemcpyDeviceToDevice);
                 recvCommunicationBufferKeptOnCuda[haloId] = cudabuf;
 
-            } else if(remoteMpiRank == myRank) {
+            } else if(remoteMpiRank == myRank && !(remoteOptHints[haloId] & TauschOptimizationHint::SenderUsesMpiDerivedDatatype)) {
 
                 memcpy(recvBuffer[haloId].get(), sendBuffer[remoteHaloId].get(), remoteHaloNumBuffers[haloId]*remoteHaloIndicesSize[haloId]*sizeof(buf_t));
 
