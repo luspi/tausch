@@ -19,9 +19,10 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
                     out[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
                 }
             }
-
-            double *cuda_out;
+            double *cuda_in, *cuda_out;
+            cudaMalloc(&cuda_in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             cudaMalloc(&cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
+            cudaMemcpy(cuda_in, in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
             cudaMemcpy(cuda_out, out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
 
             std::vector<int> sendIndices;
@@ -59,7 +60,7 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
             tausch->addLocalHaloInfo(sendIndices);
             tausch->addRemoteHaloInfo(recvIndices);
 
-            tausch->packSendBuffer(0, 0, in);
+            tausch->packSendBufferCUDA(0, 0, cuda_in);
             tausch->send(0, 0, mpiRank, false);
             tausch->recv(0, 0, mpiRank, true);
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
@@ -110,9 +111,10 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
                     out[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
                 }
             }
-
-            double *cuda_out;
+            double *cuda_in, *cuda_out;
+            cudaMalloc(&cuda_in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             cudaMalloc(&cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
+            cudaMemcpy(cuda_in, in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
             cudaMemcpy(cuda_out, out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
 
             std::vector<int> sendIndices;
@@ -151,7 +153,7 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
             tausch->addLocalHaloInfo(sendIndices);
             tausch->addRemoteHaloInfo(recvIndices);
 
-            tausch->packSendBuffer(0, 0, in);
+            tausch->packSendBufferCUDA(0, 0, cuda_in);
             tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
             tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
@@ -206,10 +208,13 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
                     out2[(i+halowidth)*(size+2*halowidth) + j+halowidth] = size*size + i*size + j + 1;
                 }
             }
-
-            double *cuda_out1, *cuda_out2;
+            double *cuda_in1, *cuda_in2, *cuda_out1, *cuda_out2;
+            cudaMalloc(&cuda_in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
+            cudaMalloc(&cuda_in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             cudaMalloc(&cuda_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             cudaMalloc(&cuda_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
+            cudaMemcpy(cuda_in1, in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
+            cudaMemcpy(cuda_in2, in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
             cudaMemcpy(cuda_out1, out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
             cudaMemcpy(cuda_out2, out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
 
@@ -248,8 +253,8 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
             tausch->addLocalHaloInfo(sendIndices, 2);
             tausch->addRemoteHaloInfo(recvIndices, 2);
 
-            tausch->packSendBuffer(0, 0, in1);
-            tausch->packSendBuffer(0, 1, in2);
+            tausch->packSendBufferCUDA(0, 0, cuda_in1);
+            tausch->packSendBufferCUDA(0, 1, cuda_in2);
 
             tausch->send(0, 0, mpiRank, false);
             tausch->recv(0, 0, mpiRank, true);
@@ -317,10 +322,13 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
                     out2[(i+halowidth)*(size+2*halowidth) + j+halowidth] = size*size + i*size + j + 1;
                 }
             }
-
-            double *cuda_out1, *cuda_out2;
+            double *cuda_in1, *cuda_in2, *cuda_out1, *cuda_out2;
+            cudaMalloc(&cuda_in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
+            cudaMalloc(&cuda_in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             cudaMalloc(&cuda_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             cudaMalloc(&cuda_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
+            cudaMemcpy(cuda_in1, in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
+            cudaMemcpy(cuda_in2, in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
             cudaMemcpy(cuda_out1, out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
             cudaMemcpy(cuda_out2, out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
 
@@ -360,8 +368,8 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
             tausch->addLocalHaloInfo(sendIndices, 2);
             tausch->addRemoteHaloInfo(recvIndices, 2);
 
-            tausch->packSendBuffer(0, 0, in1);
-            tausch->packSendBuffer(0, 1, in2);
+            tausch->packSendBufferCUDA(0, 0, cuda_in1);
+            tausch->packSendBufferCUDA(0, 1, cuda_in2);
 
             tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
             tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);

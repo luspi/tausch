@@ -33,11 +33,11 @@ TEST_CASE("1 buffer, empty indices, with pack/unpack, same MPI rank") {
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
             tausch->addLocalHaloInfo(sendIndices);
-            tausch->addRemoteHaloInfoCUDA(recvIndices);
+            tausch->addRemoteHaloInfo(recvIndices);
 
             tausch->packSendBuffer(0, 0, in);
-            tausch->send(0, 0, mpiRank, nullptr, false);
-            tausch->recvCUDA(0, 0, mpiRank);
+            tausch->send(0, 0, mpiRank, false);
+            tausch->recv(0, 0, mpiRank, true);
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
 
             cudaMemcpy(out, cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
@@ -92,11 +92,11 @@ TEST_CASE("1 buffer, empty indices, with pack/unpack, multiple MPI ranks") {
             MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
             tausch->addLocalHaloInfo(sendIndices);
-            tausch->addRemoteHaloInfoCUDA(recvIndices);
+            tausch->addRemoteHaloInfo(recvIndices);
 
             tausch->packSendBuffer(0, 0, in);
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, nullptr, false);
-            tausch->recvCUDA(0, 0, (mpiRank+mpiSize-1)%mpiSize);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
 
             cudaMemcpy(out, cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
@@ -150,10 +150,10 @@ TEST_CASE("1 buffer, empty indices, derived, same MPI rank") {
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
             tausch->addLocalHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
-            tausch->addRemoteHaloInfoCUDA(recvIndices, 1, -1, TauschOptimizationHint::SenderUsesMpiDerivedDatatype);
+            tausch->addRemoteHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::SenderUsesMpiDerivedDatatype);
 
-            tausch->send(0, 0, mpiRank, in, false);
-            tausch->recvCUDA(0, 0, mpiRank);
+            tausch->send(0, 0, mpiRank, 0, in, false);
+            tausch->recv(0, 0, mpiRank, true);
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
 
             cudaMemcpy(out, cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
@@ -208,10 +208,10 @@ TEST_CASE("1 buffer, empty indices, derived, multiple MPI ranks") {
             MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
             tausch->addLocalHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
-            tausch->addRemoteHaloInfoCUDA(recvIndices, 1, -1, TauschOptimizationHint::SenderUsesMpiDerivedDatatype);
+            tausch->addRemoteHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::SenderUsesMpiDerivedDatatype);
 
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, in, false);
-            tausch->recvCUDA(0, 0, (mpiRank+mpiSize-1)%mpiSize);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize, 0, in, false);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
 
             cudaMemcpy(out, cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);

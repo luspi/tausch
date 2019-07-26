@@ -23,7 +23,7 @@ TEST_CASE("1 buffer, derived MPI datatype, same MPI rank") {
                     out[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
                 }
             }
-            cl::Buffer cl_out(tauschcl_queue, out, &out[(size+2*halowidth)*(size+2*halowidth)], false);
+            cl::Buffer cl_in(tauschcl_queue, in, &in[(size+2*halowidth)*(size+2*halowidth)], false);
 
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
@@ -57,15 +57,13 @@ TEST_CASE("1 buffer, derived MPI datatype, same MPI rank") {
             int rank;
             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-            tausch->addLocalHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
-            tausch->addRemoteHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::SenderUsesMpiDerivedDatatype);
+            tausch->addLocalHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::ReceiverUsesMpiDerivedDatatype);
+            tausch->addRemoteHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
 
-            tausch->send(0, 0, rank, 0, in, false);
-            tausch->recv(0, 0, rank, true);
+            tausch->packSendBuffer(0, 0, cl_in);
 
-            tausch->unpackRecvBuffer(0, 0, cl_out);
-
-            cl::copy(tauschcl_queue, cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
+            tausch->send(0, 0, rank, false);
+            tausch->recv(0, 0, rank, 0, out, true);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             for(int i = 0; i < size; ++i) {
@@ -112,7 +110,7 @@ TEST_CASE("1 buffer, derived MPI datatype, multiple MPI ranks") {
                     out[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
                 }
             }
-            cl::Buffer cl_out(tauschcl_queue, out, &out[(size+2*halowidth)*(size+2*halowidth)], false);
+            cl::Buffer cl_in(tauschcl_queue, in, &in[(size+2*halowidth)*(size+2*halowidth)], false);
 
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
@@ -147,15 +145,13 @@ TEST_CASE("1 buffer, derived MPI datatype, multiple MPI ranks") {
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
             MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-            tausch->addLocalHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
-            tausch->addRemoteHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::SenderUsesMpiDerivedDatatype);
+            tausch->addLocalHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::ReceiverUsesMpiDerivedDatatype);
+            tausch->addRemoteHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
 
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, 0, in, false);
-            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->packSendBuffer(0, 0, cl_in);
 
-            tausch->unpackRecvBuffer(0, 0, cl_out);
-
-            cl::copy(tauschcl_queue, cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, 0, out, true);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             for(int i = 0; i < size; ++i) {

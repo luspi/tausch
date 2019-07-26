@@ -31,7 +31,7 @@ if(TESTING)
     find_package(CUDA REQUIRED)
     find_package(OpenCL REQUIRED)
 
-    # cpu -> cpu
+    # cpu -> *
 
     add_mpi_test(cpu2cpu_1 "testing/cpu2cpu/main.cpp testing/cpu2cpu/derived.cpp testing/cpu2cpu/packunpack.cpp testing/cpu2cpu/empty.cpp testing/cpu2cpu/randomaccess.cpp" 1 false false)
     add_mpi_test(cpu2cpu_2 "testing/cpu2cpu/main.cpp testing/cpu2cpu/derived.cpp testing/cpu2cpu/packunpack.cpp testing/cpu2cpu/empty.cpp testing/cpu2cpu/randomaccess.cpp" 2 false false)
@@ -45,62 +45,32 @@ if(TESTING)
     add_mpi_test(cpu2cuda_2 "testing/cpu2cuda/main.cpp testing/cpu2cuda/derived.cpp testing/cpu2cuda/packunpack.cpp testing/cpu2cuda/empty.cpp testing/cpu2cuda/randomaccess.cpp" 2 false true)
     add_mpi_test(cpu2cuda_4 "testing/cpu2cuda/main.cpp testing/cpu2cuda/derived.cpp testing/cpu2cuda/packunpack.cpp testing/cpu2cuda/empty.cpp testing/cpu2cuda/randomaccess.cpp" 4 false true)
 
-    # opencl -> cpu
-    add_executable(testing_ocl2cpu testing/ocl2cpu.cpp)
-    target_include_directories(testing_ocl2cpu PUBLIC "${MPI_C_INCLUDE_DIRS}")
-    target_link_libraries(testing_ocl2cpu "${MPI_C_LIBRARIES}")
-    target_link_libraries(testing_ocl2cpu "${MPI_CXX_LIBRARIES}")
-    target_include_directories(testing_ocl2cpu PUBLIC "${OpenCL_INCLUDE_DIR}")
-    target_link_libraries(testing_ocl2cpu "${OpenCL_LIBRARY}")
-    add_test(ocl2cpu testing_ocl2cpu)
+    # opencl -> *
 
-    # opencl -> opencl
-    add_executable(testing_ocl2ocl testing/ocl2ocl.cpp)
-    target_include_directories(testing_ocl2ocl PUBLIC "${MPI_C_INCLUDE_DIRS}")
-    target_link_libraries(testing_ocl2ocl "${MPI_C_LIBRARIES}")
-    target_link_libraries(testing_ocl2ocl "${MPI_CXX_LIBRARIES}")
-    target_include_directories(testing_ocl2ocl PUBLIC "${OpenCL_INCLUDE_DIR}")
-    target_link_libraries(testing_ocl2ocl "${OpenCL_LIBRARY}")
-    add_test(ocl2ocl testing_ocl2ocl)
+    add_mpi_test(ocl2cpu_1 "testing/ocl2cpu/ocl.h testing/ocl2cpu/main.cpp testing/ocl2cpu/derived.cpp testing/ocl2cpu/packunpack.cpp testing/ocl2cpu/empty.cpp testing/ocl2cpu/randomaccess.cpp" 1 true false)
+    add_mpi_test(ocl2cpu_2 "testing/ocl2cpu/ocl.h testing/ocl2cpu/main.cpp testing/ocl2cpu/derived.cpp testing/ocl2cpu/packunpack.cpp testing/ocl2cpu/empty.cpp testing/ocl2cpu/randomaccess.cpp" 2 true false)
+    add_mpi_test(ocl2cpu_4 "testing/ocl2cpu/ocl.h testing/ocl2cpu/main.cpp testing/ocl2cpu/derived.cpp testing/ocl2cpu/packunpack.cpp testing/ocl2cpu/empty.cpp testing/ocl2cpu/randomaccess.cpp" 4 true false)
 
-    # opencl -> cuda
-    add_executable(testing_ocl2cuda testing/ocl2cuda.cpp)
-    target_include_directories(testing_ocl2cuda PUBLIC "${MPI_C_INCLUDE_DIRS}")
-    target_link_libraries(testing_ocl2cuda "${MPI_C_LIBRARIES}")
-    target_link_libraries(testing_ocl2cuda "${MPI_CXX_LIBRARIES}")
-    target_include_directories(testing_ocl2cuda PUBLIC "${CUDA_INCLUDE_DIRS}")
-    target_link_libraries(testing_ocl2cuda "${CUDA_LIBRARIES}")
-    target_include_directories(testing_ocl2cuda PUBLIC "${OpenCL_INCLUDE_DIR}")
-    target_link_libraries(testing_ocl2cuda "${OpenCL_LIBRARY}")
-    add_test(ocl2cuda testing_ocl2cuda)
+    add_mpi_test(ocl2ocl_1 "testing/ocl2ocl/ocl.h testing/ocl2ocl/main.cpp testing/ocl2ocl/packunpack.cpp testing/ocl2ocl/empty.cpp testing/ocl2ocl/randomaccess.cpp" 1 true false)
+    add_mpi_test(ocl2ocl_2 "testing/ocl2ocl/ocl.h testing/ocl2ocl/main.cpp testing/ocl2ocl/packunpack.cpp testing/ocl2ocl/empty.cpp testing/ocl2ocl/randomaccess.cpp" 2 true false)
+    add_mpi_test(ocl2ocl_4 "testing/ocl2ocl/ocl.h testing/ocl2ocl/main.cpp testing/ocl2ocl/packunpack.cpp testing/ocl2ocl/empty.cpp testing/ocl2ocl/randomaccess.cpp" 4 true false)
 
-    # cuda -> cpu
-    add_executable(testing_cuda2cpu testing/cuda2cpu.cpp)
-    target_include_directories(testing_cuda2cpu PUBLIC "${MPI_C_INCLUDE_DIRS}")
-    target_link_libraries(testing_cuda2cpu "${MPI_C_LIBRARIES}")
-    target_link_libraries(testing_cuda2cpu "${MPI_CXX_LIBRARIES}")
-    target_include_directories(testing_cuda2cpu PUBLIC "${CUDA_INCLUDE_DIRS}")
-    target_link_libraries(testing_cuda2cpu "${CUDA_LIBRARIES}")
-    add_test(cuda2cpu testing_cuda2cpu)
+    add_mpi_test(ocl2cuda_1 "testing/ocl2cuda/ocl.h testing/ocl2cuda/main.cpp testing/ocl2cuda/packunpack.cpp testing/ocl2cuda/empty.cpp testing/ocl2cuda/randomaccess.cpp" 1 true true)
+    add_mpi_test(ocl2cuda_2 "testing/ocl2cuda/ocl.h testing/ocl2cuda/main.cpp testing/ocl2cuda/packunpack.cpp testing/ocl2cuda/empty.cpp testing/ocl2cuda/randomaccess.cpp" 2 true true)
+    add_mpi_test(ocl2cuda_4 "testing/ocl2cuda/ocl.h testing/ocl2cuda/main.cpp testing/ocl2cuda/packunpack.cpp testing/ocl2cuda/empty.cpp testing/ocl2cuda/randomaccess.cpp" 4 true true)
 
-    # cuda -> opencl
-    add_executable(testing_cuda2ocl testing/cuda2ocl.cpp)
-    target_include_directories(testing_cuda2ocl PUBLIC "${MPI_C_INCLUDE_DIRS}")
-    target_link_libraries(testing_cuda2ocl "${MPI_C_LIBRARIES}")
-    target_link_libraries(testing_cuda2ocl "${MPI_CXX_LIBRARIES}")
-    target_include_directories(testing_cuda2ocl PUBLIC "${CUDA_INCLUDE_DIRS}")
-    target_link_libraries(testing_cuda2ocl "${CUDA_LIBRARIES}")
-    target_include_directories(testing_cuda2ocl PUBLIC "${OpenCL_INCLUDE_DIR}")
-    target_link_libraries(testing_cuda2ocl "${OpenCL_LIBRARY}")
-    add_test(cuda2ocl testing_cuda2ocl)
+    # cuda -> *
 
-    # cuda -> cuda
-    add_executable(testing_cuda2cuda testing/cuda2cuda.cpp)
-    target_include_directories(testing_cuda2cuda PUBLIC "${MPI_C_INCLUDE_DIRS}")
-    target_link_libraries(testing_cuda2cuda "${MPI_C_LIBRARIES}")
-    target_link_libraries(testing_cuda2cuda "${MPI_CXX_LIBRARIES}")
-    target_include_directories(testing_cuda2cuda PUBLIC "${CUDA_INCLUDE_DIRS}")
-    target_link_libraries(testing_cuda2cuda "${CUDA_LIBRARIES}")
-    add_test(cuda2cuda testing_cuda2cuda)
+    add_mpi_test(cuda2cpu_1 "testing/cuda2cpu/main.cpp testing/cuda2cpu/packunpack.cpp testing/cuda2cpu/empty.cpp testing/cuda2cpu/randomaccess.cpp" 1 false true)
+    add_mpi_test(cuda2cpu_2 "testing/cuda2cpu/main.cpp testing/cuda2cpu/packunpack.cpp testing/cuda2cpu/empty.cpp testing/cuda2cpu/randomaccess.cpp" 2 false true)
+    add_mpi_test(cuda2cpu_4 "testing/cuda2cpu/main.cpp testing/cuda2cpu/packunpack.cpp testing/cuda2cpu/empty.cpp testing/cuda2cpu/randomaccess.cpp" 4 false true)
+
+    add_mpi_test(cuda2ocl_1 "testing/cuda2ocl/ocl.h testing/cuda2ocl/main.cpp testing/cuda2ocl/packunpack.cpp testing/cuda2ocl/empty.cpp testing/cuda2ocl/randomaccess.cpp" 1 true true)
+    add_mpi_test(cuda2ocl_2 "testing/cuda2ocl/ocl.h testing/cuda2ocl/main.cpp testing/cuda2ocl/packunpack.cpp testing/cuda2ocl/empty.cpp testing/cuda2ocl/randomaccess.cpp" 2 true true)
+    add_mpi_test(cuda2ocl_4 "testing/cuda2ocl/ocl.h testing/cuda2ocl/main.cpp testing/cuda2ocl/packunpack.cpp testing/cuda2ocl/empty.cpp testing/cuda2ocl/randomaccess.cpp" 4 true true)
+
+    add_mpi_test(cuda2cuda_1 "testing/cuda2cuda/main.cpp testing/cuda2cuda/ondevice.cpp testing/cuda2cuda/packunpack.cpp testing/cuda2cuda/empty.cpp testing/cuda2cuda/randomaccess.cpp" 1 false true)
+    add_mpi_test(cuda2cuda_2 "testing/cuda2cuda/main.cpp testing/cuda2cuda/packunpack.cpp testing/cuda2cuda/empty.cpp testing/cuda2cuda/randomaccess.cpp" 2 false true)
+    add_mpi_test(cuda2cuda_4 "testing/cuda2cuda/main.cpp testing/cuda2cuda/packunpack.cpp testing/cuda2cuda/empty.cpp testing/cuda2cuda/randomaccess.cpp" 4 false true)
 
 endif()
