@@ -374,7 +374,7 @@ public:
                     msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
                     return nullptr;
                 }
-                MPI_Send_init(sendBuffer[haloId].get(), localHaloNumBuffers[haloId]*localHaloIndicesSizeTotal[haloId], mpiDataType, remoteMpiRank,
+                MPI_Send_init(sendBuffer[haloId].get(), localHaloIndicesSizeTotal[haloId], mpiDataType, remoteMpiRank,
                           msgtag, overwriteComm, mpiSendRequests[haloId].get());
 
             } else
@@ -440,13 +440,13 @@ public:
 
                     const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
 
-                    memcpy(recvBuffer[haloId].get(), sendBuffer[remoteHaloId].get(), remoteHaloNumBuffers[haloId]*remoteHaloIndicesSizeTotal[haloId]*sizeof(buf_t));
+                    memcpy(recvBuffer[haloId].get(), sendBuffer[remoteHaloId].get(), remoteHaloIndicesSizeTotal[haloId]*sizeof(buf_t));
 
                 } else {
 
                     setupMpiRecv[haloId] = true;
 
-                    MPI_Recv_init(recvBuffer[haloId].get(), remoteHaloNumBuffers[haloId]*remoteHaloIndicesSizeTotal[haloId], mpiDataType,
+                    MPI_Recv_init(recvBuffer[haloId].get(), remoteHaloIndicesSizeTotal[haloId], mpiDataType,
                                   remoteMpiRank, msgtag, overwriteComm, mpiRecvRequests[haloId].get());
                 }
 
@@ -473,7 +473,7 @@ public:
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
-            bufferOffset += remoteHaloIndicesSize[haloId][bufferId];
+            bufferOffset += remoteHaloIndicesSize[haloId][i];
 
         size_t mpiRecvBufferIndex = 0;
 
@@ -520,7 +520,7 @@ public:
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
-            bufferOffset += remoteHaloIndicesSize[haloId][bufferId];
+            bufferOffset += remoteHaloIndicesSize[haloId][i];
 
         for(size_t index = 0; index < overwriteHaloRecvIndices.size(); ++index)
             buf[overwriteHaloTargetIndices[index]] = recvBuffer[haloId][bufferOffset + overwriteHaloRecvIndices[index]];
