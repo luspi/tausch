@@ -830,6 +830,13 @@ public:
 
     }
 
+    int getLocalHaloTotalSize(int haloId) {
+        return localHaloIndicesSizeTotal[haloId];
+    }
+    int getRemoteHaloTotalSize(int haloId) {
+        return remoteHaloIndicesSizeTotal[haloId];
+    }
+
     MPI_Comm TAUSCH_COMM;
     MPI_Datatype mpiDataType;
 
