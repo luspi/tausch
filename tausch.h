@@ -167,6 +167,11 @@ public:
 
     }
 
+    inline void delLocalHaloInfo(int haloId) {
+        sendBuffer[haloId].reset(nullptr);
+        mpiSendRequests[haloId].reset(nullptr);
+    }
+
 
     inline int addRemoteHaloInfo(std::vector<int> haloIndices, const size_t numBuffers = 1, const int remoteMpiRank = -1, TauschOptimizationHint hints = TauschOptimizationHint::NoHints) {
         std::vector<std::array<int, 4> > tuple = extractHaloIndicesWithStride(haloIndices);
@@ -282,6 +287,11 @@ public:
 
     }
 
+    inline void delRemoteHaloInfo(int haloId) {
+        recvBuffer[haloId].reset(nullptr);
+        mpiRecvRequests[haloId].reset(nullptr);
+    }
+
     inline void packSendBuffer(const size_t haloId, const size_t bufferId, const buf_t *buf) const {
 
         size_t bufferOffset = 0;
@@ -363,17 +373,18 @@ public:
 
         } else {
 
+            // if we stay on the same rank, we don't need to use MPI
+            int myRank;
+            MPI_Comm_rank(overwriteComm, &myRank);
+            if(remoteMpiRank == myRank && !(localOptHints[haloId] & TauschOptimizationHint::ReceiverUsesMpiDerivedDatatype)) {
+                msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
+                return nullptr;
+            }
+
             if(!setupMpiSend[haloId]) {
 
                 setupMpiSend[haloId] = true;
 
-                // if we stay on the same rank, we don't need to use MPI
-                int myRank;
-                MPI_Comm_rank(overwriteComm, &myRank);
-                if(remoteMpiRank == myRank && !(localOptHints[haloId] & TauschOptimizationHint::ReceiverUsesMpiDerivedDatatype)) {
-                    msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
-                    return nullptr;
-                }
                 MPI_Send_init(sendBuffer[haloId].get(), localHaloIndicesSizeTotal[haloId], mpiDataType, remoteMpiRank,
                           msgtag, overwriteComm, mpiSendRequests[haloId].get());
 
@@ -415,55 +426,52 @@ public:
 
         } else {
 
-            if(!setupMpiRecv[haloId]) {
+            if(remoteMpiRank == -1)
+                remoteMpiRank = remoteHaloRemoteMpiRank[haloId];
 
-                if(remoteMpiRank == -1)
-                    remoteMpiRank = remoteHaloRemoteMpiRank[haloId];
-
-                // if we stay on the same rank, we don't need to use MPI
-                int myRank;
-                MPI_Comm_rank(overwriteComm, &myRank);
+            // if we stay on the same rank, we don't need to use MPI
+            int myRank;
+            MPI_Comm_rank(overwriteComm, &myRank);
 
 #ifdef TAUSCH_CUDA
-                if(remoteMpiRank == myRank && remoteOptHints[haloId] == TauschOptimizationHint::CudaStaysOnDevice) {
+            if(remoteMpiRank == myRank && remoteOptHints[haloId] == TauschOptimizationHint::CudaStaysOnDevice) {
 
-                    const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
+                const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
 
-                    buf_t *cudabuf;
-                    cudaMalloc(&cudabuf, remoteHaloNumBuffers[haloId]*remoteHaloIndicesSizeTotal[haloId]*sizeof(buf_t));
-                    cudaMemcpy(cudabuf, sendCommunicationBufferKeptOnCuda[remoteHaloId], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSizeTotal[haloId]*sizeof(buf_t), cudaMemcpyDeviceToDevice);
-                    recvCommunicationBufferKeptOnCuda[haloId] = cudabuf;
+                buf_t *cudabuf;
+                cudaMalloc(&cudabuf, remoteHaloNumBuffers[haloId]*remoteHaloIndicesSizeTotal[haloId]*sizeof(buf_t));
+                cudaMemcpy(cudabuf, sendCommunicationBufferKeptOnCuda[remoteHaloId], remoteHaloNumBuffers[haloId]*remoteHaloIndicesSizeTotal[haloId]*sizeof(buf_t), cudaMemcpyDeviceToDevice);
+                recvCommunicationBufferKeptOnCuda[haloId] = cudabuf;
 
-                } else
+                return nullptr;
+
+            } else
 #endif
-                if(remoteMpiRank == myRank && !(remoteOptHints[haloId] & TauschOptimizationHint::SenderUsesMpiDerivedDatatype)) {
+            if(remoteMpiRank == myRank && !(remoteOptHints[haloId] & TauschOptimizationHint::SenderUsesMpiDerivedDatatype)) {
 
-                    const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
+                const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
 
-                    memcpy(recvBuffer[haloId].get(), sendBuffer[remoteHaloId].get(), remoteHaloIndicesSizeTotal[haloId]*sizeof(buf_t));
+                std::cout << haloId << " copying " << remoteHaloIndicesSizeTotal[haloId] << std::endl;
+                memcpy(recvBuffer[haloId].get(), sendBuffer[remoteHaloId].get(), remoteHaloIndicesSizeTotal[haloId]*sizeof(buf_t));
 
-                } else {
-
-                    setupMpiRecv[haloId] = true;
-
-                    MPI_Recv_init(recvBuffer[haloId].get(), remoteHaloIndicesSizeTotal[haloId], mpiDataType,
-                                  remoteMpiRank, msgtag, overwriteComm, mpiRecvRequests[haloId].get());
-                }
+                return nullptr;
 
             }
 
-            // this will remain false if we remained on the same mpi rank
-            if(setupMpiRecv[haloId]) {
+            if(!setupMpiRecv[haloId]) {
 
-                MPI_Start(mpiRecvRequests[haloId].get());
-                if(blocking)
-                    MPI_Wait(mpiRecvRequests[haloId].get(), MPI_STATUS_IGNORE);
+                setupMpiRecv[haloId] = true;
 
-                return mpiRecvRequests[haloId].get();
+                MPI_Recv_init(recvBuffer[haloId].get(), remoteHaloIndicesSizeTotal[haloId], mpiDataType,
+                              remoteMpiRank, msgtag, overwriteComm, mpiRecvRequests[haloId].get());
 
-            } else
+            }
 
-                return nullptr;
+            MPI_Start(mpiRecvRequests[haloId].get());
+            if(blocking)
+                MPI_Wait(mpiRecvRequests[haloId].get(), MPI_STATUS_IGNORE);
+
+            return mpiRecvRequests[haloId].get();
 
         }
 
