@@ -12,12 +12,9 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
 
             double *in = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             double *out = new double[(size+2*halowidth)*(size+2*halowidth)]{};
-            for(int i = 0; i < size; ++i) {
-                for(int j = 0; j < size; ++j) {
+            for(int i = 0; i < size; ++i)
+                for(int j = 0; j < size; ++j)
                     in[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
-                    out[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
-                }
-            }
 
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
@@ -46,39 +43,32 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
                     recvIndices.push_back((j+(size+halowidth))*(size+2*halowidth) + i+halowidth);
                 }
 
-            Tausch<double> *tausch = new Tausch<double>(MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
 
             int mpiRank;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
-            tausch->addLocalHaloInfo(sendIndices);
-            tausch->addRemoteHaloInfo(recvIndices);
+            tausch->addSendHaloInfo(sendIndices, sizeof(double));
+            tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBuffer(0, 0, in);
-            tausch->send(0, 0, mpiRank, false);
-            tausch->recv(0, 0, mpiRank, true);
+            tausch->send(0, 0, mpiRank);
+            tausch->recv(0, 0, mpiRank);
             tausch->unpackRecvBuffer(0, 0, out);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
-            for(int i = 0; i < size; ++i) {
-                for(int j = 0; j < size; ++j) {
-                    expected[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
-                }
-            }
-
             for(int i = 0; i < size; ++i)
                 for(int j = 0; j < halowidth; ++j) {
                     expected[j*(size+2*halowidth) + i+halowidth] = j*size+i+1;  // bottom
                     expected[(j+size+halowidth)*(size+2*halowidth) + i+halowidth] = (j+(size-halowidth))*size + i+1; // top
                     expected[(i+halowidth)*(size+2*halowidth) + j] = i*size+j+1;    // left
-                    expected[(i+halowidth)*(size+2*halowidth) + j+(size+halowidth)] = i*size + (size-halowidth)+j+1;    // left
+                    expected[(i+halowidth)*(size+2*halowidth) + j+(size+halowidth)] = i*size + (size-halowidth)+j+1;    // right
                 }
 
             // check result
             for(int i = 0; i < (size+2*halowidth); ++i)
                 for(int j = 0; j < (size+2*halowidth); ++j)
                     REQUIRE(expected[i*(size+2*halowidth)+j] == out[i*(size+2*halowidth)+j]);
-
 
         }
 
@@ -97,12 +87,9 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
 
             double *in = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             double *out = new double[(size+2*halowidth)*(size+2*halowidth)]{};
-            for(int i = 0; i < size; ++i) {
-                for(int j = 0; j < size; ++j) {
+            for(int i = 0; i < size; ++i)
+                for(int j = 0; j < size; ++j)
                     in[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
-                    out[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
-                }
-            }
 
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
@@ -131,40 +118,33 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
                     recvIndices.push_back((j+(size+halowidth))*(size+2*halowidth) + i+halowidth);
                 }
 
-            Tausch<double> *tausch = new Tausch<double>(MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
 
             int mpiRank, mpiSize;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
             MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-            tausch->addLocalHaloInfo(sendIndices);
-            tausch->addRemoteHaloInfo(recvIndices);
+            tausch->addSendHaloInfo(sendIndices, sizeof(double));
+            tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBuffer(0, 0, in);
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize);
             tausch->unpackRecvBuffer(0, 0, out);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
-            for(int i = 0; i < size; ++i) {
-                for(int j = 0; j < size; ++j) {
-                    expected[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
-                }
-            }
-
             for(int i = 0; i < size; ++i)
                 for(int j = 0; j < halowidth; ++j) {
                     expected[j*(size+2*halowidth) + i+halowidth] = j*size+i+1;  // bottom
                     expected[(j+size+halowidth)*(size+2*halowidth) + i+halowidth] = (j+(size-halowidth))*size + i+1; // top
                     expected[(i+halowidth)*(size+2*halowidth) + j] = i*size+j+1;    // left
-                    expected[(i+halowidth)*(size+2*halowidth) + j+(size+halowidth)] = i*size + (size-halowidth)+j+1;    // left
+                    expected[(i+halowidth)*(size+2*halowidth) + j+(size+halowidth)] = i*size + (size-halowidth)+j+1;    // right
                 }
 
             // check result
             for(int i = 0; i < (size+2*halowidth); ++i)
                 for(int j = 0; j < (size+2*halowidth); ++j)
                     REQUIRE(expected[i*(size+2*halowidth)+j] == out[i*(size+2*halowidth)+j]);
-
 
         }
 
@@ -174,6 +154,8 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
 
 TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
 
+    std::cout << "*****" << std::endl;
+
     const std::vector<int> sizes = {3, 10, 100, 377};
     const std::vector<int> halowidths = {1, 2, 3};
 
@@ -189,8 +171,6 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
                 for(int j = 0; j < size; ++j) {
                     in1[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
                     in2[(i+halowidth)*(size+2*halowidth) + j+halowidth] = size*size + i*size + j + 1;
-                    out1[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
-                    out2[(i+halowidth)*(size+2*halowidth) + j+halowidth] = size*size + i*size + j + 1;
                 }
             }
 
@@ -221,31 +201,23 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
                     recvIndices.push_back((j+(size+halowidth))*(size+2*halowidth) + i+halowidth);
                 }
 
-            Tausch<double> *tausch = new Tausch<double>(MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
 
             int mpiRank;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
-            tausch->addLocalHaloInfo(sendIndices, 2);
-            tausch->addRemoteHaloInfo(recvIndices, 2);
+            tausch->addSendHaloInfo(sendIndices, sizeof(double), 2);
+            tausch->addRecvHaloInfo(recvIndices, sizeof(double), 2);
 
             tausch->packSendBuffer(0, 0, in1);
             tausch->packSendBuffer(0, 1, in2);
-
-            tausch->send(0, 0, mpiRank, false);
-            tausch->recv(0, 0, mpiRank, true);
-
-            tausch->unpackRecvBuffer(0, 0, out2);
+            tausch->send(0, 0, mpiRank);
+            tausch->recv(0, 0, mpiRank);
             tausch->unpackRecvBuffer(0, 1, out1);
+            tausch->unpackRecvBuffer(0, 0, out2);
 
             double *expected1 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             double *expected2 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
-            for(int i = 0; i < size; ++i) {
-                for(int j = 0; j < size; ++j) {
-                    expected1[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
-                    expected2[(i+halowidth)*(size+2*halowidth) + j+halowidth] = size*size + i*size + j + 1;
-                }
-            }
 
             for(int i = 0; i < size; ++i)
                 for(int j = 0; j < halowidth; ++j) {
@@ -266,7 +238,6 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
                     REQUIRE(expected1[i*(size+2*halowidth)+j] == out1[i*(size+2*halowidth)+j]);
                     REQUIRE(expected2[i*(size+2*halowidth)+j] == out2[i*(size+2*halowidth)+j]);
                 }
-
 
         }
 
@@ -276,6 +247,8 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
 
 TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
 
+    std::cout << "*****" << std::endl;
+
     const std::vector<int> sizes = {3, 10, 100, 377};
     const std::vector<int> halowidths = {1, 2, 3};
 
@@ -291,8 +264,6 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
                 for(int j = 0; j < size; ++j) {
                     in1[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
                     in2[(i+halowidth)*(size+2*halowidth) + j+halowidth] = size*size + i*size + j + 1;
-                    out1[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
-                    out2[(i+halowidth)*(size+2*halowidth) + j+halowidth] = size*size + i*size + j + 1;
                 }
             }
 
@@ -323,32 +294,24 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
                     recvIndices.push_back((j+(size+halowidth))*(size+2*halowidth) + i+halowidth);
                 }
 
-            Tausch<double> *tausch = new Tausch<double>(MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
 
             int mpiRank, mpiSize;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
             MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-            tausch->addLocalHaloInfo(sendIndices, 2);
-            tausch->addRemoteHaloInfo(recvIndices, 2);
+            tausch->addSendHaloInfo(sendIndices, sizeof(double), 2);
+            tausch->addRecvHaloInfo(recvIndices, sizeof(double), 2);
 
             tausch->packSendBuffer(0, 0, in1);
             tausch->packSendBuffer(0, 1, in2);
-
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
-
-            tausch->unpackRecvBuffer(0, 0, out2);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize);
             tausch->unpackRecvBuffer(0, 1, out1);
+            tausch->unpackRecvBuffer(0, 0, out2);
 
             double *expected1 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             double *expected2 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
-            for(int i = 0; i < size; ++i) {
-                for(int j = 0; j < size; ++j) {
-                    expected1[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
-                    expected2[(i+halowidth)*(size+2*halowidth) + j+halowidth] = size*size + i*size + j + 1;
-                }
-            }
 
             for(int i = 0; i < size; ++i)
                 for(int j = 0; j < halowidth; ++j) {
@@ -369,7 +332,6 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
                     REQUIRE(expected1[i*(size+2*halowidth)+j] == out1[i*(size+2*halowidth)+j]);
                     REQUIRE(expected2[i*(size+2*halowidth)+j] == out2[i*(size+2*halowidth)+j]);
                 }
-
 
         }
 
