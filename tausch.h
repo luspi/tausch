@@ -522,7 +522,7 @@ public:
     /*                         RECEIVE MESSAGE                             */
     /***********************************************************************/
 
-    inline MPI_Request recv(size_t haloId, const int msgtag, const int remoteMpiRank, const int bufferId = -1, const bool blocking = true, MPI_Comm communicator = MPI_COMM_NULL) {
+    inline MPI_Request recv(size_t haloId, const int msgtag, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = true, MPI_Comm communicator = MPI_COMM_NULL) {
 
         if(recvHaloIndicesSizeTotal[haloId] == 0)
             return MPI_REQUEST_NULL;
