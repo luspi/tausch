@@ -31,72 +31,80 @@ public:
 
     inline size_t addSendHaloInfo(std::vector<int> haloIndices,
                                   const size_t typeSize,
-                                  const int numBuffers = 1) {
+                                  const int numBuffers = 1,
+                                  const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         std::vector<size_t> typeSizePerBuffer;
         for(size_t i = 0; i < numBuffers; ++i) {
             indices.push_back(extractHaloIndicesWithStride(haloIndices));
             typeSizePerBuffer.push_back(typeSize);
         }
-        return addSendHaloInfo(indices, typeSizePerBuffer);
+        return addSendHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addSendHaloInfo(std::vector<std::vector<int> > haloIndices,
-                                  const size_t typeSize) {
+                                  const size_t typeSize,
+                                  const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         std::vector<size_t> typeSizePerBuffer;
         for(auto bufIndices : haloIndices) {
             indices.push_back(extractHaloIndicesWithStride(bufIndices));
             typeSizePerBuffer.push_back(typeSize);
         }
-        return addSendHaloInfo(indices, typeSizePerBuffer);
+        return addSendHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addSendHaloInfo(std::vector<std::array<int, 4> > haloIndices,
                                   const size_t typeSize,
-                                  const int numBuffers = 1) {
+                                  const int numBuffers = 1,
+                                  const int remoteMpiRank = -1) {
         std::vector<size_t> typeSizePerBuffer;
         for(size_t i = 0; i < numBuffers; ++i)
             typeSizePerBuffer.push_back(typeSize);
-        return addSendHaloInfo(haloIndices, typeSizePerBuffer);
+        return addSendHaloInfo(haloIndices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addSendHaloInfo(std::vector<std::vector<std::array<int, 4> > > haloIndices,
-                                  const size_t typeSize) {
+                                  const size_t typeSize,
+                                  const int remoteMpiRank = -1) {
         std::vector<size_t> typeSizePerBuffer;
         for(size_t bufferId = 0; bufferId < haloIndices.size(); ++bufferId)
             typeSizePerBuffer.push_back(typeSize);
-        return addSendHaloInfo(haloIndices, typeSizePerBuffer);
+        return addSendHaloInfo(haloIndices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addSendHaloInfo(std::vector<int> haloIndices,
-                                  const std::vector<size_t> typeSizePerBuffer) {
+                                  const std::vector<size_t> typeSizePerBuffer,
+                                  const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         for(size_t i = 0; i < typeSizePerBuffer.size(); ++i) {
             auto ind = extractHaloIndicesWithStride(haloIndices);
             indices.push_back(ind);
         }
-        return addSendHaloInfo(indices, typeSizePerBuffer);
+        return addSendHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addSendHaloInfo(std::vector<std::vector<int> > haloIndices,
-                                  const std::vector<size_t> typeSizePerBuffer) {
+                                  const std::vector<size_t> typeSizePerBuffer,
+                                  const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         for(size_t i = 0; i < haloIndices.size(); ++i)
             indices.push_back(extractHaloIndicesWithStride(haloIndices[i]));
-        return addSendHaloInfo(indices, typeSizePerBuffer);
+        return addSendHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addSendHaloInfo(std::vector<std::array<int, 4> > haloIndices,
-                                  const std::vector<size_t> typeSizePerBuffer) {
+                                  const std::vector<size_t> typeSizePerBuffer,
+                                  const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         for(size_t i = 0; i < typeSizePerBuffer.size(); ++i)
             indices.push_back(haloIndices);
-        return addSendHaloInfo(indices, typeSizePerBuffer);
+        return addSendHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addSendHaloInfo(std::vector<std::vector<std::array<int, 4> > > haloIndices,
-                                  const std::vector<size_t> typeSizePerBuffer) {
+                                  const std::vector<size_t> typeSizePerBuffer,
+                                  const int remoteMpiRank = -1) {
 
         std::vector<std::vector<std::array<int, 4> > > indices;
         for(size_t i = 0; i < haloIndices.size(); ++i)
@@ -120,6 +128,7 @@ public:
         sendHaloIndicesSizeTotal.push_back(totalHaloSize);
         sendHaloNumBuffers.push_back(indices.size());
         sendHaloCommunicationStrategy.push_back(Communication::Auto);
+        sendHaloRemoteRank.push_back(remoteMpiRank);
 
 //         void *newbuf = NULL;
 //         posix_memalign(&newbuf, 64, totalHaloSize*sizeof(unsigned char));
@@ -152,73 +161,81 @@ public:
 
     inline size_t addRecvHaloInfo(std::vector<int> haloIndices,
                                   const size_t typeSize,
-                                  const int numBuffers = 1) {
+                                  const int numBuffers = 1,
+                                  const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         std::vector<size_t> typeSizePerBuffer;
         for(size_t i = 0; i < numBuffers; ++i) {
             indices.push_back(extractHaloIndicesWithStride(haloIndices));
             typeSizePerBuffer.push_back(typeSize);
         }
-        return addRecvHaloInfo(indices, typeSizePerBuffer);
+        return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addRecvHaloInfo(std::vector<std::vector<int> > haloIndices,
-                                  const size_t typeSize) {
+                                  const size_t typeSize,
+                                  const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         std::vector<size_t> typeSizePerBuffer;
         for(auto bufIndices : haloIndices) {
             indices.push_back(extractHaloIndicesWithStride(bufIndices));
             typeSizePerBuffer.push_back(typeSize);
         }
-        return addRecvHaloInfo(indices, typeSizePerBuffer);
+        return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addRecvHaloInfo(std::vector<std::array<int, 4> > haloIndices,
                                   const size_t typeSize,
-                                  const int numBuffers = 1) {
+                                  const int numBuffers = 1,
+                                  const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         std::vector<size_t> typeSizePerBuffer;
         for(size_t i = 0; i < numBuffers; ++i) {
             indices.push_back(haloIndices);
             typeSizePerBuffer.push_back(typeSize);
         }
-        return addRecvHaloInfo(indices, typeSizePerBuffer);
+        return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addRecvHaloInfo(std::vector<std::vector<std::array<int, 4> > > haloIndices,
-                                  const size_t typeSize) {
+                                  const size_t typeSize,
+                                  const int remoteMpiRank = -1) {
         std::vector<size_t> typeSizePerBuffer;
         for(size_t bufferId = 0; bufferId < haloIndices.size(); ++bufferId)
             typeSizePerBuffer.push_back(typeSize);
-        return addRecvHaloInfo(haloIndices, typeSizePerBuffer);
+        return addRecvHaloInfo(haloIndices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addRecvHaloInfo(std::vector<int> haloIndices,
-                                  const std::vector<size_t> typeSizePerBuffer) {
+                                  const std::vector<size_t> typeSizePerBuffer,
+                                  const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         for(size_t i = 0; i < typeSizePerBuffer.size(); ++i)
             indices.push_back(extractHaloIndicesWithStride(haloIndices));
-        return addRecvHaloInfo(indices, typeSizePerBuffer);
+        return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addRecvHaloInfo(std::vector<std::vector<int> > haloIndices,
-                                  const std::vector<size_t> typeSizePerBuffer) {
+                                  const std::vector<size_t> typeSizePerBuffer,
+                                  const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         for(size_t i = 0; i < typeSizePerBuffer.size(); ++i)
             indices.push_back(extractHaloIndicesWithStride(haloIndices[i]));
-        return addRecvHaloInfo(indices, typeSizePerBuffer);
+        return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addRecvHaloInfo(std::vector<std::array<int, 4> > haloIndices,
-                                  const std::vector<size_t> typeSizePerBuffer) {
+                                  const std::vector<size_t> typeSizePerBuffer,
+                                  const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         for(size_t i = 0; i < typeSizePerBuffer.size(); ++i)
             indices.push_back(haloIndices);
-        return addRecvHaloInfo(indices, typeSizePerBuffer);
+        return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     inline size_t addRecvHaloInfo(std::vector<std::vector<std::array<int, 4> > > haloIndices,
-                                  const std::vector<size_t> typeSizePerBuffer) {
+                                  const std::vector<size_t> typeSizePerBuffer,
+                                  const int remoteMpiRank = -1) {
 
         std::vector<std::vector<std::array<int, 4> > > indices;
         for(size_t i = 0; i < haloIndices.size(); ++i)
@@ -242,6 +259,7 @@ public:
         recvHaloIndicesSizeTotal.push_back(totalHaloSize);
         recvHaloNumBuffers.push_back(indices.size());
         recvHaloCommunicationStrategy.push_back(Communication::Auto);
+        recvHaloRemoteRank.push_back(remoteMpiRank);
 
 //         void *newbuf = NULL;
 //         posix_memalign(&newbuf, 64, totalHaloSize*sizeof(unsigned char));
@@ -437,7 +455,7 @@ public:
     /*                            SEND MESSAGE                             */
     /***********************************************************************/
 
-    inline MPI_Request send(size_t haloId, const int msgtag, const int remoteMpiRank, const int bufferId = -1, const bool blocking = false, MPI_Comm communicator = MPI_COMM_NULL) {
+    inline MPI_Request send(size_t haloId, const int msgtag, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = false, MPI_Comm communicator = MPI_COMM_NULL) {
 
         if(sendHaloIndicesSizeTotal[haloId] == 0)
             return MPI_REQUEST_NULL;
@@ -445,10 +463,14 @@ public:
         if(communicator == MPI_COMM_NULL)
             communicator = TAUSCH_COMM;
 
+        int useRemoteMpiRank = sendHaloRemoteRank.at(haloId);
+        if(remoteMpiRank != -1)
+            useRemoteMpiRank = remoteMpiRank;
+
         // if we stay on the same rank, we don't need to use MPI
         int myRank;
         MPI_Comm_rank(communicator, &myRank);
-        if(remoteMpiRank == myRank && (sendHaloCommunicationStrategy[haloId]&Communication::Auto) == Communication::Auto) {
+        if(useRemoteMpiRank == myRank && (sendHaloCommunicationStrategy[haloId]&Communication::Auto) == Communication::Auto) {
             msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
             return MPI_REQUEST_NULL;
         }
@@ -460,7 +482,7 @@ public:
                 sendHaloMpiSetup[haloId][bufferId] = true;
 
                 MPI_Send_init(sendHaloBuffer[haloId][bufferId], 1, sendHaloDerivedDatatype[haloId][bufferId],
-                              remoteMpiRank, msgtag, communicator,
+                              useRemoteMpiRank, msgtag, communicator,
                               &sendHaloMpiRequests[haloId][bufferId]);
 
             } else
@@ -480,7 +502,7 @@ public:
                 sendHaloMpiSetup[haloId][0] = true;
 
                 MPI_Send_init(sendBuffer[haloId].get(), sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
-                              remoteMpiRank, msgtag, communicator,
+                              useRemoteMpiRank, msgtag, communicator,
                               &sendHaloMpiRequests[haloId][0]);
 
             } else
@@ -508,10 +530,14 @@ public:
         if(communicator == MPI_COMM_NULL)
             communicator = TAUSCH_COMM;
 
+        int useRemoteMpiRank = sendHaloRemoteRank.at(haloId);
+        if(remoteMpiRank != -1)
+            useRemoteMpiRank = remoteMpiRank;
+
         // if we stay on the same rank, we don't need to use MPI
         int myRank;
         MPI_Comm_rank(communicator, &myRank);
-        if(remoteMpiRank == myRank && (recvHaloCommunicationStrategy[haloId]&Communication::Auto) == Communication::Auto) {
+        if(useRemoteMpiRank == myRank && (recvHaloCommunicationStrategy[haloId]&Communication::Auto) == Communication::Auto) {
             const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
             memcpy(recvBuffer[haloId].get(), sendBuffer[remoteHaloId].get(), recvHaloIndicesSizeTotal[haloId]);
             return MPI_REQUEST_NULL;
@@ -524,7 +550,7 @@ public:
                 recvHaloMpiSetup[haloId][bufferId] = true;
 
                 MPI_Recv_init(recvHaloBuffer[haloId][bufferId], 1, recvHaloDerivedDatatype[haloId][bufferId],
-                              remoteMpiRank, msgtag, communicator,
+                              useRemoteMpiRank, msgtag, communicator,
                               &recvHaloMpiRequests[haloId][bufferId]);
 
             } else
@@ -543,7 +569,7 @@ public:
                 recvHaloMpiSetup[haloId][0] = true;
 \
                 MPI_Recv_init(recvBuffer[haloId].get(), recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
-                              remoteMpiRank, msgtag, communicator,
+                              useRemoteMpiRank, msgtag, communicator,
                               &recvHaloMpiRequests[haloId][0]);
 
             } else
@@ -685,6 +711,7 @@ private:
     std::vector<std::vector<int> > sendHaloIndicesSizePerBuffer;
     std::vector<int> sendHaloIndicesSizeTotal;
     std::vector<int> sendHaloNumBuffers;
+    std::vector<int> sendHaloRemoteRank;
     std::vector<std::unique_ptr<unsigned char[]> > sendBuffer;
     std::vector<std::vector<MPI_Request> > sendHaloMpiRequests;
     std::vector<std::vector<bool> > sendHaloMpiSetup;
@@ -696,6 +723,7 @@ private:
     std::vector<std::vector<int> > recvHaloIndicesSizePerBuffer;
     std::vector<int> recvHaloIndicesSizeTotal;
     std::vector<int> recvHaloNumBuffers;
+    std::vector<int> recvHaloRemoteRank;
     std::vector<std::unique_ptr<unsigned char[]> > recvBuffer;
     std::vector<std::vector<MPI_Request> > recvHaloMpiRequests;
     std::vector<std::vector<bool> > recvHaloMpiSetup;
