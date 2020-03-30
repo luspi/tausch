@@ -7,7 +7,7 @@
 #include <memory>
 #include <iostream>
 #include <map>
-#include <string>
+#include <cstring>
 
 class Tausch {
 
@@ -444,7 +444,7 @@ public:
 
             for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
 
-                memcpy(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], &buf[region_start + rows*region_stridecol], region_howmanycols);
+                std::memcpy(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], &buf[region_start + rows*region_stridecol], region_howmanycols);
                 mpiSendBufferIndex += region_howmanycols;
 
             }
@@ -541,7 +541,7 @@ public:
         MPI_Comm_rank(communicator, &myRank);
         if(useRemoteMpiRank == myRank && (recvHaloCommunicationStrategy[haloId]&Communication::Auto) == Communication::Auto) {
             const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
-            memcpy(recvBuffer[haloId].get(), sendBuffer[remoteHaloId].get(), recvHaloIndicesSizeTotal[haloId]);
+            std::memcpy(recvBuffer[haloId].get(), sendBuffer[remoteHaloId].get(), recvHaloIndicesSizeTotal[haloId]);
             return MPI_REQUEST_NULL;
         }
 
@@ -618,7 +618,7 @@ public:
 
             for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
 
-                memcpy(&buf[region_start + rows*region_stridecol], &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols);
+                std::memcpy(&buf[region_start + rows*region_stridecol], &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols);
                 mpiRecvBufferIndex += region_howmanycols;
 
             }
