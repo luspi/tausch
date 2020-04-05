@@ -532,7 +532,7 @@ public:
         if(communicator == MPI_COMM_NULL)
             communicator = TAUSCH_COMM;
 
-        int useRemoteMpiRank = sendHaloRemoteRank.at(haloId);
+        int useRemoteMpiRank = recvHaloRemoteRank.at(haloId);
         if(remoteMpiRank != -1)
             useRemoteMpiRank = remoteMpiRank;
 
@@ -569,7 +569,7 @@ public:
             if(!recvHaloMpiSetup[haloId][0]) {
 
                 recvHaloMpiSetup[haloId][0] = true;
-\
+
                 MPI_Recv_init(recvBuffer[haloId].get(), recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
                               useRemoteMpiRank, msgtag, communicator,
                               &recvHaloMpiRequests[haloId][0]);
