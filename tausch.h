@@ -136,13 +136,12 @@ public:
         sendHaloCommunicationStrategy.push_back(Communication::Auto);
         sendHaloRemoteRank.push_back(remoteMpiRank);
 
-//         void *newbuf = NULL;
-//         posix_memalign(&newbuf, 64, totalHaloSize*sizeof(unsigned char));
-//         unsigned char *newbuf_buft = reinterpret_cast<unsigned char*>(newbuf);
-//         unsigned char zero = 0;
-//         std::fill_n(newbuf_buft, totalHaloSize, zero);
-//         sendBuffer.push_back(std::unique_ptr<unsigned char[]>(std::move(newbuf_buft)));
-        sendBuffer.push_back(std::unique_ptr<unsigned char[]>(new unsigned char[totalHaloSize]{}));
+        void *newbuf = NULL;
+        posix_memalign(&newbuf, 64, totalHaloSize*sizeof(unsigned char));
+        unsigned char *newbuf_buft = reinterpret_cast<unsigned char*>(newbuf);
+        unsigned char zero = 0;
+        std::fill_n(newbuf_buft, totalHaloSize, zero);
+        sendBuffer.push_back(std::unique_ptr<unsigned char[]>(std::move(newbuf_buft)));
 
         std::vector<MPI_Request> perBufRequests;
         std::vector<bool> perBufSetup;
@@ -267,13 +266,12 @@ public:
         recvHaloCommunicationStrategy.push_back(Communication::Auto);
         recvHaloRemoteRank.push_back(remoteMpiRank);
 
-//         void *newbuf = NULL;
-//         posix_memalign(&newbuf, 64, totalHaloSize*sizeof(unsigned char));
-//         unsigned char *newbuf_buft = reinterpret_cast<unsigned char*>(newbuf);
-//         unsigned char zero = 0;
-//         std::fill_n(newbuf_buft, totalHaloSize, zero);
-//         recvBuffer.push_back(std::unique_ptr<unsigned char[]>(std::move(newbuf_buft)));
-        recvBuffer.push_back(std::unique_ptr<unsigned char[]>(new unsigned char[totalHaloSize]{}));
+        void *newbuf = NULL;
+        posix_memalign(&newbuf, 64, totalHaloSize*sizeof(unsigned char));
+        unsigned char *newbuf_buft = reinterpret_cast<unsigned char*>(newbuf);
+        unsigned char zero = 0;
+        std::fill_n(newbuf_buft, totalHaloSize, zero);
+        recvBuffer.push_back(std::unique_ptr<unsigned char[]>(std::move(newbuf_buft)));
 
         std::vector<MPI_Request> perBufRequests;
         std::vector<bool> perBufSetup;
@@ -481,46 +479,32 @@ public:
             return MPI_REQUEST_NULL;
         }
 
-        if((sendHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype) {
+        int useBufferId = 0;
+        if((sendHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
+            useBufferId = bufferId;
 
-            if(!sendHaloMpiSetup[haloId][bufferId]) {
+        if(!sendHaloMpiSetup[haloId][useBufferId]) {
 
-                sendHaloMpiSetup[haloId][bufferId] = true;
+            sendHaloMpiSetup[haloId][useBufferId] = true;
 
-                MPI_Send_init(sendHaloBuffer[haloId][bufferId], 1, sendHaloDerivedDatatype[haloId][bufferId],
+            if((sendHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
+                MPI_Send_init(sendHaloBuffer[haloId][useBufferId], 1, sendHaloDerivedDatatype[haloId][useBufferId],
                               useRemoteMpiRank, msgtag, communicator,
-                              &sendHaloMpiRequests[haloId][bufferId]);
-
-            } else
-
-                MPI_Wait(&sendHaloMpiRequests[haloId][bufferId], MPI_STATUS_IGNORE);
-
-            MPI_Start(&sendHaloMpiRequests[haloId][bufferId]);
-            if(blocking)
-                MPI_Wait(&sendHaloMpiRequests[haloId][bufferId], MPI_STATUS_IGNORE);
-
-            return sendHaloMpiRequests[haloId][bufferId];
-
-        } else {
-
-            if(!sendHaloMpiSetup[haloId][0]) {
-
-                sendHaloMpiSetup[haloId][0] = true;
-
+                              &sendHaloMpiRequests[haloId][useBufferId]);
+            else
                 MPI_Send_init(sendBuffer[haloId].get(), sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
                               useRemoteMpiRank, msgtag, communicator,
                               &sendHaloMpiRequests[haloId][0]);
 
-            } else
-                MPI_Wait(&sendHaloMpiRequests[haloId][0], MPI_STATUS_IGNORE);
+        } else
 
-            MPI_Start(&sendHaloMpiRequests[haloId][0]);
-            if(blocking)
-                MPI_Wait(&sendHaloMpiRequests[haloId][0], MPI_STATUS_IGNORE);
+            MPI_Wait(&sendHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
 
-            return sendHaloMpiRequests[haloId][0];
+        MPI_Start(&sendHaloMpiRequests[haloId][useBufferId]);
+        if(blocking)
+            MPI_Wait(&sendHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
 
-        }
+        return sendHaloMpiRequests[haloId][useBufferId];
 
     }
 
@@ -549,45 +533,31 @@ public:
             return MPI_REQUEST_NULL;
         }
 
-        if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype) {
+        int useBufferId = 0;
+        if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
+            useBufferId = bufferId;
 
-            if(!recvHaloMpiSetup[haloId][bufferId]) {
+        if(!recvHaloMpiSetup[haloId][useBufferId]) {
 
-                recvHaloMpiSetup[haloId][bufferId] = true;
+            recvHaloMpiSetup[haloId][useBufferId] = true;
 
-                MPI_Recv_init(recvHaloBuffer[haloId][bufferId], 1, recvHaloDerivedDatatype[haloId][bufferId],
+            if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
+                MPI_Recv_init(recvHaloBuffer[haloId][useBufferId], 1, recvHaloDerivedDatatype[haloId][useBufferId],
                               useRemoteMpiRank, msgtag, communicator,
-                              &recvHaloMpiRequests[haloId][bufferId]);
-
-            } else
-                MPI_Wait(&recvHaloMpiRequests[haloId][bufferId], MPI_STATUS_IGNORE);
-
-            MPI_Start(&recvHaloMpiRequests[haloId][bufferId]);
-            if(blocking)
-                MPI_Wait(&recvHaloMpiRequests[haloId][bufferId], MPI_STATUS_IGNORE);
-
-            return recvHaloMpiRequests[haloId][bufferId];
-
-        } else {
-
-            if(!recvHaloMpiSetup[haloId][0]) {
-
-                recvHaloMpiSetup[haloId][0] = true;
-
+                              &recvHaloMpiRequests[haloId][useBufferId]);
+            else
                 MPI_Recv_init(recvBuffer[haloId].get(), recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
                               useRemoteMpiRank, msgtag, communicator,
                               &recvHaloMpiRequests[haloId][0]);
 
-            } else
-                MPI_Wait(&recvHaloMpiRequests[haloId][0], MPI_STATUS_IGNORE);
+        } else
+            MPI_Wait(&recvHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
 
-            MPI_Start(&recvHaloMpiRequests[haloId][0]);
-            if(blocking)
-                MPI_Wait(&recvHaloMpiRequests[haloId][0], MPI_STATUS_IGNORE);
+        MPI_Start(&recvHaloMpiRequests[haloId][useBufferId]);
+        if(blocking)
+            MPI_Wait(&recvHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
 
-            return recvHaloMpiRequests[haloId][0];
-
-        }
+        return recvHaloMpiRequests[haloId][useBufferId];
 
     }
 
