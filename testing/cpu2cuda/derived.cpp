@@ -52,16 +52,19 @@ TEST_CASE("1 buffer, derived MPI datatype, same MPI rank") {
                     recvIndices.push_back((j+(size+halowidth))*(size+2*halowidth) + i+halowidth);
                 }
 
-            Tausch<double> *tausch = new Tausch<double>(MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
 
             int rank;
             MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-            tausch->addLocalHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
-            tausch->addRemoteHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::SenderUsesMpiDerivedDatatype);
+            tausch->addSendHaloInfo(sendIndices, sizeof(double));
+            tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
-            tausch->send(0, 0, rank, 0, in, false);
-            tausch->recv(0, 0, rank, true);
+            tausch->setSendCommunicationStrategy(0, Tausch::Communication::DerivedMpiDatatype);
+            tausch->setSendHaloBuffer(0, 0, in);
+
+            tausch->send(0, 0, rank, 0);
+            tausch->recv(0, 0, rank, 0);
 
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
 
@@ -93,7 +96,7 @@ TEST_CASE("1 buffer, derived MPI datatype, same MPI rank") {
     }
 
 }
-
+/*
 TEST_CASE("1 buffer, derived MPI datatype, multiple MPI ranks") {
 
     const std::vector<int> sizes = {3, 10, 100, 377};
@@ -185,7 +188,7 @@ TEST_CASE("1 buffer, derived MPI datatype, multiple MPI ranks") {
     }
 
 }
-
+*/
 
 /**************************************************************************/
 /**************************************************************************/

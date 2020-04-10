@@ -53,13 +53,13 @@ TEST_CASE("1 buffer, random indices, with pack/unpack, same MPI rank") {
             recvIndices.push_back((size+2*halowidth)*(size+2*halowidth)-(size+2*halowidth)+size/2);
             recvIndices.push_back((size+2*halowidth)*(size+2*halowidth)-(size+2*halowidth)+size/2 +1);
 
-            Tausch<double> *tausch = new Tausch<double>(MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
 
             int mpiRank;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
-            tausch->addLocalHaloInfo(sendIndices);
-            tausch->addRemoteHaloInfo(recvIndices);
+            tausch->addSendHaloInfo(sendIndices, sizeof(double));
+            tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBufferCUDA(0, 0, cuda_in);
             tausch->send(0, 0, mpiRank, false);
@@ -151,14 +151,14 @@ TEST_CASE("1 buffer, random indices, with pack/unpack, multiple MPI ranks") {
             recvIndices.push_back((size+2*halowidth)*(size+2*halowidth)-(size+2*halowidth)+size/2);
             recvIndices.push_back((size+2*halowidth)*(size+2*halowidth)-(size+2*halowidth)+size/2 +1);
 
-            Tausch<double> *tausch = new Tausch<double>(MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
 
             int mpiRank, mpiSize;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
             MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-            tausch->addLocalHaloInfo(sendIndices);
-            tausch->addRemoteHaloInfo(recvIndices);
+            tausch->addSendHaloInfo(sendIndices, sizeof(double));
+            tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBufferCUDA(0, 0, cuda_in);
             tausch->send(0, 0, (mpiRank+1)%mpiSize, false);

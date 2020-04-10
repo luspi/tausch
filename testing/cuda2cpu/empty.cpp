@@ -26,17 +26,17 @@ TEST_CASE("1 buffer, empty indices, with pack/unpack, same MPI rank") {
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
 
-            Tausch<double> *tausch = new Tausch<double>(MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
 
             int mpiRank;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
-            tausch->addLocalHaloInfo(sendIndices);
-            tausch->addRemoteHaloInfo(recvIndices);
+            tausch->addSendHaloInfo(sendIndices, sizeof(double));
+            tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBufferCUDA(0, 0, cuda_in);
-            tausch->send(0, 0, mpiRank, false);
-            tausch->recv(0, 0, mpiRank, true);
+            tausch->send(0, 0, mpiRank);
+            tausch->recv(0, 0, mpiRank);
             tausch->unpackRecvBuffer(0, 0, out);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
@@ -81,18 +81,18 @@ TEST_CASE("1 buffer, empty indices, with pack/unpack, multiple MPI ranks") {
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
 
-            Tausch<double> *tausch = new Tausch<double>(MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
 
             int mpiRank, mpiSize;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
             MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-            tausch->addLocalHaloInfo(sendIndices);
-            tausch->addRemoteHaloInfo(recvIndices);
+            tausch->addSendHaloInfo(sendIndices, sizeof(double));
+            tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBufferCUDA(0, 0, cuda_in);
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize);
             tausch->unpackRecvBuffer(0, 0, out);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};

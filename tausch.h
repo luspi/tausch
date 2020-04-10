@@ -9,6 +9,10 @@
 #include <map>
 #include <cstring>
 
+#ifdef TAUSCH_CUDA
+#include <cuda_runtime.h>
+#endif
+
 class Tausch {
 
 public:
@@ -591,8 +595,6 @@ public:
     /*                           UNPACK BUFFER                             */
     /***********************************************************************/
 
-    /* CPU */
-
     void unpackRecvBuffer(const size_t haloId, const size_t bufferId, double *buf) {
         unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
@@ -626,6 +628,103 @@ public:
         }
 
     }
+
+    /***********************************************************************/
+    /***********************************************************************/
+
+#ifdef TAUSCH_CUDA
+
+    /***********************************************************************/
+    /*                         PACK BUFFER (CUDA)                          */
+    /***********************************************************************/
+
+    void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const double *buf) {
+        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
+    }
+
+    void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const int *buf) {
+        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
+    }
+
+    void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const unsigned char *buf) {
+
+        size_t bufferOffset = 0;
+        for(size_t i = 0; i < bufferId; ++i)
+            bufferOffset += sendHaloIndicesSizePerBuffer[haloId][i];
+
+        size_t mpiSendBufferIndex = 0;
+        for(auto const & region : sendHaloIndices[haloId][bufferId]) {
+
+            const size_t &region_start = region[0];
+            const size_t &region_howmanycols = region[1];
+            const size_t &region_howmanyrows = region[2];
+            const size_t &region_striderow = region[3];
+
+            for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+
+                cudaError_t err = cudaMemcpy(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex],
+                                             &buf[region_start+rows*region_striderow],
+                                             region_howmanycols*sizeof(unsigned char),
+                                             cudaMemcpyDeviceToHost);
+
+                if(err != cudaSuccess)
+                    std::cout << "Tausch::packSendBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+
+                mpiSendBufferIndex += region_howmanycols;
+
+            }
+
+        }
+
+    }
+
+    /***********************************************************************/
+    /*                        UNPACK BUFFER (CUDA)                         */
+    /***********************************************************************/
+
+    void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, double *buf) {
+        unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
+    }
+
+    void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, int *buf) {
+        unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
+    }
+
+    void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, unsigned char *buf) {
+
+        size_t bufferOffset = 0;
+        for(size_t i = 0; i < bufferId; ++i)
+            bufferOffset += recvHaloIndicesSizePerBuffer[haloId][i];
+
+        size_t mpiRecvBufferIndex = 0;
+
+        for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+
+            const size_t &region_start = region[0];
+            const size_t &region_howmanycols = region[1];
+            const size_t &region_howmanyrows = region[2];
+            const size_t &region_striderow = region[3];
+
+            for(int rows = 0; rows < region_howmanyrows; ++rows) {
+
+                cudaError_t err = cudaMemcpy(&buf[region_start+rows*region_striderow],
+                                             &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex],
+                                             region_howmanycols*sizeof(unsigned char),
+                                             cudaMemcpyHostToDevice);
+                if(err != cudaSuccess)
+                    std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+
+                mpiRecvBufferIndex += region_howmanycols;
+
+            }
+
+        }
+
+    }
+
+#endif
+
+
 
     /***********************************************************************/
     /***********************************************************************/
