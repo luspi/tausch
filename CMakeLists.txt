@@ -7,7 +7,7 @@ install(FILES "tausch.h" DESTINATION "include")
 option(TESTING "Enable Unit Tests" ON)
 
 find_package(Doxygen)
-option(DOC "Build documentation" ${DOXYGEN_FOUND})
+option(DOC "Build documentation (make doc)" ${DOXYGEN_FOUND})
 
 if(DOC)
     if(NOT DOXYGEN_FOUND)
