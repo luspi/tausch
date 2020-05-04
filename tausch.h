@@ -1,3 +1,43 @@
+/**
+ *
+ * \copyright 2020 Lukas Spies. Licensed under the MIT license.
+ *
+ * \mainpage Tausch - A generic halo exchange library.
+ *
+ * \section intro_sec Introduction
+ *
+ * Tausch is a halo exchange library that is designed to be maximally flexible (can be used almost
+ * anywhere), minimally instrusive (easy to adapt into existing code), maximally efficient
+ * (performs just as good or better than any custom solution), and requires minimal memory
+ * resources (compressed halo metadata).
+ *
+ * \section install_sec Install
+ *
+ * Tausch is a header-only library and thus is very easy to use, no linking or precompiling necessary.
+ *
+ * In order to use Tausch one only needs to include the single header file tausch.h. Using CMake the
+ * tausch header file can be installed into your system location and thence can be included from
+ * anywhere by `#include <tausch/tausch.h>`
+ *
+ * \section Usage
+ *
+ * Tausch is very straight-forward to use. A very simple example is shown below:
+ *
+ * @include examplecode.cpp
+ *
+ * The above code can be compiled with `mpic++ examplecode.cpp -o example`.
+ *
+ * Running the above example will lead to the following output:<br>
+ * <code>$ ./example<br>
+ *  Input buffer: 1 2 3 4 5<br>
+ *  Output buffer: 1 0 2 0 3 0 4 0 5 0</code>
+ *
+ * \section support_sec Support
+ *
+ * Tausch is hosted on GitHub. To ask questions, report bugs, and for any other type of support
+ * please open an issue there: https://github.com/luspi/tausch
+ *
+ */
 #ifndef TAUSCH_H
 #define TAUSCH_H
 
@@ -56,7 +96,8 @@ public:
     /**
      * \overload
      *
-     * Here the halo indices can be specified as integers of halo data locations in the buffer with the halo indices used for all of the numBuffers buffers. All buffer have the same data type.
+     * Here the halo indices can be specified as integers of halo data locations in the buffer with the
+     * halo indices used for all of the numBuffers buffers. All buffer have the same data type.
      */
     inline size_t addSendHaloInfo(std::vector<int> haloIndices,
                                   const size_t typeSize,
@@ -74,7 +115,8 @@ public:
     /**
      * \overload
      *
-     * Here the halo indices can be specified as integers of halo data locations in the buffer, with a different list of halo indices per buffer. All buffer have the same data type.
+     * Here the halo indices can be specified as integers of halo data locations in the buffer, with a
+     * different list of halo indices per buffer. All buffer have the same data type.
      */
     inline size_t addSendHaloInfo(std::vector<std::vector<int> > haloIndices,
                                   const size_t typeSize,
@@ -91,7 +133,8 @@ public:
     /**
      * \overload
      *
-     * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer have the same data type.
+     * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer have
+     * the same data type.
      */
     inline size_t addSendHaloInfo(std::vector<std::array<int, 4> > haloIndices,
                                   const size_t typeSize,
@@ -120,7 +163,8 @@ public:
     /**
      * \overload
      *
-     * Here the halo indices can be specified as integers of halo data locations in the buffer with the halo indices used for all of the buffers. All buffers can have their own data type.
+     * Here the halo indices can be specified as integers of halo data locations in the buffer with
+     * the halo indices used for all of the buffers. All buffers can have their own data type.
      */
     inline size_t addSendHaloInfo(std::vector<int> haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
@@ -136,7 +180,8 @@ public:
     /**
      * \overload
      *
-     * Here the halo indices can be specified as integers of halo data locations in the buffer, with a different list of halo indices per buffer. All buffer can have their own data type.
+     * Here the halo indices can be specified as integers of halo data locations in the buffer,
+     * with a different list of halo indices per buffer. All buffer can have their own data type.
      */
     inline size_t addSendHaloInfo(std::vector<std::vector<int> > haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
@@ -150,7 +195,8 @@ public:
     /**
      * \overload
      *
-     * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer can have their own data type.
+     * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer can
+     * have their own data type.
      */
     inline size_t addSendHaloInfo(std::vector<std::array<int, 4> > haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
@@ -169,8 +215,10 @@ public:
      *
      * @param haloIndices
      * The halo indices are specified as vectors with two levels:<br>
-     * 1) The first level corresponds to the buffer id. Multiple buffers can be combined into a single message and each buffer can have their own halo specification.<br>
-     * 2) The second level corresponds to a rectangular subregion of this halo specification, with each rectangular subregion specified using four integers.
+     * 1) The first level corresponds to the buffer id. Multiple buffers can be combined into a
+     * single message and each buffer can have their own halo specification.<br>
+     * 2) The second level corresponds to a rectangular subregion of this halo specification, with
+     * each rectangular subregion specified using four integers.
      * @param typeSizePerBuffer
      * A vector with the size of the data type for each buffer
      * @param remoteMpiRank
@@ -247,7 +295,8 @@ public:
     /**
      * \overload
      *
-     * Here the halo indices can be specified as integers of halo data locations in the buffer with the halo indices used for all of the numBuffers buffers. All buffer have the same data type.
+     * Here the halo indices can be specified as integers of halo data locations in the buffer with
+     * the halo indices used for all of the numBuffers buffers. All buffer have the same data type.
      */
     inline size_t addRecvHaloInfo(std::vector<int> haloIndices,
                                   const size_t typeSize,
@@ -265,7 +314,8 @@ public:
     /**
      * \overload
      *
-     * Here the halo indices can be specified as integers of halo data locations in the buffer, with a different list of halo indices per buffer. All buffer have the same data type.
+     * Here the halo indices can be specified as integers of halo data locations in the buffer,
+     * with a different list of halo indices per buffer. All buffer have the same data type.
      */
     inline size_t addRecvHaloInfo(std::vector<std::vector<int> > haloIndices,
                                   const size_t typeSize,
@@ -282,7 +332,8 @@ public:
     /**
      * \overload
      *
-     * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer have the same data type.
+     * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer
+     * have the same data type.
      */
     inline size_t addRecvHaloInfo(std::vector<std::array<int, 4> > haloIndices,
                                   const size_t typeSize,
@@ -314,7 +365,8 @@ public:
     /**
      * \overload
      *
-     * Here the halo indices can be specified as integers of halo data locations in the buffer with the halo indices used for all of the buffers. All buffers can have their own data type.
+     * Here the halo indices can be specified as integers of halo data locations in the buffer with
+     * the halo indices used for all of the buffers. All buffers can have their own data type.
      */
     inline size_t addRecvHaloInfo(std::vector<int> haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
@@ -328,7 +380,8 @@ public:
     /**
      * \overload
      *
-     * Here the halo indices can be specified as integers of halo data locations in the buffer, with a different list of halo indices per buffer. All buffer can have their own data type.
+     * Here the halo indices can be specified as integers of halo data locations in the buffer,
+     * with a different list of halo indices per buffer. All buffer can have their own data type.
      */
     inline size_t addRecvHaloInfo(std::vector<std::vector<int> > haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
@@ -342,7 +395,8 @@ public:
     /**
      * \overload
      *
-     * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer can have their own data type.
+     * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer can
+     * have their own data type.
      */
     inline size_t addRecvHaloInfo(std::vector<std::array<int, 4> > haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
@@ -361,8 +415,10 @@ public:
      *
      * @param haloIndices
      * The halo indices are specified as vectors with two levels:<br>
-     * 1) The first level corresponds to the buffer id. Multiple buffers can be combined into a single message and each buffer can have their own halo specification.<br>
-     * 2) The second level corresponds to a rectangular subregion of this halo specification, with each rectangular subregion specified using four integers.
+     * 1) The first level corresponds to the buffer id. Multiple buffers can be combined into a
+     * single message and each buffer can have their own halo specification.<br>
+     * 2) The second level corresponds to a rectangular subregion of this halo specification, with
+     * each rectangular subregion specified using four integers.
      * @param typeSizePerBuffer
      * A vector with the size of the data type for each buffer
      * @param remoteMpiRank
@@ -440,7 +496,8 @@ public:
      * @brief
      * Set a communication strategy for sending a halo.
      *
-     * Set a communication strategy for sending a halo. The strategy can be any one of the Communication enum.
+     * Set a communication strategy for sending a halo. The strategy can be any one of the
+     * Communication enum.
      *
      * @param haloId
      * The halo id returned by the addSendHaloInfo() member function.
@@ -572,7 +629,8 @@ public:
      * @brief
      * Set a pointer to the sending halo data buffer.
      *
-     * This sets a pointer to the sending halo data buffer of type unsigned char. This is a necessary step for certain communication strategies, e.g., using MPI derived data types.
+     * This sets a pointer to the sending halo data buffer of type unsigned char. This is a
+     * necessary step for certain communication strategies, e.g., using MPI derived data types.
      *
      * @param haloId
      * The halo id returned by the addSendHaloInfo() member function.
@@ -613,7 +671,8 @@ public:
      * @brief
      * Set a pointer to the receiving halo data buffer.
      *
-     * This sets a pointer to the receiving halo data buffer of type int. This is a necessary step for certain communication strategies, e.g., using MPI derived data types.
+     * This sets a pointer to the receiving halo data buffer of type int. This is a necessary step
+     * for certain communication strategies, e.g., using MPI derived data types.
      *
      * @param haloId
      * The halo id returned by the addRecvHaloInfo() member function.
@@ -654,7 +713,8 @@ public:
      * @brief
      * Packs a data buffer for the given halo and buffer id.
      *
-     * Packs a data buffer for the given halo and buffer id. Once this function has been called the data buffer is free to be used and changed as desired.
+     * Packs a data buffer for the given halo and buffer id. Once this function has been called the
+     * data buffer is free to be used and changed as desired.
      *
      * @param haloId
      * The halo id returned by the addSendHaloInfo() member function.
@@ -701,15 +761,18 @@ public:
      * @param haloId
      * The halo id returned by the addSendHaloInfo() member function.
      * @param msgtag
-     * The message tag to be used by this communication. For CPU-CPU communication this is the same as an MPI tag.
+     * The message tag to be used by this communication. For CPU-CPU communication this is the same
+     * as an MPI tag.
      * @param remoteMpiRank
      * The receiving MPI rank.
      * @param bufferId
      * The id of the current buffer (numbered starting at 0).
      * @param blocking
-     * If set to true Tausch will block until the send routine has been fully received. If set to false this routine will return immediately and the data will be sent in the background.
+     * If set to true Tausch will block until the send routine has been fully received. If set to
+     * false this routine will return immediately and the data will be sent in the background.
      * @param communicator
-     * If a communicator is specified here then Tausch will ignore the global communicator set during construction.
+     * If a communicator is specified here then Tausch will ignore the global communicator set
+     * during construction.
      *
      * @return
      * Returns the MPI_Request used for this communication.
@@ -776,15 +839,19 @@ public:
      * @param haloId
      * The halo id returned by the addRecvHaloInfo() member function.
      * @param msgtag
-     * The message tag to be used by this communication. For CPU-CPU communication this is the same as an MPI tag.
+     * The message tag to be used by this communication. For CPU-CPU communication this is the same
+     * as an MPI tag.
      * @param remoteMpiRank
      * The sending MPI rank.
      * @param bufferId
      * The id of the current buffer (numbered starting at 0).
      * @param blocking
-     * If set to true Tausch will block until the receive routine has been fully completed. If set to false this routine will return immediately and the data will be received in the background (the MPI_Request can be tested to check for completion).
+     * If set to true Tausch will block until the receive routine has been fully completed. If set
+     * to false this routine will return immediately and the data will be received in the
+     * background (the MPI_Request can be tested to check for completion).
      * @param communicator
-     * If a communicator is specified here then Tausch will ignore the global communicator set during construction.
+     * If a communicator is specified here then Tausch will ignore the global communicator set
+     * during construction.
      *
      * @return
      * Returns the MPI_Request used for this communication.
@@ -864,7 +931,8 @@ public:
      * @brief
      * Unpacks a data buffer for the given halo and buffer id.
      *
-     * Unpacks a data buffer for the given halo and buffer id. Once this function has been called the received data can be immediately used.
+     * Unpacks a data buffer for the given halo and buffer id. Once this function has been called
+     * the received data can be immediately used.
      *
      * @param haloId
      * The halo id returned by the addRecvHaloInfo() member function.
@@ -1003,7 +1071,8 @@ public:
      * @brief
      * Converts a list of halo indices to rectangular subregions.
      *
-     * Converts a list of halo indices to rectangular subregions. Each subregion is represented by four integers.
+     * Converts a list of halo indices to rectangular subregions. Each subregion is represented by
+     * four integers.
      *
      * @param indices
      * A list of indices specifying the location of halo data.
