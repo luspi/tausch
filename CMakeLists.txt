@@ -6,6 +6,28 @@ install(FILES "tausch.h" DESTINATION "include")
 
 option(TESTING "Enable Unit Tests" ON)
 
+find_package(Doxygen)
+option(DOC "Build documentation" ${DOXYGEN_FOUND})
+
+if(DOC)
+    if(NOT DOXYGEN_FOUND)
+        message(FATAL_ERROR "Doxygen is needed to build the documentation.")
+    endif()
+
+    set(doxyfile_in ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile)
+    set(doxyfile ${CMAKE_CURRENT_BINARY_DIR}/doc/Doxyfile)
+
+    configure_file(${doxyfile_in} ${doxyfile} @ONLY)
+
+    add_custom_target(doc
+        COMMAND ${DOXYGEN_EXECUTABLE} ${doxyfile}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Generating API documentation with Doxygen"
+        VERBATIM)
+
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION share/doc)
+endif()
+
 if(TESTING)
 
     enable_testing()
