@@ -54,25 +54,9 @@ public:
     /***********************************************************************/
 
     /**
-     * @brief
-     * Add a new halo region (overloaded function).
+     * \overload
      *
-     * This overloaded function adds a new halo region to the Tausch object.
-     *
-     * @param haloIndices
-     * The halo indices can be specified as a vector of integers specifying the location
-     * where the halo data is stored in some buffer. Tausch will internally convert this
-     * list of integers into a set of rectangular subregions with each subregion stored
-     * using four integers.
-     * @param typeSize
-     * The size of the data type for this halo (same type for all buffers).
-     * @param numBuffers
-     * How many buffers are to be used for the given halo specification.
-     * @param remoteMpiRank
-     * What remote MPI rank this/these halo region/s will be sent to.
-     *
-     * @return
-     * This function returns the halo id (needed for referencing this halo later-on).
+     * Here the halo indices can be specified as integers of halo data locations in the buffer with the halo indices used for all of the numBuffers buffers. All buffer have the same data type.
      */
     inline size_t addSendHaloInfo(std::vector<int> haloIndices,
                                   const size_t typeSize,
@@ -88,23 +72,9 @@ public:
     }
 
     /**
-     * @brief
-     * Add a new halo region (overloaded function).
+     * \overload
      *
-     * This overloaded function adds a new halo region to the Tausch object.
-     *
-     * @param haloIndices
-     * The halo indices can be specified as a vector of integers specifying the location
-     * where the halo data is stored in some buffer. Tausch will internally convert this
-     * list of integers into a set of rectangular subregions with each subregion stored
-     * using four integers. Each buffer can have their own halo indices.
-     * @param typeSize
-     * The size of the data type for this halo (same type for all buffers).
-     * @param remoteMpiRank
-     * What remote MPI rank this/these halo region/s will be sent to.
-     *
-     * @return
-     * This function returns the halo id (needed for referencing this halo later-on).
+     * Here the halo indices can be specified as integers of halo data locations in the buffer, with a different list of halo indices per buffer. All buffer have the same data type.
      */
     inline size_t addSendHaloInfo(std::vector<std::vector<int> > haloIndices,
                                   const size_t typeSize,
@@ -119,24 +89,9 @@ public:
     }
 
     /**
-     * @brief
-     * Add a new halo region (overloaded function).
+     * \overload
      *
-     * This overloaded function adds a new halo region to the Tausch object.
-     *
-     * @param haloIndices
-     * The halo indices can be specified as vector of arrays. Each array consists of four
-     * integers describing a rectangular subregion of the halo. All arrays together
-     * describe the full halo region.
-     * @param typeSize
-     * The size of the data type for this halo (same type for all buffers).
-     * @param numBuffers
-     * How many buffers are to be used for the given halo specification.
-     * @param remoteMpiRank
-     * What remote MPI rank this/these halo region/s will be sent to.
-     *
-     * @return
-     * This function returns the halo id (needed for referencing this halo later-on).
+     * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer have the same data type.
      */
     inline size_t addSendHaloInfo(std::vector<std::array<int, 4> > haloIndices,
                                   const size_t typeSize,
@@ -149,22 +104,9 @@ public:
     }
 
     /**
-     * @brief
-     *  Add a new halo region (overloaded function).
+     * \overload
      *
-     * This overloaded function adds a new halo region to the Tausch object.
-     *
-     * @param haloIndices
-     *  The halo indices are specified as vectors with two levels:<br>
-     *  1) The first level corresponds to the buffer id. Multiple buffers can be combined into a single message and each buffer can have their own halo specification.<br>
-     *  2) The second level corresponds to a rectangular subregion of this halo specification, with each rectangular subregion specified using four integers.
-     * @param typeSize
-     * The size of the data type for this halo (same type for all buffers).
-     * @param remoteMpiRank
-     *  What remote MPI rank this/these halo region/s will be sent to.
-     *
-     * @return
-     *  This function returns the halo id (needed for referencing this halo later-on).
+     * Here each buffer has the same data type.
      */
     inline size_t addSendHaloInfo(std::vector<std::vector<std::array<int, 4> > > haloIndices,
                                   const size_t typeSize,
@@ -176,23 +118,9 @@ public:
     }
 
     /**
-     * @brief
-     * Add a new halo region (overloaded function).
+     * \overload
      *
-     * This overloaded function adds a new halo region to the Tausch object.
-     *
-     * @param haloIndices
-     * The halo indices can be specified as a vector of integers specifying the location
-     * where the halo data is stored in some buffer. Tausch will internally convert this
-     * list of integers into a set of rectangular subregions with each subregion stored
-     * using four integers.
-     * @param typeSizePerBuffer
-     * The size of the data type for this halo, one for each buffer.
-     * @param remoteMpiRank
-     * What remote MPI rank this/these halo region/s will be sent to.
-     *
-     * @return
-     * This function returns the halo id (needed for referencing this halo later-on).
+     * Here the halo indices can be specified as integers of halo data locations in the buffer with the halo indices used for all of the buffers. All buffers can have their own data type.
      */
     inline size_t addSendHaloInfo(std::vector<int> haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
@@ -206,23 +134,9 @@ public:
     }
 
     /**
-     * @brief
-     * Add a new halo region (overloaded function).
+     * \overload
      *
-     * This overloaded function adds a new halo region to the Tausch object.
-     *
-     * @param haloIndices
-     * The halo indices can be specified as a vector of integers specifying the location
-     * where the halo data is stored in some buffer. Tausch will internally convert this
-     * list of integers into a set of rectangular subregions with each subregion stored
-     * using four integers. Each buffer can have their own halo indices.
-     * @param typeSizePerBuffer
-     * The size of the data type for this halo, one for each buffer.
-     * @param remoteMpiRank
-     * What remote MPI rank this/these halo region/s will be sent to.
-     *
-     * @return
-     * This function returns the halo id (needed for referencing this halo later-on).
+     * Here the halo indices can be specified as integers of halo data locations in the buffer, with a different list of halo indices per buffer. All buffer can have their own data type.
      */
     inline size_t addSendHaloInfo(std::vector<std::vector<int> > haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
@@ -234,22 +148,9 @@ public:
     }
 
     /**
-     * @brief
-     * Add a new halo region (overloaded function).
+     * \overload
      *
-     * This overloaded function adds a new halo region to the Tausch object.
-     *
-     * @param haloIndices
-     * The halo indices can be specified as vector of arrays. Each array consists of four
-     * integers describing a rectangular subregion of the halo. All arrays together
-     * describe the full halo region.
-     * @param typeSizePerBuffer
-     * The size of the data type for this halo, one for each buffer.
-     * @param remoteMpiRank
-     * What remote MPI rank this/these halo region/s will be sent to.
-     *
-     * @return
-     * This function returns the halo id (needed for referencing this halo later-on).
+     * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer can have their own data type.
      */
     inline size_t addSendHaloInfo(std::vector<std::array<int, 4> > haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
@@ -262,9 +163,9 @@ public:
 
     /**
      * @brief
-     * Add a new halo region.
+     * Add a new send-halo region.
      *
-     * This adds a new halo region to the Tausch object.
+     * This adds a new send-halo region to the Tausch object.
      *
      * @param haloIndices
      * The halo indices are specified as vectors with two levels:<br>
@@ -326,6 +227,15 @@ public:
 
     }
 
+    /**
+     * @brief
+     * Delete a send-halo of a given halo id.
+     *
+     * This deletes a send-halo with the given halo id
+     *
+     * @param haloId
+     * The halo id returned by the addSendHaloInfo() member function.
+     */
     inline void delSendHaloInfo(size_t haloId) {
         sendBuffer[haloId].reset(nullptr);
     }
@@ -334,6 +244,11 @@ public:
     /*                          ADD REMOTE HALO                            */
     /***********************************************************************/
 
+    /**
+     * \overload
+     *
+     * Here the halo indices can be specified as integers of halo data locations in the buffer with the halo indices used for all of the numBuffers buffers. All buffer have the same data type.
+     */
     inline size_t addRecvHaloInfo(std::vector<int> haloIndices,
                                   const size_t typeSize,
                                   const int numBuffers = 1,
@@ -347,6 +262,11 @@ public:
         return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
+    /**
+     * \overload
+     *
+     * Here the halo indices can be specified as integers of halo data locations in the buffer, with a different list of halo indices per buffer. All buffer have the same data type.
+     */
     inline size_t addRecvHaloInfo(std::vector<std::vector<int> > haloIndices,
                                   const size_t typeSize,
                                   const int remoteMpiRank = -1) {
@@ -359,6 +279,11 @@ public:
         return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
+    /**
+     * \overload
+     *
+     * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer have the same data type.
+     */
     inline size_t addRecvHaloInfo(std::vector<std::array<int, 4> > haloIndices,
                                   const size_t typeSize,
                                   const int numBuffers = 1,
@@ -372,6 +297,11 @@ public:
         return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
+    /**
+     * \overload
+     *
+     * Here each buffer has the same data type.
+     */
     inline size_t addRecvHaloInfo(std::vector<std::vector<std::array<int, 4> > > haloIndices,
                                   const size_t typeSize,
                                   const int remoteMpiRank = -1) {
@@ -381,6 +311,11 @@ public:
         return addRecvHaloInfo(haloIndices, typeSizePerBuffer, remoteMpiRank);
     }
 
+    /**
+     * \overload
+     *
+     * Here the halo indices can be specified as integers of halo data locations in the buffer with the halo indices used for all of the buffers. All buffers can have their own data type.
+     */
     inline size_t addRecvHaloInfo(std::vector<int> haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
                                   const int remoteMpiRank = -1) {
@@ -390,6 +325,11 @@ public:
         return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
+    /**
+     * \overload
+     *
+     * Here the halo indices can be specified as integers of halo data locations in the buffer, with a different list of halo indices per buffer. All buffer can have their own data type.
+     */
     inline size_t addRecvHaloInfo(std::vector<std::vector<int> > haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
                                   const int remoteMpiRank = -1) {
@@ -399,6 +339,11 @@ public:
         return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
+    /**
+     * \overload
+     *
+     * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer can have their own data type.
+     */
     inline size_t addRecvHaloInfo(std::vector<std::array<int, 4> > haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
                                   const int remoteMpiRank = -1) {
@@ -408,6 +353,24 @@ public:
         return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
+    /**
+     * @brief
+     * Add a new recv-halo region.
+     *
+     * This adds a new recv-halo region to the Tausch object.
+     *
+     * @param haloIndices
+     * The halo indices are specified as vectors with two levels:<br>
+     * 1) The first level corresponds to the buffer id. Multiple buffers can be combined into a single message and each buffer can have their own halo specification.<br>
+     * 2) The second level corresponds to a rectangular subregion of this halo specification, with each rectangular subregion specified using four integers.
+     * @param typeSizePerBuffer
+     * A vector with the size of the data type for each buffer
+     * @param remoteMpiRank
+     * What remote MPI rank this/these halo region/s will be sent to.
+     *
+     * @return
+     * This function returns the halo id (needed for referencing this halo later-on).
+     */
     inline size_t addRecvHaloInfo(std::vector<std::vector<std::array<int, 4> > > haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
                                   const int remoteMpiRank = -1) {
@@ -456,6 +419,15 @@ public:
 
     }
 
+    /**
+     * @brief
+     * Delete a recv-halo of a given halo id.
+     *
+     * This deletes a recv-halo with the given halo id
+     *
+     * @param haloId
+     * The halo id returned by the addRecvHaloInfo() member function.
+     */
     inline void delRecvHaloInfo(size_t haloId) {
         recvBuffer[haloId].reset(nullptr);
     }
@@ -464,6 +436,17 @@ public:
     /*                      SET COMMUNICATION STRATEGY                     */
     /***********************************************************************/
 
+    /**
+     * @brief
+     * Set a communication strategy for sending a halo.
+     *
+     * Set a communication strategy for sending a halo. The strategy can be any one of the Communication enum.
+     *
+     * @param haloId
+     * The halo id returned by the addSendHaloInfo() member function.
+     * @param strategy
+     * The strategy to use, can be any one of the Communication enum.
+     */
     void setSendCommunicationStrategy(size_t haloId, Communication strategy) {
 
         sendHaloCommunicationStrategy[haloId] = strategy;
@@ -507,6 +490,17 @@ public:
 
     }
 
+    /**
+     * @brief
+     * Set a communication strategy for receiving a halo.
+     *
+     * Set a communication strategy for receiving a halo. The strategy can be any one of the Communication enum.
+     *
+     * @param haloId
+     * The halo id returned by the addRecvHaloInfo() member function.
+     * @param strategy
+     * The strategy to use, can be any one of the Communication enum.
+     */
     void setRecvCommunicationStrategy(size_t haloId, Communication strategy) {
 
         recvHaloCommunicationStrategy[haloId] = strategy;
@@ -556,14 +550,37 @@ public:
     /*                          SEND HALO BUFFER                           */
     /***********************************************************************/
 
+    /**
+     * \overload
+     *
+     * Internally the data buffer will be recast to unsigned char.
+     */
     void setSendHaloBuffer(int haloId, int bufferId, int* buf) {
         setSendHaloBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
+    /**
+     * \overload
+     *
+     * Internally the data buffer will be recast to unsigned char.
+     */
     void setSendHaloBuffer(int haloId, int bufferId, double* buf) {
         setSendHaloBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
+    /**
+     * @brief
+     * Set a pointer to the sending halo data buffer.
+     *
+     * This sets a pointer to the sending halo data buffer of type unsigned char. This is a necessary step for certain communication strategies, e.g., using MPI derived data types.
+     *
+     * @param haloId
+     * The halo id returned by the addSendHaloInfo() member function.
+     * @param bufferId
+     * The id of the current buffer (numbered starting at 0).
+     * @param buf
+     * Pointer to the data buffer of type unsigned char.
+     */
     void setSendHaloBuffer(int haloId, int bufferId, unsigned char* buf) {
         sendHaloBuffer[haloId][bufferId] = buf;
     }
@@ -574,14 +591,37 @@ public:
     /*                          RECV HALO BUFFER                           */
     /***********************************************************************/
 
+    /**
+     * \overload
+     *
+     * Internally the data buffer will be recast to unsigned char.
+     */
     void setRecvHaloBuffer(int haloId, int bufferId, int* buf) {
         setRecvHaloBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
+    /**
+     * \overload
+     *
+     * Internally the data buffer will be recast to unsigned char.
+     */
     void setRecvHaloBuffer(int haloId, int bufferId, double* buf) {
         setRecvHaloBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
+    /**
+     * @brief
+     * Set a pointer to the receiving halo data buffer.
+     *
+     * This sets a pointer to the receiving halo data buffer of type int. This is a necessary step for certain communication strategies, e.g., using MPI derived data types.
+     *
+     * @param haloId
+     * The halo id returned by the addRecvHaloInfo() member function.
+     * @param bufferId
+     * The id of the current buffer (numbered starting at 0).
+     * @param buf
+     * Pointer to the data buffer of type unsigned char.
+     */
     void setRecvHaloBuffer(int haloId, int bufferId, unsigned char* buf) {
         recvHaloBuffer[haloId][bufferId] = buf;
     }
@@ -592,14 +632,37 @@ public:
     /*                             PACK BUFFER                             */
     /***********************************************************************/
 
+    /**
+     * \overload
+     *
+     * Internally the data buffer will be recast to unsigned char.
+     */
     void packSendBuffer(const size_t haloId, const size_t bufferId, const double *buf) {
         packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
     }
 
+    /**
+     * \overload
+     *
+     * Internally the data buffer will be recast to unsigned char.
+     */
     void packSendBuffer(const size_t haloId, const size_t bufferId, const int *buf) {
         packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
     }
 
+    /**
+     * @brief
+     * Packs a data buffer for the given halo and buffer id.
+     *
+     * Packs a data buffer for the given halo and buffer id. Once this function has been called the data buffer is free to be used and changed as desired.
+     *
+     * @param haloId
+     * The halo id returned by the addSendHaloInfo() member function.
+     * @param bufferId
+     * The id of the current buffer (numbered starting at 0).
+     * @param buf
+     * Pointer to the data buffer.
+     */
     void packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf) {
 
         size_t bufferOffset = 0;
@@ -629,6 +692,28 @@ public:
     /*                            SEND MESSAGE                             */
     /***********************************************************************/
 
+    /**
+     * @brief
+     * Send a given halo data off.
+     *
+     * Send a given halo data off.
+     *
+     * @param haloId
+     * The halo id returned by the addSendHaloInfo() member function.
+     * @param msgtag
+     * The message tag to be used by this communication. For CPU-CPU communication this is the same as an MPI tag.
+     * @param remoteMpiRank
+     * The receiving MPI rank.
+     * @param bufferId
+     * The id of the current buffer (numbered starting at 0).
+     * @param blocking
+     * If set to true Tausch will block until the send routine has been fully received. If set to false this routine will return immediately and the data will be sent in the background.
+     * @param communicator
+     * If a communicator is specified here then Tausch will ignore the global communicator set during construction.
+     *
+     * @return
+     * Returns the MPI_Request used for this communication.
+     */
     inline MPI_Request send(size_t haloId, const int msgtag, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = false, MPI_Comm communicator = MPI_COMM_NULL) {
 
         if(sendHaloIndicesSizeTotal[haloId] == 0)
@@ -682,6 +767,28 @@ public:
     /*                         RECEIVE MESSAGE                             */
     /***********************************************************************/
 
+    /**
+     * @brief
+     * Receives a given halo.
+     *
+     * Receives a given halo.
+     *
+     * @param haloId
+     * The halo id returned by the addRecvHaloInfo() member function.
+     * @param msgtag
+     * The message tag to be used by this communication. For CPU-CPU communication this is the same as an MPI tag.
+     * @param remoteMpiRank
+     * The sending MPI rank.
+     * @param bufferId
+     * The id of the current buffer (numbered starting at 0).
+     * @param blocking
+     * If set to true Tausch will block until the receive routine has been fully completed. If set to false this routine will return immediately and the data will be received in the background (the MPI_Request can be tested to check for completion).
+     * @param communicator
+     * If a communicator is specified here then Tausch will ignore the global communicator set during construction.
+     *
+     * @return
+     * Returns the MPI_Request used for this communication.
+     */
     inline MPI_Request recv(size_t haloId, const int msgtag, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = true, MPI_Comm communicator = MPI_COMM_NULL) {
 
         if(recvHaloIndicesSizeTotal[haloId] == 0)
@@ -735,14 +842,37 @@ public:
     /*                           UNPACK BUFFER                             */
     /***********************************************************************/
 
+    /**
+     * \overload
+     *
+     * Internally the data buffer will be recast to unsigned char.
+     */
     void unpackRecvBuffer(const size_t haloId, const size_t bufferId, double *buf) {
         unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
+    /**
+     * \overload
+     *
+     * Internally the data buffer will be recast to unsigned char.
+     */
     void unpackRecvBuffer(const size_t haloId, const size_t bufferId, int *buf) {
         unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
+    /**
+     * @brief
+     * Unpacks a data buffer for the given halo and buffer id.
+     *
+     * Unpacks a data buffer for the given halo and buffer id. Once this function has been called the received data can be immediately used.
+     *
+     * @param haloId
+     * The halo id returned by the addRecvHaloInfo() member function.
+     * @param bufferId
+     * The id of the current buffer (numbered starting at 0).
+     * @param buf
+     * Pointer to the data buffer.
+     */
     void unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf) {
 
         size_t bufferOffset = 0;
@@ -869,6 +999,18 @@ public:
     /***********************************************************************/
     /***********************************************************************/
 
+    /**
+     * @brief
+     * Converts a list of halo indices to rectangular subregions.
+     *
+     * Converts a list of halo indices to rectangular subregions. Each subregion is represented by four integers.
+     *
+     * @param indices
+     * A list of indices specifying the location of halo data.
+     *
+     * @return
+     * Returns the encoded halo information.
+     */
     inline std::vector<std::array<int, 4> > extractHaloIndicesWithStride(std::vector<int> indices) {
 
         // nothing to do
@@ -926,6 +1068,20 @@ public:
 
     }
 
+    /**
+     * @brief
+     * Converts indices based on a certain data type into indices for unsigned char.
+     *
+     * Converts indices based on a certain data type into indices for unsigned char.
+     *
+     * @param indices
+     * The halo indices based on given data type.
+     * @param typeSize
+     * The size of the data type.
+     *
+     * @return
+     * Returns a list of indices based on unsigned char.
+     */
     inline std::vector<std::array<int, 4> > convertToUnsignedCharIndices(std::vector<std::array<int, 4> > indices, const size_t typeSize) {
 
         if(typeSize == 1)
