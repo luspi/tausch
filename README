@@ -1,0 +1,25 @@
+TAUSCH (c) 2020 Lukas Spies
+
+A halo exchange library for large heterogeneous systems using MPI, OpenCL and CUDA.
+
+It is designed to be maximally flexible (can be used almost anywhere), minimally instrusive (easy
+to implement into existing code), maximally efficient (performs just as good or better than any
+custom solution), and requires minimal memory resources (compressed halo metadata).
+
+ INSTALL
+*********
+
+Tausch is a header-only library and thus does not need to be installed or precompiled in any way.
+All that is required is the single header file tausch/tausch.h (for C++ API) or tausch/ctausch.h
+(for C API) to be included.
+
+ USAGE
+*******
+
+The API of Tausch is very straightforward to use. Please refer to the API documentation(doc
+subfolder) for a complete overview.
+
+ QUESTIONS?
+************
+
+If you have any questions or suggestions please feel free to open an issue here on GitHub.
