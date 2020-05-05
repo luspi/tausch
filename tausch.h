@@ -1021,7 +1021,7 @@ public:
      * Choose a device number.
      *
      * @return
-     * Returns the string representation of the chosen OpenCL device.
+     * String containing the name of the chosen OpenCL device.
      */
     std::string enableOpenCL(int deviceNumber = 0) {
         try {
@@ -1056,20 +1056,31 @@ public:
     /**
      * @brief
      * Get OpenCL device.
+     *
+     * Get OpenCL device.
+     *
      * @return
      * OpenCL device in use by Tausch.
      */
     cl::Device getOclDevice() { return ocl_device; }
 
     /**
+     * @brief
      * Get OpenCL context.
+     *
+     * Get OpenCL context.
+     *
      * @return
      * OpenCL context in use by Tausch.
      */
     cl::Context getOclContext() { return ocl_context; }
 
     /**
+     * @brief
      * Get OpenCL command queue.
+     *
+     * Get OpenCL command queue.
+     *
      * @return
      * OpenCL command queue in use by Tausch.
      */
