@@ -993,6 +993,40 @@ public:
         this->ocl_queue = ocl_queue;
     }
 
+    std::string enableOpenCL(int deviceNumber = 0) {
+        try {
+
+            std::vector<cl::Platform> all_platforms;
+            cl::Platform::get(&all_platforms);
+            cl::Platform ocl_platform = all_platforms[0];
+
+            std::vector<cl::Device> all_devices;
+            ocl_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
+            if(deviceNumber >= all_devices.size())
+                deviceNumber = 0;
+            this->ocl_device = all_devices[deviceNumber];
+
+            std::string deviceName = ocl_device.getInfo<CL_DEVICE_NAME>();
+
+            // Create context and queue
+            this->ocl_context = cl::Context({ocl_device});
+            this->ocl_queue = cl::CommandQueue(ocl_context,ocl_device);
+
+            return deviceName;
+
+        } catch(cl::Error error) {
+            std::cout << "[enableOpenCL] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
+            exit(1);
+        }
+
+        return "";
+
+    }
+
+    cl::Device getOclDevice() { return ocl_device; }
+    cl::Context getOclContext() { return ocl_context; }
+    cl::CommandQueue getOclQqueue() { return ocl_queue; }
+
     void packSendBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
 
         size_t bufferOffset = 0;

@@ -5,8 +5,6 @@
 
 TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
 
-    setupOpenCL();
-
     const std::vector<int> sizes = {3, 10, 100, 377};
     const std::vector<int> halowidths = {1, 2, 3};
 
@@ -22,8 +20,11 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
                     out[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
                 }
             }
-            cl::Buffer cl_in(tauschcl_queue, in, &in[(size+2*halowidth)*(size+2*halowidth)], false);
-            cl::Buffer cl_out(tauschcl_queue, out, &out[(size+2*halowidth)*(size+2*halowidth)], false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
+            tausch->enableOpenCL();
+
+            cl::Buffer cl_in(tausch->getOclQqueue(), in, &in[(size+2*halowidth)*(size+2*halowidth)], false);
+            cl::Buffer cl_out(tausch->getOclQqueue(), out, &out[(size+2*halowidth)*(size+2*halowidth)], false);
 
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
@@ -52,9 +53,6 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
                     recvIndices.push_back((j+(size+halowidth))*(size+2*halowidth) + i+halowidth);
                 }
 
-            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
-            tausch->setOpenCL(tauschcl_device, tauschcl_context, tauschcl_queue);
-
             int mpiRank;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
@@ -66,7 +64,7 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
             tausch->recv(0, 0, mpiRank, true);
             tausch->unpackRecvBufferOCL(0, 0, cl_out);
 
-            cl::copy(tauschcl_queue, cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
+            cl::copy(tausch->getOclQqueue(), cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             for(int i = 0; i < size; ++i) {
@@ -87,7 +85,6 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
             for(int i = 0; i < (size+2*halowidth); ++i)
                 for(int j = 0; j < (size+2*halowidth); ++j)
                     REQUIRE(expected[i*(size+2*halowidth)+j] == out[i*(size+2*halowidth)+j]);
-
 
         }
 
