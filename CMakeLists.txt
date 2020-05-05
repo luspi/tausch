@@ -2,13 +2,17 @@ cmake_minimum_required(VERSION 3.1)
 
 project(tausch)
 
-install(FILES "tausch.h" DESTINATION "include")
-
+# tests is enabled by default
 option(TESTING "Enable Unit Tests" ON)
 
+# documentation is enabled by default if doxygen found
 find_package(Doxygen)
-option(DOC "Build documentation (make doc)" ${DOXYGEN_FOUND})
+option(DOC "Build documentation" ${DOXYGEN_FOUND})
 
+# install header file into include/tausch/ folder
+install(FILES "tausch.h" DESTINATION "include/tausch")
+
+# if doc is enabled, build doc
 if(DOC)
     if(NOT DOXYGEN_FOUND)
         message(FATAL_ERROR "Doxygen is needed to build the documentation.")
@@ -19,29 +23,30 @@ if(DOC)
 
     configure_file(${doxyfile_in} ${doxyfile} @ONLY)
 
-    add_custom_target(doc
+    add_custom_target(doc ALL
         COMMAND ${DOXYGEN_EXECUTABLE} ${doxyfile}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM)
 
-    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION share/doc)
 endif()
 
+# build tests if enabled
 if(TESTING)
 
     enable_testing()
 
     set(CMAKE_BUILD_TYPE "Debug")
 
+    # custom function to add mpi test
     function(add_mpi_test name files ocl cuda)
 
         separate_arguments(files_list UNIX_COMMAND ${files})
 
+        # each test is run with 1, 2, and 4 mpi ranks
         set(numprocs 1 2 4)
 
         foreach(n IN LISTS numprocs)
-            message(STATUS, "n=${n}")
             add_executable(${name}_${n} ${files_list})
             target_link_libraries(${name}_${n} ${MPI_C_LIBRARIES})
             target_link_libraries(${name}_${n} ${MPI_CXX_LIBRARIES})
