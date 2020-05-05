@@ -154,8 +154,6 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
 
 TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
 
-    std::cout << "*****" << std::endl;
-
     const std::vector<int> sizes = {3, 10, 100, 377};
     const std::vector<int> halowidths = {1, 2, 3};
 
@@ -246,8 +244,6 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
 }
 
 TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
-
-    std::cout << "*****" << std::endl;
 
     const std::vector<int> sizes = {3, 10, 100, 377};
     const std::vector<int> halowidths = {1, 2, 3};

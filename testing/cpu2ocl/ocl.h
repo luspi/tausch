@@ -1,7 +1,6 @@
 #ifndef TAUSCH_SETUP_OPENCL
 #define TAUSCH_SETUP_OPENCL
 
-
 static cl::Device tauschcl_device;
 static cl::Context tauschcl_context;
 static cl::CommandQueue tauschcl_queue;

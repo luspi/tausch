@@ -1,6 +1,7 @@
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
 #include <mpi.h>
+#include <stdlib.h>
 
 int main(int argc, char** argv) {
 

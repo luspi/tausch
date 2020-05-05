@@ -53,6 +53,11 @@
 #include <cuda_runtime.h>
 #endif
 
+#ifdef TAUSCH_OPENCL
+#define __CL_ENABLE_EXCEPTIONS
+#include <CL/cl.hpp>
+#endif
+
 class Tausch {
 
 public:
@@ -970,6 +975,76 @@ public:
     /***********************************************************************/
     /***********************************************************************/
 
+#ifdef TAUSCH_OPENCL
+
+    /***********************************************************************/
+    /*                          SET OPENCL SETUP                           */
+    /***********************************************************************/
+
+    void setOpenCL(cl::Device ocl_device, cl::Context ocl_context, cl::CommandQueue ocl_queue) {
+        this->ocl_device = ocl_device;
+        this->ocl_context = ocl_context;
+        this->ocl_queue = ocl_queue;
+    }
+
+    void packSendBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
+
+        size_t bufferOffset = 0;
+        for(size_t i = 0; i < bufferId; ++i)
+            bufferOffset += sendHaloIndicesSizePerBuffer[haloId][i];
+
+        size_t mpiSendBufferIndex = 0;
+        for(auto const & region : sendHaloIndices[haloId][bufferId]) {
+
+            const size_t &region_start = region[0];
+            const size_t &region_howmanycols = region[1];
+            const size_t &region_howmanyrows = region[2];
+            const size_t &region_striderow = region[3];
+
+            for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+
+                ocl_queue.enqueueReadBuffer(buf, CL_TRUE, region_start+rows*region_striderow, region_howmanycols*sizeof(unsigned char), &sendBuffer[haloId][bufferOffset + mpiSendBufferIndex]);
+
+                mpiSendBufferIndex += region_howmanycols;
+
+            }
+
+        }
+
+    }
+
+    void unpackRecvBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
+
+        size_t bufferOffset = 0;
+        for(size_t i = 0; i < bufferId; ++i)
+            bufferOffset += recvHaloIndicesSizePerBuffer[haloId][i];
+
+        size_t mpiRecvBufferIndex = 0;
+
+        for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+
+            const size_t &region_start = region[0];
+            const size_t &region_howmanycols = region[1];
+            const size_t &region_howmanyrows = region[2];
+            const size_t &region_striderow = region[3];
+
+            for(int rows = 0; rows < region_howmanyrows; ++rows) {
+
+                ocl_queue.enqueueWriteBuffer(buf, CL_TRUE, region_start+rows*region_striderow, region_howmanycols*sizeof(unsigned char), &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex]);
+
+                mpiRecvBufferIndex += region_howmanycols;
+
+            }
+
+        }
+
+    }
+
+#endif
+
+    /***********************************************************************/
+    /***********************************************************************/
+
 #ifdef TAUSCH_CUDA
 
     /***********************************************************************/
@@ -1199,6 +1274,14 @@ private:
 
     // this is used for exchanges on same mpi rank
     std::map<int, int> msgtagToHaloId;
+
+#ifdef TAUSCH_OPENCL
+
+    cl::Device ocl_device;
+    cl::Context ocl_context;
+    cl::CommandQueue ocl_queue;
+
+#endif
 
 };
 

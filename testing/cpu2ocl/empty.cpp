@@ -27,18 +27,19 @@ TEST_CASE("1 buffer, empty indices, with pack/unpack, same MPI rank") {
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
 
-            Tausch<double> *tausch = new Tausch<double>(tauschcl_device, tauschcl_context, tauschcl_queue, MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
+            tausch->setOpenCL(tauschcl_device, tauschcl_context, tauschcl_queue);
 
             int mpiRank;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
-            tausch->addLocalHaloInfo(sendIndices);
-            tausch->addRemoteHaloInfo(recvIndices);
+            tausch->addSendHaloInfo(sendIndices, sizeof(double));
+            tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBuffer(0, 0, in);
             tausch->send(0, 0, mpiRank, false);
             tausch->recv(0, 0, mpiRank, true);
-            tausch->unpackRecvBuffer(0, 0, cl_out);
+            tausch->unpackRecvBufferOCL(0, 0, cl_out);
 
             cl::copy(tauschcl_queue, cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
 
@@ -84,19 +85,20 @@ TEST_CASE("1 buffer, empty indices, with pack/unpack, multiple MPI ranks") {
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
 
-            Tausch<double> *tausch = new Tausch<double>(tauschcl_device, tauschcl_context, tauschcl_queue, MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
+            tausch->setOpenCL(tauschcl_device, tauschcl_context, tauschcl_queue);
 
             int mpiRank, mpiSize;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
             MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-            tausch->addLocalHaloInfo(sendIndices);
-            tausch->addRemoteHaloInfo(recvIndices);
+            tausch->addSendHaloInfo(sendIndices, sizeof(double));
+            tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBuffer(0, 0, in);
             tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
             tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
-            tausch->unpackRecvBuffer(0, 0, cl_out);
+            tausch->unpackRecvBufferOCL(0, 0, cl_out);
 
             cl::copy(tauschcl_queue, cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
 
@@ -117,7 +119,7 @@ TEST_CASE("1 buffer, empty indices, with pack/unpack, multiple MPI ranks") {
     }
 
 }
-
+/*
 TEST_CASE("1 buffer, empty indices, derived, same MPI rank") {
 
     setupOpenCL();
@@ -142,13 +144,14 @@ TEST_CASE("1 buffer, empty indices, derived, same MPI rank") {
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
 
-            Tausch<double> *tausch = new Tausch<double>(tauschcl_device, tauschcl_context, tauschcl_queue, MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
+            tausch->setOpenCL(tauschcl_device, tauschcl_context, tauschcl_queue);
 
             int mpiRank;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
-            tausch->addLocalHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
-            tausch->addRemoteHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
+            tausch->addSendHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
+            tausch->addRecvHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
 
             tausch->send(0, 0, mpiRank, 0, in, false);
             tausch->recv(0, 0, mpiRank, true);
@@ -198,7 +201,8 @@ TEST_CASE("1 buffer, empty indices, derived, multiple MPI ranks") {
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
 
-            Tausch<double> *tausch = new Tausch<double>(tauschcl_device, tauschcl_context, tauschcl_queue, MPI_DOUBLE, MPI_COMM_WORLD, false);
+            Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
+            tausch->setOpenCL(tauschcl_device, tauschcl_context, tauschcl_queue);
 
             int mpiRank, mpiSize;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
@@ -230,3 +234,4 @@ TEST_CASE("1 buffer, empty indices, derived, multiple MPI ranks") {
     }
 
 }
+*/
