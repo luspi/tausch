@@ -983,16 +983,46 @@ public:
 
 #ifdef TAUSCH_OPENCL
 
+    /** @name OpenCL
+     * The OpenCL routines. In order to use these the macro TAUSCH_OPENCL needs to be defined before including the tausch header.
+     */
+    /**@{*/
+
     /***********************************************************************/
     /*                          SET OPENCL SETUP                           */
     /***********************************************************************/
 
+    /**
+     * @brief
+     * Tells Tausch about an existing OpenCL environment.
+     *
+     * Tells Tausch about an existing OpenCL environment. The environment needs to be set up by the user before calling this function.
+     *
+     * @param ocl_device
+     * The OpenCL device.
+     * @param ocl_context
+     * The OpenCL context.
+     * @param ocl_queue
+     * The OpenCL CommandQueue.
+     */
     void setOpenCL(cl::Device ocl_device, cl::Context ocl_context, cl::CommandQueue ocl_queue) {
         this->ocl_device = ocl_device;
         this->ocl_context = ocl_context;
         this->ocl_queue = ocl_queue;
     }
 
+    /**
+     * @brief
+     * Tells Tausch to set up an OpenCL environment.
+     *
+     * Tells Tausch to set up an OpenCL environment. Tausch will use this environment for all subsequent OpenCL operations.
+     *
+     * @param deviceNumber
+     * Choose a device number.
+     *
+     * @return
+     * Returns the string representation of the chosen OpenCL device.
+     */
     std::string enableOpenCL(int deviceNumber = 0) {
         try {
 
@@ -1023,10 +1053,42 @@ public:
 
     }
 
+    /**
+     * @brief
+     * Get OpenCL device.
+     * @return
+     * OpenCL device in use by Tausch.
+     */
     cl::Device getOclDevice() { return ocl_device; }
+
+    /**
+     * Get OpenCL context.
+     * @return
+     * OpenCL context in use by Tausch.
+     */
     cl::Context getOclContext() { return ocl_context; }
+
+    /**
+     * Get OpenCL command queue.
+     * @return
+     * OpenCL command queue in use by Tausch.
+     */
     cl::CommandQueue getOclQqueue() { return ocl_queue; }
 
+    /**
+     * @brief
+     * Packs an OpenCL buffer for the given halo and buffer id.
+     *
+     * Packs an OpenCL buffer for the given halo and buffer id. Once this function has
+     * been called the OpenCL buffer is free to be used and changed as desired.
+     *
+     * @param haloId
+     * The halo id returned by the addSendHaloInfo() member function.
+     * @param bufferId
+     * The id of the current buffer (numbered starting at 0).
+     * @param buf
+     * Handler of the OpenCL buffer.
+     */
     void packSendBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
 
         size_t bufferOffset = 0;
@@ -1053,6 +1115,20 @@ public:
 
     }
 
+    /**
+     * @brief
+     * Unpacks an OpenCL buffer for the given halo and buffer id.
+     *
+     * Unpacks an OpenCL buffer for the given halo and buffer id. Once this function has
+     * been called the received data can be immediately used.
+     *
+     * @param haloId
+     * The halo id returned by the addRecvHaloInfo() member function.
+     * @param bufferId
+     * The id of the current buffer (numbered starting at 0).
+     * @param buf
+     * Handler of the OpenCL buffer.
+     */
     void unpackRecvBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
 
         size_t bufferOffset = 0;
@@ -1080,6 +1156,8 @@ public:
 
     }
 
+    /**@}*/
+
 #endif
 
     /***********************************************************************/
@@ -1087,18 +1165,47 @@ public:
 
 #ifdef TAUSCH_CUDA
 
+    /** @name CUDA
+     * The CUDA routines. In order to use these the macro TAUSCH_CUDA needs to be defined before including the tausch header.
+     */
+    /**@{*/
+
     /***********************************************************************/
     /*                         PACK BUFFER (CUDA)                          */
     /***********************************************************************/
 
+    /**
+     * \overload
+     *
+     * Internally the CUDA buffer will be recast to unsigned char.
+     */
     void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const double *buf) {
         packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
     }
 
+    /**
+     * \overload
+     *
+     * Internally the CUDA buffer will be recast to unsigned char.
+     */
     void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const int *buf) {
         packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
     }
 
+    /**
+     * @brief
+     * Packs a CUDA buffer for the given halo and buffer id.
+     *
+     * Packs a CUDA buffer for the given halo and buffer id. Once this function has been called the
+     * CUDA buffer is free to be used and changed as desired.
+     *
+     * @param haloId
+     * The halo id returned by the addSendHaloInfo() member function.
+     * @param bufferId
+     * The id of the current buffer (numbered starting at 0).
+     * @param buf
+     * Pointer to the CUDA buffer.
+     */
     void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const unsigned char *buf) {
 
         size_t bufferOffset = 0;
@@ -1135,14 +1242,38 @@ public:
     /*                        UNPACK BUFFER (CUDA)                         */
     /***********************************************************************/
 
+    /**
+     * \overload
+     *
+     * Internally the data buffer will be recast to unsigned char.
+     */
     void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, double *buf) {
         unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
+    /**
+     * \overload
+     *
+     * Internally the data buffer will be recast to unsigned char.
+     */
     void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, int *buf) {
         unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
+    /**
+     * @brief
+     * Unpacks a CUDA buffer for the given halo and buffer id.
+     *
+     * Unpacks a CUDA buffer for the given halo and buffer id. Once this function has been called
+     * the received data can be immediately used.
+     *
+     * @param haloId
+     * The halo id returned by the addRecvHaloInfo() member function.
+     * @param bufferId
+     * The id of the current buffer (numbered starting at 0).
+     * @param buf
+     * Pointer to the CUDA buffer.
+     */
     void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, unsigned char *buf) {
 
         size_t bufferOffset = 0;
@@ -1174,6 +1305,8 @@ public:
         }
 
     }
+
+    /**@}*/
 
 #endif
 
