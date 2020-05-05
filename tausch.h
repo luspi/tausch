@@ -58,6 +58,12 @@
 #include <CL/cl.hpp>
 #endif
 
+/**
+ * @brief
+ * The Tausch class object.
+ *
+ * All features of Tausch are encapsulated in this single class object.
+ */
 class Tausch {
 
 public:
