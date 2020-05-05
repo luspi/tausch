@@ -515,7 +515,7 @@ public:
      * @param strategy
      * The strategy to use, can be any one of the Communication enum.
      */
-    void setSendCommunicationStrategy(size_t haloId, Communication strategy) {
+    inline void setSendCommunicationStrategy(size_t haloId, Communication strategy) {
 
         sendHaloCommunicationStrategy[haloId] = strategy;
 
@@ -569,7 +569,7 @@ public:
      * @param strategy
      * The strategy to use, can be any one of the Communication enum.
      */
-    void setRecvCommunicationStrategy(size_t haloId, Communication strategy) {
+    inline void setRecvCommunicationStrategy(size_t haloId, Communication strategy) {
 
         recvHaloCommunicationStrategy[haloId] = strategy;
 
@@ -623,7 +623,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    void setSendHaloBuffer(int haloId, int bufferId, int* buf) {
+    inline void setSendHaloBuffer(int haloId, int bufferId, int* buf) {
         setSendHaloBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
@@ -632,7 +632,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    void setSendHaloBuffer(int haloId, int bufferId, double* buf) {
+    inline void setSendHaloBuffer(int haloId, int bufferId, double* buf) {
         setSendHaloBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
@@ -650,7 +650,7 @@ public:
      * @param buf
      * Pointer to the data buffer of type unsigned char.
      */
-    void setSendHaloBuffer(int haloId, int bufferId, unsigned char* buf) {
+    inline void setSendHaloBuffer(int haloId, int bufferId, unsigned char* buf) {
         sendHaloBuffer[haloId][bufferId] = buf;
     }
 
@@ -665,7 +665,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    void setRecvHaloBuffer(int haloId, int bufferId, int* buf) {
+    inline void setRecvHaloBuffer(int haloId, int bufferId, int* buf) {
         setRecvHaloBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
@@ -674,7 +674,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    void setRecvHaloBuffer(int haloId, int bufferId, double* buf) {
+    inline void setRecvHaloBuffer(int haloId, int bufferId, double* buf) {
         setRecvHaloBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
@@ -692,7 +692,7 @@ public:
      * @param buf
      * Pointer to the data buffer of type unsigned char.
      */
-    void setRecvHaloBuffer(int haloId, int bufferId, unsigned char* buf) {
+    inline void setRecvHaloBuffer(int haloId, int bufferId, unsigned char* buf) {
         recvHaloBuffer[haloId][bufferId] = buf;
     }
 
@@ -707,7 +707,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    void packSendBuffer(const size_t haloId, const size_t bufferId, const double *buf) {
+    inline void packSendBuffer(const size_t haloId, const size_t bufferId, const double *buf) {
         packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
     }
 
@@ -716,7 +716,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    void packSendBuffer(const size_t haloId, const size_t bufferId, const int *buf) {
+    inline void packSendBuffer(const size_t haloId, const size_t bufferId, const int *buf) {
         packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
     }
 
@@ -734,7 +734,7 @@ public:
      * @param buf
      * Pointer to the data buffer.
      */
-    void packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf) {
+    inline void packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf) {
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -925,7 +925,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    void unpackRecvBuffer(const size_t haloId, const size_t bufferId, double *buf) {
+    inline void unpackRecvBuffer(const size_t haloId, const size_t bufferId, double *buf) {
         unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
@@ -934,7 +934,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    void unpackRecvBuffer(const size_t haloId, const size_t bufferId, int *buf) {
+    inline void unpackRecvBuffer(const size_t haloId, const size_t bufferId, int *buf) {
         unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
@@ -952,7 +952,7 @@ public:
      * @param buf
      * Pointer to the data buffer.
      */
-    void unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf) {
+    inline void unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf) {
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1005,7 +1005,7 @@ public:
      * @param ocl_queue
      * The OpenCL CommandQueue.
      */
-    void setOpenCL(cl::Device ocl_device, cl::Context ocl_context, cl::CommandQueue ocl_queue) {
+    inline void setOpenCL(cl::Device ocl_device, cl::Context ocl_context, cl::CommandQueue ocl_queue) {
         this->ocl_device = ocl_device;
         this->ocl_context = ocl_context;
         this->ocl_queue = ocl_queue;
@@ -1023,7 +1023,7 @@ public:
      * @return
      * String containing the name of the chosen OpenCL device.
      */
-    std::string enableOpenCL(int deviceNumber = 0) {
+    inline std::string enableOpenCL(int deviceNumber = 0) {
         try {
 
             std::vector<cl::Platform> all_platforms;
@@ -1062,7 +1062,9 @@ public:
      * @return
      * OpenCL device in use by Tausch.
      */
-    cl::Device getOclDevice() { return ocl_device; }
+    inline cl::Device getOclDevice() {
+        return ocl_device;
+    }
 
     /**
      * @brief
@@ -1073,7 +1075,9 @@ public:
      * @return
      * OpenCL context in use by Tausch.
      */
-    cl::Context getOclContext() { return ocl_context; }
+    inline cl::Context getOclContext() {
+        return ocl_context;
+    }
 
     /**
      * @brief
@@ -1084,7 +1088,9 @@ public:
      * @return
      * OpenCL command queue in use by Tausch.
      */
-    cl::CommandQueue getOclQqueue() { return ocl_queue; }
+    inline cl::CommandQueue getOclQqueue() {
+        return ocl_queue;
+    }
 
     /**
      * @brief
@@ -1100,7 +1106,7 @@ public:
      * @param buf
      * Handler of the OpenCL buffer.
      */
-    void packSendBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
+    inline void packSendBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1140,7 +1146,7 @@ public:
      * @param buf
      * Handler of the OpenCL buffer.
      */
-    void unpackRecvBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
+    inline void unpackRecvBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1190,7 +1196,7 @@ public:
      *
      * Internally the CUDA buffer will be recast to unsigned char.
      */
-    void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const double *buf) {
+    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const double *buf) {
         packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
     }
 
@@ -1199,7 +1205,7 @@ public:
      *
      * Internally the CUDA buffer will be recast to unsigned char.
      */
-    void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const int *buf) {
+    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const int *buf) {
         packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
     }
 
@@ -1217,7 +1223,7 @@ public:
      * @param buf
      * Pointer to the CUDA buffer.
      */
-    void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const unsigned char *buf) {
+    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const unsigned char *buf) {
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1258,7 +1264,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, double *buf) {
+    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, double *buf) {
         unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
@@ -1267,7 +1273,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, int *buf) {
+    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, int *buf) {
         unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
@@ -1285,7 +1291,7 @@ public:
      * @param buf
      * Pointer to the CUDA buffer.
      */
-    void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, unsigned char *buf) {
+    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, unsigned char *buf) {
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
