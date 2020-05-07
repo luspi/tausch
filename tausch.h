@@ -96,9 +96,10 @@ public:
      * This enum can be used when enabling/disabling certain optimization strategies.
      */
     enum Communication {
-        Auto = 1,
-        DerivedMpiDatatype = 2,
-        CUDAAwareMPI = 4
+        Default = 1,
+        SameMPIRank = 2,
+        DerivedMpiDatatype = 4,
+        CUDAAwareMPI = 8
     };
 
     /***********************************************************************/
@@ -264,7 +265,7 @@ public:
         sendHaloIndicesSizePerBuffer.push_back(haloSizePerBuffer);
         sendHaloIndicesSizeTotal.push_back(totalHaloSize);
         sendHaloNumBuffers.push_back(indices.size());
-        sendHaloCommunicationStrategy.push_back(Communication::Auto);
+        sendHaloCommunicationStrategy.push_back(Communication::Default);
         sendHaloRemoteRank.push_back(remoteMpiRank);
 
         void *newbuf = NULL;
@@ -464,7 +465,7 @@ public:
         recvHaloIndicesSizePerBuffer.push_back(haloSizePerBuffer);
         recvHaloIndicesSizeTotal.push_back(totalHaloSize);
         recvHaloNumBuffers.push_back(indices.size());
-        recvHaloCommunicationStrategy.push_back(Communication::Auto);
+        recvHaloCommunicationStrategy.push_back(Communication::Default);
         recvHaloRemoteRank.push_back(remoteMpiRank);
 
         void *newbuf = NULL;
@@ -558,8 +559,6 @@ public:
 #ifdef TAUSCH_CUDA
         } else if((strategy&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
 
-            std::cout << "send cuda-aware mpi" << std::endl;
-
             sendBuffer[haloId] = std::unique_ptr<unsigned char[]>(new unsigned char[1]);
 
             cudaMalloc(&cudaSendBuffer[haloId], sendHaloIndicesSizeTotal[haloId]*sizeof(unsigned char));
@@ -621,8 +620,6 @@ public:
 
 #ifdef TAUSCH_CUDA
         } else if((strategy&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
-
-            std::cout << "recv cuda-aware mpi" << std::endl;
 
             recvBuffer[haloId] = std::unique_ptr<unsigned char[]>(new unsigned char[1]);
 
@@ -824,7 +821,7 @@ public:
         // if we stay on the same rank, we don't need to use MPI
         int myRank;
         MPI_Comm_rank(communicator, &myRank);
-        if(useRemoteMpiRank == myRank && (sendHaloCommunicationStrategy[haloId]&Communication::Auto) == Communication::Auto) {
+        if(useRemoteMpiRank == myRank && (sendHaloCommunicationStrategy[haloId]&Communication::SameMPIRank) == Communication::SameMPIRank) {
             msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
             return MPI_REQUEST_NULL;
         }
@@ -843,8 +840,6 @@ public:
                 MPI_Send_init(cudaSendBuffer[haloId], sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
                               useRemoteMpiRank, msgtag, communicator,
                               &sendHaloMpiRequests[haloId][0]);
-
-                std::cout << "send" << std::endl;
 
             } else
 #endif
@@ -914,7 +909,7 @@ public:
         // if we stay on the same rank, we don't need to use MPI
         int myRank;
         MPI_Comm_rank(communicator, &myRank);
-        if(useRemoteMpiRank == myRank && (recvHaloCommunicationStrategy[haloId]&Communication::Auto) == Communication::Auto) {
+        if(useRemoteMpiRank == myRank && (recvHaloCommunicationStrategy[haloId]&Communication::SameMPIRank) == Communication::SameMPIRank) {
             const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
             std::memcpy(recvBuffer[haloId].get(), sendBuffer[remoteHaloId].get(), recvHaloIndicesSizeTotal[haloId]);
             return MPI_REQUEST_NULL;
@@ -934,8 +929,6 @@ public:
                 MPI_Recv_init(cudaRecvBuffer[haloId], recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
                               useRemoteMpiRank, msgtag, communicator,
                               &recvHaloMpiRequests[haloId][0]);
-
-                std::cout << "recv" << std::endl;
 
             } else
 #endif
@@ -1240,7 +1233,7 @@ public:
      * Internally the CUDA buffer will be recast to unsigned char.
      */
     inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const double *buf) {
-        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
+        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
     /**
@@ -1249,7 +1242,7 @@ public:
      * Internally the CUDA buffer will be recast to unsigned char.
      */
     inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const int *buf) {
-        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
+        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
     }
 
     /**
@@ -1273,8 +1266,6 @@ public:
             bufferOffset += sendHaloIndicesSizePerBuffer[haloId][i];
 
         if((sendHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
-
-            std::cout << "pack cuda-aware mpi" << std::endl;
 
             size_t mpiSendBufferIndex = 0;
             for(auto const & region : sendHaloIndices[haloId][bufferId]) {
