@@ -4,6 +4,7 @@ project(tausch)
 
 # tests is enabled by default
 option(TESTING "Enable Unit Tests" ON)
+option(TEST_CUDA_AWARE "Enable tests for CUDA-aware MPI" OFF)
 
 # documentation is enabled by default if doxygen found
 find_package(Doxygen)
@@ -84,5 +85,9 @@ if(TESTING)
     add_mpi_test(ocl2cpu "testing/ocl2cpu/main.cpp testing/ocl2cpu/packunpack.cpp testing/ocl2cpu/empty.cpp testing/ocl2cpu/randomaccess.cpp" true false)
     add_mpi_test(ocl2ocl "testing/ocl2ocl/main.cpp testing/ocl2ocl/packunpack.cpp testing/ocl2ocl/empty.cpp testing/ocl2ocl/randomaccess.cpp" true false)
     add_mpi_test(ocl2cuda "testing/ocl2cuda/main.cpp testing/ocl2cuda/packunpack.cpp testing/ocl2cuda/empty.cpp testing/ocl2cuda/randomaccess.cpp" true true)
+
+if(TEST_CUDA_AWARE)
+    add_mpi_test(cudaaware "testing/cudaaware/main.cpp testing/cudaaware/cuda2cuda.cpp" false true)
+endif()
 
 endif()

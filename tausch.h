@@ -97,7 +97,8 @@ public:
      */
     enum Communication {
         Auto = 1,
-        DerivedMpiDatatype = 2
+        DerivedMpiDatatype = 2,
+        CUDAAwareMPI = 4
     };
 
     /***********************************************************************/
@@ -554,6 +555,16 @@ public:
 
             sendBuffer[haloId] = std::unique_ptr<unsigned char[]>(new unsigned char[1]);
 
+#ifdef TAUSCH_CUDA
+        } else if((strategy&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
+
+            std::cout << "send cuda-aware mpi" << std::endl;
+
+            sendBuffer[haloId] = std::unique_ptr<unsigned char[]>(new unsigned char[1]);
+
+            cudaMalloc(&cudaSendBuffer[haloId], sendHaloIndicesSizeTotal[haloId]*sizeof(unsigned char));
+#endif
+
         }
 
     }
@@ -607,6 +618,16 @@ public:
             }
 
             recvBuffer[haloId] = std::unique_ptr<unsigned char[]>(new unsigned char[1]);
+
+#ifdef TAUSCH_CUDA
+        } else if((strategy&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
+
+            std::cout << "recv cuda-aware mpi" << std::endl;
+
+            recvBuffer[haloId] = std::unique_ptr<unsigned char[]>(new unsigned char[1]);
+
+            cudaMalloc(&cudaRecvBuffer[haloId], recvHaloIndicesSizeTotal[haloId]*sizeof(unsigned char));
+#endif
 
         }
 
@@ -816,6 +837,17 @@ public:
 
             sendHaloMpiSetup[haloId][useBufferId] = true;
 
+#ifdef TAUSCH_CUDA
+            if((sendHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
+
+                MPI_Send_init(cudaSendBuffer[haloId], sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                              useRemoteMpiRank, msgtag, communicator,
+                              &sendHaloMpiRequests[haloId][0]);
+
+                std::cout << "send" << std::endl;
+
+            } else
+#endif
             if((sendHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
                 MPI_Send_init(sendHaloBuffer[haloId][useBufferId], 1, sendHaloDerivedDatatype[haloId][useBufferId],
                               useRemoteMpiRank, msgtag, communicator,
@@ -896,6 +928,17 @@ public:
 
             recvHaloMpiSetup[haloId][useBufferId] = true;
 
+#ifdef TAUSCH_CUDA
+            if((recvHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
+
+                MPI_Recv_init(cudaRecvBuffer[haloId], recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                              useRemoteMpiRank, msgtag, communicator,
+                              &recvHaloMpiRequests[haloId][0]);
+
+                std::cout << "recv" << std::endl;
+
+            } else
+#endif
             if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
                 MPI_Recv_init(recvHaloBuffer[haloId][useBufferId], 1, recvHaloDerivedDatatype[haloId][useBufferId],
                               useRemoteMpiRank, msgtag, communicator,
@@ -1229,25 +1272,57 @@ public:
         for(size_t i = 0; i < bufferId; ++i)
             bufferOffset += sendHaloIndicesSizePerBuffer[haloId][i];
 
-        size_t mpiSendBufferIndex = 0;
-        for(auto const & region : sendHaloIndices[haloId][bufferId]) {
+        if((sendHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
 
-            const size_t &region_start = region[0];
-            const size_t &region_howmanycols = region[1];
-            const size_t &region_howmanyrows = region[2];
-            const size_t &region_striderow = region[3];
+            std::cout << "pack cuda-aware mpi" << std::endl;
 
-            for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+            size_t mpiSendBufferIndex = 0;
+            for(auto const & region : sendHaloIndices[haloId][bufferId]) {
 
-                cudaError_t err = cudaMemcpy(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex],
-                                             &buf[region_start+rows*region_striderow],
-                                             region_howmanycols*sizeof(unsigned char),
-                                             cudaMemcpyDeviceToHost);
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
 
-                if(err != cudaSuccess)
-                    std::cout << "Tausch::packSendBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+                for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
 
-                mpiSendBufferIndex += region_howmanycols;
+                    cudaError_t err = cudaMemcpy(&cudaSendBuffer[haloId][bufferOffset + mpiSendBufferIndex],
+                                                 &buf[region_start+rows*region_striderow],
+                                                 region_howmanycols*sizeof(unsigned char),
+                                                 cudaMemcpyDeviceToDevice);
+
+                    if(err != cudaSuccess)
+                        std::cout << "Tausch::packSendBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+
+                    mpiSendBufferIndex += region_howmanycols;
+
+                }
+
+            }
+
+        } else {
+
+            size_t mpiSendBufferIndex = 0;
+            for(auto const & region : sendHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+
+                    cudaError_t err = cudaMemcpy(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex],
+                                                 &buf[region_start+rows*region_striderow],
+                                                 region_howmanycols*sizeof(unsigned char),
+                                                 cudaMemcpyDeviceToHost);
+
+                    if(err != cudaSuccess)
+                        std::cout << "Tausch::packSendBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+
+                    mpiSendBufferIndex += region_howmanycols;
+
+                }
 
             }
 
@@ -1297,25 +1372,55 @@ public:
         for(size_t i = 0; i < bufferId; ++i)
             bufferOffset += recvHaloIndicesSizePerBuffer[haloId][i];
 
-        size_t mpiRecvBufferIndex = 0;
+        if((recvHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
 
-        for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+            std::cout << "unpack cuda-aware mpi" << std::endl;
 
-            const size_t &region_start = region[0];
-            const size_t &region_howmanycols = region[1];
-            const size_t &region_howmanyrows = region[2];
-            const size_t &region_striderow = region[3];
+            size_t mpiRecvBufferIndex = 0;
+            for(auto const & region : recvHaloIndices[haloId][bufferId]) {
 
-            for(int rows = 0; rows < region_howmanyrows; ++rows) {
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
 
-                cudaError_t err = cudaMemcpy(&buf[region_start+rows*region_striderow],
-                                             &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex],
-                                             region_howmanycols*sizeof(unsigned char),
-                                             cudaMemcpyHostToDevice);
-                if(err != cudaSuccess)
-                    std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+                for(int rows = 0; rows < region_howmanyrows; ++rows) {
 
-                mpiRecvBufferIndex += region_howmanycols;
+                    cudaError_t err = cudaMemcpy(&buf[region_start+rows*region_striderow],
+                                                 &cudaRecvBuffer[haloId][bufferOffset + mpiRecvBufferIndex],
+                                                 region_howmanycols*sizeof(unsigned char),
+                                                 cudaMemcpyDeviceToDevice);
+                    if(err != cudaSuccess)
+                        std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+
+                    mpiRecvBufferIndex += region_howmanycols;
+
+                }
+
+            }
+
+        } else {
+
+            size_t mpiRecvBufferIndex = 0;
+            for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                for(int rows = 0; rows < region_howmanyrows; ++rows) {
+
+                    cudaError_t err = cudaMemcpy(&buf[region_start+rows*region_striderow],
+                                                 &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex],
+                                                 region_howmanycols*sizeof(unsigned char),
+                                                 cudaMemcpyHostToDevice);
+                    if(err != cudaSuccess)
+                        std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+
+                    mpiRecvBufferIndex += region_howmanycols;
+
+                }
 
             }
 
@@ -1464,6 +1569,11 @@ private:
 
     // this is used for exchanges on same mpi rank
     std::map<int, int> msgtagToHaloId;
+
+#ifdef TAUSCH_CUDA
+    std::map<int, unsigned char*> cudaSendBuffer;
+    std::map<int, unsigned char*> cudaRecvBuffer;
+#endif
 
 #ifdef TAUSCH_OPENCL
 
