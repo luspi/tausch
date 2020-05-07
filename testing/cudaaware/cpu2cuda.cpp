@@ -2,9 +2,9 @@
 #define TAUSCH_CUDA
 #include "../../tausch.h"
 
-TEST_CASE("CUDA-to-CPU, 1 buffer, with pack/unpack, same MPI rank") {
+TEST_CASE("CPU-to-CUDA, 1 buffer, with pack/unpack, same MPI rank") {
 
-    const std::vector<int> sizes = {10, 10, 100, 377};
+    const std::vector<int> sizes = {3, 10, 100, 377};
     const std::vector<int> halowidths = {1, 2, 3};
 
     for(auto size : sizes) {
@@ -19,9 +19,10 @@ TEST_CASE("CUDA-to-CPU, 1 buffer, with pack/unpack, same MPI rank") {
                     out[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
                 }
             }
-            double *cuda_in;
-            cudaMalloc(&cuda_in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_in, in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
+
+            double *cuda_out;
+            cudaMalloc(&cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
+            cudaMemcpy(cuda_out, out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
 
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
@@ -58,12 +59,14 @@ TEST_CASE("CUDA-to-CPU, 1 buffer, with pack/unpack, same MPI rank") {
             tausch->addSendHaloInfo(sendIndices, sizeof(double));
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
-            tausch->setSendCommunicationStrategy(0, Tausch::Communication::CUDAAwareMPI);
+            tausch->setRecvCommunicationStrategy(0, Tausch::Communication::CUDAAwareMPI);
 
-            tausch->packSendBufferCUDA(0, 0, cuda_in);
+            tausch->packSendBuffer(0, 0, in);
             tausch->send(0, 0, mpiRank);
             tausch->recv(0, 0, mpiRank);
-            tausch->unpackRecvBuffer(0, 0, out);
+            tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
+
+            cudaMemcpy(out, cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             for(int i = 0; i < size; ++i) {
@@ -92,7 +95,7 @@ TEST_CASE("CUDA-to-CPU, 1 buffer, with pack/unpack, same MPI rank") {
 
 }
 
-TEST_CASE("CUDA-to-CPU, 1 buffer, with pack/unpack, multiple MPI ranks") {
+TEST_CASE("CPU-to-CUDA, 1 buffer, with pack/unpack, multiple MPI ranks") {
 
     const std::vector<int> sizes = {3, 10, 100, 377};
     const std::vector<int> halowidths = {1, 2, 3};
@@ -109,9 +112,10 @@ TEST_CASE("CUDA-to-CPU, 1 buffer, with pack/unpack, multiple MPI ranks") {
                     out[(i+halowidth)*(size+2*halowidth) + j+halowidth] = i*size + j + 1;
                 }
             }
-            double *cuda_in;
-            cudaMalloc(&cuda_in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_in, in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
+
+            double *cuda_out;
+            cudaMalloc(&cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
+            cudaMemcpy(cuda_out, out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
 
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
@@ -149,12 +153,14 @@ TEST_CASE("CUDA-to-CPU, 1 buffer, with pack/unpack, multiple MPI ranks") {
             tausch->addSendHaloInfo(sendIndices, sizeof(double));
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
-            tausch->setSendCommunicationStrategy(0, Tausch::Communication::CUDAAwareMPI);
+            tausch->setRecvCommunicationStrategy(0, Tausch::Communication::CUDAAwareMPI);
 
-            tausch->packSendBufferCUDA(0, 0, cuda_in);
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
-            tausch->unpackRecvBuffer(0, 0, out);
+            tausch->packSendBuffer(0, 0, in);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize);
+            tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
+
+            cudaMemcpy(out, cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             for(int i = 0; i < size; ++i) {
@@ -183,7 +189,7 @@ TEST_CASE("CUDA-to-CPU, 1 buffer, with pack/unpack, multiple MPI ranks") {
 
 }
 
-TEST_CASE("CUDA-to-CPU, 2 buffers, with pack/unpack, same MPI rank") {
+TEST_CASE("CPU-to-CUDA, 2 buffers, with pack/unpack, same MPI rank") {
 
     const std::vector<int> sizes = {3, 10, 100, 377};
     const std::vector<int> halowidths = {1, 2, 3};
@@ -204,11 +210,12 @@ TEST_CASE("CUDA-to-CPU, 2 buffers, with pack/unpack, same MPI rank") {
                     out2[(i+halowidth)*(size+2*halowidth) + j+halowidth] = size*size + i*size + j + 1;
                 }
             }
-            double *cuda_in1, *cuda_in2;
-            cudaMalloc(&cuda_in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMalloc(&cuda_in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_in1, in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-            cudaMemcpy(cuda_in2, in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
+
+            double *cuda_out1, *cuda_out2;
+            cudaMalloc(&cuda_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
+            cudaMalloc(&cuda_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
+            cudaMemcpy(cuda_out1, out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
+            cudaMemcpy(cuda_out2, out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
 
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
@@ -245,16 +252,19 @@ TEST_CASE("CUDA-to-CPU, 2 buffers, with pack/unpack, same MPI rank") {
             tausch->addSendHaloInfo(sendIndices, sizeof(double), 2);
             tausch->addRecvHaloInfo(recvIndices, sizeof(double), 2);
 
-            tausch->setSendCommunicationStrategy(0, Tausch::Communication::CUDAAwareMPI);
+            tausch->setRecvCommunicationStrategy(0, Tausch::Communication::CUDAAwareMPI);
 
-            tausch->packSendBufferCUDA(0, 0, cuda_in1);
-            tausch->packSendBufferCUDA(0, 1, cuda_in2);
+            tausch->packSendBuffer(0, 0, in1);
+            tausch->packSendBuffer(0, 1, in2);
 
             tausch->send(0, 0, mpiRank, false);
             tausch->recv(0, 0, mpiRank, true);
 
-            tausch->unpackRecvBuffer(0, 0, out2);
-            tausch->unpackRecvBuffer(0, 1, out1);
+            tausch->unpackRecvBufferCUDA(0, 0, cuda_out2);
+            tausch->unpackRecvBufferCUDA(0, 1, cuda_out1);
+
+            cudaMemcpy(out1, cuda_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
+            cudaMemcpy(out2, cuda_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
 
             double *expected1 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             double *expected2 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
@@ -292,7 +302,7 @@ TEST_CASE("CUDA-to-CPU, 2 buffers, with pack/unpack, same MPI rank") {
 
 }
 
-TEST_CASE("CUDA-to-CPU, 2 buffers, with pack/unpack, multiple MPI ranks") {
+TEST_CASE("CPU-to-CUDA, 2 buffers, with pack/unpack, multiple MPI ranks") {
 
     const std::vector<int> sizes = {3, 10, 100, 377};
     const std::vector<int> halowidths = {1, 2, 3};
@@ -313,11 +323,12 @@ TEST_CASE("CUDA-to-CPU, 2 buffers, with pack/unpack, multiple MPI ranks") {
                     out2[(i+halowidth)*(size+2*halowidth) + j+halowidth] = size*size + i*size + j + 1;
                 }
             }
-            double *cuda_in1, *cuda_in2;
-            cudaMalloc(&cuda_in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMalloc(&cuda_in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_in1, in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-            cudaMemcpy(cuda_in2, in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
+
+            double *cuda_out1, *cuda_out2;
+            cudaMalloc(&cuda_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
+            cudaMalloc(&cuda_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
+            cudaMemcpy(cuda_out1, out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
+            cudaMemcpy(cuda_out2, out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
 
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
@@ -355,16 +366,19 @@ TEST_CASE("CUDA-to-CPU, 2 buffers, with pack/unpack, multiple MPI ranks") {
             tausch->addSendHaloInfo(sendIndices, sizeof(double), 2);
             tausch->addRecvHaloInfo(recvIndices, sizeof(double), 2);
 
-            tausch->setSendCommunicationStrategy(0, Tausch::Communication::CUDAAwareMPI);
+            tausch->setRecvCommunicationStrategy(0, Tausch::Communication::CUDAAwareMPI);
 
-            tausch->packSendBufferCUDA(0, 0, cuda_in1);
-            tausch->packSendBufferCUDA(0, 1, cuda_in2);
+            tausch->packSendBuffer(0, 0, in1);
+            tausch->packSendBuffer(0, 1, in2);
 
             tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
             tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
 
-            tausch->unpackRecvBuffer(0, 0, out2);
-            tausch->unpackRecvBuffer(0, 1, out1);
+            tausch->unpackRecvBufferCUDA(0, 0, cuda_out2);
+            tausch->unpackRecvBufferCUDA(0, 1, cuda_out1);
+
+            cudaMemcpy(out1, cuda_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
+            cudaMemcpy(out2, cuda_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
 
             double *expected1 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             double *expected2 = new double[(size+2*halowidth)*(size+2*halowidth)]{};

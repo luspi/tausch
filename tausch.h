@@ -1233,7 +1233,7 @@ public:
      * Internally the CUDA buffer will be recast to unsigned char.
      */
     inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const double *buf) {
-        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
+        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
     }
 
     /**
@@ -1242,7 +1242,7 @@ public:
      * Internally the CUDA buffer will be recast to unsigned char.
      */
     inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const int *buf) {
-        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
+        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
     }
 
     /**

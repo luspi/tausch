@@ -87,7 +87,7 @@ if(TESTING)
     add_mpi_test(ocl2cuda "testing/ocl2cuda/main.cpp testing/ocl2cuda/packunpack.cpp testing/ocl2cuda/empty.cpp testing/ocl2cuda/randomaccess.cpp" true true)
 
 if(TEST_CUDA_AWARE)
-    add_mpi_test(cudaaware "testing/cudaaware/main.cpp testing/cudaaware/cuda2cuda.cpp testing/cudaaware/cuda2cpu.cpp" false true)
+    add_mpi_test(cudaaware "testing/cudaaware/main.cpp testing/cudaaware/cuda2cuda.cpp testing/cudaaware/cuda2cpu.cpp testing/cudaaware/cpu2cuda.cpp" false true)
 endif()
 
 endif()
