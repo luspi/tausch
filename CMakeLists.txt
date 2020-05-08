@@ -50,7 +50,6 @@ if(TESTING)
         foreach(n IN LISTS numprocs)
             add_executable(${name}_${n} ${files_list})
             target_link_libraries(${name}_${n} ${MPI_C_LIBRARIES})
-            target_link_libraries(${name}_${n} ${MPI_CXX_LIBRARIES})
             add_test(NAME ${name}_${n} COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 "./${name}_${n}")
             if(ocl)
                 target_include_directories(${name}_${n} PUBLIC "${OpenCL_INCLUDE_DIRS}")
@@ -64,7 +63,7 @@ if(TESTING)
 
     endfunction(add_mpi_test)
 
-    find_package(MPI REQUIRED)
+    find_package(MPI COMPONENTS C REQUIRED)
     find_package(CUDA REQUIRED)
     find_package(OpenCL REQUIRED)
 
