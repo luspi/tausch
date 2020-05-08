@@ -50,12 +50,24 @@
 #include <cstring>
 
 #ifdef TAUSCH_CUDA
-#include <cuda_runtime.h>
+#   include <cuda_runtime.h>
 #endif
 
 #ifdef TAUSCH_OPENCL
-#define __CL_ENABLE_EXCEPTIONS
-#include <CL/cl.hpp>
+#   ifdef __has_include
+#       if __has_include("CL/cl2.hpp")
+#           define CL_HPP_ENABLE_EXCEPTIONS
+#           define CL_HPP_TARGET_OPENCL_VERSION 120
+#           define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#           include <CL/cl2.hpp>
+#       else
+#           define __CL_ENABLE_EXCEPTIONS
+#           include <CL/cl.hpp>
+#       endif
+#   else
+#      define __CL_ENABLE_EXCEPTIONS
+#      include <CL/cl.hpp>
+#   endif
 #endif
 
 /**
