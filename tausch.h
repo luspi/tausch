@@ -130,7 +130,7 @@ public:
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         std::vector<size_t> typeSizePerBuffer;
-        for(size_t i = 0; i < numBuffers; ++i) {
+        for(int i = 0; i < numBuffers; ++i) {
             indices.push_back(extractHaloIndicesWithStride(haloIndices));
             typeSizePerBuffer.push_back(typeSize);
         }
@@ -166,7 +166,7 @@ public:
                                   const int numBuffers = 1,
                                   const int remoteMpiRank = -1) {
         std::vector<size_t> typeSizePerBuffer;
-        for(size_t i = 0; i < numBuffers; ++i)
+        for(int i = 0; i < numBuffers; ++i)
             typeSizePerBuffer.push_back(typeSize);
         return addSendHaloInfo(haloIndices, typeSizePerBuffer, remoteMpiRank);
     }
@@ -293,7 +293,7 @@ public:
 
         std::vector<MPI_Request> perBufRequests;
         std::vector<bool> perBufSetup;
-        for(int iBuf = 0; iBuf < haloSizePerBuffer.size(); ++iBuf) {
+        for(size_t iBuf = 0; iBuf < haloSizePerBuffer.size(); ++iBuf) {
             perBufRequests.push_back(MPI_Request());
             perBufSetup.push_back(false);
         }
@@ -333,7 +333,7 @@ public:
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         std::vector<size_t> typeSizePerBuffer;
-        for(size_t i = 0; i < numBuffers; ++i) {
+        for(int i = 0; i < numBuffers; ++i) {
             indices.push_back(extractHaloIndicesWithStride(haloIndices));
             typeSizePerBuffer.push_back(typeSize);
         }
@@ -370,7 +370,7 @@ public:
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         std::vector<size_t> typeSizePerBuffer;
-        for(size_t i = 0; i < numBuffers; ++i) {
+        for(int i = 0; i < numBuffers; ++i) {
             indices.push_back(haloIndices);
             typeSizePerBuffer.push_back(typeSize);
         }
@@ -497,7 +497,7 @@ public:
 
         std::vector<MPI_Request> perBufRequests;
         std::vector<bool> perBufSetup;
-        for(int iBuf = 0; iBuf < haloSizePerBuffer.size(); ++iBuf) {
+        for(size_t iBuf = 0; iBuf < haloSizePerBuffer.size(); ++iBuf) {
             perBufRequests.push_back(MPI_Request());
             perBufSetup.push_back(false);
         }
@@ -1075,7 +1075,7 @@ public:
      * @return
      * String containing the name of the chosen OpenCL device.
      */
-    inline std::string enableOpenCL(int deviceNumber = 0) {
+    inline std::string enableOpenCL(size_t deviceNumber = 0) {
         try {
 
             std::vector<cl::Platform> all_platforms;
@@ -1096,7 +1096,7 @@ public:
 
             return deviceName;
 
-        } catch(cl::Error error) {
+        } catch(cl::Error &error) {
             std::cout << "[enableOpenCL] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
             exit(1);
         }
@@ -1213,7 +1213,7 @@ public:
             const size_t &region_howmanyrows = region[2];
             const size_t &region_striderow = region[3];
 
-            for(int rows = 0; rows < region_howmanyrows; ++rows) {
+            for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
 
                 ocl_queue.enqueueWriteBuffer(buf, CL_TRUE, region_start+rows*region_striderow, region_howmanycols*sizeof(unsigned char), &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex]);
 
@@ -1396,8 +1396,6 @@ public:
 
         if((recvHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
 
-            std::cout << "unpack cuda-aware mpi" << std::endl;
-
             size_t mpiRecvBufferIndex = 0;
             for(auto const & region : recvHaloIndices[haloId][bufferId]) {
 
@@ -1406,7 +1404,7 @@ public:
                 const size_t &region_howmanyrows = region[2];
                 const size_t &region_striderow = region[3];
 
-                for(int rows = 0; rows < region_howmanyrows; ++rows) {
+                for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
 
                     cudaError_t err = cudaMemcpy(&buf[region_start+rows*region_striderow],
                                                  &cudaRecvBuffer[haloId][bufferOffset + mpiRecvBufferIndex],
@@ -1431,7 +1429,7 @@ public:
                 const size_t &region_howmanyrows = region[2];
                 const size_t &region_striderow = region[3];
 
-                for(int rows = 0; rows < region_howmanyrows; ++rows) {
+                for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
 
                     cudaError_t err = cudaMemcpy(&buf[region_start+rows*region_striderow],
                                                  &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex],
@@ -1481,7 +1479,7 @@ public:
         // first we build a collection of all consecutive rows
         std::vector<std::array<int, 2> > rows;
 
-        int curIndex = 1;
+        size_t curIndex = 1;
         int start = indices[0];
         int howmany = 1;
         while(curIndex < indices.size()) {
