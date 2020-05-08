@@ -287,6 +287,10 @@ public:
         std::fill_n(newbuf_buft, totalHaloSize, zero);
         sendBuffer.push_back(std::unique_ptr<unsigned char[]>(std::move(newbuf_buft)));
 
+#ifdef TAUSCH_CUDA
+        cudaSendBuffer.push_back(nullptr);
+#endif
+
         std::vector<MPI_Request> perBufRequests;
         std::vector<bool> perBufSetup;
         for(int iBuf = 0; iBuf < haloSizePerBuffer.size(); ++iBuf) {
@@ -487,6 +491,10 @@ public:
         std::fill_n(newbuf_buft, totalHaloSize, zero);
         recvBuffer.push_back(std::unique_ptr<unsigned char[]>(std::move(newbuf_buft)));
 
+#ifdef TAUSCH_CUDA
+        cudaRecvBuffer.push_back(nullptr);
+#endif
+
         std::vector<MPI_Request> perBufRequests;
         std::vector<bool> perBufSetup;
         for(int iBuf = 0; iBuf < haloSizePerBuffer.size(); ++iBuf) {
@@ -571,8 +579,6 @@ public:
 #ifdef TAUSCH_CUDA
         } else if((strategy&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
 
-            sendBuffer[haloId] = std::unique_ptr<unsigned char[]>(new unsigned char[1]);
-
             cudaMalloc(&cudaSendBuffer[haloId], sendHaloIndicesSizeTotal[haloId]*sizeof(unsigned char));
 #endif
 
@@ -632,8 +638,6 @@ public:
 
 #ifdef TAUSCH_CUDA
         } else if((strategy&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
-
-            recvBuffer[haloId] = std::unique_ptr<unsigned char[]>(new unsigned char[1]);
 
             cudaMalloc(&cudaRecvBuffer[haloId], recvHaloIndicesSizeTotal[haloId]*sizeof(unsigned char));
 #endif
@@ -1230,6 +1234,21 @@ public:
 
 #ifdef TAUSCH_CUDA
 
+    ~Tausch() {
+
+        for(unsigned char* ele : cudaSendBuffer) {
+            cudaError_t err = cudaFree(ele);
+            if(err != cudaSuccess)
+                std::cout << "Tausch::~Tausch(): Error when freeing send CUDA memory: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+        }
+        for(unsigned char* ele : cudaRecvBuffer) {
+            cudaError_t err = cudaFree(ele);
+            if(err != cudaSuccess)
+                std::cout << "Tausch::~Tausch(): Error when freeing recv CUDA memory: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+        }
+
+    }
+
     /** @name CUDA
      * The CUDA routines. In order to use these the macro TAUSCH_CUDA needs to be defined before including the tausch header.
      */
@@ -1574,8 +1593,8 @@ private:
     std::map<int, int> msgtagToHaloId;
 
 #ifdef TAUSCH_CUDA
-    std::map<int, unsigned char*> cudaSendBuffer;
-    std::map<int, unsigned char*> cudaRecvBuffer;
+    std::vector<unsigned char*> cudaSendBuffer;
+    std::vector<unsigned char*> cudaRecvBuffer;
 #endif
 
 #ifdef TAUSCH_OPENCL
