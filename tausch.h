@@ -109,7 +109,7 @@ public:
      */
     enum Communication {
         Default = 1,
-        SameMPIRank = 2,
+        TryDirectCopy = 2,
         DerivedMpiDatatype = 4,
         CUDAAwareMPI = 8
     };
@@ -833,7 +833,7 @@ public:
         // if we stay on the same rank, we don't need to use MPI
         int myRank;
         MPI_Comm_rank(communicator, &myRank);
-        if(useRemoteMpiRank == myRank && (sendHaloCommunicationStrategy[haloId]&Communication::SameMPIRank) == Communication::SameMPIRank) {
+        if(useRemoteMpiRank == myRank && (sendHaloCommunicationStrategy[haloId]&Communication::TryDirectCopy) == Communication::TryDirectCopy) {
             msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
             return MPI_REQUEST_NULL;
         }
@@ -921,7 +921,7 @@ public:
         // if we stay on the same rank, we don't need to use MPI
         int myRank;
         MPI_Comm_rank(communicator, &myRank);
-        if(useRemoteMpiRank == myRank && (recvHaloCommunicationStrategy[haloId]&Communication::SameMPIRank) == Communication::SameMPIRank) {
+        if(useRemoteMpiRank == myRank && (recvHaloCommunicationStrategy[haloId]&Communication::TryDirectCopy) == Communication::TryDirectCopy) {
             const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
             std::memcpy(recvBuffer[haloId].get(), sendBuffer[remoteHaloId].get(), recvHaloIndicesSizeTotal[haloId]);
             return MPI_REQUEST_NULL;
