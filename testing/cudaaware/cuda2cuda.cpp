@@ -90,6 +90,12 @@ TEST_CASE("CUDA-to-CUDA, 1 buffer, with pack/unpack, same MPI rank") {
                 for(int j = 0; j < (size+2*halowidth); ++j)
                     REQUIRE(expected[i*(size+2*halowidth)+j] == out[i*(size+2*halowidth)+j]);
 
+            delete[] in;
+            delete[] out;
+            cudaFree(&cuda_in);
+            cudaFree(&cuda_out);
+            delete tausch;
+
 
         }
 
@@ -185,6 +191,12 @@ TEST_CASE("CUDA-to-CUDA, 1 buffer, with pack/unpack, multiple MPI ranks") {
             for(int i = 0; i < (size+2*halowidth); ++i)
                 for(int j = 0; j < (size+2*halowidth); ++j)
                     REQUIRE(expected[i*(size+2*halowidth)+j] == out[i*(size+2*halowidth)+j]);
+
+            delete[] in;
+            delete[] out;
+            cudaFree(&cuda_in);
+            cudaFree(&cuda_out);
+            delete tausch;
 
 
         }
@@ -302,6 +314,16 @@ TEST_CASE("CUDA-to-CUDA, 2 buffers, with pack/unpack, same MPI rank") {
                     REQUIRE(expected1[i*(size+2*halowidth)+j] == out1[i*(size+2*halowidth)+j]);
                     REQUIRE(expected2[i*(size+2*halowidth)+j] == out2[i*(size+2*halowidth)+j]);
                 }
+
+            delete[] in1;
+            delete[] in2;
+            delete[] out1;
+            delete[] out2;
+            cudaFree(&cuda_in1);
+            cudaFree(&cuda_in2);
+            cudaFree(&cuda_out1);
+            cudaFree(&cuda_out2);
+            delete tausch;
 
 
         }
@@ -421,6 +443,15 @@ TEST_CASE("CUDA-to-CUDA, 2 buffers, with pack/unpack, multiple MPI ranks") {
                     REQUIRE(expected2[i*(size+2*halowidth)+j] == out2[i*(size+2*halowidth)+j]);
                 }
 
+            delete[] in1;
+            delete[] in2;
+            delete[] out1;
+            delete[] out2;
+            cudaFree(&cuda_in1);
+            cudaFree(&cuda_in2);
+            cudaFree(&cuda_out1);
+            cudaFree(&cuda_out2);
+            delete tausch;
 
         }
 

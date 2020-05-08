@@ -23,7 +23,7 @@ static void setupOpenCL() {
         tauschcl_context = cl::Context({tauschcl_device});
         tauschcl_queue = cl::CommandQueue(tauschcl_context,tauschcl_device);
 
-    } catch(cl::Error error) {
+    } catch(cl::Error &error) {
         std::cout << "[setup] OpenCL exception caught: " << error.what() << " (" << error.err() << ")" << std::endl;
         exit(1);
     }
