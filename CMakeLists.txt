@@ -39,8 +39,8 @@ if(TESTING)
 
     set(CMAKE_BUILD_TYPE "Debug")
 
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -DOMPI_SKIP_MPICXX")
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -DOMPI_SKIP_MPICXX")
 
     # custom function to add mpi test
     function(add_mpi_test name files ocl cuda)
@@ -67,7 +67,7 @@ if(TESTING)
 
     endfunction(add_mpi_test)
 
-    find_package(MPI COMPONENTS C CXX REQUIRED)
+    find_package(MPI COMPONENTS C REQUIRED)
     find_package(CUDA REQUIRED)
     find_package(OpenCL REQUIRED)
 
