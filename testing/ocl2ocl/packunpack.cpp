@@ -23,8 +23,8 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
             Tausch *tausch = new Tausch(MPI_COMM_WORLD, false);
             tausch->enableOpenCL();
 
-            cl::Buffer cl_in(tausch->getOclQqueue(), in, &in[(size+2*halowidth)*(size+2*halowidth)], false);
-            cl::Buffer cl_out(tausch->getOclQqueue(), out, &out[(size+2*halowidth)*(size+2*halowidth)], false);
+            cl::Buffer cl_in(tausch->getOclQueue(), in, &in[(size+2*halowidth)*(size+2*halowidth)], false);
+            cl::Buffer cl_out(tausch->getOclQueue(), out, &out[(size+2*halowidth)*(size+2*halowidth)], false);
 
             std::vector<int> sendIndices;
             std::vector<int> recvIndices;
@@ -64,7 +64,7 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
             tausch->recv(0, 0, mpiRank, true);
             tausch->unpackRecvBufferOCL(0, 0, cl_out);
 
-            cl::copy(tausch->getOclQqueue(), cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
+            cl::copy(tausch->getOclQueue(), cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             for(int i = 0; i < size; ++i) {

@@ -2,8 +2,6 @@
 #include <catch2/catch.hpp>
 #include <mpi.h>
 
-#define OMPI_SKIP_MPICXX
-
 int main(int argc, char** argv) {
 
     int provided;
