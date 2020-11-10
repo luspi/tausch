@@ -59,10 +59,14 @@
 #           define CL_HPP_ENABLE_EXCEPTIONS
 #           define CL_HPP_TARGET_OPENCL_VERSION 120
 #           define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#           define CL_HPP_ENABLE_SIZE_T_COMPATIBILITY
 #           include <CL/cl2.hpp>
-#       else
+#       elif __has_include("CL/cl.hpp")
 #           define __CL_ENABLE_EXCEPTIONS
 #           include <CL/cl.hpp>
+#       else
+#           #define CL_TARGET_OPENCL_VERSION 120
+#           include <CL/cl.h>
 #       endif
 #   else
 #      define __CL_ENABLE_EXCEPTIONS
@@ -1140,7 +1144,7 @@ public:
      * @return
      * OpenCL command queue in use by Tausch.
      */
-    inline cl::CommandQueue getOclQqueue() {
+    inline cl::CommandQueue getOclQueue() {
         return ocl_queue;
     }
 
@@ -1172,13 +1176,27 @@ public:
             const size_t &region_howmanyrows = region[2];
             const size_t &region_striderow = region[3];
 
-            for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+            cl::size_t<3> buffer_offset;
+            buffer_offset[0] = region_start; // dest starting index in bytes
+            buffer_offset[1] = 0; buffer_offset[2] = 0;
+            cl::size_t<3> host_offset;
+            host_offset[0] = bufferOffset+mpiSendBufferIndex; // host starting index in bytes
+            host_offset[1] = 0; host_offset[2] = 0;
 
-                ocl_queue.enqueueReadBuffer(buf, CL_TRUE, region_start+rows*region_striderow, region_howmanycols*sizeof(unsigned char), &sendBuffer[haloId][bufferOffset + mpiSendBufferIndex]);
+            cl::size_t<3> reg;
+            reg[0] = region_howmanycols; // how many bytes in one row
+            reg[1] = region_howmanyrows; // how many rows
+            reg[2] = 1; // leave at 1
 
-                mpiSendBufferIndex += region_howmanycols;
+            ocl_queue.enqueueReadBufferRect(buf, true, buffer_offset, host_offset, reg,
+                                             region_striderow, // dest stride
+                                             0,
+                                             region_howmanycols,  // host stride
+                                             0,
+                                             sendBuffer[haloId].get());
 
-            }
+
+            mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
 
         }
 
@@ -1213,13 +1231,27 @@ public:
             const size_t &region_howmanyrows = region[2];
             const size_t &region_striderow = region[3];
 
-            for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+            cl::size_t<3> buffer_offset;
+            buffer_offset[0] = region_start; // dest starting index in bytes
+            buffer_offset[1] = 0; buffer_offset[2] = 0;
+            cl::size_t<3> host_offset;
+            host_offset[0] = bufferOffset+mpiRecvBufferIndex; // host starting index in bytes
+            host_offset[1] = 0; host_offset[2] = 0;
 
-                ocl_queue.enqueueWriteBuffer(buf, CL_TRUE, region_start+rows*region_striderow, region_howmanycols*sizeof(unsigned char), &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex]);
+            cl::size_t<3> reg;
+            reg[0] = region_howmanycols; // how many bytes in one row
+            reg[1] = region_howmanyrows; // how many rows
+            reg[2] = 1; // leave at 1
 
-                mpiRecvBufferIndex += region_howmanycols;
+            ocl_queue.enqueueWriteBufferRect(buf, true, buffer_offset, host_offset, reg,
+                                             region_striderow, // dest stride
+                                             0,
+                                             region_howmanycols,  // host stride
+                                             0,
+                                             recvBuffer[haloId].get());
 
-            }
+
+            mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
 
         }
 
