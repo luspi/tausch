@@ -39,6 +39,9 @@ if(TESTING)
 
     set(CMAKE_BUILD_TYPE "Debug")
 
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+
     # custom function to add mpi test
     function(add_mpi_test name files ocl cuda)
 
@@ -47,23 +50,24 @@ if(TESTING)
         # each test is run with 1, 2, and 4 mpi ranks
         set(numprocs 1 2 4)
 
+        add_executable(${name} ${files_list})
+        target_link_libraries(${name} ${MPI_C_LIBRARIES})
+        target_link_libraries(${name} ${MPI_CXX_LIBRARIES})
+        if(ocl)
+            target_include_directories(${name} PUBLIC "${OpenCL_INCLUDE_DIRS}")
+            target_link_libraries(${name} "${OpenCL_LIBRARIES}")
+        endif()
+        if(cuda)
+            target_include_directories(${name} PUBLIC "${CUDA_INCLUDE_DIRS}")
+            target_link_libraries(${name} "${CUDA_LIBRARIES}")
+        endif()
         foreach(n IN LISTS numprocs)
-            add_executable(${name}_${n} ${files_list})
-            target_link_libraries(${name}_${n} ${MPI_C_LIBRARIES})
-            add_test(NAME ${name}_${n} COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 "./${name}_${n}")
-            if(ocl)
-                target_include_directories(${name}_${n} PUBLIC "${OpenCL_INCLUDE_DIRS}")
-                target_link_libraries(${name}_${n} "${OpenCL_LIBRARIES}")
-            endif()
-            if(cuda)
-                target_include_directories(${name}_${n} PUBLIC "${CUDA_INCLUDE_DIRS}")
-                target_link_libraries(${name}_${n} "${CUDA_LIBRARIES}")
-            endif()
+            add_test(NAME ${name}_${n} COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 "./${name}")
         endforeach()
 
     endfunction(add_mpi_test)
 
-    find_package(MPI COMPONENTS C REQUIRED)
+    find_package(MPI COMPONENTS C CXX REQUIRED)
     find_package(CUDA REQUIRED)
     find_package(OpenCL REQUIRED)
 
