@@ -1338,19 +1338,15 @@ public:
                 const size_t &region_howmanyrows = region[2];
                 const size_t &region_striderow = region[3];
 
-                for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+                cudaError_t err = cudaMemcpy2D(&cudaSendBuffer[haloId][bufferOffset + mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                               &buf[region_start], region_striderow*sizeof(unsigned char),
+                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                               cudaMemcpyDeviceToDevice);
 
-                    cudaError_t err = cudaMemcpy(&cudaSendBuffer[haloId][bufferOffset + mpiSendBufferIndex],
-                                                 &buf[region_start+rows*region_striderow],
-                                                 region_howmanycols*sizeof(unsigned char),
-                                                 cudaMemcpyDeviceToDevice);
+                mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
 
-                    if(err != cudaSuccess)
-                        std::cout << "Tausch::packSendBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
-
-                    mpiSendBufferIndex += region_howmanycols;
-
-                }
+                if(err != cudaSuccess)
+                    std::cout << "Tausch::packSendBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
 
             }
 
@@ -1364,19 +1360,15 @@ public:
                 const size_t &region_howmanyrows = region[2];
                 const size_t &region_striderow = region[3];
 
-                for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+                cudaError_t err = cudaMemcpy2D(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                               &buf[region_start], region_striderow*sizeof(unsigned char),
+                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                               cudaMemcpyDeviceToHost);
 
-                    cudaError_t err = cudaMemcpy(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex],
-                                                 &buf[region_start+rows*region_striderow],
-                                                 region_howmanycols*sizeof(unsigned char),
-                                                 cudaMemcpyDeviceToHost);
+                mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
 
-                    if(err != cudaSuccess)
-                        std::cout << "Tausch::packSendBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
-
-                    mpiSendBufferIndex += region_howmanycols;
-
-                }
+                if(err != cudaSuccess)
+                    std::cout << "Tausch::packSendBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
 
             }
 
@@ -1436,18 +1428,15 @@ public:
                 const size_t &region_howmanyrows = region[2];
                 const size_t &region_striderow = region[3];
 
-                for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+                cudaError_t err = cudaMemcpy2D(&buf[region_start], region_striderow*sizeof(unsigned char),
+                                               &cudaRecvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                               cudaMemcpyDeviceToDevice);
 
-                    cudaError_t err = cudaMemcpy(&buf[region_start+rows*region_striderow],
-                                                 &cudaRecvBuffer[haloId][bufferOffset + mpiRecvBufferIndex],
-                                                 region_howmanycols*sizeof(unsigned char),
-                                                 cudaMemcpyDeviceToDevice);
-                    if(err != cudaSuccess)
-                        std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+                if(err != cudaSuccess)
+                    std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
 
-                    mpiRecvBufferIndex += region_howmanycols;
-
-                }
+                mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
 
             }
 
@@ -1461,18 +1450,15 @@ public:
                 const size_t &region_howmanyrows = region[2];
                 const size_t &region_striderow = region[3];
 
-                for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+                cudaError_t err = cudaMemcpy2D(&buf[region_start], region_striderow*sizeof(unsigned char),
+                                               &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                               cudaMemcpyHostToDevice);
 
-                    cudaError_t err = cudaMemcpy(&buf[region_start+rows*region_striderow],
-                                                 &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex],
-                                                 region_howmanycols*sizeof(unsigned char),
-                                                 cudaMemcpyHostToDevice);
-                    if(err != cudaSuccess)
-                        std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+                if(err != cudaSuccess)
+                    std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
 
-                    mpiRecvBufferIndex += region_howmanycols;
-
-                }
+                mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
 
             }
 
