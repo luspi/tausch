@@ -65,7 +65,7 @@
 #           define __CL_ENABLE_EXCEPTIONS
 #           include <CL/cl.hpp>
 #       else
-#           #define CL_TARGET_OPENCL_VERSION 120
+#           define CL_TARGET_OPENCL_VERSION 120
 #           include <CL/cl.h>
 #       endif
 #   else
@@ -116,7 +116,8 @@ public:
         TryDirectCopy = 2,
         DerivedMpiDatatype = 4,
         CUDAAwareMPI = 8,
-        MPIPersistent = 16
+        MPIPersistent = 16,
+        GPUSingleCopy = 32
     };
 
     /***********************************************************************/
@@ -1226,39 +1227,84 @@ public:
      */
     inline void packSendBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
 
+        if(sendHaloIndicesSizePerBuffer[haloId][bufferId] == 0)
+            return;
+
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
             bufferOffset += sendHaloIndicesSizePerBuffer[haloId][i];
 
         size_t mpiSendBufferIndex = 0;
-        for(auto const & region : sendHaloIndices[haloId][bufferId]) {
 
-            const size_t &region_start = region[0];
-            const size_t &region_howmanycols = region[1];
-            const size_t &region_howmanyrows = region[2];
-            const size_t &region_striderow = region[3];
+        if((sendHaloCommunicationStrategy[haloId]&Communication::GPUSingleCopy) == Communication::GPUSingleCopy) {
 
-            cl::size_t<3> buffer_offset;
-            buffer_offset[0] = region_start; // dest starting index in bytes
-            buffer_offset[1] = 0; buffer_offset[2] = 0;
-            cl::size_t<3> host_offset;
-            host_offset[0] = bufferOffset+mpiSendBufferIndex; // host starting index in bytes
-            host_offset[1] = 0; host_offset[2] = 0;
+            cl::Buffer tmpSendBuffer(ocl_context, CL_MEM_READ_WRITE, sendHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
 
-            cl::size_t<3> reg;
-            reg[0] = region_howmanycols; // how many bytes in one row
-            reg[1] = region_howmanyrows; // how many rows
-            reg[2] = 1; // leave at 1
+            for(auto const & region : sendHaloIndices[haloId][bufferId]) {
 
-            ocl_queue.enqueueReadBufferRect(buf, true, buffer_offset, host_offset, reg,
-                                             region_striderow, // dest stride
-                                             0,
-                                             region_howmanycols,  // host stride
-                                             0,
-                                             sendBuffer[haloId].get());
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                cl::size_t<3> src_origin;
+                src_origin[0] = region_start*sizeof(unsigned char);
+                src_origin[1] = 0;
+                src_origin[2] = 0;
+                cl::size_t<3> dst_origin;
+                dst_origin[0] = (mpiSendBufferIndex)*sizeof(unsigned char);
+                dst_origin[1] = 0;
+                dst_origin[2] = 0;
+                cl::size_t<3> reg;
+                reg[0] = region_howmanycols*sizeof(unsigned char);
+                reg[1] = region_howmanyrows;
+                reg[2] = 1;
+
+                ocl_queue.enqueueCopyBufferRect(buf, tmpSendBuffer,
+                                                src_origin, dst_origin, reg,
+                                                region_striderow, // dest stride
+                                                0,
+                                                region_howmanycols,  // host stride
+                                                0);
+
+                mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
+
+            }
+
+            cl::copy(ocl_queue, tmpSendBuffer, &sendBuffer[haloId].get()[bufferOffset], &sendBuffer[haloId].get()[bufferOffset + sendHaloIndicesSizePerBuffer[haloId][bufferId]]);
+
+        } else {
+
+            for(auto const & region : sendHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                cl::size_t<3> buffer_offset;
+                buffer_offset[0] = region_start; // dest starting index in bytes
+                buffer_offset[1] = 0; buffer_offset[2] = 0;
+                cl::size_t<3> host_offset;
+                host_offset[0] = bufferOffset+mpiSendBufferIndex; // host starting index in bytes
+                host_offset[1] = 0; host_offset[2] = 0;
+
+                cl::size_t<3> reg;
+                reg[0] = region_howmanycols; // how many bytes in one row
+                reg[1] = region_howmanyrows; // how many rows
+                reg[2] = 1; // leave at 1
+
+                ocl_queue.enqueueReadBufferRect(buf, true, buffer_offset, host_offset, reg,
+                                                 region_striderow, // dest stride
+                                                 0,
+                                                 region_howmanycols,  // host stride
+                                                 0,
+                                                 sendBuffer[haloId].get());
 
 
-            mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
+                mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
+
+            }
 
         }
 
@@ -1280,40 +1326,83 @@ public:
      */
     inline void unpackRecvBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
 
+        if(recvHaloIndicesSizePerBuffer[haloId][bufferId] == 0)
+            return;
+
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
             bufferOffset += recvHaloIndicesSizePerBuffer[haloId][i];
 
         size_t mpiRecvBufferIndex = 0;
 
-        for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+        if((sendHaloCommunicationStrategy[haloId]&Communication::GPUSingleCopy) == Communication::GPUSingleCopy) {
 
-            const size_t &region_start = region[0];
-            const size_t &region_howmanycols = region[1];
-            const size_t &region_howmanyrows = region[2];
-            const size_t &region_striderow = region[3];
+            cl::Buffer tmpRecvBuffer(ocl_context, CL_MEM_READ_WRITE, recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
+            cl::copy(ocl_queue, &recvBuffer[haloId].get()[bufferOffset], &recvBuffer[haloId].get()[bufferOffset + recvHaloIndicesSizePerBuffer[haloId][bufferId]], tmpRecvBuffer);
 
-            cl::size_t<3> buffer_offset;
-            buffer_offset[0] = region_start; // dest starting index in bytes
-            buffer_offset[1] = 0; buffer_offset[2] = 0;
-            cl::size_t<3> host_offset;
-            host_offset[0] = bufferOffset+mpiRecvBufferIndex; // host starting index in bytes
-            host_offset[1] = 0; host_offset[2] = 0;
+            for(auto const & region : recvHaloIndices[haloId][bufferId]) {
 
-            cl::size_t<3> reg;
-            reg[0] = region_howmanycols; // how many bytes in one row
-            reg[1] = region_howmanyrows; // how many rows
-            reg[2] = 1; // leave at 1
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
 
-            ocl_queue.enqueueWriteBufferRect(buf, true, buffer_offset, host_offset, reg,
-                                             region_striderow, // dest stride
-                                             0,
-                                             region_howmanycols,  // host stride
-                                             0,
-                                             recvBuffer[haloId].get());
+                cl::size_t<3> src_origin;
+                src_origin[0] = (mpiRecvBufferIndex)*sizeof(unsigned char);
+                src_origin[1] = 0;
+                src_origin[2] = 0;
+                cl::size_t<3> dst_origin;
+                dst_origin[0] = region_start*sizeof(unsigned char);
+                dst_origin[1] = 0;
+                dst_origin[2] = 0;
+                cl::size_t<3> reg;
+                reg[0] = region_howmanycols*sizeof(unsigned char);
+                reg[1] = region_howmanyrows;
+                reg[2] = 1;
+
+                ocl_queue.enqueueCopyBufferRect(tmpRecvBuffer, buf,
+                                                src_origin, dst_origin, reg,
+                                                region_howmanycols, // dest stride
+                                                0,
+                                                region_striderow,  // host stride
+                                                0);
+
+                mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
+
+            }
+
+        } else {
+
+            for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                cl::size_t<3> buffer_offset;
+                buffer_offset[0] = region_start; // dest starting index in bytes
+                buffer_offset[1] = 0; buffer_offset[2] = 0;
+                cl::size_t<3> host_offset;
+                host_offset[0] = bufferOffset+mpiRecvBufferIndex; // host starting index in bytes
+                host_offset[1] = 0; host_offset[2] = 0;
+
+                cl::size_t<3> reg;
+                reg[0] = region_howmanycols; // how many bytes in one row
+                reg[1] = region_howmanyrows; // how many rows
+                reg[2] = 1; // leave at 1
+
+                ocl_queue.enqueueWriteBufferRect(buf, true, buffer_offset, host_offset, reg,
+                                                 region_striderow, // dest stride
+                                                 0,
+                                                 region_howmanycols,  // host stride
+                                                 0,
+                                                 recvBuffer[haloId].get());
 
 
-            mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
+                mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
+
+            }
 
         }
 
