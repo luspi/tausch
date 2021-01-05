@@ -55,7 +55,13 @@
 
 #ifdef TAUSCH_OPENCL
 #   ifdef __has_include
-#       if __has_include("CL/cl2.hpp")
+#       if __has_include("CL/opencl.hpp")
+#           define CL_HPP_ENABLE_EXCEPTIONS
+#           define CL_HPP_TARGET_OPENCL_VERSION 120
+#           define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#           define CL_HPP_ENABLE_SIZE_T_COMPATIBILITY
+#           include <CL/opencl.hpp>
+#       elif __has_include("CL/cl2.hpp")
 #           define CL_HPP_ENABLE_EXCEPTIONS
 #           define CL_HPP_TARGET_OPENCL_VERSION 120
 #           define CL_HPP_MINIMUM_OPENCL_VERSION 120
