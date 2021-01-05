@@ -1341,7 +1341,7 @@ public:
 
         size_t mpiRecvBufferIndex = 0;
 
-        if((sendHaloCommunicationStrategy[haloId]&Communication::GPUSingleCopy) == Communication::GPUSingleCopy) {
+        if((recvHaloCommunicationStrategy[haloId]&Communication::GPUSingleCopy) == Communication::GPUSingleCopy) {
 
             cl::Buffer tmpRecvBuffer(ocl_context, CL_MEM_READ_WRITE, recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
             cl::copy(ocl_queue, &recvBuffer[haloId].get()[bufferOffset], &recvBuffer[haloId].get()[bufferOffset + recvHaloIndicesSizePerBuffer[haloId][bufferId]], tmpRecvBuffer);
