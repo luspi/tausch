@@ -1501,6 +1501,33 @@ public:
 
             }
 
+        } else if((sendHaloCommunicationStrategy[haloId]&Communication::GPUSingleCopy) == Communication::GPUSingleCopy) {
+
+            unsigned char *tmpSendBuffer;
+            cudaMalloc(&tmpSendBuffer, sendHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
+
+            size_t mpiSendBufferIndex = 0;
+            for(auto const & region : sendHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                cudaError_t err = cudaMemcpy2D(&tmpSendBuffer[mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                               &buf[region_start], region_striderow*sizeof(unsigned char),
+                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                               cudaMemcpyDeviceToDevice);
+
+                mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
+
+                if(err != cudaSuccess)
+                    std::cout << "Tausch::packSendBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+
+            }
+
+            cudaMemcpy(&sendBuffer[haloId][bufferOffset], tmpSendBuffer, sendHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char), cudaMemcpyDeviceToHost);
+
         } else {
 
             size_t mpiSendBufferIndex = 0;
@@ -1581,6 +1608,32 @@ public:
 
                 cudaError_t err = cudaMemcpy2D(&buf[region_start], region_striderow*sizeof(unsigned char),
                                                &cudaRecvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                               cudaMemcpyDeviceToDevice);
+
+                if(err != cudaSuccess)
+                    std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+
+                mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
+
+            }
+
+        } else if((recvHaloCommunicationStrategy[haloId]&Communication::GPUSingleCopy) == Communication::GPUSingleCopy) {
+
+            unsigned char *tmpRecvBuffer;
+            cudaMalloc(&tmpRecvBuffer, recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
+            cudaMemcpy(tmpRecvBuffer, &recvBuffer[haloId][bufferOffset], recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char), cudaMemcpyHostToDevice);
+
+            size_t mpiRecvBufferIndex = 0;
+            for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                cudaError_t err = cudaMemcpy2D(&buf[region_start], region_striderow*sizeof(unsigned char),
+                                               &tmpRecvBuffer[mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
                                                region_howmanycols*sizeof(unsigned char), region_howmanyrows,
                                                cudaMemcpyDeviceToDevice);
 
