@@ -123,7 +123,7 @@ public:
         DerivedMpiDatatype = 4,
         CUDAAwareMPI = 8,
         MPIPersistent = 16,
-        GPUSingleCopy = 32
+        GPUMultiCopy = 32
     };
 
     /***********************************************************************/
@@ -1242,7 +1242,40 @@ public:
 
         size_t mpiSendBufferIndex = 0;
 
-        if((sendHaloCommunicationStrategy[haloId]&Communication::GPUSingleCopy) == Communication::GPUSingleCopy) {
+        if((sendHaloCommunicationStrategy[haloId]&Communication::GPUMultiCopy) == Communication::GPUMultiCopy) {
+
+            for(auto const & region : sendHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                cl::size_t<3> buffer_offset;
+                buffer_offset[0] = region_start; // dest starting index in bytes
+                buffer_offset[1] = 0; buffer_offset[2] = 0;
+                cl::size_t<3> host_offset;
+                host_offset[0] = bufferOffset+mpiSendBufferIndex; // host starting index in bytes
+                host_offset[1] = 0; host_offset[2] = 0;
+
+                cl::size_t<3> reg;
+                reg[0] = region_howmanycols; // how many bytes in one row
+                reg[1] = region_howmanyrows; // how many rows
+                reg[2] = 1; // leave at 1
+
+                ocl_queue.enqueueReadBufferRect(buf, true, buffer_offset, host_offset, reg,
+                                                 region_striderow, // dest stride
+                                                 0,
+                                                 region_howmanycols,  // host stride
+                                                 0,
+                                                 sendBuffer[haloId].get());
+
+
+                mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
+
+            }
+
+        } else {
 
             cl::Buffer tmpSendBuffer(ocl_context, CL_MEM_READ_WRITE, sendHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
 
@@ -1279,39 +1312,6 @@ public:
 
             cl::copy(ocl_queue, tmpSendBuffer, &sendBuffer[haloId].get()[bufferOffset], &sendBuffer[haloId].get()[bufferOffset + sendHaloIndicesSizePerBuffer[haloId][bufferId]]);
 
-        } else {
-
-            for(auto const & region : sendHaloIndices[haloId][bufferId]) {
-
-                const size_t &region_start = region[0];
-                const size_t &region_howmanycols = region[1];
-                const size_t &region_howmanyrows = region[2];
-                const size_t &region_striderow = region[3];
-
-                cl::size_t<3> buffer_offset;
-                buffer_offset[0] = region_start; // dest starting index in bytes
-                buffer_offset[1] = 0; buffer_offset[2] = 0;
-                cl::size_t<3> host_offset;
-                host_offset[0] = bufferOffset+mpiSendBufferIndex; // host starting index in bytes
-                host_offset[1] = 0; host_offset[2] = 0;
-
-                cl::size_t<3> reg;
-                reg[0] = region_howmanycols; // how many bytes in one row
-                reg[1] = region_howmanyrows; // how many rows
-                reg[2] = 1; // leave at 1
-
-                ocl_queue.enqueueReadBufferRect(buf, true, buffer_offset, host_offset, reg,
-                                                 region_striderow, // dest stride
-                                                 0,
-                                                 region_howmanycols,  // host stride
-                                                 0,
-                                                 sendBuffer[haloId].get());
-
-
-                mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
-
-            }
-
         }
 
     }
@@ -1341,7 +1341,40 @@ public:
 
         size_t mpiRecvBufferIndex = 0;
 
-        if((recvHaloCommunicationStrategy[haloId]&Communication::GPUSingleCopy) == Communication::GPUSingleCopy) {
+        if((recvHaloCommunicationStrategy[haloId]&Communication::GPUMultiCopy) == Communication::GPUMultiCopy) {
+
+            for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                cl::size_t<3> buffer_offset;
+                buffer_offset[0] = region_start; // dest starting index in bytes
+                buffer_offset[1] = 0; buffer_offset[2] = 0;
+                cl::size_t<3> host_offset;
+                host_offset[0] = bufferOffset+mpiRecvBufferIndex; // host starting index in bytes
+                host_offset[1] = 0; host_offset[2] = 0;
+
+                cl::size_t<3> reg;
+                reg[0] = region_howmanycols; // how many bytes in one row
+                reg[1] = region_howmanyrows; // how many rows
+                reg[2] = 1; // leave at 1
+
+                ocl_queue.enqueueWriteBufferRect(buf, true, buffer_offset, host_offset, reg,
+                                                 region_striderow, // dest stride
+                                                 0,
+                                                 region_howmanycols,  // host stride
+                                                 0,
+                                                 recvBuffer[haloId].get());
+
+
+                mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
+
+            }
+
+        } else {
 
             cl::Buffer tmpRecvBuffer(ocl_context, CL_MEM_READ_WRITE, recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
             cl::copy(ocl_queue, &recvBuffer[haloId].get()[bufferOffset], &recvBuffer[haloId].get()[bufferOffset + recvHaloIndicesSizePerBuffer[haloId][bufferId]], tmpRecvBuffer);
@@ -1372,39 +1405,6 @@ public:
                                                 0,
                                                 region_striderow,  // host stride
                                                 0);
-
-                mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
-
-            }
-
-        } else {
-
-            for(auto const & region : recvHaloIndices[haloId][bufferId]) {
-
-                const size_t &region_start = region[0];
-                const size_t &region_howmanycols = region[1];
-                const size_t &region_howmanyrows = region[2];
-                const size_t &region_striderow = region[3];
-
-                cl::size_t<3> buffer_offset;
-                buffer_offset[0] = region_start; // dest starting index in bytes
-                buffer_offset[1] = 0; buffer_offset[2] = 0;
-                cl::size_t<3> host_offset;
-                host_offset[0] = bufferOffset+mpiRecvBufferIndex; // host starting index in bytes
-                host_offset[1] = 0; host_offset[2] = 0;
-
-                cl::size_t<3> reg;
-                reg[0] = region_howmanycols; // how many bytes in one row
-                reg[1] = region_howmanyrows; // how many rows
-                reg[2] = 1; // leave at 1
-
-                ocl_queue.enqueueWriteBufferRect(buf, true, buffer_offset, host_offset, reg,
-                                                 region_striderow, // dest stride
-                                                 0,
-                                                 region_howmanycols,  // host stride
-                                                 0,
-                                                 recvBuffer[haloId].get());
-
 
                 mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
 
@@ -1507,7 +1507,29 @@ public:
 
             }
 
-        } else if((sendHaloCommunicationStrategy[haloId]&Communication::GPUSingleCopy) == Communication::GPUSingleCopy) {
+        } else if((sendHaloCommunicationStrategy[haloId]&Communication::GPUMultiCopy) == Communication::GPUMultiCopy) {
+
+            size_t mpiSendBufferIndex = 0;
+            for(auto const & region : sendHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                cudaError_t err = cudaMemcpy2D(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                               &buf[region_start], region_striderow*sizeof(unsigned char),
+                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                               cudaMemcpyDeviceToHost);
+
+                mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
+
+                if(err != cudaSuccess)
+                    std::cout << "Tausch::packSendBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+
+            }
+
+        } else {
 
             unsigned char *tmpSendBuffer;
             cudaMalloc(&tmpSendBuffer, sendHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
@@ -1533,28 +1555,6 @@ public:
             }
 
             cudaMemcpy(&sendBuffer[haloId][bufferOffset], tmpSendBuffer, sendHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char), cudaMemcpyDeviceToHost);
-
-        } else {
-
-            size_t mpiSendBufferIndex = 0;
-            for(auto const & region : sendHaloIndices[haloId][bufferId]) {
-
-                const size_t &region_start = region[0];
-                const size_t &region_howmanycols = region[1];
-                const size_t &region_howmanyrows = region[2];
-                const size_t &region_striderow = region[3];
-
-                cudaError_t err = cudaMemcpy2D(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
-                                               &buf[region_start], region_striderow*sizeof(unsigned char),
-                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
-                                               cudaMemcpyDeviceToHost);
-
-                mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
-
-                if(err != cudaSuccess)
-                    std::cout << "Tausch::packSendBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
-
-            }
 
         }
 
@@ -1624,7 +1624,29 @@ public:
 
             }
 
-        } else if((recvHaloCommunicationStrategy[haloId]&Communication::GPUSingleCopy) == Communication::GPUSingleCopy) {
+        } else if((recvHaloCommunicationStrategy[haloId]&Communication::GPUMultiCopy) == Communication::GPUMultiCopy) {
+
+            size_t mpiRecvBufferIndex = 0;
+            for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                cudaError_t err = cudaMemcpy2D(&buf[region_start], region_striderow*sizeof(unsigned char),
+                                               &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                               cudaMemcpyHostToDevice);
+
+                if(err != cudaSuccess)
+                    std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+
+                mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
+
+            }
+
+        } else {
 
             unsigned char *tmpRecvBuffer;
             cudaMalloc(&tmpRecvBuffer, recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
@@ -1642,28 +1664,6 @@ public:
                                                &tmpRecvBuffer[mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
                                                region_howmanycols*sizeof(unsigned char), region_howmanyrows,
                                                cudaMemcpyDeviceToDevice);
-
-                if(err != cudaSuccess)
-                    std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
-
-                mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
-
-            }
-
-        } else {
-
-            size_t mpiRecvBufferIndex = 0;
-            for(auto const & region : recvHaloIndices[haloId][bufferId]) {
-
-                const size_t &region_start = region[0];
-                const size_t &region_howmanycols = region[1];
-                const size_t &region_howmanyrows = region[2];
-                const size_t &region_striderow = region[3];
-
-                cudaError_t err = cudaMemcpy2D(&buf[region_start], region_striderow*sizeof(unsigned char),
-                                               &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
-                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
-                                               cudaMemcpyHostToDevice);
 
                 if(err != cudaSuccess)
                     std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;

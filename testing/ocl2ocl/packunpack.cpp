@@ -92,7 +92,7 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
 
 }
 
-TEST_CASE("1 buffer, with pack/unpack, same MPI rank, GPUSingleCopy") {
+TEST_CASE("1 buffer, with pack/unpack, same MPI rank, GPUMultiCopy") {
 
     const std::vector<int> sizes = {3, 10, 100, 377};
     const std::vector<int> halowidths = {1, 2, 3};
@@ -148,8 +148,8 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank, GPUSingleCopy") {
             tausch->addSendHaloInfo(sendIndices, sizeof(double));
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
-            tausch->setSendCommunicationStrategy(0, Tausch::Communication::GPUSingleCopy);
-            tausch->setRecvCommunicationStrategy(0, Tausch::Communication::GPUSingleCopy);
+            tausch->setSendCommunicationStrategy(0, Tausch::Communication::GPUMultiCopy);
+            tausch->setRecvCommunicationStrategy(0, Tausch::Communication::GPUMultiCopy);
 
             tausch->packSendBufferOCL(0, 0, cl_in);
             tausch->send(0, 0, mpiRank, false);
@@ -389,7 +389,7 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
 
 }
 
-TEST_CASE("2 buffers, with pack/unpack, same MPI rank, GPUSingleCopy") {
+TEST_CASE("2 buffers, with pack/unpack, same MPI rank, GPUMultiCopy") {
 
     setupOpenCL();
 
@@ -453,8 +453,8 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank, GPUSingleCopy") {
             tausch->addSendHaloInfo(sendIndices, sizeof(double), 2);
             tausch->addRecvHaloInfo(recvIndices, sizeof(double), 2);
 
-            tausch->setSendCommunicationStrategy(0, Tausch::Communication::GPUSingleCopy);
-            tausch->setRecvCommunicationStrategy(0, Tausch::Communication::GPUSingleCopy);
+            tausch->setSendCommunicationStrategy(0, Tausch::Communication::GPUMultiCopy);
+            tausch->setRecvCommunicationStrategy(0, Tausch::Communication::GPUMultiCopy);
 
             tausch->packSendBufferOCL(0, 0, cl_in1);
             tausch->packSendBufferOCL(0, 1, cl_in2);
