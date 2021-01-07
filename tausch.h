@@ -48,6 +48,7 @@
 #include <iostream>
 #include <map>
 #include <cstring>
+#include <algorithm>
 
 #ifdef TAUSCH_CUDA
 #   include <cuda_runtime.h>
@@ -110,6 +111,41 @@ public:
             MPI_Comm_dup(comm, &TAUSCH_COMM);
         else
             TAUSCH_COMM = comm;
+
+    }
+
+    /**
+     * @brief
+     * Destructor.
+     */
+    ~Tausch() {
+        for(int i = 0; i < static_cast<int>(sendBuffer.size()); ++i) {
+            std::vector<int>::iterator it = std::find(sendBufferHaloIdDeleted.begin(), sendBufferHaloIdDeleted.end(), i);
+            if(it == sendBufferHaloIdDeleted.end())
+                delete[] sendBuffer[i];
+
+        }
+        for(int i = 0; i < static_cast<int>(recvBuffer.size()); ++i) {
+            std::vector<int>::iterator it = std::find(recvBufferHaloIdDeleted.begin(), recvBufferHaloIdDeleted.end(), i);
+            if(it == recvBufferHaloIdDeleted.end())
+                delete[] recvBuffer[i];
+
+        }
+
+#ifdef TAUSCH_CUDA
+
+        for(unsigned char* ele : cudaSendBuffer) {
+            cudaError_t err = cudaFree(ele);
+            if(err != cudaSuccess)
+                std::cout << "Tausch::~Tausch(): Error when freeing send CUDA memory: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+        }
+        for(unsigned char* ele : cudaRecvBuffer) {
+            cudaError_t err = cudaFree(ele);
+            if(err != cudaSuccess)
+                std::cout << "Tausch::~Tausch(): Error when freeing recv CUDA memory: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+        }
+
+#endif
 
     }
 
@@ -292,12 +328,7 @@ public:
         sendHaloCommunicationStrategy.push_back(Communication::Default);
         sendHaloRemoteRank.push_back(remoteMpiRank);
 
-        void *newbuf = NULL;
-        posix_memalign(&newbuf, 64, totalHaloSize*sizeof(unsigned char));
-        unsigned char *newbuf_buft = reinterpret_cast<unsigned char*>(newbuf);
-        unsigned char zero = 0;
-        std::fill_n(newbuf_buft, totalHaloSize, zero);
-        sendBuffer.push_back(std::unique_ptr<unsigned char[]>(std::move(newbuf_buft)));
+        sendBuffer.push_back(new unsigned char[totalHaloSize]{});
 
 #ifdef TAUSCH_CUDA
         cudaSendBuffer.push_back(nullptr);
@@ -326,7 +357,8 @@ public:
      * The halo id returned by the addSendHaloInfo() member function.
      */
     inline void delSendHaloInfo(size_t haloId) {
-        sendBuffer[haloId].reset(nullptr);
+        delete[] sendBuffer[haloId];
+        sendBufferHaloIdDeleted.push_back(haloId);
     }
 
     /***********************************************************************/
@@ -496,12 +528,7 @@ public:
         recvHaloCommunicationStrategy.push_back(Communication::Default);
         recvHaloRemoteRank.push_back(remoteMpiRank);
 
-        void *newbuf = NULL;
-        posix_memalign(&newbuf, 64, totalHaloSize*sizeof(unsigned char));
-        unsigned char *newbuf_buft = reinterpret_cast<unsigned char*>(newbuf);
-        unsigned char zero = 0;
-        std::fill_n(newbuf_buft, totalHaloSize, zero);
-        recvBuffer.push_back(std::unique_ptr<unsigned char[]>(std::move(newbuf_buft)));
+        recvBuffer.push_back(new unsigned char[totalHaloSize]{});
 
 #ifdef TAUSCH_CUDA
         cudaRecvBuffer.push_back(nullptr);
@@ -530,7 +557,8 @@ public:
      * The halo id returned by the addRecvHaloInfo() member function.
      */
     inline void delRecvHaloInfo(size_t haloId) {
-        recvBuffer[haloId].reset(nullptr);
+        delete[] recvBuffer[haloId];
+        recvBufferHaloIdDeleted.push_back(haloId);
     }
 
     /***********************************************************************/
@@ -586,7 +614,7 @@ public:
 
             }
 
-            sendBuffer[haloId] = std::unique_ptr<unsigned char[]>(new unsigned char[1]);
+            sendBuffer[haloId] = new unsigned char[1];
 
 #ifdef TAUSCH_CUDA
         } else if((strategy&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
@@ -646,7 +674,7 @@ public:
 
             }
 
-            recvBuffer[haloId] = std::unique_ptr<unsigned char[]>(new unsigned char[1]);
+            recvBuffer[haloId] = new unsigned char[1];
 
 #ifdef TAUSCH_CUDA
         } else if((strategy&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
@@ -881,7 +909,7 @@ public:
                                   useRemoteMpiRank, msgtag, communicator,
                                   &sendHaloMpiRequests[haloId][useBufferId]);
                 else
-                    MPI_Send_init(sendBuffer[haloId].get(), sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                    MPI_Send_init(sendBuffer[haloId], sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
                                   useRemoteMpiRank, msgtag, communicator,
                                   &sendHaloMpiRequests[haloId][0]);
 
@@ -910,7 +938,7 @@ public:
                               useRemoteMpiRank, msgtag, communicator,
                               &sendHaloMpiRequests[haloId][useBufferId]);
                 else
-                    MPI_Isend(sendBuffer[haloId].get(), sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                    MPI_Isend(sendBuffer[haloId], sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
                               useRemoteMpiRank, msgtag, communicator,
                               &sendHaloMpiRequests[haloId][0]);
 
@@ -970,7 +998,7 @@ public:
         MPI_Comm_rank(communicator, &myRank);
         if(useRemoteMpiRank == myRank && (recvHaloCommunicationStrategy[haloId]&Communication::TryDirectCopy) == Communication::TryDirectCopy) {
             const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
-            std::memcpy(recvBuffer[haloId].get(), sendBuffer[remoteHaloId].get(), recvHaloIndicesSizeTotal[haloId]);
+            std::memcpy(recvBuffer[haloId], sendBuffer[remoteHaloId], recvHaloIndicesSizeTotal[haloId]);
             return MPI_REQUEST_NULL;
         }
 
@@ -1001,7 +1029,7 @@ public:
                                   useRemoteMpiRank, msgtag, communicator,
                                   &recvHaloMpiRequests[haloId][useBufferId]);
                 else
-                    MPI_Recv_init(recvBuffer[haloId].get(), recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                    MPI_Recv_init(recvBuffer[haloId], recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
                                   useRemoteMpiRank, msgtag, communicator,
                                   &recvHaloMpiRequests[haloId][0]);
 
@@ -1028,7 +1056,7 @@ public:
                           useRemoteMpiRank, msgtag, communicator,
                           &recvHaloMpiRequests[haloId][useBufferId]);
             else
-                MPI_Irecv(recvBuffer[haloId].get(), recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                MPI_Irecv(recvBuffer[haloId], recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
                           useRemoteMpiRank, msgtag, communicator,
                           &recvHaloMpiRequests[haloId][0]);
 
@@ -1268,7 +1296,7 @@ public:
                                                  0,
                                                  region_howmanycols,  // host stride
                                                  0,
-                                                 sendBuffer[haloId].get());
+                                                 sendBuffer[haloId]);
 
 
                 mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
@@ -1310,7 +1338,7 @@ public:
 
             }
 
-            cl::copy(ocl_queue, tmpSendBuffer, &sendBuffer[haloId].get()[bufferOffset], &sendBuffer[haloId].get()[bufferOffset + sendHaloIndicesSizePerBuffer[haloId][bufferId]]);
+            cl::copy(ocl_queue, tmpSendBuffer, &sendBuffer[haloId][bufferOffset], &sendBuffer[haloId][bufferOffset + sendHaloIndicesSizePerBuffer[haloId][bufferId]]);
 
         }
 
@@ -1367,7 +1395,7 @@ public:
                                                  0,
                                                  region_howmanycols,  // host stride
                                                  0,
-                                                 recvBuffer[haloId].get());
+                                                 recvBuffer[haloId]);
 
 
                 mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
@@ -1377,7 +1405,7 @@ public:
         } else {
 
             cl::Buffer tmpRecvBuffer(ocl_context, CL_MEM_READ_WRITE, recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
-            cl::copy(ocl_queue, &recvBuffer[haloId].get()[bufferOffset], &recvBuffer[haloId].get()[bufferOffset + recvHaloIndicesSizePerBuffer[haloId][bufferId]], tmpRecvBuffer);
+            cl::copy(ocl_queue, &recvBuffer[haloId][bufferOffset], &recvBuffer[haloId][bufferOffset + recvHaloIndicesSizePerBuffer[haloId][bufferId]], tmpRecvBuffer);
 
             for(auto const & region : recvHaloIndices[haloId][bufferId]) {
 
@@ -1422,21 +1450,6 @@ public:
     /***********************************************************************/
 
 #ifdef TAUSCH_CUDA
-
-    ~Tausch() {
-
-        for(unsigned char* ele : cudaSendBuffer) {
-            cudaError_t err = cudaFree(ele);
-            if(err != cudaSuccess)
-                std::cout << "Tausch::~Tausch(): Error when freeing send CUDA memory: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
-        }
-        for(unsigned char* ele : cudaRecvBuffer) {
-            cudaError_t err = cudaFree(ele);
-            if(err != cudaSuccess)
-                std::cout << "Tausch::~Tausch(): Error when freeing recv CUDA memory: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
-        }
-
-    }
 
     /** @name CUDA
      * The CUDA routines. In order to use these the macro TAUSCH_CUDA needs to be defined before including the tausch header.
@@ -1796,7 +1809,7 @@ private:
     std::vector<int> sendHaloIndicesSizeTotal;
     std::vector<int> sendHaloNumBuffers;
     std::vector<int> sendHaloRemoteRank;
-    std::vector<std::unique_ptr<unsigned char[]> > sendBuffer;
+    std::vector<unsigned char*> sendBuffer;
     std::vector<std::vector<MPI_Request> > sendHaloMpiRequests;
     std::vector<std::vector<bool> > sendHaloMpiSetup;
     std::vector<Communication> sendHaloCommunicationStrategy;
@@ -1808,7 +1821,7 @@ private:
     std::vector<int> recvHaloIndicesSizeTotal;
     std::vector<int> recvHaloNumBuffers;
     std::vector<int> recvHaloRemoteRank;
-    std::vector<std::unique_ptr<unsigned char[]> > recvBuffer;
+    std::vector<unsigned char*> recvBuffer;
     std::vector<std::vector<MPI_Request> > recvHaloMpiRequests;
     std::vector<std::vector<bool> > recvHaloMpiSetup;
     std::vector<Communication> recvHaloCommunicationStrategy;
@@ -1817,6 +1830,9 @@ private:
 
     // this is used for exchanges on same mpi rank
     std::map<int, int> msgtagToHaloId;
+
+    std::vector<int> recvBufferHaloIdDeleted;
+    std::vector<int> sendBufferHaloIdDeleted;
 
 #ifdef TAUSCH_CUDA
     std::vector<unsigned char*> cudaSendBuffer;
