@@ -61,8 +61,8 @@ TEST_CASE("1 buffer, derived MPI datatype, same MPI rank") {
             tausch->setSendHaloBuffer(0, 0, in);
             tausch->setRecvHaloBuffer(0, 0, out);
 
-            tausch->send(0, 0, rank, 0, false);
-            tausch->recv(0, 0, rank, 0, true);
+            tausch->send(0, 0, nullptr, rank, 0, false);
+            tausch->recv(0, 0, nullptr, rank, 0, true);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             for(int i = 0; i < size; ++i) {
@@ -151,8 +151,8 @@ TEST_CASE("1 buffer, derived MPI datatype, multiple MPI ranks") {
             tausch->setSendHaloBuffer(0, 0, in);
             tausch->setRecvHaloBuffer(0, 0, out);
 
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, 0, false);
-            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, 0, true);
+            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, 0, false);
+            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, 0, true);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             for(int i = 0; i < size; ++i) {
@@ -246,10 +246,10 @@ TEST_CASE("2 buffers, derived MPI datatype, same MPI rank") {
             tausch->setRecvHaloBuffer(0, 0, out1);
             tausch->setRecvHaloBuffer(0, 1, out2);
 
-            tausch->send(0, 0, mpiRank, 0, false);
-            tausch->send(0, 1, mpiRank, 1, false);
-            tausch->recv(0, 0, mpiRank, 1, true);
-            tausch->recv(0, 1, mpiRank, 0, true);
+            tausch->send(0, 0, nullptr, mpiRank, 0, false);
+            tausch->send(0, 1, nullptr, mpiRank, 1, false);
+            tausch->recv(0, 0, nullptr, mpiRank, 1, true);
+            tausch->recv(0, 1, nullptr, mpiRank, 0, true);
 
             double *expected1 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             double *expected2 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
@@ -353,10 +353,10 @@ TEST_CASE("2 buffers, derived MPI datatype, multiple MPI ranks") {
             tausch->setRecvHaloBuffer(0, 0, out1);
             tausch->setRecvHaloBuffer(0, 1, out2);
 
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, 0, false);
-            tausch->send(0, 1, (mpiRank+1)%mpiSize, 1, false);
-            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, 1, true);
-            tausch->recv(0, 1, (mpiRank+mpiSize-1)%mpiSize, 0, true);
+            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, 0, false);
+            tausch->send(0, 1, nullptr, (mpiRank+1)%mpiSize, 1, false);
+            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, 1, true);
+            tausch->recv(0, 1, nullptr, (mpiRank+mpiSize-1)%mpiSize, 0, true);
 
             double *expected1 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
             double *expected2 = new double[(size+2*halowidth)*(size+2*halowidth)]{};

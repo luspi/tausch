@@ -862,10 +862,14 @@ public:
      * @return
      * Returns the MPI_Request used for this communication.
      */
-    inline MPI_Request send(size_t haloId, const int msgtag, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = false, MPI_Comm communicator = MPI_COMM_NULL) {
+    inline void send(size_t haloId, const int msgtag, MPI_Request *request = nullptr, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = false, MPI_Comm communicator = MPI_COMM_NULL) {
+
+        // pass pointer to request to user
+        if(request != nullptr)
+            request = &sendHaloMpiRequests[haloId][0];
 
         if(sendHaloIndicesSizeTotal[haloId] == 0)
-            return MPI_REQUEST_NULL;
+            return;
 
         if(communicator == MPI_COMM_NULL)
             communicator = TAUSCH_COMM;
@@ -879,7 +883,7 @@ public:
         MPI_Comm_rank(communicator, &myRank);
         if(useRemoteMpiRank == myRank && (sendHaloCommunicationStrategy[haloId]&Communication::TryDirectCopy) == Communication::TryDirectCopy) {
             msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
-            return MPI_REQUEST_NULL;
+            return;
         }
 
         int useBufferId = 0;
@@ -947,8 +951,6 @@ public:
         if(blocking)
             MPI_Wait(&sendHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
 
-        return sendHaloMpiRequests[haloId][useBufferId];
-
     }
 
     /***********************************************************************/
@@ -981,10 +983,14 @@ public:
      * @return
      * Returns the MPI_Request used for this communication.
      */
-    inline MPI_Request recv(size_t haloId, const int msgtag, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = true, MPI_Comm communicator = MPI_COMM_NULL) {
+    inline void recv(size_t haloId, const int msgtag, MPI_Request *request = nullptr, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = true, MPI_Comm communicator = MPI_COMM_NULL) {
+
+        // pass pointer to request to user
+        if(request != nullptr)
+            request = &recvHaloMpiRequests[haloId][0];
 
         if(recvHaloIndicesSizeTotal[haloId] == 0)
-            return MPI_REQUEST_NULL;
+            return;
 
         if(communicator == MPI_COMM_NULL)
             communicator = TAUSCH_COMM;
@@ -999,7 +1005,7 @@ public:
         if(useRemoteMpiRank == myRank && (recvHaloCommunicationStrategy[haloId]&Communication::TryDirectCopy) == Communication::TryDirectCopy) {
             const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
             std::memcpy(recvBuffer[haloId], sendBuffer[remoteHaloId], recvHaloIndicesSizeTotal[haloId]);
-            return MPI_REQUEST_NULL;
+            return;
         }
 
         int useBufferId = 0;
@@ -1064,8 +1070,6 @@ public:
 
         if(blocking)
             MPI_Wait(&recvHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
-
-        return recvHaloMpiRequests[haloId][useBufferId];
 
     }
 

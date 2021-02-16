@@ -60,8 +60,8 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBufferOCL(0, 0, cl_in);
-            tausch->send(0, 0, mpiRank, false);
-            tausch->recv(0, 0, mpiRank, true);
+            tausch->send(0, 0, nullptr, mpiRank, false);
+            tausch->recv(0, 0, nullptr, mpiRank, true);
             tausch->unpackRecvBufferOCL(0, 0, cl_out);
 
             cl::copy(tausch->getOclQueue(), cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
@@ -152,8 +152,8 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank, GPUMultiCopy") {
             tausch->setRecvCommunicationStrategy(0, Tausch::Communication::GPUMultiCopy);
 
             tausch->packSendBufferOCL(0, 0, cl_in);
-            tausch->send(0, 0, mpiRank, false);
-            tausch->recv(0, 0, mpiRank, true);
+            tausch->send(0, 0, nullptr, mpiRank, false);
+            tausch->recv(0, 0, nullptr, mpiRank, true);
             tausch->unpackRecvBufferOCL(0, 0, cl_out);
 
             cl::copy(tausch->getOclQueue(), cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
@@ -244,8 +244,8 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBufferOCL(0, 0, cl_in);
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, false);
+            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
             tausch->unpackRecvBufferOCL(0, 0, cl_out);
 
             cl::copy(tauschcl_queue, cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
@@ -344,8 +344,8 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
             tausch->packSendBufferOCL(0, 0, cl_in1);
             tausch->packSendBufferOCL(0, 1, cl_in2);
 
-            tausch->send(0, 0, mpiRank, false);
-            tausch->recv(0, 0, mpiRank, true);
+            tausch->send(0, 0, nullptr, mpiRank, false);
+            tausch->recv(0, 0, nullptr, mpiRank, true);
 
             tausch->unpackRecvBufferOCL(0, 0, cl_out2);
             tausch->unpackRecvBufferOCL(0, 1, cl_out1);
@@ -459,8 +459,8 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank, GPUMultiCopy") {
             tausch->packSendBufferOCL(0, 0, cl_in1);
             tausch->packSendBufferOCL(0, 1, cl_in2);
 
-            tausch->send(0, 0, mpiRank, false);
-            tausch->recv(0, 0, mpiRank, true);
+            tausch->send(0, 0, nullptr, mpiRank, false);
+            tausch->recv(0, 0, nullptr, mpiRank, true);
 
             tausch->unpackRecvBufferOCL(0, 0, cl_out2);
             tausch->unpackRecvBufferOCL(0, 1, cl_out1);
@@ -572,8 +572,8 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
             tausch->packSendBufferOCL(0, 0, cl_in1);
             tausch->packSendBufferOCL(0, 1, cl_in2);
 
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, false);
+            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
 
             tausch->unpackRecvBufferOCL(0, 0, cl_out2);
             tausch->unpackRecvBufferOCL(0, 1, cl_out1);

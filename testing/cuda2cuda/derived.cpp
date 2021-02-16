@@ -60,8 +60,8 @@ TEST_CASE("1 buffer, derived MPI datatype, same MPI rank") {
             tausch->addLocalHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
             tausch->addRemoteHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::SenderUsesMpiDerivedDatatype);
 
-            tausch->send(0, 0, rank, 0, in, false);
-            tausch->recv(0, 0, rank, true);
+            tausch->send(0, 0, nullptr, rank, 0, in, false);
+            tausch->recv(0, 0, nullptr, rank, true);
 
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
 
@@ -152,8 +152,8 @@ TEST_CASE("1 buffer, derived MPI datatype, multiple MPI ranks") {
             tausch->addLocalHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
             tausch->addRemoteHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::SenderUsesMpiDerivedDatatype);
 
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, 0, in, false);
-            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, 0, in, false);
+            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
 
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
 
@@ -252,10 +252,10 @@ TEST_CASE("1 buffer, derived MPI datatype, multiple MPI ranks") {
 //            tausch->addLocalHaloInfo(sendIndices, 2, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
 //            tausch->addRemoteHaloInfo(recvIndices, 2, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
 
-//            tausch->send(0, 0, mpiRank, in1, false);
-//            tausch->send(0, 1, mpiRank, in2, false);
-//            tausch->recv(0, 1, mpiRank, out1, true);
-//            tausch->recv(0, 0, mpiRank, out2, true);
+//            tausch->send(0, 0, nullptr, mpiRank, in1, false);
+//            tausch->send(0, 1, nullptr, mpiRank, in2, false);
+//            tausch->recv(0, 1, nullptr, mpiRank, out1, true);
+//            tausch->recv(0, 0, nullptr, mpiRank, out2, true);
 
 //            double *expected1 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
 //            double *expected2 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
@@ -351,10 +351,10 @@ TEST_CASE("1 buffer, derived MPI datatype, multiple MPI ranks") {
 //            tausch->addLocalHaloInfo(sendIndices, 2, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
 //            tausch->addRemoteHaloInfo(recvIndices, 2, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
 
-//            tausch->send(0, 0, (mpiRank+1)%mpiSize, in1, false);
-//            tausch->send(0, 1, (mpiRank+1)%mpiSize, in2, false);
-//            tausch->recv(0, 1, (mpiRank+mpiSize-1)%mpiSize, out1, true);
-//            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, out2, true);
+//            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, in1, false);
+//            tausch->send(0, 1, nullptr, (mpiRank+1)%mpiSize, in2, false);
+//            tausch->recv(0, 1, nullptr, (mpiRank+mpiSize-1)%mpiSize, out1, true);
+//            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, out2, true);
 
 //            double *expected1 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
 //            double *expected2 = new double[(size+2*halowidth)*(size+2*halowidth)]{};
