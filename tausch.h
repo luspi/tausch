@@ -172,7 +172,7 @@ public:
      * Here the halo indices can be specified as integers of halo data locations in the buffer with the
      * halo indices used for all of the numBuffers buffers. All buffer have the same data type.
      */
-    inline size_t addSendHaloInfo(std::vector<int> haloIndices,
+    inline size_t addSendHaloInfo(std::vector<int> &haloIndices,
                                   const size_t typeSize,
                                   const int numBuffers = 1,
                                   const int remoteMpiRank = -1) {
@@ -191,7 +191,7 @@ public:
      * Here the halo indices can be specified as integers of halo data locations in the buffer, with a
      * different list of halo indices per buffer. All buffer have the same data type.
      */
-    inline size_t addSendHaloInfo(std::vector<std::vector<int> > haloIndices,
+    inline size_t addSendHaloInfo(std::vector<std::vector<int> > &haloIndices,
                                   const size_t typeSize,
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
@@ -209,7 +209,7 @@ public:
      * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer have
      * the same data type.
      */
-    inline size_t addSendHaloInfo(std::vector<std::array<int, 4> > haloIndices,
+    inline size_t addSendHaloInfo(std::vector<std::array<int, 4> > &haloIndices,
                                   const size_t typeSize,
                                   const int numBuffers = 1,
                                   const int remoteMpiRank = -1) {
@@ -224,7 +224,7 @@ public:
      *
      * Here each buffer has the same data type.
      */
-    inline size_t addSendHaloInfo(std::vector<std::vector<std::array<int, 4> > > haloIndices,
+    inline size_t addSendHaloInfo(std::vector<std::vector<std::array<int, 4> > > &haloIndices,
                                   const size_t typeSize,
                                   const int remoteMpiRank = -1) {
         std::vector<size_t> typeSizePerBuffer;
@@ -239,7 +239,7 @@ public:
      * Here the halo indices can be specified as integers of halo data locations in the buffer with
      * the halo indices used for all of the buffers. All buffers can have their own data type.
      */
-    inline size_t addSendHaloInfo(std::vector<int> haloIndices,
+    inline size_t addSendHaloInfo(std::vector<int> &haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
@@ -256,7 +256,7 @@ public:
      * Here the halo indices can be specified as integers of halo data locations in the buffer,
      * with a different list of halo indices per buffer. All buffer can have their own data type.
      */
-    inline size_t addSendHaloInfo(std::vector<std::vector<int> > haloIndices,
+    inline size_t addSendHaloInfo(std::vector<std::vector<int> > &haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
@@ -271,7 +271,7 @@ public:
      * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer can
      * have their own data type.
      */
-    inline size_t addSendHaloInfo(std::vector<std::array<int, 4> > haloIndices,
+    inline size_t addSendHaloInfo(std::vector<std::array<int, 4> > &haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
@@ -300,7 +300,7 @@ public:
      * @return
      * This function returns the halo id (needed for referencing this halo later-on).
      */
-    inline size_t addSendHaloInfo(std::vector<std::vector<std::array<int, 4> > > haloIndices,
+    inline size_t addSendHaloInfo(std::vector<std::vector<std::array<int, 4> > > &haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
                                   const int remoteMpiRank = -1) {
 
@@ -371,7 +371,7 @@ public:
      * Here the halo indices can be specified as integers of halo data locations in the buffer with
      * the halo indices used for all of the numBuffers buffers. All buffer have the same data type.
      */
-    inline size_t addRecvHaloInfo(std::vector<int> haloIndices,
+    inline size_t addRecvHaloInfo(std::vector<int> &haloIndices,
                                   const size_t typeSize,
                                   const int numBuffers = 1,
                                   const int remoteMpiRank = -1) {
@@ -390,7 +390,7 @@ public:
      * Here the halo indices can be specified as integers of halo data locations in the buffer,
      * with a different list of halo indices per buffer. All buffer have the same data type.
      */
-    inline size_t addRecvHaloInfo(std::vector<std::vector<int> > haloIndices,
+    inline size_t addRecvHaloInfo(std::vector<std::vector<int> > &haloIndices,
                                   const size_t typeSize,
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
@@ -408,7 +408,7 @@ public:
      * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer
      * have the same data type.
      */
-    inline size_t addRecvHaloInfo(std::vector<std::array<int, 4> > haloIndices,
+    inline size_t addRecvHaloInfo(std::vector<std::array<int, 4> > &haloIndices,
                                   const size_t typeSize,
                                   const int numBuffers = 1,
                                   const int remoteMpiRank = -1) {
@@ -426,7 +426,7 @@ public:
      *
      * Here each buffer has the same data type.
      */
-    inline size_t addRecvHaloInfo(std::vector<std::vector<std::array<int, 4> > > haloIndices,
+    inline size_t addRecvHaloInfo(std::vector<std::vector<std::array<int, 4> > > &haloIndices,
                                   const size_t typeSize,
                                   const int remoteMpiRank = -1) {
         std::vector<size_t> typeSizePerBuffer;
@@ -441,7 +441,7 @@ public:
      * Here the halo indices can be specified as integers of halo data locations in the buffer with
      * the halo indices used for all of the buffers. All buffers can have their own data type.
      */
-    inline size_t addRecvHaloInfo(std::vector<int> haloIndices,
+    inline size_t addRecvHaloInfo(std::vector<int> &haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
@@ -456,7 +456,7 @@ public:
      * Here the halo indices can be specified as integers of halo data locations in the buffer,
      * with a different list of halo indices per buffer. All buffer can have their own data type.
      */
-    inline size_t addRecvHaloInfo(std::vector<std::vector<int> > haloIndices,
+    inline size_t addRecvHaloInfo(std::vector<std::vector<int> > &haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
@@ -471,7 +471,7 @@ public:
      * Here the same set of halo indices is used for all of the numBuffers buffers. All buffer can
      * have their own data type.
      */
-    inline size_t addRecvHaloInfo(std::vector<std::array<int, 4> > haloIndices,
+    inline size_t addRecvHaloInfo(std::vector<std::array<int, 4> > &haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
@@ -500,7 +500,7 @@ public:
      * @return
      * This function returns the halo id (needed for referencing this halo later-on).
      */
-    inline size_t addRecvHaloInfo(std::vector<std::vector<std::array<int, 4> > > haloIndices,
+    inline size_t addRecvHaloInfo(std::vector<std::vector<std::array<int, 4> > > &haloIndices,
                                   const std::vector<size_t> typeSizePerBuffer,
                                   const int remoteMpiRank = -1) {
 
