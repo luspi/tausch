@@ -11,7 +11,7 @@
  * (performs just as good or better than any custom solution), and requires minimal memory
  * resources (compressed halo metadata).
  *
- * A full C API is provided by CTausch available through ctausch.h. The methods of the C API are equivalent to the C++ API only with a 'tausch_' prefix and always expecting the C object CTausch as first parameter.
+ * A full C API is provided by CTausch available through ctausch.h. The methods of the C API are equivalent to the C++ API only with a 'tausch_' prefix and always expecting the C object CTausch as first parameter. Note that ctausch.cpp needs to be precompiled with a C++ compiler and linked to in order to be able to use the C API header.
  *
  * \section install_sec Install
  *

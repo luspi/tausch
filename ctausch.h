@@ -33,8 +33,9 @@ extern "C" {
  */
 typedef void* CTausch;
 
-
-
+/*!
+ * The available communication strategies.
+ */
 enum Communication {
     TauschCommunicationDefault = 1,
     TauschCommunicationTryDirectCopy = 2,
