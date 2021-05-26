@@ -166,6 +166,14 @@ public:
     /*                           ADD LOCAL HALO                            */
     /***********************************************************************/
 
+    inline size_t addSendHaloInfo(int *haloIndices,
+                                  const size_t numHaloIndices,
+                                  const size_t typeSizePerBuffer,
+                                  const int remoteMpiRank = -1) {
+        std::vector<int> indices(&haloIndices[0], &haloIndices[numHaloIndices]);
+        return addSendHaloInfo(indices, typeSizePerBuffer, 1, remoteMpiRank);
+    }
+
     /**
      * \overload
      *
@@ -364,6 +372,14 @@ public:
     /***********************************************************************/
     /*                          ADD REMOTE HALO                            */
     /***********************************************************************/
+
+    inline size_t addRecvHaloInfo(int *haloIndices,
+                                  const size_t numHaloIndices,
+                                  const size_t typeSizePerBuffer,
+                                  const int remoteMpiRank = -1) {
+        std::vector<int> indices(&haloIndices[0], &haloIndices[numHaloIndices]);
+        return addRecvHaloInfo(indices, typeSizePerBuffer, 1, remoteMpiRank);
+    }
 
     /**
      * \overload
@@ -862,14 +878,10 @@ public:
      * @return
      * Returns the MPI_Request used for this communication.
      */
-    inline void send(size_t haloId, const int msgtag, MPI_Request *request = nullptr, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = false, MPI_Comm communicator = MPI_COMM_NULL) {
-
-        // pass pointer to request to user
-        if(request != nullptr)
-            request = &sendHaloMpiRequests[haloId][0];
+    inline MPI_Request send(size_t haloId, const int msgtag, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = false, MPI_Comm communicator = MPI_COMM_NULL) {
 
         if(sendHaloIndicesSizeTotal[haloId] == 0)
-            return;
+            return MPI_REQUEST_NULL;
 
         if(communicator == MPI_COMM_NULL)
             communicator = TAUSCH_COMM;
@@ -883,7 +895,7 @@ public:
         MPI_Comm_rank(communicator, &myRank);
         if(useRemoteMpiRank == myRank && (sendHaloCommunicationStrategy[haloId]&Communication::TryDirectCopy) == Communication::TryDirectCopy) {
             msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
-            return;
+            return MPI_REQUEST_NULL;
         }
 
         int useBufferId = 0;
@@ -951,6 +963,8 @@ public:
         if(blocking)
             MPI_Wait(&sendHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
 
+        return sendHaloMpiRequests[haloId][0];
+
     }
 
     /***********************************************************************/
@@ -983,14 +997,10 @@ public:
      * @return
      * Returns the MPI_Request used for this communication.
      */
-    inline void recv(size_t haloId, const int msgtag, MPI_Request *request = nullptr, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = true, MPI_Comm communicator = MPI_COMM_NULL) {
-
-        // pass pointer to request to user
-        if(request != nullptr)
-            request = &recvHaloMpiRequests[haloId][0];
+    inline MPI_Request recv(size_t haloId, const int msgtag, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = true, MPI_Comm communicator = MPI_COMM_NULL) {
 
         if(recvHaloIndicesSizeTotal[haloId] == 0)
-            return;
+            return MPI_REQUEST_NULL;
 
         if(communicator == MPI_COMM_NULL)
             communicator = TAUSCH_COMM;
@@ -1005,7 +1015,7 @@ public:
         if(useRemoteMpiRank == myRank && (recvHaloCommunicationStrategy[haloId]&Communication::TryDirectCopy) == Communication::TryDirectCopy) {
             const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
             std::memcpy(recvBuffer[haloId], sendBuffer[remoteHaloId], recvHaloIndicesSizeTotal[haloId]);
-            return;
+            return MPI_REQUEST_NULL;
         }
 
         int useBufferId = 0;
@@ -1070,6 +1080,8 @@ public:
 
         if(blocking)
             MPI_Wait(&recvHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
+
+        return recvHaloMpiRequests[haloId][0];
 
     }
 
