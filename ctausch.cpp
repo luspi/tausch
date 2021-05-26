@@ -3,7 +3,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 #include "ctausch.h"
 
 CTausch *tausch_new(MPI_Comm comm, const bool useDuplicateOfCommunicator) {
@@ -34,7 +34,7 @@ void tausch_addRecvHaloInfo(CTausch *tC, int *haloIndices, const size_t numHaloI
 
 void tausch_setSendCommunicationStrategy(CTausch *tC, const size_t haloId, int strategy) {
     Tausch *t = reinterpret_cast<Tausch*>(tC);
-    
+
     Tausch::Communication str;
     if(strategy == Tausch::Communication::Default) str = Tausch::Communication::Default;
     else if(strategy == Tausch::Communication::TryDirectCopy) str = Tausch::Communication::TryDirectCopy;
@@ -42,13 +42,13 @@ void tausch_setSendCommunicationStrategy(CTausch *tC, const size_t haloId, int s
     else if(strategy == Tausch::Communication::CUDAAwareMPI) str = Tausch::Communication::CUDAAwareMPI;
     else if(strategy == Tausch::Communication::MPIPersistent) str = Tausch::Communication::MPIPersistent;
     else if(strategy == Tausch::Communication::GPUMultiCopy) str = Tausch::Communication::GPUMultiCopy;
-    
+
     t->setSendCommunicationStrategy(haloId, str);
 }
 
 void tausch_setRecvCommunicationStrategy(CTausch *tC, const size_t haloId, int strategy) {
     Tausch *t = reinterpret_cast<Tausch*>(tC);
-    
+
     Tausch::Communication str;
     if(strategy == Tausch::Communication::Default) str = Tausch::Communication::Default;
     else if(strategy == Tausch::Communication::TryDirectCopy) str = Tausch::Communication::TryDirectCopy;
@@ -56,7 +56,7 @@ void tausch_setRecvCommunicationStrategy(CTausch *tC, const size_t haloId, int s
     else if(strategy == Tausch::Communication::CUDAAwareMPI) str = Tausch::Communication::CUDAAwareMPI;
     else if(strategy == Tausch::Communication::MPIPersistent) str = Tausch::Communication::MPIPersistent;
     else if(strategy == Tausch::Communication::GPUMultiCopy) str = Tausch::Communication::GPUMultiCopy;
-    
+
     t->setRecvCommunicationStrategy(haloId, str);
 }
 void tausch_setSendHaloBuffer(CTausch *tC, const int haloId, const int bufferId, unsigned char* buf) {

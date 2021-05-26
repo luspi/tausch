@@ -2,9 +2,6 @@
  * \file
  * \author  Lukas Spies <LSpies@illinois.edu>
  * \version 1.0
- *
- * \brief
- *  C wrapper to C++ API.
  */
 
 #ifndef CTAUSCH_H
@@ -12,11 +9,6 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-
-#ifdef TAUSCH_OPENCL
-#include <CL/cl.h>
 #endif
 
 /*!
@@ -38,47 +30,63 @@ enum Communication {
 };
 
 /*!
- *
  * Create and return a new CTausch object.
- *
- * \param numBuffers
- *  The number of buffers that will be used. If more than one, they are all combined into one message. All buffers will have to use the same
- *  discretisation! Typical value: 1.
- * \param valuesPerPointPerBuffer
- *  How many values are stored consecutively per point in the same buffer. Each buffer can have different number of values stored per point. This
- *  is expected to be an array of the same size as the number of buffers. If set to NULL, all buffers are assumed to store 1 value per point.
- * \param comm
- *  The MPI Communictor to be used. %CTauschDouble will duplicate the communicator, thus it is safe to have multiple instances of %CTauschDouble working
- *  with the same communicator. By default, MPI_COMM_WORLD will be used.
- * \param version
- *  Which version of CTauschDouble to create. This depends on the dimensionality of the problem and can be any one of the enum TAUSCH_VERSION: TAUSCH_1D,
- *  TAUSCH_2D, or TAUSCH_3D.
- *
- * \return
- *  Return the CTauschDouble object created with the specified configuration.
- *
  */
 CTausch *tausch_new(MPI_Comm comm, const bool useDuplicateOfCommunicator);
+
+/*!
+ * Delete the given CTausch object.
+ */
 void tausch_delete(CTausch *tC);
 
-/****************************************/
-// addSendHaloInfo
-
+/*!
+ * Add sending halo information.
+ */
 void tausch_addSendHaloInfo(CTausch *tC, int *haloIndices, const size_t numHaloIndices, const size_t typeSize, const int remoteMpiRank);
 
-/****************************************/
-// addRecvHaloInfo
-
+/*!
+ * Add receiving halo information.
+ */
 void tausch_addRecvHaloInfo(CTausch *tC, int *haloIndices, const size_t numHaloIndices, const size_t typeSize, const int remoteMpiRank);
 
+/*!
+ * Set communication strategy for sending data.
+ */
 void tausch_setSendCommunicationStrategy(CTausch *tC, const size_t haloId, int strategy);
 
+/*!
+ * Set communication strategy for receiving data.
+ */
 void tausch_setRecvCommunicationStrategy(CTausch *tC, const size_t haloId, int strategy);
+
+/*!
+ * Set halo buffer for sending data to be used by certain communication strategies.
+ */
 void tausch_setSendHaloBuffer(CTausch *tC, const int haloId, const int bufferId, unsigned char* buf);
+
+/*!
+ * Set halo buffer for receiving data to be used by certain communication strategies.
+ */
 void tausch_setRecvHaloBuffer(CTausch *tC, const int haloId, const int bufferId, unsigned char* buf);
+
+/*!
+ * Pack the halo data from the provided buffer.
+ */
 void tausch_packSendBuffer(CTausch *tC, const size_t haloId, const size_t bufferId, const unsigned char *buf);
+
+/*!
+ * Send off the data.
+ */
 MPI_Request tausch_send(CTausch *tC, const size_t haloId, const int msgtag, const int remoteMpiRank, const int bufferId, const bool blocking, MPI_Comm communicator);
+
+/*!
+ * Receive data.
+ */
 MPI_Request tausch_recv(CTausch *tC, size_t haloId, const int msgtag, const int remoteMpiRank, const int bufferId, const bool blocking, MPI_Comm communicator);
+
+/*!
+ * Unpack the halo data into the provided buffer.
+ */
 void tausch_unpackRecvBuffer(CTausch *tC, const size_t haloId, const size_t bufferId, unsigned char *buf);
 
 #ifdef __cplusplus

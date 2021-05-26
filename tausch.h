@@ -1,6 +1,6 @@
 /**
  *
- * \copyright 2020 Lukas Spies. Licensed under the MIT license.
+ * \copyright 2021 Lukas Spies. Licensed under the MIT license.
  *
  * \mainpage Tausch - A generic halo exchange library.
  *
@@ -10,6 +10,8 @@
  * anywhere), minimally instrusive (easy to adapt into existing code), maximally efficient
  * (performs just as good or better than any custom solution), and requires minimal memory
  * resources (compressed halo metadata).
+ *
+ * A full C API is provided by CTausch available through ctausch.h. The methods of the C API are equivalent to the C++ API only with a 'tausch_' prefix and always expecting the C object CTausch as first parameter.
  *
  * \section install_sec Install
  *
