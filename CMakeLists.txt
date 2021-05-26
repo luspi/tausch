@@ -4,6 +4,8 @@ project(tausch)
 
 # tests is enabled by default
 option(TESTING "Enable Unit Tests" ON)
+option(TEST_OPENCL "Enable OpenCL tests" OFF)
+option(TEST_CUDA "Enable CUDA tests" OFF)
 option(TEST_CUDA_AWARE "Enable tests for CUDA-aware MPI" OFF)
 
 # documentation is enabled by default if doxygen found
@@ -43,16 +45,27 @@ if(TESTING)
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -DOMPI_SKIP_MPICXX")
 
     # custom function to add mpi test
-    function(add_mpi_test name files ocl cuda)
+    function(add_mpi_test name files ocl cuda capi)
 
         separate_arguments(files_list UNIX_COMMAND ${files})
 
         # each test is run with 1, 2, and 4 mpi ranks
         set(numprocs 1 2 4)
 
+        if(capi)
+            add_library(ctausch SHARED ctausch.cpp)
+            set_target_properties(ctausch PROPERTIES PUBLIC_HEADER ctausch.h)
+        endif()
+        
         add_executable(${name} ${files_list})
+        add_dependencies(${name} ctausch)
         target_link_libraries(${name} ${MPI_C_LIBRARIES})
         target_link_libraries(${name} ${MPI_CXX_LIBRARIES})
+        
+        if(capi)
+            target_include_directories(${name} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+            target_link_libraries(${name} "${CMAKE_CURRENT_BINARY_DIR}/libctausch.so")
+        endif()
         if(ocl)
             target_include_directories(${name} PUBLIC "${OpenCL_INCLUDE_DIRS}")
             target_link_libraries(${name} "${OpenCL_LIBRARIES}")
@@ -68,29 +81,34 @@ if(TESTING)
     endfunction(add_mpi_test)
 
     find_package(MPI COMPONENTS C REQUIRED)
-    find_package(CUDA REQUIRED)
-    find_package(OpenCL REQUIRED)
+    add_mpi_test(capi "testing/ctausch/main.c" false false true)
+    add_mpi_test(cpu2cpu "testing/cpu2cpu/main.cpp testing/cpu2cpu/derived.cpp testing/cpu2cpu/packunpack.cpp testing/cpu2cpu/empty.cpp testing/cpu2cpu/randomaccess.cpp" false false false)
+    
+    if(TEST_OPENCL)
+    
+        find_package(OpenCL REQUIRED)
+        add_mpi_test(cpu2ocl "testing/cpu2ocl/main.cpp testing/cpu2ocl/packunpack.cpp testing/cpu2ocl/empty.cpp testing/cpu2ocl/randomaccess.cpp" true false false)
+        add_mpi_test(ocl2cpu "testing/ocl2cpu/main.cpp testing/ocl2cpu/packunpack.cpp testing/ocl2cpu/empty.cpp testing/ocl2cpu/randomaccess.cpp" true false false)
+        add_mpi_test(ocl2ocl "testing/ocl2ocl/main.cpp testing/ocl2ocl/packunpack.cpp testing/ocl2ocl/empty.cpp testing/ocl2ocl/randomaccess.cpp" true false false)
+        
+    endif()
+    
+    if(TEST_CUDA)
+    
+        find_package(CUDA REQUIRED)
+        add_mpi_test(cpu2cuda "testing/cpu2cuda/main.cpp testing/cpu2cuda/packunpack.cpp testing/cpu2cuda/empty.cpp testing/cpu2cuda/randomaccess.cpp" false true false)
+        add_mpi_test(cuda2cpu "testing/cuda2cpu/main.cpp testing/cuda2cpu/packunpack.cpp testing/cuda2cpu/empty.cpp testing/cuda2cpu/randomaccess.cpp" false true false)
+        add_mpi_test(cuda2cuda "testing/cuda2cuda/main.cpp testing/cuda2cuda/packunpack.cpp testing/cuda2cuda/empty.cpp testing/cuda2cuda/randomaccess.cpp" false true false)
 
-    # cpu -> *
-
-    add_mpi_test(cpu2cpu "testing/cpu2cpu/main.cpp testing/cpu2cpu/derived.cpp testing/cpu2cpu/packunpack.cpp testing/cpu2cpu/empty.cpp testing/cpu2cpu/randomaccess.cpp" false false)
-    add_mpi_test(cpu2ocl "testing/cpu2ocl/main.cpp testing/cpu2ocl/packunpack.cpp testing/cpu2ocl/empty.cpp testing/cpu2ocl/randomaccess.cpp" true false)
-    add_mpi_test(cpu2cuda "testing/cpu2cuda/main.cpp testing/cpu2cuda/packunpack.cpp testing/cpu2cuda/empty.cpp testing/cpu2cuda/randomaccess.cpp" false true)
-
-    # cuda -> *
-
-    add_mpi_test(cuda2cpu "testing/cuda2cpu/main.cpp testing/cuda2cpu/packunpack.cpp testing/cuda2cpu/empty.cpp testing/cuda2cpu/randomaccess.cpp" false true)
-    add_mpi_test(cuda2ocl "testing/cuda2ocl/main.cpp testing/cuda2ocl/packunpack.cpp testing/cuda2ocl/empty.cpp testing/cuda2ocl/randomaccess.cpp" true true)
-    add_mpi_test(cuda2cuda "testing/cuda2cuda/main.cpp testing/cuda2cuda/packunpack.cpp testing/cuda2cuda/empty.cpp testing/cuda2cuda/randomaccess.cpp" false true)
-
-    # ocl -> *
-
-    add_mpi_test(ocl2cpu "testing/ocl2cpu/main.cpp testing/ocl2cpu/packunpack.cpp testing/ocl2cpu/empty.cpp testing/ocl2cpu/randomaccess.cpp" true false)
-    add_mpi_test(ocl2ocl "testing/ocl2ocl/main.cpp testing/ocl2ocl/packunpack.cpp testing/ocl2ocl/empty.cpp testing/ocl2ocl/randomaccess.cpp" true false)
-    add_mpi_test(ocl2cuda "testing/ocl2cuda/main.cpp testing/ocl2cuda/packunpack.cpp testing/ocl2cuda/empty.cpp testing/ocl2cuda/randomaccess.cpp" true true)
+        if(TEST_OPENCL)
+            add_mpi_test(cuda2ocl "testing/cuda2ocl/main.cpp testing/cuda2ocl/packunpack.cpp testing/cuda2ocl/empty.cpp testing/cuda2ocl/randomaccess.cpp" true true false)
+            add_mpi_test(ocl2cuda "testing/ocl2cuda/main.cpp testing/ocl2cuda/packunpack.cpp testing/ocl2cuda/empty.cpp testing/ocl2cuda/randomaccess.cpp" true true false)
+        endif()
+        
+    endif()
 
 if(TEST_CUDA_AWARE)
-    add_mpi_test(cudaaware "testing/cudaaware/main.cpp testing/cudaaware/cuda2cuda.cpp testing/cudaaware/cuda2cpu.cpp testing/cudaaware/cpu2cuda.cpp" false true)
+    add_mpi_test(cudaaware "testing/cudaaware/main.cpp testing/cudaaware/cuda2cuda.cpp testing/cudaaware/cuda2cpu.cpp testing/cudaaware/cpu2cuda.cpp" false true false)
 endif()
 
 endif()

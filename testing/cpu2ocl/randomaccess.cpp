@@ -60,8 +60,8 @@ TEST_CASE("1 buffer, random indices, derived, same MPI rank") {
             tausch->addLocalHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
             tausch->addRemoteHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::SenderUsesMpiDerivedDatatype);
 
-            tausch->send(0, 0, nullptr, mpiRank, 0, in, false);
-            tausch->recv(0, 0, nullptr, mpiRank, true);
+            tausch->send(0, 0, mpiRank, 0, in, false);
+            tausch->recv(0, 0, mpiRank, true);
 
             tausch->unpackRecvBuffer(0, 0, cl_out);
 
@@ -157,8 +157,8 @@ TEST_CASE("1 buffer, random indices, derived, multiple MPI ranks") {
             tausch->addLocalHaloInfo(sendIndices, 1, -1, TauschOptimizationHint::UseMpiDerivedDatatype);
             tausch->addRemoteHaloInfo(recvIndices, 1, -1, TauschOptimizationHint::SenderUsesMpiDerivedDatatype);
 
-            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, 0, in, false);
-            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize, 0, in, false);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
 
             tausch->unpackRecvBuffer(0, 0, cl_out);
 
@@ -255,8 +255,8 @@ TEST_CASE("1 buffer, random indices, with pack/unpack, same MPI rank") {
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBuffer(0, 0, in);
-            tausch->send(0, 0, nullptr, mpiRank, false);
-            tausch->recv(0, 0, nullptr, mpiRank, true);
+            tausch->send(0, 0, mpiRank, false);
+            tausch->recv(0, 0, mpiRank, true);
             tausch->unpackRecvBufferOCL(0, 0, cl_out);
 
             cl::copy(tauschcl_queue, cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
@@ -353,8 +353,8 @@ TEST_CASE("1 buffer, random indices, with pack/unpack, multiple MPI ranks") {
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBuffer(0, 0, in);
-            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
             tausch->unpackRecvBufferOCL(0, 0, cl_out);
 
             cl::copy(tauschcl_queue, cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);

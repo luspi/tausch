@@ -61,8 +61,8 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBuffer(0, 0, in);
-            tausch->send(0, 0, nullptr, mpiRank, false);
-            tausch->recv(0, 0, nullptr, mpiRank, true);
+            tausch->send(0, 0, mpiRank, false);
+            tausch->recv(0, 0, mpiRank, true);
             tausch->unpackRecvBufferOCL(0, 0, cl_out);
 
             cl::copy(tauschcl_queue, cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
@@ -153,8 +153,8 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBuffer(0, 0, in);
-            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
             tausch->unpackRecvBufferOCL(0, 0, cl_out);
 
             cl::copy(tauschcl_queue, cl_out, out, &out[(size+2*halowidth)*(size+2*halowidth)]);
@@ -251,8 +251,8 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
             tausch->packSendBuffer(0, 0, in1);
             tausch->packSendBuffer(0, 1, in2);
 
-            tausch->send(0, 0, nullptr, mpiRank, false);
-            tausch->recv(0, 0, nullptr, mpiRank, true);
+            tausch->send(0, 0, mpiRank, false);
+            tausch->recv(0, 0, mpiRank, true);
 
             tausch->unpackRecvBufferOCL(0, 0, cl_out2);
             tausch->unpackRecvBufferOCL(0, 1, cl_out1);
@@ -362,8 +362,8 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
             tausch->packSendBuffer(0, 0, in1);
             tausch->packSendBuffer(0, 1, in2);
 
-            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
 
             tausch->unpackRecvBufferOCL(0, 0, cl_out2);
             tausch->unpackRecvBufferOCL(0, 1, cl_out1);
