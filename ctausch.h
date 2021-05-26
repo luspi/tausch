@@ -11,6 +11,21 @@
 extern "C" {
 #endif
 
+#ifdef TAUSCH_OPENCL
+#   ifdef __has_include
+#       if __has_include("CL/opencl.h")
+#           define CL_TARGET_OPENCL_VERSION 120
+#           include <CL/opencl.h>
+#       elif __has_include("CL/cl.h")
+#           define CL_TARGET_OPENCL_VERSION 120
+#           include <CL/cl.h>
+#       endif
+#   else
+#      define CL_TARGET_OPENCL_VERSION 120
+#      include <CL/cl.h>
+#   endif
+#endif
+
 /*!
  *
  * The object that is created by the C API is called CTausch. After its creation it needs to be passed as parameter to any call to the API.
@@ -88,6 +103,46 @@ MPI_Request tausch_recv(CTausch *tC, size_t haloId, const int msgtag, const int 
  * Unpack the halo data into the provided buffer.
  */
 void tausch_unpackRecvBuffer(CTausch *tC, const size_t haloId, const size_t bufferId, unsigned char *buf);
+
+
+#ifdef TAUSCH_OPENCL
+
+/*!
+ * Set OpenCL environment.
+ */
+void tausch_setOpenCL(CTausch *tC, cl_device_id device, cl_context context, cl_command_queue queue);
+
+/*!
+ * Enable OpenCL environment (Tausch will set it up).
+ */
+void tausch_enableOpenCL(CTausch *tC, size_t deviceNumber);
+
+/*!
+ * Get handle to OpenCL device.
+ */
+cl_device_id tausch_getOclDevice(CTausch *tC);
+
+/*!
+ * Get handle to OpenCL context.
+ */
+cl_context tausch_getOclContext(CTausch *tC);
+
+/*!
+ * Get handle to OpenCL command queue.
+ */
+cl_command_queue tausch_getOclQueue(CTausch *tC);
+
+/*!
+ * Pack an OpenCL buffer.
+ */
+void tausch_packSendBufferOCL(CTausch *tC, const size_t haloId, const size_t bufferId, cl_mem buf);
+
+/*!
+ * Unpack an OpenCL buffer.
+ */
+void tausch_unpackRecvBufferOCL(CTausch *tC, const size_t haloId, const size_t bufferId, cl_mem buf);
+
+#endif
 
 #ifdef __cplusplus
 }

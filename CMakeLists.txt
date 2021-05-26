@@ -34,6 +34,16 @@ if(DOC)
 
 endif()
 
+add_library(ctausch SHARED ctausch.cpp)
+
+if(TEST_OPENCL)
+    find_package(OpenCL REQUIRED)
+    add_library(ctauschocl SHARED ctausch.cpp)
+    target_include_directories(ctauschocl PUBLIC "${OpenCL_INCLUDE_DIRS}")
+    target_link_libraries(ctauschocl "${OpenCL_LIBRARIES}")
+    target_compile_definitions(ctauschocl PRIVATE TAUSCH_OPENCL)
+endif()
+
 # build tests if enabled
 if(TESTING)
 
@@ -52,19 +62,20 @@ if(TESTING)
         # each test is run with 1, 2, and 4 mpi ranks
         set(numprocs 1 2 4)
 
-        if(capi)
-            add_library(ctausch SHARED ctausch.cpp)
-            set_target_properties(ctausch PROPERTIES PUBLIC_HEADER ctausch.h)
-        endif()
-        
         add_executable(${name} ${files_list})
-        add_dependencies(${name} ctausch)
         target_link_libraries(${name} ${MPI_C_LIBRARIES})
         target_link_libraries(${name} ${MPI_CXX_LIBRARIES})
-        
+
         if(capi)
-            target_include_directories(${name} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-            target_link_libraries(${name} "${CMAKE_CURRENT_BINARY_DIR}/libctausch.so")
+            if(ocl)
+                add_dependencies(${name} ctauschocl)
+                target_include_directories(${name} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+                target_link_libraries(${name} "${CMAKE_CURRENT_BINARY_DIR}/libctauschocl.so")
+            else()
+                add_dependencies(${name} ctausch)
+                target_include_directories(${name} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+                target_link_libraries(${name} "${CMAKE_CURRENT_BINARY_DIR}/libctausch.so")
+            endif()
         endif()
         if(ocl)
             target_include_directories(${name} PUBLIC "${OpenCL_INCLUDE_DIRS}")
@@ -81,20 +92,21 @@ if(TESTING)
     endfunction(add_mpi_test)
 
     find_package(MPI COMPONENTS C REQUIRED)
-    add_mpi_test(capi "testing/ctausch/main.c" false false true)
+    add_mpi_test(capi_cpu "testing/ctausch/cpu.c" false false true)
     add_mpi_test(cpu2cpu "testing/cpu2cpu/main.cpp testing/cpu2cpu/derived.cpp testing/cpu2cpu/packunpack.cpp testing/cpu2cpu/empty.cpp testing/cpu2cpu/randomaccess.cpp" false false false)
-    
+
     if(TEST_OPENCL)
-    
+
         find_package(OpenCL REQUIRED)
+        add_mpi_test(capi_ocl "testing/ctausch/opencl.c" true false true)
         add_mpi_test(cpu2ocl "testing/cpu2ocl/main.cpp testing/cpu2ocl/packunpack.cpp testing/cpu2ocl/empty.cpp testing/cpu2ocl/randomaccess.cpp" true false false)
         add_mpi_test(ocl2cpu "testing/ocl2cpu/main.cpp testing/ocl2cpu/packunpack.cpp testing/ocl2cpu/empty.cpp testing/ocl2cpu/randomaccess.cpp" true false false)
         add_mpi_test(ocl2ocl "testing/ocl2ocl/main.cpp testing/ocl2ocl/packunpack.cpp testing/ocl2ocl/empty.cpp testing/ocl2ocl/randomaccess.cpp" true false false)
-        
+
     endif()
-    
+
     if(TEST_CUDA)
-    
+
         find_package(CUDA REQUIRED)
         add_mpi_test(cpu2cuda "testing/cpu2cuda/main.cpp testing/cpu2cuda/packunpack.cpp testing/cpu2cuda/empty.cpp testing/cpu2cuda/randomaccess.cpp" false true false)
         add_mpi_test(cuda2cpu "testing/cuda2cpu/main.cpp testing/cuda2cpu/packunpack.cpp testing/cuda2cpu/empty.cpp testing/cuda2cpu/randomaccess.cpp" false true false)
@@ -104,7 +116,7 @@ if(TESTING)
             add_mpi_test(cuda2ocl "testing/cuda2ocl/main.cpp testing/cuda2ocl/packunpack.cpp testing/cuda2ocl/empty.cpp testing/cuda2ocl/randomaccess.cpp" true true false)
             add_mpi_test(ocl2cuda "testing/ocl2cuda/main.cpp testing/ocl2cuda/packunpack.cpp testing/ocl2cuda/empty.cpp testing/ocl2cuda/randomaccess.cpp" true true false)
         endif()
-        
+
     endif()
 
 if(TEST_CUDA_AWARE)

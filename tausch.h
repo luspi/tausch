@@ -74,10 +74,11 @@
 #           define __CL_ENABLE_EXCEPTIONS
 #           include <CL/cl.hpp>
 #       else
-#           define CL_TARGET_OPENCL_VERSION 120
+#           define CL_HPP_TARGET_OPENCL_VERSION 120
 #           include <CL/cl.h>
 #       endif
 #   else
+#      define CL_HPP_TARGET_OPENCL_VERSION 120
 #      define __CL_ENABLE_EXCEPTIONS
 #      include <CL/cl.hpp>
 #   endif
@@ -1277,6 +1278,7 @@ public:
      * @param buf
      * Handler of the OpenCL buffer.
      */
+
     inline void packSendBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
 
         if(sendHaloIndicesSizePerBuffer[haloId][bufferId] == 0)

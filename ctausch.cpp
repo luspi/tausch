@@ -84,6 +84,38 @@ void tausch_unpackRecvBuffer(CTausch *tC, const size_t haloId, const size_t buff
     t->unpackRecvBuffer(haloId, bufferId, buf);
 }
 
+#ifdef TAUSCH_OPENCL
+
+void tausch_setOpenCL(CTausch *tC, cl_device_id device, cl_context context, cl_command_queue queue) {
+    Tausch *t = reinterpret_cast<Tausch*>(tC);
+    t->setOpenCL(cl::Device(device), cl::Context(context), cl::CommandQueue(queue));
+}
+void tausch_enableOpenCL(CTausch *tC, size_t deviceNumber) {
+    Tausch *t = reinterpret_cast<Tausch*>(tC);
+    t->enableOpenCL(deviceNumber);
+}
+cl_device_id tausch_getOclDevice(CTausch *tC) {
+    Tausch *t = reinterpret_cast<Tausch*>(tC);
+    return t->getOclDevice()();
+}
+cl_context tausch_getOclContext(CTausch *tC) {
+    Tausch *t = reinterpret_cast<Tausch*>(tC);
+    return t->getOclContext()();
+}
+cl_command_queue tausch_getOclQueue(CTausch *tC) {
+    Tausch *t = reinterpret_cast<Tausch*>(tC);
+    return t->getOclQueue()();
+}
+void tausch_packSendBufferOCL(CTausch *tC, const size_t haloId, const size_t bufferId, cl_mem buf) {
+    Tausch *t = reinterpret_cast<Tausch*>(tC);
+    t->packSendBufferOCL(haloId, bufferId, *(new cl::Buffer(buf)));
+}
+void tausch_unpackRecvBufferOCL(CTausch *tC, const size_t haloId, const size_t bufferId, cl_mem buf) {
+    Tausch *t = reinterpret_cast<Tausch*>(tC);
+    t->unpackRecvBufferOCL(haloId, bufferId, *(new cl::Buffer(buf)));
+}
+#endif
+
 #ifdef __cplusplus
 }
 #endif

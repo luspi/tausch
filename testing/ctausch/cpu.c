@@ -48,13 +48,13 @@ int main(int argc, char **argv) {
     for(int i = 0; i < 10; ++i) {
 
         if(buf2[25+2*i] != res[i]) {
-            printf("C API FAILED! %f != %f\n", buf2[25+2*i], res[i]);
+            printf("C API (CPU) FAILED! %f != %f\n", buf2[25+2*i], res[i]);
             exit(1);
         }
 
     }
-    
-    printf("C API test passed successfully.\n");
+
+    printf("C API (CPU) test passed successfully.\n");
 
     MPI_Finalize();
 
