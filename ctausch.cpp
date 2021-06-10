@@ -13,7 +13,7 @@ CTausch *tausch_new(MPI_Comm comm, const bool useDuplicateOfCommunicator) {
     Tausch *t = new Tausch(comm, useDuplicateOfCommunicator);
     return reinterpret_cast<CTausch*>(t);
 }
-void f_tausch_new_(CTausch **tC, MPI_Fint *comm, const bool *useDuplicateOfCommunicator) {
+void tausch_new_(CTausch **tC, MPI_Fint *comm, const bool *useDuplicateOfCommunicator) {
     Tausch *t = new Tausch(MPI_Comm_f2c(*comm), *useDuplicateOfCommunicator);
     *tC = reinterpret_cast<CTausch*>(t);
 }
@@ -25,7 +25,7 @@ void tausch_delete(CTausch *tC) {
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     delete t;
 }
-void f_tausch_delete_(CTausch **tC) {
+void tausch_delete_(CTausch **tC) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     delete t;
 }
@@ -37,7 +37,7 @@ void tausch_addSendHaloInfo(CTausch *tC, int *haloIndices, const size_t numHaloI
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     t->addSendHaloInfo(haloIndices, numHaloIndices, typeSize, remoteMpiRank);
 }
-void f_tausch_addsendhaloinfo_(CTausch **tC, int *haloIndices, const int *numHaloIndices, const int *typeSize, const int *remoteMpiRank) {
+void tausch_addsendhaloinfo_(CTausch **tC, int *haloIndices, const int *numHaloIndices, const int *typeSize, const int *remoteMpiRank) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     t->addSendHaloInfo(haloIndices, *numHaloIndices, *typeSize, *remoteMpiRank);
 }
@@ -50,7 +50,7 @@ void tausch_addRecvHaloInfo(CTausch *tC, int *haloIndices, const size_t numHaloI
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     t->addRecvHaloInfo(haloIndices, numHaloIndices, typeSize, remoteMpiRank);
 }
-void f_tausch_addrecvhaloinfo_(CTausch **tC, int *haloIndices, const int *numHaloIndices, const int *typeSize, const int *remoteMpiRank) {
+void tausch_addrecvhaloinfo_(CTausch **tC, int *haloIndices, const int *numHaloIndices, const int *typeSize, const int *remoteMpiRank) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     t->addRecvHaloInfo(haloIndices, *numHaloIndices, *typeSize, *remoteMpiRank);
 }
@@ -71,7 +71,7 @@ void tausch_setSendCommunicationStrategy(CTausch *tC, const size_t haloId, int s
 
     t->setSendCommunicationStrategy(haloId, str);
 }
-void f_tausch_setsendcommunicationstrategy_(CTausch **tC, const size_t *haloId, int *strategy) {
+void tausch_setsendcommunicationstrategy_(CTausch **tC, const size_t *haloId, int *strategy) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
 
     Tausch::Communication str;
@@ -101,7 +101,7 @@ void tausch_setRecvCommunicationStrategy(CTausch *tC, const size_t haloId, int s
 
     t->setRecvCommunicationStrategy(haloId, str);
 }
-void f_tausch_setrecvcommunicationstrategy_(CTausch **tC, const size_t *haloId, int *strategy) {
+void tausch_setrecvcommunicationstrategy_(CTausch **tC, const size_t *haloId, int *strategy) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
 
     Tausch::Communication str;
@@ -122,7 +122,7 @@ void tausch_setSendHaloBuffer(CTausch *tC, const int haloId, const int bufferId,
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     t->setSendHaloBuffer(haloId, bufferId, buf);
 }
-void f_tausch_setsendhalobuffer_(CTausch **tC, const int *haloId, const int *bufferId, unsigned char* buf) {
+void tausch_setsendhalobuffer_(CTausch **tC, const int *haloId, const int *bufferId, unsigned char* buf) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     t->setSendHaloBuffer(*haloId, *bufferId, buf);
 }
@@ -134,7 +134,7 @@ void tausch_setRecvHaloBuffer(CTausch *tC, const int haloId, const int bufferId,
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     t->setRecvHaloBuffer(haloId, bufferId, buf);
 }
-void f_tausch_setrecvhalobuffer_(CTausch **tC, const int *haloId, const int *bufferId, unsigned char* buf) {
+void tausch_setrecvhalobuffer_(CTausch **tC, const int *haloId, const int *bufferId, unsigned char* buf) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     t->setRecvHaloBuffer(*haloId, *bufferId, buf);
 }
@@ -146,7 +146,7 @@ void tausch_packSendBuffer(CTausch *tC, const size_t haloId, const size_t buffer
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     t->packSendBuffer(haloId, bufferId, buf);
 }
-void f_tausch_packsendbuffer_(CTausch **tC, const int *haloId, const int *bufferId, const unsigned char *buf) {
+void tausch_packsendbuffer_(CTausch **tC, const int *haloId, const int *bufferId, const unsigned char *buf) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     t->packSendBuffer(*haloId, *bufferId, buf);
 }
@@ -158,7 +158,7 @@ MPI_Request tausch_send(CTausch *tC, const size_t haloId, const int msgtag, cons
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     return t->send(haloId, msgtag, remoteMpiRank, bufferId, blocking, communicator);
 }
-MPI_Request f_tausch_send_(CTausch **tC, const int *haloId, const int *msgtag, const int *remoteMpiRank, const int *bufferId, const bool *blocking, MPI_Fint *communicator) {
+MPI_Request tausch_send_(CTausch **tC, const int *haloId, const int *msgtag, const int *remoteMpiRank, const int *bufferId, const bool *blocking, MPI_Fint *communicator) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     return t->send(*haloId, *msgtag, *remoteMpiRank, *bufferId, *blocking, MPI_Comm_f2c(*communicator));
 }
@@ -170,7 +170,7 @@ MPI_Request tausch_recv(CTausch *tC, size_t haloId, const int msgtag, const int 
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     return t->recv(haloId, msgtag, remoteMpiRank, bufferId, blocking, communicator);
 }
-MPI_Request f_tausch_recv_(CTausch **tC, int *haloId, const int *msgtag, const int *remoteMpiRank, const int *bufferId, const bool *blocking, MPI_Fint *communicator) {
+MPI_Request tausch_recv_(CTausch **tC, int *haloId, const int *msgtag, const int *remoteMpiRank, const int *bufferId, const bool *blocking, MPI_Fint *communicator) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     return t->recv(*haloId, *msgtag, *remoteMpiRank, *bufferId, *blocking, MPI_Comm_f2c(*communicator));
 }
@@ -182,7 +182,7 @@ void tausch_unpackRecvBuffer(CTausch *tC, const size_t haloId, const size_t buff
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     t->unpackRecvBuffer(haloId, bufferId, buf);
 }
-void f_tausch_unpackrecvbuffer_(CTausch **tC, const int *haloId, const int *bufferId, unsigned char *buf) {
+void tausch_unpackrecvbuffer_(CTausch **tC, const int *haloId, const int *bufferId, unsigned char *buf) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     t->unpackRecvBuffer(*haloId, *bufferId, buf);
 }
@@ -196,7 +196,7 @@ void tausch_setOpenCL(CTausch *tC, cl_device_id device, cl_context context, cl_c
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     t->setOpenCL(cl::Device(device), cl::Context(context), cl::CommandQueue(queue));
 }
-void f_tausch_setopencl_(CTausch **tC, cl_device_id *device, cl_context *context, cl_command_queue *queue) {
+void tausch_setopencl_(CTausch **tC, cl_device_id *device, cl_context *context, cl_command_queue *queue) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     t->setOpenCL(cl::Device(*device), cl::Context(*context), cl::CommandQueue(*queue));
 }
@@ -208,7 +208,7 @@ void tausch_enableOpenCL(CTausch *tC, size_t deviceNumber) {
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     t->enableOpenCL(deviceNumber);
 }
-void f_tausch_enableopencl_(CTausch **tC, size_t *deviceNumber) {
+void tausch_enableopencl_(CTausch **tC, size_t *deviceNumber) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     t->enableOpenCL(*deviceNumber);
 }
@@ -220,7 +220,7 @@ cl_device_id tausch_getOclDevice(CTausch *tC) {
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     return t->getOclDevice()();
 }
-cl_device_id f_tausch_getocldevice_(CTausch **tC) {
+cl_device_id tausch_getocldevice_(CTausch **tC) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     return t->getOclDevice()();
 }
@@ -232,7 +232,7 @@ cl_context tausch_getOclContext(CTausch *tC) {
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     return t->getOclContext()();
 }
-cl_context f_tausch_getoclcontext_(CTausch **tC) {
+cl_context tausch_getoclcontext_(CTausch **tC) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     return t->getOclContext()();
 }
@@ -244,7 +244,7 @@ cl_command_queue tausch_getOclQueue(CTausch *tC) {
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     return t->getOclQueue()();
 }
-cl_command_queue f_tausch_getoclqueue_(CTausch **tC) {
+cl_command_queue tausch_getoclqueue_(CTausch **tC) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     return t->getOclQueue()();
 }
@@ -256,7 +256,7 @@ void tausch_packSendBufferOCL(CTausch *tC, const size_t haloId, const size_t buf
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     t->packSendBufferOCL(haloId, bufferId, *(new cl::Buffer(buf)));
 }
-void f_tausch_packsendbufferocl_(CTausch **tC, const int *haloId, const int *bufferId, cl_mem *buf) {
+void tausch_packsendbufferocl_(CTausch **tC, const int *haloId, const int *bufferId, cl_mem *buf) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     t->packSendBufferOCL(*haloId, *bufferId, *(new cl::Buffer(*buf)));
 }
@@ -268,7 +268,7 @@ void tausch_unpackRecvBufferOCL(CTausch *tC, const size_t haloId, const size_t b
     Tausch *t = reinterpret_cast<Tausch*>(tC);
     t->unpackRecvBufferOCL(haloId, bufferId, *(new cl::Buffer(buf)));
 }
-void f_tausch_unpackrecvbufferocl_(CTausch **tC, const int *haloId, const int *bufferId, cl_mem *buf) {
+void tausch_unpackrecvbufferocl_(CTausch **tC, const int *haloId, const int *bufferId, cl_mem *buf) {
     Tausch *t = reinterpret_cast<Tausch*>(*tC);
     t->unpackRecvBufferOCL(*haloId, *bufferId, *(new cl::Buffer(*buf)));
 }
