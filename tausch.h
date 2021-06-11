@@ -183,7 +183,7 @@ public:
         std::vector<int> hi(&haloIndices[0], &haloIndices[lengthIndices]);
         std::vector<std::vector<std::array<int, 4> > > indices = {extractHaloIndicesWithStride(hi)};
         std::vector<size_t> typeSizePerBuffer = {typeSize};
-        return addSendHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
+        return addSendHaloInfos(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     /**
@@ -191,11 +191,11 @@ public:
      *
      * Set sending halo info for multiple halo regions using raw arrays (used, e.g., for C API).
      */
-    inline size_t addSendHaloInfo(int **haloIndices,
-                                  const size_t *lengthIndices,
-                                  const size_t numHalos,
-                                  const size_t *typeSize,
-                                  const int remoteMpiRank = -1) {
+    inline size_t addSendHaloInfos(int **haloIndices,
+                                   const size_t *lengthIndices,
+                                   const size_t numHalos,
+                                   const size_t *typeSize,
+                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         std::vector<size_t> typeSizePerBuffer;
         for(size_t i = 0; i < numHalos; ++i) {
@@ -203,7 +203,7 @@ public:
             indices.push_back(extractHaloIndicesWithStride(hi));
             typeSizePerBuffer.push_back(typeSize[i]);
         }
-        return addSendHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
+        return addSendHaloInfos(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     /******************************** SINGLE HALO REGION *************************************/
@@ -218,7 +218,7 @@ public:
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices = {extractHaloIndicesWithStride(haloIndices)};
         std::vector<size_t> typeSizePerBuffer = {typeSize};
-        return addSendHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
+        return addSendHaloInfos(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     /**
@@ -231,7 +231,7 @@ public:
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices = {haloIndices};
         std::vector<size_t> typeSizePerBuffer = {typeSize};
-        return addSendHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
+        return addSendHaloInfos(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     /******************************** MULTIPLE HALO REGIONS *************************************/
@@ -241,14 +241,14 @@ public:
      *
      * Set sending halo info for multiple halo regions using vectors of halo indices.
      */
-    inline size_t addSendHaloInfo(std::vector<std::vector<int> > haloIndices,
+    inline size_t addSendHaloInfos(std::vector<std::vector<int> > haloIndices,
                                   std::vector<size_t> typeSize,
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         for(auto bufIndices : haloIndices) {
             indices.push_back(extractHaloIndicesWithStride(bufIndices));
         }
-        return addSendHaloInfo(indices, typeSize, remoteMpiRank);
+        return addSendHaloInfos(indices, typeSize, remoteMpiRank);
     }
 
     /**
@@ -256,7 +256,7 @@ public:
      *
      * Set sending halo info for multiple halo regions having same halo indices.
      */
-    inline size_t addSendHaloInfo(std::vector<std::array<int, 4> > haloIndices,
+    inline size_t addSendHaloInfos(std::vector<std::array<int, 4> > haloIndices,
                                   size_t typeSize,
                                   int numBuffers,
                                   const int remoteMpiRank = -1) {
@@ -266,7 +266,7 @@ public:
             indices.push_back(haloIndices);
             typeSizes.push_back(typeSize);
         }
-        return addSendHaloInfo(indices, typeSizes, remoteMpiRank);
+        return addSendHaloInfos(indices, typeSizes, remoteMpiRank);
     }
 
     /**
@@ -274,7 +274,7 @@ public:
      *
      * Set sending halo info for multiple halo regions having same halo indices.
      */
-    inline size_t addSendHaloInfo(std::vector<int> haloIndices,
+    inline size_t addSendHaloInfos(std::vector<int> haloIndices,
                                   size_t typeSize,
                                   int numBuffers,
                                   const int remoteMpiRank = -1) {
@@ -285,7 +285,7 @@ public:
             indices.push_back(tmpind);
             typeSizes.push_back(typeSize);
         }
-        return addSendHaloInfo(indices, typeSizes, remoteMpiRank);
+        return addSendHaloInfos(indices, typeSizes, remoteMpiRank);
     }
 
     /**
@@ -308,9 +308,9 @@ public:
      * @return
      * This function returns the halo id (needed for referencing this halo later-on).
      */
-    inline size_t addSendHaloInfo(std::vector<std::vector<std::array<int, 4> > > &haloIndices,
-                                  std::vector<size_t> typeSizePerBuffer,
-                                  const int remoteMpiRank = -1) {
+    inline size_t addSendHaloInfos(std::vector<std::vector<std::array<int, 4> > > &haloIndices,
+                                   std::vector<size_t> typeSizePerBuffer,
+                                   const int remoteMpiRank = -1) {
 
         std::vector<std::vector<std::array<int, 4> > > indices;
         for(size_t i = 0; i < haloIndices.size(); ++i)
@@ -387,7 +387,7 @@ public:
         std::vector<int> hi(&haloIndices[0], &haloIndices[lengthIndices]);
         std::vector<std::vector<std::array<int, 4> > > indices = {extractHaloIndicesWithStride(hi)};
         std::vector<size_t> typeSizePerBuffer = {typeSize};
-        return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
+        return addRecvHaloInfos(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     /**
@@ -395,11 +395,11 @@ public:
      *
      * Set receiving halo info for multiple halo regions using raw arrays (used, e.g., for C API).
      */
-    inline size_t addRecvHaloInfo(int **haloIndices,
-                                  const size_t *lengthIndices,
-                                  const size_t numHalos,
-                                  const size_t *typeSize,
-                                  const int remoteMpiRank = -1) {
+    inline size_t addRecvHaloInfos(int **haloIndices,
+                                   const size_t *lengthIndices,
+                                   const size_t numHalos,
+                                   const size_t *typeSize,
+                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         std::vector<size_t> typeSizePerBuffer;
         for(size_t i = 0; i < numHalos; ++i) {
@@ -407,7 +407,7 @@ public:
             indices.push_back(extractHaloIndicesWithStride(hi));
             typeSizePerBuffer.push_back(typeSize[i]);
         }
-        return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
+        return addRecvHaloInfos(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     /******************************** SINGLE HALO REGION *************************************/
@@ -422,7 +422,7 @@ public:
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices = {extractHaloIndicesWithStride(haloIndices)};
         std::vector<size_t> typeSizePerBuffer = {typeSize};
-        return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
+        return addRecvHaloInfos(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     /**
@@ -435,7 +435,7 @@ public:
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices = {haloIndices};
         std::vector<size_t> typeSizePerBuffer = {typeSize};
-        return addRecvHaloInfo(indices, typeSizePerBuffer, remoteMpiRank);
+        return addRecvHaloInfos(indices, typeSizePerBuffer, remoteMpiRank);
     }
 
     /******************************** MULTIPLE HALO REGIONS *************************************/
@@ -445,14 +445,14 @@ public:
      *
      * Set receiving halo info for multiple halo regions using vectors of halo indices.
      */
-    inline size_t addRecvHaloInfo(std::vector<std::vector<int> > haloIndices,
+    inline size_t addRecvHaloInfos(std::vector<std::vector<int> > haloIndices,
                                   std::vector<size_t> typeSize,
                                   const int remoteMpiRank = -1) {
         std::vector<std::vector<std::array<int, 4> > > indices;
         for(auto bufIndices : haloIndices) {
             indices.push_back(extractHaloIndicesWithStride(bufIndices));
         }
-        return addRecvHaloInfo(indices, typeSize, remoteMpiRank);
+        return addRecvHaloInfos(indices, typeSize, remoteMpiRank);
     }
 
     /**
@@ -460,7 +460,7 @@ public:
      *
      * Set sending halo info for multiple halo regions having same halo indices.
      */
-    inline size_t addRecvHaloInfo(std::vector<std::array<int, 4> > haloIndices,
+    inline size_t addRecvHaloInfos(std::vector<std::array<int, 4> > haloIndices,
                                   size_t typeSize,
                                   int numBuffers,
                                   const int remoteMpiRank = -1) {
@@ -470,7 +470,7 @@ public:
             indices.push_back(haloIndices);
             typeSizes.push_back(typeSize);
         }
-        return addRecvHaloInfo(indices, typeSizes, remoteMpiRank);
+        return addRecvHaloInfos(indices, typeSizes, remoteMpiRank);
     }
 
     /**
@@ -478,7 +478,7 @@ public:
      *
      * Set sending halo info for multiple halo regions having same halo indices.
      */
-    inline size_t addRecvHaloInfo(std::vector<int> haloIndices,
+    inline size_t addRecvHaloInfos(std::vector<int> haloIndices,
                                   size_t typeSize,
                                   int numBuffers,
                                   const int remoteMpiRank = -1) {
@@ -489,7 +489,7 @@ public:
             indices.push_back(tmpind);
             typeSizes.push_back(typeSize);
         }
-        return addRecvHaloInfo(indices, typeSizes, remoteMpiRank);
+        return addRecvHaloInfos(indices, typeSizes, remoteMpiRank);
     }
 
     /**
@@ -512,9 +512,9 @@ public:
      * @return
      * This function returns the halo id (needed for referencing this halo later-on).
      */
-    inline size_t addRecvHaloInfo(std::vector<std::vector<std::array<int, 4> > > haloIndices,
-                                  const std::vector<size_t> typeSizePerBuffer,
-                                  const int remoteMpiRank = -1) {
+    inline size_t addRecvHaloInfos(std::vector<std::vector<std::array<int, 4> > > haloIndices,
+                                   const std::vector<size_t> typeSizePerBuffer,
+                                   const int remoteMpiRank = -1) {
 
         std::vector<std::vector<std::array<int, 4> > > indices;
         for(size_t i = 0; i < haloIndices.size(); ++i)
