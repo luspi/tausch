@@ -235,8 +235,8 @@ TEST_CASE("2 buffers, derived MPI datatype, same MPI rank") {
             int mpiRank;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
-            tausch->addSendHaloInfo({sendIndices,sendIndices}, {sizeof(double),sizeof(double)});
-            tausch->addRecvHaloInfo({recvIndices,recvIndices}, {sizeof(double),sizeof(double)});
+            tausch->addSendHaloInfos(sendIndices, sizeof(double), 2);
+            tausch->addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
             tausch->setSendCommunicationStrategy(0, Tausch::Communication::DerivedMpiDatatype);
             tausch->setRecvCommunicationStrategy(0, Tausch::Communication::DerivedMpiDatatype);
@@ -342,10 +342,8 @@ TEST_CASE("2 buffers, derived MPI datatype, multiple MPI ranks") {
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
             MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-            tausch->addSendHaloInfo({sendIndices,sendIndices},
-                                    {sizeof(double),sizeof(double)});
-            tausch->addRecvHaloInfo({recvIndices,recvIndices},
-                                    {sizeof(double),sizeof(double)});
+            tausch->addSendHaloInfos(sendIndices, sizeof(double), 2);
+            tausch->addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
             tausch->setSendCommunicationStrategy(0, Tausch::Communication::DerivedMpiDatatype);
             tausch->setRecvCommunicationStrategy(0, Tausch::Communication::DerivedMpiDatatype);

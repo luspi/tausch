@@ -241,10 +241,8 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
             int mpiRank;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
-            tausch->addSendHaloInfo({sendIndices,sendIndices},
-                                    {sizeof(double),sizeof(double)});
-            tausch->addRecvHaloInfo({recvIndices,recvIndices},
-                                    {sizeof(double),sizeof(double)});
+            tausch->addSendHaloInfos(sendIndices, sizeof(double), 2);
+            tausch->addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
             tausch->packSendBufferOCL(0, 0, cl_in1);
             tausch->packSendBufferOCL(0, 1, cl_in2);
@@ -351,10 +349,8 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
             MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-            tausch->addSendHaloInfo({sendIndices,sendIndices},
-                                    {sizeof(double),sizeof(double)});
-            tausch->addRecvHaloInfo({recvIndices,recvIndices},
-                                    {sizeof(double),sizeof(double)});
+            tausch->addSendHaloInfos(sendIndices, sizeof(double), 2);
+            tausch->addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
             tausch->packSendBufferOCL(0, 0, cl_in1);
             tausch->packSendBufferOCL(0, 1, cl_in2);
