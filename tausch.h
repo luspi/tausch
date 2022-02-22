@@ -51,6 +51,7 @@
 #include <map>
 #include <cstring>
 #include <algorithm>
+#include <future>
 
 #ifdef TAUSCH_CUDA
 #   include <cuda_runtime.h>
@@ -793,8 +794,8 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline void packSendBuffer(const size_t haloId, const size_t bufferId, const double *buf) {
-        packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
+    inline std::future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const double *buf, bool blocking = true) {
+        return packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking);
     }
 
     /**
@@ -802,8 +803,8 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline void packSendBuffer(const size_t haloId, const size_t bufferId, const int *buf) {
-        packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
+    inline std::future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const int *buf, bool blocking = true) {
+        return packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking);
     }
 
     /**
@@ -820,26 +821,58 @@ public:
      * @param buf
      * Pointer to the data buffer.
      */
-    inline void packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf) {
+    inline std::future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf, bool blocking = true) {
 
-        size_t bufferOffset = 0;
-        for(size_t i = 0; i < bufferId; ++i)
-            bufferOffset += sendHaloIndicesSizePerBuffer[haloId][i];
+        if(blocking) {
 
-        size_t mpiSendBufferIndex = 0;
-        for(auto const & region : sendHaloIndices[haloId][bufferId]) {
+            size_t bufferOffset = 0;
+            for(size_t i = 0; i < bufferId; ++i)
+                bufferOffset += sendHaloIndicesSizePerBuffer[haloId][i];
 
-            const size_t &region_start = region[0];
-            const size_t &region_howmanycols = region[1];
-            const size_t &region_howmanyrows = region[2];
-            const size_t &region_stridecol = region[3];
+            size_t mpiSendBufferIndex = 0;
+            for(auto const & region : sendHaloIndices[haloId][bufferId]) {
 
-            for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_stridecol = region[3];
 
-                std::memcpy(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], &buf[region_start + rows*region_stridecol], region_howmanycols);
-                mpiSendBufferIndex += region_howmanycols;
+                for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+
+                    std::memcpy(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], &buf[region_start + rows*region_stridecol], region_howmanycols);
+                    mpiSendBufferIndex += region_howmanycols;
+
+                }
 
             }
+
+            return std::future<void>();
+
+        } else {
+
+            return (std::async(std::launch::async, [=]() {
+
+                size_t bufferOffset = 0;
+                for(size_t i = 0; i < bufferId; ++i)
+                    bufferOffset += sendHaloIndicesSizePerBuffer[haloId][i];
+
+                size_t mpiSendBufferIndex = 0;
+                for(auto const & region : sendHaloIndices[haloId][bufferId]) {
+
+                    const size_t &region_start = region[0];
+                    const size_t &region_howmanycols = region[1];
+                    const size_t &region_howmanyrows = region[2];
+                    const size_t &region_stridecol = region[3];
+
+                    for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+
+                        std::memcpy(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], &buf[region_start + rows*region_stridecol], region_howmanycols);
+                        mpiSendBufferIndex += region_howmanycols;
+
+                    }
+
+                }
+            }));
 
         }
 
@@ -1090,8 +1123,8 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline void unpackRecvBuffer(const size_t haloId, const size_t bufferId, double *buf) {
-        unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
+    inline std::future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, double *buf, bool blocking = true) {
+        return unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking);
     }
 
     /**
@@ -1099,8 +1132,8 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline void unpackRecvBuffer(const size_t haloId, const size_t bufferId, int *buf) {
-        unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
+    inline std::future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, int *buf, bool blocking = true) {
+        return unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking);
     }
 
     /**
@@ -1117,27 +1150,61 @@ public:
      * @param buf
      * Pointer to the data buffer.
      */
-    inline void unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf) {
+    inline std::future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf, bool blocking = true) {
 
-        size_t bufferOffset = 0;
-        for(size_t i = 0; i < bufferId; ++i)
-            bufferOffset += recvHaloIndicesSizePerBuffer[haloId][i];
+        if(blocking) {
 
-        size_t mpiRecvBufferIndex = 0;
+            size_t bufferOffset = 0;
+            for(size_t i = 0; i < bufferId; ++i)
+                bufferOffset += recvHaloIndicesSizePerBuffer[haloId][i];
 
-        for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+            size_t mpiRecvBufferIndex = 0;
 
-            const size_t &region_start = region[0];
-            const size_t &region_howmanycols = region[1];
-            const size_t &region_howmanyrows = region[2];
-            const size_t &region_stridecol = region[3];
+            for(auto const & region : recvHaloIndices[haloId][bufferId]) {
 
-            for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_stridecol = region[3];
 
-                std::memcpy(&buf[region_start + rows*region_stridecol], &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols);
-                mpiRecvBufferIndex += region_howmanycols;
+                for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+
+                    std::memcpy(&buf[region_start + rows*region_stridecol], &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols);
+                    mpiRecvBufferIndex += region_howmanycols;
+
+                }
 
             }
+
+            return std::future<void>();
+
+        } else {
+
+            return (std::async(std::launch::async, [=]() {
+
+                size_t bufferOffset = 0;
+                for(size_t i = 0; i < bufferId; ++i)
+                    bufferOffset += recvHaloIndicesSizePerBuffer[haloId][i];
+
+                size_t mpiRecvBufferIndex = 0;
+
+                for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+
+                    const size_t &region_start = region[0];
+                    const size_t &region_howmanycols = region[1];
+                    const size_t &region_howmanyrows = region[2];
+                    const size_t &region_stridecol = region[3];
+
+                    for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
+
+                        std::memcpy(&buf[region_start + rows*region_stridecol], &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols);
+                        mpiRecvBufferIndex += region_howmanycols;
+
+                    }
+
+                }
+
+            }));
 
         }
 
