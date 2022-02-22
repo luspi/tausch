@@ -1545,8 +1545,8 @@ public:
      *
      * Internally the CUDA buffer will be recast to unsigned char.
      */
-    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const double *buf, cudaStream_t stream = 0) {
-        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), stream);
+    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const double *buf, const bool blocking = true, cudaStream_t stream = 0) {
+        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking, stream);
     }
 
     /**
@@ -1554,8 +1554,8 @@ public:
      *
      * Internally the CUDA buffer will be recast to unsigned char.
      */
-    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const int *buf, cudaStream_t stream = 0) {
-        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), stream);
+    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const int *buf, const bool blocking = true, cudaStream_t stream = 0) {
+        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking, stream);
     }
 
     /**
@@ -1572,7 +1572,7 @@ public:
      * @param buf
      * Pointer to the CUDA buffer.
      */
-    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const unsigned char *buf, cudaStream_t stream = 0) {
+    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true, cudaStream_t stream = 0) {
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1651,6 +1651,15 @@ public:
 
         }
 
+        if(blocking) {
+
+            cudaEvent_t ev;
+            cudaEventCreate(&ev);
+            cudaEventRecord(ev, stream);
+            cudaEventSynchronize(ev);
+
+        }
+
     }
 
     /***********************************************************************/
@@ -1662,8 +1671,8 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, double *buf, cudaStream_t stream = 0) {
-        unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), stream);
+    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, double *buf, const bool blocking = true, cudaStream_t stream = 0) {
+        unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking, stream);
     }
 
     /**
@@ -1671,8 +1680,8 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, int *buf, cudaStream_t stream = 0) {
-        unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), stream);
+    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, int *buf, const bool blocking = true, cudaStream_t stream = 0) {
+        unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking, stream);
     }
 
     /**
@@ -1689,7 +1698,7 @@ public:
      * @param buf
      * Pointer to the CUDA buffer.
      */
-    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, unsigned char *buf, cudaStream_t stream = 0) {
+    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true, cudaStream_t stream = 0) {
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1764,6 +1773,15 @@ public:
                 mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
 
             }
+
+        }
+
+        if(blocking) {
+
+            cudaEvent_t ev;
+            cudaEventCreate(&ev);
+            cudaEventRecord(ev, stream);
+            cudaEventSynchronize(ev);
 
         }
 
