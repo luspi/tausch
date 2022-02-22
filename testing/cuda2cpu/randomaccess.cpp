@@ -60,8 +60,8 @@ TEST_CASE("1 buffer, random indices, with pack/unpack, same MPI rank") {
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBufferCUDA(0, 0, cuda_in);
-            tausch->send(0, 0, nullptr, mpiRank);
-            tausch->recv(0, 0, nullptr, mpiRank);
+            tausch->send(0, 0, mpiRank);
+            tausch->recv(0, 0, mpiRank);
             tausch->unpackRecvBuffer(0, 0, out);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
@@ -155,8 +155,8 @@ TEST_CASE("1 buffer, random indices, with pack/unpack, multiple MPI ranks") {
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBufferCUDA(0, 0, cuda_in);
-            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
             tausch->unpackRecvBuffer(0, 0, out);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
