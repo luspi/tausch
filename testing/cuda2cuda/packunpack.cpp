@@ -345,8 +345,8 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
             int mpiRank;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
-            tausch->addSendHaloInfo(sendIndices, sizeof(double), 2);
-            tausch->addRecvHaloInfo(recvIndices, sizeof(double), 2);
+            tausch->addSendHaloInfos(sendIndices, sizeof(double), 2);
+            tausch->addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
             tausch->packSendBufferCUDA(0, 0, cuda_in1);
             tausch->packSendBufferCUDA(0, 1, cuda_in2);
@@ -459,8 +459,8 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank, GPUMultiCopy") {
             int mpiRank;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
-            tausch->addSendHaloInfo(sendIndices, sizeof(double), 2);
-            tausch->addRecvHaloInfo(recvIndices, sizeof(double), 2);
+            tausch->addSendHaloInfos(sendIndices, sizeof(double), 2);
+            tausch->addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
             tausch->setSendCommunicationStrategy(0, Tausch::Communication::GPUMultiCopy);
             tausch->setRecvCommunicationStrategy(0, Tausch::Communication::GPUMultiCopy);
@@ -577,8 +577,8 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
             MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-            tausch->addSendHaloInfo(sendIndices, sizeof(double), 2);
-            tausch->addRecvHaloInfo(recvIndices, sizeof(double), 2);
+            tausch->addSendHaloInfos(sendIndices, sizeof(double), 2);
+            tausch->addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
             tausch->packSendBufferCUDA(0, 0, cuda_in1);
             tausch->packSendBufferCUDA(0, 1, cuda_in2);
