@@ -1545,8 +1545,8 @@ public:
      *
      * Internally the CUDA buffer will be recast to unsigned char.
      */
-    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const double *buf) {
-        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
+    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const double *buf, cudaStream_t stream = 0) {
+        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), stream);
     }
 
     /**
@@ -1554,8 +1554,8 @@ public:
      *
      * Internally the CUDA buffer will be recast to unsigned char.
      */
-    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const int *buf) {
-        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf));
+    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const int *buf, cudaStream_t stream = 0) {
+        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), stream);
     }
 
     /**
@@ -1572,7 +1572,7 @@ public:
      * @param buf
      * Pointer to the CUDA buffer.
      */
-    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const unsigned char *buf) {
+    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const unsigned char *buf, cudaStream_t stream = 0) {
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1588,10 +1588,10 @@ public:
                 const size_t &region_howmanyrows = region[2];
                 const size_t &region_striderow = region[3];
 
-                cudaError_t err = cudaMemcpy2D(&cudaSendBuffer[haloId][bufferOffset + mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
-                                               &buf[region_start], region_striderow*sizeof(unsigned char),
-                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
-                                               cudaMemcpyDeviceToDevice);
+                cudaError_t err = cudaMemcpy2DAsync(&cudaSendBuffer[haloId][bufferOffset + mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                                    &buf[region_start], region_striderow*sizeof(unsigned char),
+                                                    region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                                    cudaMemcpyDeviceToDevice, stream);
 
                 mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
 
@@ -1610,10 +1610,10 @@ public:
                 const size_t &region_howmanyrows = region[2];
                 const size_t &region_striderow = region[3];
 
-                cudaError_t err = cudaMemcpy2D(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
-                                               &buf[region_start], region_striderow*sizeof(unsigned char),
-                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
-                                               cudaMemcpyDeviceToHost);
+                cudaError_t err = cudaMemcpy2DAsync(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                                    &buf[region_start], region_striderow*sizeof(unsigned char),
+                                                    region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                                    cudaMemcpyDeviceToHost, stream);
 
                 mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
 
@@ -1635,10 +1635,10 @@ public:
                 const size_t &region_howmanyrows = region[2];
                 const size_t &region_striderow = region[3];
 
-                cudaError_t err = cudaMemcpy2D(&tmpSendBuffer[mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
-                                               &buf[region_start], region_striderow*sizeof(unsigned char),
-                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
-                                               cudaMemcpyDeviceToDevice);
+                cudaError_t err = cudaMemcpy2DAsync(&tmpSendBuffer[mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                                    &buf[region_start], region_striderow*sizeof(unsigned char),
+                                                    region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                                    cudaMemcpyDeviceToDevice, stream);
 
                 mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
 
@@ -1647,7 +1647,7 @@ public:
 
             }
 
-            cudaMemcpy(&sendBuffer[haloId][bufferOffset], tmpSendBuffer, sendHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char), cudaMemcpyDeviceToHost);
+            cudaMemcpyAsync(&sendBuffer[haloId][bufferOffset], tmpSendBuffer, sendHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char), cudaMemcpyDeviceToHost, stream);
 
         }
 
@@ -1662,8 +1662,8 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, double *buf) {
-        unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
+    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, double *buf, cudaStream_t stream = 0) {
+        unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), stream);
     }
 
     /**
@@ -1671,8 +1671,8 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, int *buf) {
-        unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf));
+    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, int *buf, cudaStream_t stream = 0) {
+        unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), stream);
     }
 
     /**
@@ -1689,7 +1689,7 @@ public:
      * @param buf
      * Pointer to the CUDA buffer.
      */
-    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, unsigned char *buf) {
+    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, unsigned char *buf, cudaStream_t stream = 0) {
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1705,10 +1705,10 @@ public:
                 const size_t &region_howmanyrows = region[2];
                 const size_t &region_striderow = region[3];
 
-                cudaError_t err = cudaMemcpy2D(&buf[region_start], region_striderow*sizeof(unsigned char),
-                                               &cudaRecvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
-                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
-                                               cudaMemcpyDeviceToDevice);
+                cudaError_t err = cudaMemcpy2DAsync(&buf[region_start], region_striderow*sizeof(unsigned char),
+                                                    &cudaRecvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                                    region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                                    cudaMemcpyDeviceToDevice, stream);
 
                 if(err != cudaSuccess)
                     std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
@@ -1727,10 +1727,10 @@ public:
                 const size_t &region_howmanyrows = region[2];
                 const size_t &region_striderow = region[3];
 
-                cudaError_t err = cudaMemcpy2D(&buf[region_start], region_striderow*sizeof(unsigned char),
-                                               &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
-                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
-                                               cudaMemcpyHostToDevice);
+                cudaError_t err = cudaMemcpy2DAsync(&buf[region_start], region_striderow*sizeof(unsigned char),
+                                                    &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                                    region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                                    cudaMemcpyHostToDevice, stream);
 
                 if(err != cudaSuccess)
                     std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
@@ -1743,7 +1743,7 @@ public:
 
             unsigned char *tmpRecvBuffer;
             cudaMalloc(&tmpRecvBuffer, recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
-            cudaMemcpy(tmpRecvBuffer, &recvBuffer[haloId][bufferOffset], recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char), cudaMemcpyHostToDevice);
+            cudaMemcpyAsync(tmpRecvBuffer, &recvBuffer[haloId][bufferOffset], recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char), cudaMemcpyHostToDevice, stream);
 
             size_t mpiRecvBufferIndex = 0;
             for(auto const & region : recvHaloIndices[haloId][bufferId]) {
@@ -1753,10 +1753,10 @@ public:
                 const size_t &region_howmanyrows = region[2];
                 const size_t &region_striderow = region[3];
 
-                cudaError_t err = cudaMemcpy2D(&buf[region_start], region_striderow*sizeof(unsigned char),
-                                               &tmpRecvBuffer[mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
-                                               region_howmanycols*sizeof(unsigned char), region_howmanyrows,
-                                               cudaMemcpyDeviceToDevice);
+                cudaError_t err = cudaMemcpy2DAsync(&buf[region_start], region_striderow*sizeof(unsigned char),
+                                                    &tmpRecvBuffer[mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                                    region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                                    cudaMemcpyDeviceToDevice, stream);
 
                 if(err != cudaSuccess)
                     std::cout << "Tausch::unpackRecvBufferCUDA(): CUDA error detected: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
