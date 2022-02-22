@@ -49,73 +49,76 @@ enum Communication {
  * Create and return a new CTausch object.
  */
 CTausch *tausch_new(MPI_Comm comm, const bool useDuplicateOfCommunicator);
-void tausch_new_(CTausch **tc, MPI_Fint *comm, const bool *useDuplicateOfCommunicator);
+CTausch *tausch_new_f(MPI_Fint comm, const bool useDuplicateOfCommunicator);
 
 /*!
  * Delete the given CTausch object.
  */
 void tausch_delete(CTausch *tC);
-void tausch_delete_(CTausch **tC);
 
 /*!
  * Add sending halo information.
  */
 void tausch_addSendHaloInfo(CTausch *tC, int *haloIndices, const size_t numHaloIndices, const size_t typeSize, const int remoteMpiRank);
-void tausch_addsendhaloinfo_(CTausch **tC, int *haloIndices, const int *numHaloIndices, const int *typeSize, const int *remoteMpiRank);
 
 /*!
  * Add receiving halo information.
  */
 void tausch_addRecvHaloInfo(CTausch *tC, int *haloIndices, const size_t numHaloIndices, const size_t typeSize, const int remoteMpiRank);
-void tausch_addrecvhaloinfo_(CTausch **tC, int *haloIndices, const int *numHaloIndices, const int *typeSize, const int *remoteMpiRank);
 
 /*!
  * Set communication strategy for sending data.
  */
 void tausch_setSendCommunicationStrategy(CTausch *tC, const size_t haloId, int strategy);
-void tausch_setsendcommunicationstrategy_(CTausch **tC, const size_t *haloId, int *strategy);
 
 /*!
  * Set communication strategy for receiving data.
  */
 void tausch_setRecvCommunicationStrategy(CTausch *tC, const size_t haloId, int strategy);
-void tausch_setrecvcommunicationstrategy_(CTausch **tC, const size_t *haloId, int *strategy);
 
 /*!
  * Set halo buffer for sending data to be used by certain communication strategies.
  */
 void tausch_setSendHaloBuffer(CTausch *tC, const int haloId, const int bufferId, unsigned char* buf);
-void tausch_setsendhalobuffer_(CTausch **tC, const int *haloId, const int *bufferId, unsigned char* buf);
+void tausch_setSendHaloBuffer_double(CTausch *tC, const int haloId, const int bufferId, double* buf);
+void tausch_setSendHaloBuffer_float(CTausch *tC, const int haloId, const int bufferId, float* buf);
+void tausch_setSendHaloBuffer_int(CTausch *tC, const int haloId, const int bufferId, int* buf);
 
 /*!
  * Set halo buffer for receiving data to be used by certain communication strategies.
  */
 void tausch_setRecvHaloBuffer(CTausch *tC, const int haloId, const int bufferId, unsigned char* buf);
-void tausch_setrecvhalobuffer_(CTausch **tC, const int *haloId, const int *bufferId, unsigned char* buf);
+void tausch_setRecvHaloBuffer_double(CTausch *tC, const int haloId, const int bufferId, double* buf);
+void tausch_setRecvHaloBuffer_float(CTausch *tC, const int haloId, const int bufferId, float* buf);
+void tausch_setRecvHaloBuffer_int(CTausch *tC, const int haloId, const int bufferId, int* buf);
 
 /*!
  * Pack the halo data from the provided buffer.
  */
 void tausch_packSendBuffer(CTausch *tC, const size_t haloId, const size_t bufferId, const unsigned char *buf);
-void tausch_packsendbuffer_(CTausch **tC, const int *haloId, const int *bufferId, const unsigned char *buf);
+void tausch_packSendBuffer_double(CTausch *tC, const size_t haloId, const size_t bufferId, const double *buf);
+void tausch_packSendBuffer_float(CTausch *tC, const size_t haloId, const size_t bufferId, const float *buf);
+void tausch_packSendBuffer_int(CTausch *tC, const size_t haloId, const size_t bufferId, const int *buf);
 
 /*!
  * Send off the data.
  */
 MPI_Request tausch_send(CTausch *tC, const size_t haloId, const int msgtag, const int remoteMpiRank, const int bufferId, const bool blocking, MPI_Comm communicator);
-MPI_Request tausch_send_(CTausch **tC, const int *haloId, const int *msgtag, const int *remoteMpiRank, const int *bufferId, const bool *blocking, MPI_Fint *communicator);
+MPI_Request tausch_send_f(CTausch *tC, const size_t haloId, const int msgtag, const int remoteMpiRank, const int bufferId, const bool blocking, MPI_Fint communicator);
 
 /*!
  * Receive data.
  */
 MPI_Request tausch_recv(CTausch *tC, size_t haloId, const int msgtag, const int remoteMpiRank, const int bufferId, const bool blocking, MPI_Comm communicator);
-MPI_Request tausch_recv_(CTausch **tC, int *haloId, const int *msgtag, const int *remoteMpiRank, const int *bufferId, const bool *blocking, MPI_Fint *communicator);
+MPI_Request tausch_recv_f(CTausch *tC, size_t haloId, const int msgtag, const int remoteMpiRank, const int bufferId, const bool blocking, MPI_Fint communicator);
 
 /*!
  * Unpack the halo data into the provided buffer.
  */
 void tausch_unpackRecvBuffer(CTausch *tC, const size_t haloId, const size_t bufferId, unsigned char *buf);
-void tausch_unpackrecvbuffer_(CTausch **tC, const int *haloId, const int *bufferId, unsigned char *buf);
+void tausch_unpackRecvBuffer_double(CTausch *tC, const size_t haloId, const size_t bufferId, double *buf);
+void tausch_unpackRecvBuffer_float(CTausch *tC, const size_t haloId, const size_t bufferId, float *buf);
+void tausch_unpackRecvBuffer_int(CTausch *tC, const size_t haloId, const size_t bufferId, int *buf);
 
 
 #ifdef TAUSCH_OPENCL
@@ -124,43 +127,36 @@ void tausch_unpackrecvbuffer_(CTausch **tC, const int *haloId, const int *buffer
  * Set OpenCL environment.
  */
 void tausch_setOpenCL(CTausch *tC, cl_device_id device, cl_context context, cl_command_queue queue);
-void tausch_setopencl_(CTausch **tC, cl_device_id *device, cl_context *context, cl_command_queue *queue);
 
 /*!
  * Enable OpenCL environment (Tausch will set it up).
  */
 void tausch_enableOpenCL(CTausch *tC, size_t deviceNumber);
-void tausch_enableopencl_(CTausch **tC, size_t *deviceNumber);
 
 /*!
  * Get handle to OpenCL device.
  */
 cl_device_id tausch_getOclDevice(CTausch *tC);
-cl_device_id tausch_getocldevice_(CTausch **tC);
 
 /*!
  * Get handle to OpenCL context.
  */
 cl_context tausch_getOclContext(CTausch *tC);
-cl_context tausch_getoclcontext_(CTausch **tC);
 
 /*!
  * Get handle to OpenCL command queue.
  */
 cl_command_queue tausch_getOclQueue(CTausch *tC);
-cl_command_queue tausch_getoclqueue_(CTausch **tC);
 
 /*!
  * Pack an OpenCL buffer.
  */
 void tausch_packSendBufferOCL(CTausch *tC, const size_t haloId, const size_t bufferId, cl_mem buf);
-void tausch_packsendbufferocl_(CTausch **tC, const int *haloId, const int *bufferId, cl_mem *buf);
 
 /*!
  * Unpack an OpenCL buffer.
  */
 void tausch_unpackRecvBufferOCL(CTausch *tC, const size_t haloId, const size_t bufferId, cl_mem buf);
-void tausch_unpackrecvbufferocl_(CTausch **tC, const int *haloId, const int *bufferId, cl_mem *buf);
 
 #endif
 
