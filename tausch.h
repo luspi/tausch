@@ -794,7 +794,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline std::future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const double *buf, bool blocking = true) {
+    inline std::future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const double *buf, const bool blocking = true) {
         return packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking);
     }
 
@@ -803,7 +803,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline std::future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const int *buf, bool blocking = true) {
+    inline std::future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const int *buf, const bool blocking = true) {
         return packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking);
     }
 
@@ -821,7 +821,7 @@ public:
      * @param buf
      * Pointer to the data buffer.
      */
-    inline std::future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf, bool blocking = true) {
+    inline std::future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true) {
 
         if(blocking) {
 
@@ -1123,7 +1123,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline std::future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, double *buf, bool blocking = true) {
+    inline std::future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, double *buf, const bool blocking = true) {
         return unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking);
     }
 
@@ -1132,7 +1132,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline std::future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, int *buf, bool blocking = true) {
+    inline std::future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, int *buf, const bool blocking = true) {
         return unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking);
     }
 
@@ -1150,7 +1150,7 @@ public:
      * @param buf
      * Pointer to the data buffer.
      */
-    inline std::future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf, bool blocking = true) {
+    inline std::future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true) {
 
         if(blocking) {
 
