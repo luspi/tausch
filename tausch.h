@@ -110,7 +110,7 @@ public:
 
     /**
      * @brief
-     * This enum can be used for setting the handling of out of sync situations.
+     * This enum can be used to tell Tausch to warn of/prevent race conditions.
      */
     enum OutOfSync {
         DontCheck = 1,
@@ -131,6 +131,10 @@ public:
      * @param useDuplicateOfCommunicator
      * By default Tausch will duplicate the communicator. This isolates Tausch from
      * the rest of the (MPI) world and avoids any potential interference.
+     * @param handling
+     * All the operations in Tausch can be called in a non-blocking way. Tausch can try to prevent
+     * race conditions from occuring when a send is called while a pack is still going on, or when an
+     * unpack is started when the data has not been fully received. Possible values are WarnMe, DontCheck, Wait.
      */
     Tausch(const MPI_Comm comm = MPI_COMM_WORLD, const bool useDuplicateOfCommunicator = true, OutOfSync handling = OutOfSync::WarnMe) {
 
@@ -715,8 +719,56 @@ public:
 
     }
 
+
+    /***********************************************************************/
+    /*                     HANDLING OF RACE CONDITIONS                     */
+    /***********************************************************************/
+
+    /**
+     * @brief
+     * Tells Tausch if/how to handle potential race conditions.
+     *
+     * Tells Tausch if/how to handle potential race conditions. The handling can be any one of the OutOfSync enum.
+     *
+     * @param handling
+     * Value from OutOfSync enum, whether to warn, wait or do nothing.
+     */
     void setOutOfSyncHandling(OutOfSync handling) {
         handleOutOfSync = handling;
+    }
+
+    /**
+     * @brief
+     * Return shared future for packing of halo with given haloId.
+     *
+     * Return shared future for packing of halo with given haloId. This can be called at any time as long as the haloId is valid.
+     *
+     * @param haloId
+     * The halo id returned by the addSendHaloInfo() member function.
+     *
+     * @return
+     * The shared future associated with the packing of the given haloId.
+     *
+     */
+    std::shared_future<void> getPackFuture(int haloId) {
+        return packFutures[haloId];
+    }
+
+    /**
+     * @brief
+     * Return shared future for unpacking of halo with given haloId.
+     *
+     * Return shared future for unpacking of halo with given haloId. This can be called at any time as long as the haloId is valid.
+     *
+     * @param haloId
+     * The halo id returned by the addRecvHaloInfo() member function.
+     *
+     * @return
+     * The shared future associated with the unpacking of the given haloId.
+     *
+     */
+    std::shared_future<void> getUnpackFuture(int haloId) {
+        return unpackFutures[haloId];
     }
 
 
@@ -830,7 +882,7 @@ public:
      * @brief
      * Packs a data buffer for the given halo and buffer id.
      *
-     * Packs a data buffer for the given halo and buffer id. Once this function has been called the
+     * Packs a data buffer for the given halo and buffer id. Once the packing has completed the
      * data buffer is free to be used and changed as desired.
      *
      * @param haloId
@@ -839,6 +891,12 @@ public:
      * The id of the current buffer (numbered starting at 0).
      * @param buf
      * Pointer to the data buffer.
+     * @param blocking
+     * Whether to do the packing in a separate thread or not.
+     *
+     * @return
+     * If the packing was done blocking an invalid future will be returned. If the packing was initiated
+     * non-blocking, the associated future is returned.
      */
     inline std::shared_future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true) {
 
@@ -1184,6 +1242,12 @@ public:
      * The id of the current buffer (numbered starting at 0).
      * @param buf
      * Pointer to the data buffer.
+     * @param blocking
+     * Whether to do the unpacking in a separate thread or not.
+     *
+     * @return
+     * If the unpacking was done blocking an invalid future will be returned. If the unpacking was initiated
+     * non-blocking, the associated future is returned.
      */
     inline std::shared_future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true) {
 
@@ -1272,14 +1336,6 @@ public:
 
         }
 
-    }
-
-    std::shared_future<void> getPackFuture(int haloId) {
-        return packFutures[haloId];
-    }
-
-    std::shared_future<void> getUnpackFuture(int haloId) {
-        return unpackFutures[haloId];
     }
 
     /***********************************************************************/
@@ -1409,6 +1465,11 @@ public:
      * The id of the current buffer (numbered starting at 0).
      * @param buf
      * Handler of the OpenCL buffer.
+     * @param blocking
+     * Whether to pack the data blocking or not.
+     *
+     * @return
+     * The user event associated with the memory copies, useful for synchronization of non-blocking operations.
      */
 
     inline cl::UserEvent packSendBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf, const bool blocking = true) {
@@ -1516,6 +1577,11 @@ public:
      * The id of the current buffer (numbered starting at 0).
      * @param buf
      * Handler of the OpenCL buffer.
+     * @param blocking
+     * Whether to unpack the data blocking or not.
+     *
+     * @return
+     * The user event associated with the memory copies, useful for synchronization of non-blocking operations.
      */
     inline cl::UserEvent unpackRecvBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf, const bool blocking = true) {
 
@@ -1656,6 +1722,10 @@ public:
      * The id of the current buffer (numbered starting at 0).
      * @param buf
      * Pointer to the CUDA buffer.
+     * @param blocking
+     * Whether to wait for the completion of the memory copies before returning.
+     * @param stream
+     * The cudaStream to be used for queueing up the memory copies.
      */
     inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true, cudaStream_t stream = 0) {
 
@@ -1782,6 +1852,10 @@ public:
      * The id of the current buffer (numbered starting at 0).
      * @param buf
      * Pointer to the CUDA buffer.
+     * @param blocking
+     * Whether to wait for the completion of the memory copies before returning.
+     * @param stream
+     * The cudaStream to be used for queueing up the memory copies.
      */
     inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true, cudaStream_t stream = 0) {
 
@@ -2017,14 +2091,14 @@ private:
     std::vector<int> recvBufferHaloIdDeleted;
     std::vector<int> sendBufferHaloIdDeleted;
 
+    OutOfSync handleOutOfSync;
+    std::vector<std::shared_future<void>> packFutures;
+    std::vector<std::shared_future<void>> unpackFutures;
+
 #ifdef TAUSCH_CUDA
     std::vector<unsigned char*> cudaSendBuffer;
     std::vector<unsigned char*> cudaRecvBuffer;
 #endif
-
-    OutOfSync handleOutOfSync;
-    std::vector<std::shared_future<void>> packFutures;
-    std::vector<std::shared_future<void>> unpackFutures;
 
 #ifdef TAUSCH_OPENCL
 
