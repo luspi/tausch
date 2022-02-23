@@ -97,6 +97,29 @@ public:
 
     /**
      * @brief
+     * This enum can be used when enabling/disabling certain optimization strategies.
+     */
+    enum Communication {
+        Default = 1,
+        TryDirectCopy = 2,
+        DerivedMpiDatatype = 4,
+        CUDAAwareMPI = 8,
+        MPIPersistent = 16,
+        GPUMultiCopy = 32
+    };
+
+    /**
+     * @brief
+     * This enum can be used for setting the handling of out of sync situations.
+     */
+    enum OutOfSync {
+        DontCheck = 1,
+        WarnMe = 2,
+        Wait = 4
+    };
+
+    /**
+     * @brief
      * Constructor of a new Tausch object.
      *
      * This constructs a new Tausch object. The same object can be used for any trivial type.
@@ -109,12 +132,14 @@ public:
      * By default Tausch will duplicate the communicator. This isolates Tausch from
      * the rest of the (MPI) world and avoids any potential interference.
      */
-    Tausch(const MPI_Comm comm = MPI_COMM_WORLD, const bool useDuplicateOfCommunicator = true) {
+    Tausch(const MPI_Comm comm = MPI_COMM_WORLD, const bool useDuplicateOfCommunicator = true, OutOfSync handling = OutOfSync::WarnMe) {
 
         if(useDuplicateOfCommunicator)
             MPI_Comm_dup(comm, &TAUSCH_COMM);
         else
             TAUSCH_COMM = comm;
+
+        handleOutOfSync = handling;
 
     }
 
@@ -152,19 +177,6 @@ public:
 #endif
 
     }
-
-    /**
-     * @brief
-     * This enum can be used when enabling/disabling certain optimization strategies.
-     */
-    enum Communication {
-        Default = 1,
-        TryDirectCopy = 2,
-        DerivedMpiDatatype = 4,
-        CUDAAwareMPI = 8,
-        MPIPersistent = 16,
-        GPUMultiCopy = 32
-    };
 
     /***********************************************************************/
     /*                           ADD LOCAL HALO                            */
@@ -336,6 +348,8 @@ public:
         sendHaloNumBuffers.push_back(indices.size());
         sendHaloCommunicationStrategy.push_back(Communication::Default);
         sendHaloRemoteRank.push_back(remoteMpiRank);
+
+        packFutures.push_back(std::shared_future<void>());
 
         sendBuffer.push_back(new unsigned char[totalHaloSize]{});
 
@@ -543,6 +557,8 @@ public:
 
         recvBuffer.push_back(new unsigned char[totalHaloSize]{});
 
+        unpackFutures.push_back(std::shared_future<void>());
+
 #ifdef TAUSCH_CUDA
         cudaRecvBuffer.push_back(nullptr);
 #endif
@@ -699,6 +715,9 @@ public:
 
     }
 
+    void setOutOfSyncHandling(OutOfSync handling) {
+        handleOutOfSync = handling;
+    }
 
 
     /***********************************************************************/
@@ -794,7 +813,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline std::future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const double *buf, const bool blocking = true) {
+    inline std::shared_future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const double *buf, const bool blocking = true) {
         return packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking);
     }
 
@@ -803,7 +822,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline std::future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const int *buf, const bool blocking = true) {
+    inline std::shared_future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const int *buf, const bool blocking = true) {
         return packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking);
     }
 
@@ -821,7 +840,7 @@ public:
      * @param buf
      * Pointer to the data buffer.
      */
-    inline std::future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true) {
+    inline std::shared_future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true) {
 
         if(blocking) {
 
@@ -846,11 +865,11 @@ public:
 
             }
 
-            return std::future<void>();
+            return std::shared_future<void>();
 
         } else {
 
-            return (std::async(std::launch::async, [=]() {
+            packFutures[haloId] = std::shared_future<void>(std::async(std::launch::async, [=]() {
 
                 size_t bufferOffset = 0;
                 for(size_t i = 0; i < bufferId; ++i)
@@ -873,6 +892,8 @@ public:
 
                 }
             }));
+
+            return packFutures[haloId];
 
         }
 
@@ -911,6 +932,20 @@ public:
 
         if(sendHaloIndicesSizeTotal[haloId] == 0)
             return MPI_REQUEST_NULL;
+
+        if((handleOutOfSync&OutOfSync::DontCheck) != OutOfSync::DontCheck) {
+
+            if((handleOutOfSync&OutOfSync::WarnMe) == OutOfSync::WarnMe) {
+                if(packFutures[haloId].valid() && packFutures[haloId].wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+                    std::cout << "Warning: Halo " << haloId << " has not finished packing..." << std::endl;
+            }
+
+            if((handleOutOfSync&OutOfSync::Wait) == OutOfSync::Wait) {
+                if(packFutures[haloId].valid())
+                    packFutures[haloId].wait();
+            }
+
+        }
 
         if(communicator == MPI_COMM_NULL)
             communicator = TAUSCH_COMM;
@@ -1123,7 +1158,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline std::future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, double *buf, const bool blocking = true) {
+    inline std::shared_future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, double *buf, const bool blocking = true) {
         return unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking);
     }
 
@@ -1132,7 +1167,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline std::future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, int *buf, const bool blocking = true) {
+    inline std::shared_future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, int *buf, const bool blocking = true) {
         return unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking);
     }
 
@@ -1150,7 +1185,34 @@ public:
      * @param buf
      * Pointer to the data buffer.
      */
-    inline std::future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true) {
+    inline std::shared_future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true) {
+
+        if((handleOutOfSync&OutOfSync::DontCheck) != OutOfSync::DontCheck && recvHaloMpiRequests[haloId][0] != MPI_REQUEST_NULL) {
+
+            if((handleOutOfSync&OutOfSync::WarnMe) == OutOfSync::WarnMe) {
+
+                int useBufferId = 0;
+                if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
+                    useBufferId = bufferId;
+
+                int flag;
+                MPI_Test(&recvHaloMpiRequests[haloId][useBufferId], &flag, MPI_STATUS_IGNORE);
+                if(!flag)
+                    std::cout << "Warning: Halo " << haloId << " has not finished receiving..." << std::endl;
+
+            }
+
+            if((handleOutOfSync&OutOfSync::Wait) == OutOfSync::Wait) {
+
+                int useBufferId = 0;
+                if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
+                    useBufferId = bufferId;
+
+                MPI_Wait(&recvHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
+
+            }
+
+        }
 
         if(blocking) {
 
@@ -1176,11 +1238,11 @@ public:
 
             }
 
-            return std::future<void>();
+            return std::shared_future<void>();
 
         } else {
 
-            return (std::async(std::launch::async, [=]() {
+            unpackFutures[haloId] = std::shared_future<void>(std::async(std::launch::async, [=]() {
 
                 size_t bufferOffset = 0;
                 for(size_t i = 0; i < bufferId; ++i)
@@ -1206,8 +1268,18 @@ public:
 
             }));
 
+            return unpackFutures[haloId];
+
         }
 
+    }
+
+    std::shared_future<void> getPackFuture(int haloId) {
+        return packFutures[haloId];
+    }
+
+    std::shared_future<void> getUnpackFuture(int haloId) {
+        return unpackFutures[haloId];
     }
 
     /***********************************************************************/
@@ -1918,6 +1990,10 @@ private:
     std::vector<unsigned char*> cudaSendBuffer;
     std::vector<unsigned char*> cudaRecvBuffer;
 #endif
+
+    OutOfSync handleOutOfSync;
+    std::vector<std::shared_future<void>> packFutures;
+    std::vector<std::shared_future<void>> unpackFutures;
 
 #ifdef TAUSCH_OPENCL
 
