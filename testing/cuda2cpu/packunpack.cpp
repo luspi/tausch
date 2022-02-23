@@ -59,8 +59,8 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBufferCUDA(0, 0, cuda_in);
-            tausch->send(0, 0, nullptr, mpiRank);
-            tausch->recv(0, 0, nullptr, mpiRank);
+            tausch->send(0, 0, mpiRank);
+            tausch->recv(0, 0, mpiRank);
             tausch->unpackRecvBuffer(0, 0, out);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
@@ -148,8 +148,8 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBufferCUDA(0, 0, cuda_in);
-            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
             tausch->unpackRecvBuffer(0, 0, out);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
@@ -238,14 +238,14 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
             int mpiRank;
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
 
-            tausch->addSendHaloInfo(sendIndices, sizeof(double), 2);
-            tausch->addRecvHaloInfo(recvIndices, sizeof(double), 2);
+            tausch->addSendHaloInfos(sendIndices, sizeof(double), 2);
+            tausch->addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
             tausch->packSendBufferCUDA(0, 0, cuda_in1);
             tausch->packSendBufferCUDA(0, 1, cuda_in2);
 
-            tausch->send(0, 0, nullptr, mpiRank, false);
-            tausch->recv(0, 0, nullptr, mpiRank, true);
+            tausch->send(0, 0, mpiRank, false);
+            tausch->recv(0, 0, mpiRank, true);
 
             tausch->unpackRecvBuffer(0, 0, out2);
             tausch->unpackRecvBuffer(0, 1, out1);
@@ -346,14 +346,14 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
             MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
             MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
-            tausch->addSendHaloInfo(sendIndices, sizeof(double), 2);
-            tausch->addRecvHaloInfo(recvIndices, sizeof(double), 2);
+            tausch->addSendHaloInfos(sendIndices, sizeof(double), 2);
+            tausch->addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
             tausch->packSendBufferCUDA(0, 0, cuda_in1);
             tausch->packSendBufferCUDA(0, 1, cuda_in2);
 
-            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
 
             tausch->unpackRecvBuffer(0, 0, out2);
             tausch->unpackRecvBuffer(0, 1, out1);
