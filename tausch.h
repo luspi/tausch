@@ -1411,10 +1411,12 @@ public:
      * Handler of the OpenCL buffer.
      */
 
-    inline void packSendBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
+    inline cl::UserEvent packSendBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf, const bool blocking = true) {
+
+        cl::UserEvent ev(ocl_context);
 
         if(sendHaloIndicesSizePerBuffer[haloId][bufferId] == 0)
-            return;
+            return ev;
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1443,12 +1445,13 @@ public:
                 reg[1] = region_howmanyrows; // how many rows
                 reg[2] = 1; // leave at 1
 
-                ocl_queue.enqueueReadBufferRect(buf, true, buffer_offset, host_offset, reg,
-                                                 region_striderow, // dest stride
-                                                 0,
-                                                 region_howmanycols,  // host stride
-                                                 0,
-                                                 sendBuffer[haloId]);
+                ocl_queue.enqueueReadBufferRect(buf, blocking, buffer_offset, host_offset, reg,
+                                                region_striderow, // dest stride
+                                                0,
+                                                region_howmanycols,  // host stride
+                                                0,
+                                                sendBuffer[haloId],
+                                                NULL, &ev);
 
 
                 mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
@@ -1490,9 +1493,13 @@ public:
 
             }
 
-            cl::copy(ocl_queue, tmpSendBuffer, &sendBuffer[haloId][bufferOffset], &sendBuffer[haloId][bufferOffset + sendHaloIndicesSizePerBuffer[haloId][bufferId]]);
-
+            ocl_queue.enqueueReadBuffer(tmpSendBuffer, blocking,
+                                        0, sendHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char),
+                                        &sendBuffer[haloId][bufferOffset],
+                                        NULL, &ev);
         }
+
+        return ev;
 
     }
 
@@ -1510,10 +1517,12 @@ public:
      * @param buf
      * Handler of the OpenCL buffer.
      */
-    inline void unpackRecvBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf) {
+    inline cl::UserEvent unpackRecvBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf, const bool blocking = true) {
+
+        cl::UserEvent ev(ocl_context);
 
         if(recvHaloIndicesSizePerBuffer[haloId][bufferId] == 0)
-            return;
+            return ev;
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1542,12 +1551,13 @@ public:
                 reg[1] = region_howmanyrows; // how many rows
                 reg[2] = 1; // leave at 1
 
-                ocl_queue.enqueueWriteBufferRect(buf, true, buffer_offset, host_offset, reg,
+                ocl_queue.enqueueWriteBufferRect(buf, blocking, buffer_offset, host_offset, reg,
                                                  region_striderow, // dest stride
                                                  0,
                                                  region_howmanycols,  // host stride
                                                  0,
-                                                 recvBuffer[haloId]);
+                                                 recvBuffer[haloId],
+                                                 NULL, &ev);
 
 
                 mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
@@ -1557,6 +1567,7 @@ public:
         } else {
 
             cl::Buffer tmpRecvBuffer(ocl_context, CL_MEM_READ_WRITE, recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
+            // this has to stay blocking in order to be able to distribute it below
             cl::copy(ocl_queue, &recvBuffer[haloId][bufferOffset], &recvBuffer[haloId][bufferOffset + recvHaloIndicesSizePerBuffer[haloId][bufferId]], tmpRecvBuffer);
 
             for(auto const & region : recvHaloIndices[haloId][bufferId]) {
@@ -1591,6 +1602,8 @@ public:
             }
 
         }
+
+        return ev;
 
     }
 
