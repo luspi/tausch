@@ -1,4 +1,4 @@
-/*!
+/**
  * \file
  * \author  Lukas Spies <LSpies@illinois.edu>
  * \version 1.0
@@ -26,14 +26,14 @@ extern "C" {
 #   endif
 #endif
 
-/*!
+/**
  *
  * The object that is created by the C API is called CTausch. After its creation it needs to be passed as parameter to any call to the API.
  *
  */
 typedef void* CTausch;
 
-/*!
+/**
  * The available communication strategies.
  */
 enum Communication {
@@ -45,115 +45,112 @@ enum Communication {
     TauschCommunicationGPUMultiCopy = 32
 };
 
-/*!
+/**
  * Create and return a new CTausch object.
  */
 CTausch *tausch_new(MPI_Comm comm, const bool useDuplicateOfCommunicator);
+/**
+ * Create and return a new CTausch object (Fortran communicator).
+ */
 CTausch *tausch_new_f(MPI_Fint comm, const bool useDuplicateOfCommunicator);
 
-/*!
+/**
  * Delete the given CTausch object.
  */
 void tausch_delete(CTausch *tC);
 
-/*!
+/**
  * Add sending halo information.
  */
 void tausch_addSendHaloInfo(CTausch *tC, int *haloIndices, const size_t numHaloIndices, const size_t typeSize, const int remoteMpiRank);
 
-/*!
+/**
  * Add receiving halo information.
  */
 void tausch_addRecvHaloInfo(CTausch *tC, int *haloIndices, const size_t numHaloIndices, const size_t typeSize, const int remoteMpiRank);
 
-/*!
+/**
  * Set communication strategy for sending data.
  */
 void tausch_setSendCommunicationStrategy(CTausch *tC, const size_t haloId, int strategy);
 
-/*!
+/**
  * Set communication strategy for receiving data.
  */
 void tausch_setRecvCommunicationStrategy(CTausch *tC, const size_t haloId, int strategy);
 
-/*!
+/**
  * Set halo buffer for sending data to be used by certain communication strategies.
  */
 void tausch_setSendHaloBuffer(CTausch *tC, const int haloId, const int bufferId, unsigned char* buf);
-void tausch_setSendHaloBuffer_double(CTausch *tC, const int haloId, const int bufferId, double* buf);
-void tausch_setSendHaloBuffer_float(CTausch *tC, const int haloId, const int bufferId, float* buf);
-void tausch_setSendHaloBuffer_int(CTausch *tC, const int haloId, const int bufferId, int* buf);
 
-/*!
+/**
  * Set halo buffer for receiving data to be used by certain communication strategies.
  */
 void tausch_setRecvHaloBuffer(CTausch *tC, const int haloId, const int bufferId, unsigned char* buf);
-void tausch_setRecvHaloBuffer_double(CTausch *tC, const int haloId, const int bufferId, double* buf);
-void tausch_setRecvHaloBuffer_float(CTausch *tC, const int haloId, const int bufferId, float* buf);
-void tausch_setRecvHaloBuffer_int(CTausch *tC, const int haloId, const int bufferId, int* buf);
 
-/*!
+/**
  * Pack the halo data from the provided buffer.
  */
 void tausch_packSendBuffer(CTausch *tC, const size_t haloId, const size_t bufferId, const unsigned char *buf);
-void tausch_packSendBuffer_double(CTausch *tC, const size_t haloId, const size_t bufferId, const double *buf);
-void tausch_packSendBuffer_float(CTausch *tC, const size_t haloId, const size_t bufferId, const float *buf);
-void tausch_packSendBuffer_int(CTausch *tC, const size_t haloId, const size_t bufferId, const int *buf);
 
-/*!
+/**
  * Send off the data.
  */
 MPI_Request tausch_send(CTausch *tC, const size_t haloId, const int msgtag, const int remoteMpiRank, const int bufferId, const bool blocking, MPI_Comm communicator);
+/**
+ * Send off the data (Fortran communicator).
+ */
 MPI_Request tausch_send_f(CTausch *tC, const size_t haloId, const int msgtag, const int remoteMpiRank, const int bufferId, const bool blocking, MPI_Fint communicator);
 
-/*!
+/**
  * Receive data.
  */
 MPI_Request tausch_recv(CTausch *tC, size_t haloId, const int msgtag, const int remoteMpiRank, const int bufferId, const bool blocking, MPI_Comm communicator);
+/**
+ * Receive data (Fortran communicator).
+ */
 MPI_Request tausch_recv_f(CTausch *tC, size_t haloId, const int msgtag, const int remoteMpiRank, const int bufferId, const bool blocking, MPI_Fint communicator);
 
-/*!
+/**
  * Unpack the halo data into the provided buffer.
  */
 void tausch_unpackRecvBuffer(CTausch *tC, const size_t haloId, const size_t bufferId, unsigned char *buf);
-void tausch_unpackRecvBuffer_double(CTausch *tC, const size_t haloId, const size_t bufferId, double *buf);
-void tausch_unpackRecvBuffer_float(CTausch *tC, const size_t haloId, const size_t bufferId, float *buf);
-void tausch_unpackRecvBuffer_int(CTausch *tC, const size_t haloId, const size_t bufferId, int *buf);
 
 
 #ifdef TAUSCH_OPENCL
 
-/*!
+/**
  * Set OpenCL environment.
  */
 void tausch_setOpenCL(CTausch *tC, cl_device_id device, cl_context context, cl_command_queue queue);
 
-/*!
+/**
  * Enable OpenCL environment (Tausch will set it up).
  */
 void tausch_enableOpenCL(CTausch *tC, size_t deviceNumber);
 
-/*!
+/**
  * Get handle to OpenCL device.
  */
 cl_device_id tausch_getOclDevice(CTausch *tC);
 
-/*!
+/**
  * Get handle to OpenCL context.
  */
 cl_context tausch_getOclContext(CTausch *tC);
 
-/*!
+/**
  * Get handle to OpenCL command queue.
  */
 cl_command_queue tausch_getOclQueue(CTausch *tC);
 
-/*!
+/**
  * Pack an OpenCL buffer.
  */
 void tausch_packSendBufferOCL(CTausch *tC, const size_t haloId, const size_t bufferId, cl_mem buf);
 
-/*!
+/**
  * Unpack an OpenCL buffer.
  */
 void tausch_unpackRecvBufferOCL(CTausch *tC, const size_t haloId, const size_t bufferId, cl_mem buf);

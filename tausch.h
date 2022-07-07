@@ -87,6 +87,332 @@
 
 /**
  * @brief
+ * The Status class object.
+ *
+ * This class provides a unified handle to manage asynchronous operations. It stores a reference to an STL future, MPI_Request,
+ * OpenCL event (if enabled), and a CUDA stream (if enabled) and provides a way to check whether an operation is completed. It
+ * also allows the user to access to the underlying object.
+ *
+ * Note: Only one operation can be connected to one Status instance.
+ */
+class Status {
+public:
+#ifdef TAUSCH_CUDA
+    /**
+     * @brief
+     * Constructor of a new Status object for CUDA streams.
+     *
+     * This constructs a new Status object for CUDA streams.
+     *
+     * @param cudastream
+     * The CUDA stream connected to the underlying operation.
+     */
+    Status(cudaStream_t cudastream) {
+        running = false;
+        finished = false;
+        isCPU = false;
+        isMPI = false;
+        isCUDA = true;
+        isOCL = false;
+        cudaop = cudastream;
+    }
+#endif
+#ifdef TAUSCH_OPENCL
+    /**
+     * @brief
+     * Constructor of a new Status object for OpenCL events
+     *
+     * This constructs a new Status object for OpenCL events.
+     *
+     * @param event
+     * The OpenCL event connected to the underlying operation.
+     */
+    Status(cl::UserEvent event) {
+        running = false;
+        finished = false;
+        isCPU = false;
+        isMPI = false;
+        isCUDA = false;
+        isOCL = true;
+        oclop = event;
+    }
+#endif
+    /**
+     * @brief
+     * Constructor of a new Status object for STL futures.
+     *
+     * This constructs a new Status object for STL futures.
+     *
+     * @param future
+     * The STL future connected to the underlying operation.
+     */
+    Status(std::shared_future<void> future) {
+        running = false;
+        finished = false;
+        isCPU = true;
+        isMPI = false;
+        isCUDA = false;
+        isOCL = false;
+        cpuop = future;
+    }
+    /**
+     * @brief
+     * Constructor of a new Status object for MPI requests.
+     *
+     * This constructs a new Status object for MPI requests.
+     *
+     * @param req
+     * The MPI request connected to the underlying operation.
+     */
+    Status(MPI_Request req) {
+        running = false;
+        finished = false;
+        isCPU = false;
+        isCUDA = false;
+        isOCL = false;
+        isMPI = true;
+        mpiop = req;
+    }
+
+    /**
+     * @brief
+     * Check for running operation.
+     *
+     * This method checks whether an operation is currently running.
+     *
+     * @return
+     * A boolean expressing whether the operaton is currently running.
+     **/
+    bool isRunning() { check(); return running; }
+    /**
+     * @brief
+     * Check for completed operation.
+     *
+     * This method checks whether an operation has finished running.
+     *
+     * @return
+     * A boolean expressing whether the operaton is completed.
+     **/
+    bool isCompleted() { check(); return finished; }
+
+    /**
+     * @brief
+     * Conversion operator exposing STL future.
+     *
+     * This method allows conversion of the Status class to an STL future type.
+     * This allows the Status class to be used as if it were an STL future object.
+     *
+     * @return
+     * The STL future.
+     **/
+    operator std::shared_future<void>() {
+        if(!isCPU)
+            std::cout << "Status warning: No STL future active!" << std::endl;
+        return cpuop;
+    }
+    /**
+     * @brief
+     * Conversion operator exposing MPI request.
+     *
+     * This method allows conversion of the Status class to an MPI request type.
+     * This allows the Status class to be used as if it were an MPI_Request object.
+     *
+     * @return
+     * The MPI request.
+     **/
+    operator MPI_Request() {
+        if(!isMPI)
+            std::cout << "Status warning: No MPI_Request active!" << std::endl;
+        return mpiop;
+    }
+#ifdef TAUCH_CUDA
+    /**
+     * @brief
+     * Conversion operator exposing CUDA stream.
+     *
+     * This method allows conversion of the Status class to a CUDA stream type.
+     * This allows the Status class to be used as if it were a CUDA stream object.
+     *
+     * @return
+     * The CUDA stream.
+     **/
+    operator cudaStream_t() {
+        if(!isCUDA)
+            std::cout << "Status warning: No CUDA stream active!" << std::endl;
+        return cudaop;
+    }
+#endif
+#ifdef TAUSCH_OPENCL
+    /**
+     * @brief
+     * Conversion operator exposing OpenCL event.
+     *
+     * This method allows conversion of the Status class to an OpenCL event type.
+     * This allows the Status class to be used as if it were an OpenCL event object.
+     *
+     * @return
+     * The OpenCL event.
+     **/
+    operator cl::UserEvent() {
+        if(!isOCL)
+            std::cout << "Status warning: No OpenCL event active!" << std::endl;
+        return oclop;
+    }
+#endif
+
+    /**
+     * @brief
+     * Wait for operation to complete.
+     *
+     * This method blocks the calling thread until the connected operation has completed.
+     **/
+    void wait() {
+        if(isCPU) {
+            if(cpuop.valid())
+                cpuop.wait();
+        } else if(isMPI) {
+            MPI_Wait(&mpiop, MPI_STATUS_IGNORE);
+#ifdef TAUSCH_CUDA
+        } else if(isCUDA) {
+            cudaEvent_t ev;
+            cudaEventCreate(&ev);
+            cudaEventRecord(ev, cudaop);
+            cudaEventSynchronize(ev);
+#endif
+#ifdef TAUSCH_OPENCL
+        } else if(isOCL) {
+            oclop.wait();
+#endif
+        }
+
+    }
+
+    /**
+     * @brief
+     * Sets the STL future.
+     *
+     * This replaces the existing STL future and marks this Status as to be used for a CPU operation.
+     *
+     * @param future
+     * The STL future to be used from now on.
+     **/
+    void set(std::shared_future<void> &future) {
+        cpuop = future;
+        isCPU = true;
+        isMPI = false;
+        isOCL = false;
+        isCUDA = false;
+    }
+
+    /**
+     * @brief
+     * Sets the MPI_Request.
+     *
+     * This replaces the existing MPI_Request and marks this Status as to be used for an MPI operation.
+     *
+     * @param req
+     * The MPI_Request to be used from now on.
+     **/
+    void set(MPI_Request &req) {
+        mpiop = req;
+        isCPU = false;
+        isMPI = true;
+        isOCL = false;
+        isCUDA = false;
+    }
+
+#ifdef TAUSCH_CUDA
+    /**
+     * @brief
+     * Sets the CUDA stream.
+     *
+     * This replaces the existing CUDA stream and marks this Status as to be used for a CUDA operation.
+     *
+     * @param cudastream
+     * The CUDA stream to be used from now on.
+     **/
+    void set(cudaStream_t &cudastream) {
+        cudaop = cudastream;
+        isCPU = false;
+        isMPI = false;
+        isOCL = false;
+        isCUDA = true;
+    }
+#endif
+
+#ifdef TAUSCH_OPENCL
+    /**
+     * @brief
+     * Sets the OpenCL event.
+     *
+     * This replaces the existing OpenCL event and marks this Status as to be used for an OpenCL operation.
+     *
+     * @param event
+     * The OpenCL event to be used from now on.
+     **/
+    void set(cl::UserEvent &event) {
+        oclop = event;
+        isCPU = false;
+        isMPI = false;
+        isOCL = true;
+        isCUDA = false;
+    }
+#endif
+
+private:
+    void check() {
+        if(isCPU) {
+            if(cpuop.valid()) {
+                auto status = cpuop.wait_for(std::chrono::milliseconds(0));
+                running = (status!=std::future_status::ready);
+                finished = (status==std::future_status::ready);
+            } else {
+                running = false;
+                finished = true;
+            }
+        } else if(isMPI) {
+            if(mpiop == MPI_REQUEST_NULL) {
+                running = false;
+                finished = true;
+            } else {
+                int flag;
+                MPI_Test(&mpiop, &flag, MPI_STATUS_IGNORE);
+                running = (!flag);
+                finished = flag;
+            }
+#ifdef TAUSCH_CUDA
+        } else if(isCUDA) {
+            auto status = cudaStreamQuery(cudaop);
+            running = (status==cudaErrorNotReady);
+            finished = (status==cudaSuccess);
+#endif
+#ifdef TAUSCH_OPENCL
+        } else if(isOCL) {
+            cl_int status;
+            oclop.getInfo(CL_EVENT_COMMAND_EXECUTION_STATUS, &status);
+            running = (status==CL_QUEUED || status==CL_SUBMITTED || status==CL_RUNNING);
+            finished = (status == CL_COMPLETE);
+#endif
+        }
+    }
+    bool running;
+    bool finished;
+    std::shared_future<void> cpuop;
+    MPI_Request mpiop;
+#ifdef TAUSCH_CUDA
+    cudaStream_t cudaop;
+#endif
+#ifdef TAUSCH_OPENCL
+    cl::UserEvent oclop;
+#endif
+    bool isCPU;
+    bool isCUDA;
+    bool isOCL;
+    bool isMPI;
+};
+
+/**
+ * @brief
  * The Tausch class object.
  *
  * All features of Tausch are encapsulated in this single class object.
@@ -353,7 +679,7 @@ public:
         sendHaloCommunicationStrategy.push_back(Communication::Default);
         sendHaloRemoteRank.push_back(remoteMpiRank);
 
-        packFutures.push_back(std::shared_future<void>());
+        packFutures.push_back(Status(std::shared_future<void>()));
 
         sendBuffer.push_back(new unsigned char[totalHaloSize]{});
 
@@ -561,7 +887,7 @@ public:
 
         recvBuffer.push_back(new unsigned char[totalHaloSize]{});
 
-        unpackFutures.push_back(std::shared_future<void>());
+        unpackFutures.push_back(Status(std::shared_future<void>()));
 
 #ifdef TAUSCH_CUDA
         cudaRecvBuffer.push_back(nullptr);
@@ -739,35 +1065,35 @@ public:
 
     /**
      * @brief
-     * Return shared future for packing of halo with given haloId.
+     * Return Status object for packing of halo with given haloId.
      *
-     * Return shared future for packing of halo with given haloId. This can be called at any time as long as the haloId is valid.
+     * Return Status object for packing of halo with given haloId. This can be called at any time as long as the haloId is valid.
      *
      * @param haloId
      * The halo id returned by the addSendHaloInfo() member function.
      *
      * @return
-     * The shared future associated with the packing of the given haloId.
+     * The Status object associated with the packing of the given haloId.
      *
      */
-    std::shared_future<void> getPackFuture(int haloId) {
+    Status getPackStatus(int haloId) {
         return packFutures[haloId];
     }
 
     /**
      * @brief
-     * Return shared future for unpacking of halo with given haloId.
+     * Return Status object for unpacking of halo with given haloId.
      *
-     * Return shared future for unpacking of halo with given haloId. This can be called at any time as long as the haloId is valid.
+     * Return Status object for unpacking of halo with given haloId. This can be called at any time as long as the haloId is valid.
      *
      * @param haloId
      * The halo id returned by the addRecvHaloInfo() member function.
      *
      * @return
-     * The shared future associated with the unpacking of the given haloId.
+     * The Status object associated with the unpacking of the given haloId.
      *
      */
-    std::shared_future<void> getUnpackFuture(int haloId) {
+    Status getUnpackStatus(int haloId) {
         return unpackFutures[haloId];
     }
 
@@ -865,7 +1191,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline std::shared_future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const double *buf, const bool blocking = true) {
+    inline Status packSendBuffer(const size_t haloId, const size_t bufferId, const double *buf, const bool blocking = true) {
         return packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking);
     }
 
@@ -874,7 +1200,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline std::shared_future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const int *buf, const bool blocking = true) {
+    inline Status packSendBuffer(const size_t haloId, const size_t bufferId, const int *buf, const bool blocking = true) {
         return packSendBuffer(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking);
     }
 
@@ -895,10 +1221,9 @@ public:
      * Whether to do the packing in a separate thread or not.
      *
      * @return
-     * If the packing was done blocking an invalid future will be returned. If the packing was initiated
-     * non-blocking, the associated future is returned.
+     * A Status object containing information about the packing operation is returned.
      */
-    inline std::shared_future<void> packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true) {
+    inline Status packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true) {
 
         if(blocking) {
 
@@ -923,11 +1248,11 @@ public:
 
             }
 
-            return std::shared_future<void>();
+            return Status(std::shared_future<void>());
 
         } else {
 
-            packFutures[haloId] = std::shared_future<void>(std::async(std::launch::async, [=]() {
+            auto future = std::shared_future<void>(std::async(std::launch::async, [=]() {
 
                 size_t bufferOffset = 0;
                 for(size_t i = 0; i < bufferId; ++i)
@@ -950,6 +1275,7 @@ public:
 
                 }
             }));
+            packFutures[haloId].set(future);
 
             return packFutures[haloId];
 
@@ -984,22 +1310,24 @@ public:
      * during construction.
      *
      * @return
-     * Returns the MPI_Request used for this communication.
+     * Returns the Status object containing a handle for this operation.
      */
-    inline MPI_Request send(size_t haloId, const int msgtag, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = false, MPI_Comm communicator = MPI_COMM_NULL) {
+    inline Status send(size_t haloId, const int msgtag, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = false, MPI_Comm communicator = MPI_COMM_NULL) {
 
-        if(sendHaloIndicesSizeTotal[haloId] == 0)
-            return MPI_REQUEST_NULL;
+        if(sendHaloIndicesSizeTotal[haloId] == 0) {
+            sendHaloMpiRequests[haloId][0] = MPI_REQUEST_NULL;
+            return Status(MPI_REQUEST_NULL);
+        }
 
         if((handleOutOfSync&OutOfSync::DontCheck) != OutOfSync::DontCheck) {
 
             if((handleOutOfSync&OutOfSync::WarnMe) == OutOfSync::WarnMe) {
-                if(packFutures[haloId].valid() && packFutures[haloId].wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+                if(packFutures[haloId].isRunning())
                     std::cout << "Warning: Halo " << haloId << " has not finished packing..." << std::endl;
             }
 
             if((handleOutOfSync&OutOfSync::Wait) == OutOfSync::Wait) {
-                if(packFutures[haloId].valid())
+                if(packFutures[haloId].isRunning())
                     packFutures[haloId].wait();
             }
 
@@ -1017,7 +1345,7 @@ public:
         MPI_Comm_rank(communicator, &myRank);
         if(useRemoteMpiRank == myRank && (sendHaloCommunicationStrategy[haloId]&Communication::TryDirectCopy) == Communication::TryDirectCopy) {
             msgtagToHaloId[myRank*1000000 + msgtag] = haloId;
-            return MPI_REQUEST_NULL;
+            return Status(MPI_REQUEST_NULL);
         }
 
         int useBufferId = 0;
@@ -1085,7 +1413,7 @@ public:
         if(blocking)
             MPI_Wait(&sendHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
 
-        return sendHaloMpiRequests[haloId][0];
+        return Status(sendHaloMpiRequests[haloId][0]);
 
     }
 
@@ -1117,12 +1445,14 @@ public:
      * during construction.
      *
      * @return
-     * Returns the MPI_Request used for this communication.
+     * Returns the Status object containing a handle for this operation.
      */
-    inline MPI_Request recv(size_t haloId, const int msgtag, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = true, MPI_Comm communicator = MPI_COMM_NULL) {
+    inline Status recv(size_t haloId, const int msgtag, const int remoteMpiRank = -1, const int bufferId = -1, const bool blocking = true, MPI_Comm communicator = MPI_COMM_NULL) {
 
-        if(recvHaloIndicesSizeTotal[haloId] == 0)
-            return MPI_REQUEST_NULL;
+        if(recvHaloIndicesSizeTotal[haloId] == 0) {
+            recvHaloMpiRequests[haloId][0] = MPI_REQUEST_NULL;
+            return Status(MPI_REQUEST_NULL);
+        }
 
         if(communicator == MPI_COMM_NULL)
             communicator = TAUSCH_COMM;
@@ -1137,7 +1467,7 @@ public:
         if(useRemoteMpiRank == myRank && (recvHaloCommunicationStrategy[haloId]&Communication::TryDirectCopy) == Communication::TryDirectCopy) {
             const int remoteHaloId = msgtagToHaloId[myRank*1000000 + msgtag];
             std::memcpy(recvBuffer[haloId], sendBuffer[remoteHaloId], recvHaloIndicesSizeTotal[haloId]);
-            return MPI_REQUEST_NULL;
+            return Status(MPI_REQUEST_NULL);
         }
 
         int useBufferId = 0;
@@ -1203,7 +1533,7 @@ public:
         if(blocking)
             MPI_Wait(&recvHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
 
-        return recvHaloMpiRequests[haloId][0];
+        return Status(recvHaloMpiRequests[haloId][0]);
 
     }
 
@@ -1216,7 +1546,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline std::shared_future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, double *buf, const bool blocking = true) {
+    inline Status unpackRecvBuffer(const size_t haloId, const size_t bufferId, double *buf, const bool blocking = true) {
         return unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking);
     }
 
@@ -1225,7 +1555,7 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline std::shared_future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, int *buf, const bool blocking = true) {
+    inline Status unpackRecvBuffer(const size_t haloId, const size_t bufferId, int *buf, const bool blocking = true) {
         return unpackRecvBuffer(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking);
     }
 
@@ -1233,8 +1563,8 @@ public:
      * @brief
      * Unpacks a data buffer for the given halo and buffer id.
      *
-     * Unpacks a data buffer for the given halo and buffer id. Once this function has been called
-     * the received data can be immediately used.
+     * Unpacks a data buffer for the given halo and buffer id. If this function has been called in a blocking way, then
+     * the received data can be used immediately. Otherwise, make sure to check whether the operation has completed or not.
      *
      * @param haloId
      * The halo id returned by the addRecvHaloInfo() member function.
@@ -1246,10 +1576,9 @@ public:
      * Whether to do the unpacking in a separate thread or not.
      *
      * @return
-     * If the unpacking was done blocking an invalid future will be returned. If the unpacking was initiated
-     * non-blocking, the associated future is returned.
+     * A Status object containing information about the unpacking operation is returned.
      */
-    inline std::shared_future<void> unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true) {
+    inline Status unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true) {
 
         if((handleOutOfSync&OutOfSync::DontCheck) != OutOfSync::DontCheck && recvHaloMpiRequests[haloId][0] != MPI_REQUEST_NULL) {
 
@@ -1302,11 +1631,11 @@ public:
 
             }
 
-            return std::shared_future<void>();
+            return Status(std::shared_future<void>());
 
         } else {
 
-            unpackFutures[haloId] = std::shared_future<void>(std::async(std::launch::async, [=]() {
+            auto future = std::shared_future<void>(std::async(std::launch::async, [=]() {
 
                 size_t bufferOffset = 0;
                 for(size_t i = 0; i < bufferId; ++i)
@@ -1331,6 +1660,7 @@ public:
                 }
 
             }));
+            unpackFutures[haloId].set(future);
 
             return unpackFutures[haloId];
 
@@ -1456,8 +1786,9 @@ public:
      * @brief
      * Packs an OpenCL buffer for the given halo and buffer id.
      *
-     * Packs an OpenCL buffer for the given halo and buffer id. Once this function has
-     * been called the OpenCL buffer is free to be used and changed as desired.
+     * Packs an OpenCL buffer for the given halo and buffer id. If this function has been called in a blocking way,
+     * then the OpenCL buffer is immediately free to be used and changed as desired. Otherwise, please make sure the oepration has
+     * completed before using the buffer.
      *
      * @param haloId
      * The halo id returned by the addSendHaloInfo() member function.
@@ -1469,15 +1800,15 @@ public:
      * Whether to pack the data blocking or not.
      *
      * @return
-     * The user event associated with the memory copies, useful for synchronization of non-blocking operations.
+     * The Status object associated with the packing process.
      */
 
-    inline cl::UserEvent packSendBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf, const bool blocking = true) {
+    inline Status packSendBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf, const bool blocking = true) {
 
         cl::UserEvent ev(ocl_context);
 
         if(sendHaloIndicesSizePerBuffer[haloId][bufferId] == 0)
-            return ev;
+            return Status(ev);
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1560,7 +1891,7 @@ public:
                                         NULL, &ev);
         }
 
-        return ev;
+        return Status(ev);
 
     }
 
@@ -1568,8 +1899,10 @@ public:
      * @brief
      * Unpacks an OpenCL buffer for the given halo and buffer id.
      *
-     * Unpacks an OpenCL buffer for the given halo and buffer id. Once this function has
-     * been called the received data can be immediately used.
+     * Unpacks an OpenCL buffer for the given halo and buffer id. If this function has been called in a blocking way,
+     * then the received data can be used immediately. Otherwise, please make sure the oepration has completed before
+     * using the buffer.
+     *
      *
      * @param haloId
      * The halo id returned by the addRecvHaloInfo() member function.
@@ -1581,14 +1914,14 @@ public:
      * Whether to unpack the data blocking or not.
      *
      * @return
-     * The user event associated with the memory copies, useful for synchronization of non-blocking operations.
+     * The Status object associated with the unpacking process.
      */
-    inline cl::UserEvent unpackRecvBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf, const bool blocking = true) {
+    inline Status unpackRecvBufferOCL(const size_t haloId, const size_t bufferId, cl::Buffer buf, const bool blocking = true) {
 
         cl::UserEvent ev(ocl_context);
 
         if(recvHaloIndicesSizePerBuffer[haloId][bufferId] == 0)
-            return ev;
+            return Status(ev);
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1669,7 +2002,7 @@ public:
 
         }
 
-        return ev;
+        return Status(ev);
 
     }
 
@@ -1696,8 +2029,8 @@ public:
      *
      * Internally the CUDA buffer will be recast to unsigned char.
      */
-    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const double *buf, const bool blocking = true, cudaStream_t stream = 0) {
-        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking, stream);
+    inline Status packSendBufferCUDA(const size_t haloId, const size_t bufferId, const double *buf, const bool blocking = true, cudaStream_t stream = 0) {
+        return packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking, stream);
     }
 
     /**
@@ -1705,8 +2038,8 @@ public:
      *
      * Internally the CUDA buffer will be recast to unsigned char.
      */
-    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const int *buf, const bool blocking = true, cudaStream_t stream = 0) {
-        packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking, stream);
+    inline Status packSendBufferCUDA(const size_t haloId, const size_t bufferId, const int *buf, const bool blocking = true, cudaStream_t stream = 0) {
+        return packSendBufferCUDA(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking, stream);
     }
 
     /**
@@ -1726,8 +2059,11 @@ public:
      * Whether to wait for the completion of the memory copies before returning.
      * @param stream
      * The cudaStream to be used for queueing up the memory copies.
+     *
+     * @return
+     * The Status object associated with the packing process.
      */
-    inline void packSendBufferCUDA(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true, cudaStream_t stream = 0) {
+    inline Status packSendBufferCUDA(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true, cudaStream_t stream = 0) {
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1815,6 +2151,8 @@ public:
 
         }
 
+        return Status(stream);
+
     }
 
     /***********************************************************************/
@@ -1826,8 +2164,8 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, double *buf, const bool blocking = true, cudaStream_t stream = 0) {
-        unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking, stream);
+    inline Status unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, double *buf, const bool blocking = true, cudaStream_t stream = 0) {
+        return unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking, stream);
     }
 
     /**
@@ -1835,8 +2173,8 @@ public:
      *
      * Internally the data buffer will be recast to unsigned char.
      */
-    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, int *buf, const bool blocking = true, cudaStream_t stream = 0) {
-        unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking, stream);
+    inline Status unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, int *buf, const bool blocking = true, cudaStream_t stream = 0) {
+        return unpackRecvBufferCUDA(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking, stream);
     }
 
     /**
@@ -1856,8 +2194,11 @@ public:
      * Whether to wait for the completion of the memory copies before returning.
      * @param stream
      * The cudaStream to be used for queueing up the memory copies.
+     *
+     * @return
+     * The Status object associated with the unpacking process.
      */
-    inline void unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true, cudaStream_t stream = 0) {
+    inline Status unpackRecvBufferCUDA(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true, cudaStream_t stream = 0) {
 
         size_t bufferOffset = 0;
         for(size_t i = 0; i < bufferId; ++i)
@@ -1943,6 +2284,8 @@ public:
             cudaEventSynchronize(ev);
 
         }
+
+        return Status(stream);
 
     }
 
@@ -2092,8 +2435,8 @@ private:
     std::vector<int> sendBufferHaloIdDeleted;
 
     OutOfSync handleOutOfSync;
-    std::vector<std::shared_future<void>> packFutures;
-    std::vector<std::shared_future<void>> unpackFutures;
+    std::vector<Status> packFutures;
+    std::vector<Status> unpackFutures;
 
 #ifdef TAUSCH_CUDA
     std::vector<unsigned char*> cudaSendBuffer;

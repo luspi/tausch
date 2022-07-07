@@ -166,8 +166,8 @@ TEST_CASE("CUDA-to-CUDA, 1 buffer, with pack/unpack, multiple MPI ranks") {
             tausch->setRecvCommunicationStrategy(0, Tausch::Communication::CUDAAwareMPI);
 
             tausch->packSendBufferCUDA(0, 0, cuda_in);
-            tausch->send(0, 0, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize);
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
 
             cudaMemcpy(out, cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);

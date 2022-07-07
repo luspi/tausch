@@ -61,8 +61,8 @@ TEST_CASE("CUDA-to-CPU, 1 buffer, with pack/unpack, same MPI rank") {
             tausch->setSendCommunicationStrategy(0, Tausch::Communication::CUDAAwareMPI);
 
             tausch->packSendBufferCUDA(0, 0, cuda_in);
-            tausch->send(0, 0, nullptr, mpiRank);
-            tausch->recv(0, 0, nullptr, mpiRank);
+            tausch->send(0, 0, mpiRank);
+            tausch->recv(0, 0, mpiRank);
             tausch->unpackRecvBuffer(0, 0, out);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
@@ -157,8 +157,8 @@ TEST_CASE("CUDA-to-CPU, 1 buffer, with pack/unpack, multiple MPI ranks") {
             tausch->setSendCommunicationStrategy(0, Tausch::Communication::CUDAAwareMPI);
 
             tausch->packSendBufferCUDA(0, 0, cuda_in);
-            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize);
             tausch->unpackRecvBuffer(0, 0, out);
 
             double *expected = new double[(size+2*halowidth)*(size+2*halowidth)]{};
@@ -260,8 +260,8 @@ TEST_CASE("CUDA-to-CPU, 2 buffers, with pack/unpack, same MPI rank") {
             tausch->packSendBufferCUDA(0, 0, cuda_in1);
             tausch->packSendBufferCUDA(0, 1, cuda_in2);
 
-            tausch->send(0, 0, nullptr, mpiRank, false);
-            tausch->recv(0, 0, nullptr, mpiRank, true);
+            tausch->send(0, 0, mpiRank);
+            tausch->recv(0, 0, mpiRank);
 
             tausch->unpackRecvBuffer(0, 0, out2);
             tausch->unpackRecvBuffer(0, 1, out1);
@@ -378,8 +378,8 @@ TEST_CASE("CUDA-to-CPU, 2 buffers, with pack/unpack, multiple MPI ranks") {
             tausch->packSendBufferCUDA(0, 0, cuda_in1);
             tausch->packSendBufferCUDA(0, 1, cuda_in2);
 
-            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize);
 
             tausch->unpackRecvBuffer(0, 0, out2);
             tausch->unpackRecvBuffer(0, 1, out1);

@@ -65,8 +65,8 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBufferOCL(0, 0, cl_in);
-            tausch->send(0, 0, nullptr, mpiRank, false);
-            tausch->recv(0, 0, nullptr, mpiRank, true);
+            tausch->send(0, 0, mpiRank);
+            tausch->recv(0, 0, mpiRank);
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
 
             cudaMemcpy(out, cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
@@ -160,8 +160,8 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
             tausch->addRecvHaloInfo(recvIndices, sizeof(double));
 
             tausch->packSendBufferOCL(0, 0, cl_in);
-            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize);
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out);
 
             cudaMemcpy(out, cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
@@ -263,8 +263,8 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
             tausch->packSendBufferOCL(0, 0, cl_in1);
             tausch->packSendBufferOCL(0, 1, cl_in2);
 
-            tausch->send(0, 0, nullptr, mpiRank, false);
-            tausch->recv(0, 0, nullptr, mpiRank, true);
+            tausch->send(0, 0, mpiRank);
+            tausch->recv(0, 0, mpiRank);
 
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out2);
             tausch->unpackRecvBufferCUDA(0, 1, cuda_out1);
@@ -379,8 +379,8 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
             tausch->packSendBufferOCL(0, 0, cl_in1);
             tausch->packSendBufferOCL(0, 1, cl_in2);
 
-            tausch->send(0, 0, nullptr, (mpiRank+1)%mpiSize, false);
-            tausch->recv(0, 0, nullptr, (mpiRank+mpiSize-1)%mpiSize, true);
+            tausch->send(0, 0, (mpiRank+1)%mpiSize);
+            tausch->recv(0, 0, (mpiRank+mpiSize-1)%mpiSize);
 
             tausch->unpackRecvBufferCUDA(0, 0, cuda_out2);
             tausch->unpackRecvBufferCUDA(0, 1, cuda_out1);
