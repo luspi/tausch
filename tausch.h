@@ -57,15 +57,27 @@
 #   include <cuda_runtime.h>
 #endif
 
+#ifdef TAUSCH_HIP
+#   ifdef HIP_NVIDIA
+#       define __HIP_PLATFORM_NVIDIA__
+#       include <cuda_runtime.h>
+#   elifdef HIP_AMD
+#       define __HIP_PLATFORM_AMD__
+#   endif
+#   include <hip/hip_runtime.h>
+#endif
+
 #ifdef TAUSCH_OPENCL
 #   ifdef __has_include
 #       if __has_include("CL/opencl.hpp")
+#           define CL_TARGET_OPENCL_VERSION 120
 #           define CL_HPP_ENABLE_EXCEPTIONS
 #           define CL_HPP_TARGET_OPENCL_VERSION 120
 #           define CL_HPP_MINIMUM_OPENCL_VERSION 120
 #           define CL_HPP_ENABLE_SIZE_T_COMPATIBILITY
 #           include <CL/opencl.hpp>
 #       elif __has_include("CL/cl2.hpp")
+#           define CL_TARGET_OPENCL_VERSION 120
 #           define CL_HPP_ENABLE_EXCEPTIONS
 #           define CL_HPP_TARGET_OPENCL_VERSION 120
 #           define CL_HPP_MINIMUM_OPENCL_VERSION 120
@@ -75,14 +87,18 @@
 #           define __CL_ENABLE_EXCEPTIONS
 #           include <CL/cl.hpp>
 #       else
+#           define CL_TARGET_OPENCL_VERSION 120
 #           define CL_HPP_TARGET_OPENCL_VERSION 120
 #           include <CL/cl.h>
 #       endif
 #   else
+#      define CL_TARGET_OPENCL_VERSION 120
 #      define CL_HPP_TARGET_OPENCL_VERSION 120
 #      define __CL_ENABLE_EXCEPTIONS
 #      include <CL/cl.hpp>
 #   endif
+#   undef CL_TARGET_OPENCL_VERSION
+#   define CL_TARGET_OPENCL_VERSION 120
 #endif
 
 /**
@@ -114,7 +130,29 @@ public:
         isMPI = false;
         isCUDA = true;
         isOCL = false;
+        isHIP = false;
         cudaop = cudastream;
+    }
+#endif
+#ifdef TAUSCH_HIP
+    /**
+     * @brief
+     * Constructor of a new Status object for HIP streams.
+     *
+     * This constructs a new Status object for HIP streams.
+     *
+     * @param hipstream
+     * The HIP stream connected to the underlying operation.
+     */
+    Status(hipStream_t hipstream) {
+        running = false;
+        finished = false;
+        isCPU = false;
+        isMPI = false;
+        isCUDA = false;
+        isOCL = false;
+        isHIP = true;
+        hipop = hipstream;
     }
 #endif
 #ifdef TAUSCH_OPENCL
@@ -134,6 +172,7 @@ public:
         isMPI = false;
         isCUDA = false;
         isOCL = true;
+        isHIP = false;
         oclop = event;
     }
 #endif
@@ -153,6 +192,7 @@ public:
         isMPI = false;
         isCUDA = false;
         isOCL = false;
+        isHIP = false;
         cpuop = future;
     }
     /**
@@ -171,6 +211,7 @@ public:
         isCUDA = false;
         isOCL = false;
         isMPI = true;
+        isHIP = false;
         mpiop = req;
     }
 
@@ -242,6 +283,23 @@ public:
         return cudaop;
     }
 #endif
+#ifdef TAUCH_HIP
+    /**
+     * @brief
+     * Conversion operator exposing HIP stream.
+     *
+     * This method allows conversion of the Status class to a HIP stream type.
+     * This allows the Status class to be used as if it were a HIP stream object.
+     *
+     * @return
+     * The HIP stream.
+     **/
+    operator hipStream_t() {
+        if(!isHIP)
+            std::cout << "Status warning: No HIP stream active!" << std::endl;
+        return hipop;
+    }
+#endif
 #ifdef TAUSCH_OPENCL
     /**
      * @brief
@@ -279,6 +337,13 @@ public:
             cudaEventRecord(ev, cudaop);
             cudaEventSynchronize(ev);
 #endif
+#ifdef TAUSCH_HIP
+        } else if(isHIP) {
+            hipEvent_t ev;
+            hipEventCreate(&ev);
+            hipEventRecord(ev, hipop);
+            hipEventSynchronize(ev);
+#endif
 #ifdef TAUSCH_OPENCL
         } else if(isOCL) {
             oclop.wait();
@@ -302,6 +367,7 @@ public:
         isMPI = false;
         isOCL = false;
         isCUDA = false;
+        isHIP = false;
     }
 
     /**
@@ -319,6 +385,7 @@ public:
         isMPI = true;
         isOCL = false;
         isCUDA = false;
+        isHIP = false;
     }
 
 #ifdef TAUSCH_CUDA
@@ -337,6 +404,27 @@ public:
         isMPI = false;
         isOCL = false;
         isCUDA = true;
+        isHIP = false;
+    }
+#endif
+
+#ifdef TAUSCH_HIP
+    /**
+     * @brief
+     * Sets the HIP stream.
+     *
+     * This replaces the existing HIP stream and marks this Status as to be used for a HIP operation.
+     *
+     * @param hipstream
+     * The HIP stream to be used from now on.
+     **/
+    void set(hipStream_t &hipstream) {
+        hipop = hipstream;
+        isCPU = false;
+        isMPI = false;
+        isOCL = false;
+        isCUDA = false;
+        isHIP = true;
     }
 #endif
 
@@ -356,6 +444,7 @@ public:
         isMPI = false;
         isOCL = true;
         isCUDA = false;
+        isHIP = false;
     }
 #endif
 
@@ -386,6 +475,12 @@ private:
             running = (status==cudaErrorNotReady);
             finished = (status==cudaSuccess);
 #endif
+#ifdef TAUSCH_HIP
+        } else if(isHIP) {
+            auto status = hipStreamQuery(hipop);
+            running = (status==hipErrorNotReady);
+            finished = (status==hipSuccess);
+#endif
 #ifdef TAUSCH_OPENCL
         } else if(isOCL) {
             cl_int status;
@@ -402,12 +497,16 @@ private:
 #ifdef TAUSCH_CUDA
     cudaStream_t cudaop;
 #endif
+#ifdef TAUSCH_HIP
+    hipStream_t hipop;
+#endif
 #ifdef TAUSCH_OPENCL
     cl::UserEvent oclop;
 #endif
     bool isCPU;
     bool isCUDA;
     bool isOCL;
+    bool isHIP;
     bool isMPI;
 };
 
@@ -502,6 +601,21 @@ public:
             cudaError_t err = cudaFree(ele);
             if(err != cudaSuccess)
                 std::cout << "Tausch::~Tausch(): Error when freeing recv CUDA memory: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
+        }
+
+#endif
+
+#ifdef TAUSCH_HIP
+
+        for(unsigned char* ele : hipSendBuffer) {
+            hipError_t err = hipFree(ele);
+            if(err != hipSuccess)
+                std::cout << "Tausch::~Tausch(): Error when freeing send HIP memory: " << hipGetErrorString(err) << " (" << err << ")" << std::endl;
+        }
+        for(unsigned char* ele : hipRecvBuffer) {
+            hipError_t err = hipFree(ele);
+            if(err != hipSuccess)
+                std::cout << "Tausch::~Tausch(): Error when freeing recv HIP memory: " << hipGetErrorString(err) << " (" << err << ")" << std::endl;
         }
 
 #endif
@@ -685,6 +799,9 @@ public:
 
 #ifdef TAUSCH_CUDA
         cudaSendBuffer.push_back(nullptr);
+#endif
+#ifdef TAUSCH_HIP
+        hipSendBuffer.push_back(nullptr);
 #endif
 
         std::vector<MPI_Request> perBufRequests;
@@ -891,6 +1008,9 @@ public:
 
 #ifdef TAUSCH_CUDA
         cudaRecvBuffer.push_back(nullptr);
+#endif
+#ifdef TAUSCH_HIP
+        hipRecvBuffer.push_back(nullptr);
 #endif
 
         std::vector<MPI_Request> perBufRequests;
@@ -2293,6 +2413,242 @@ public:
 
 #endif
 
+#ifdef TAUSCH_HIP
+
+    /** @name HIP
+     * The HIP routines. In order to use these the macro TAUSCH_HIP needs to be defined before including the tausch header.
+     */
+    /**@{*/
+
+    /***********************************************************************/
+    /*                         PACK BUFFER (HIP)                           */
+    /***********************************************************************/
+
+    /**
+     * \overload
+     *
+     * Internally the HIP buffer will be recast to unsigned char.
+     */
+    inline Status packSendBufferHIP(const size_t haloId, const size_t bufferId, const double *buf, const bool blocking = true, hipStream_t stream = 0) {
+        return packSendBufferHIP(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking, stream);
+    }
+
+    /**
+     * \overload
+     *
+     * Internally the HIP buffer will be recast to unsigned char.
+     */
+    inline Status packSendBufferHIP(const size_t haloId, const size_t bufferId, const int *buf, const bool blocking = true, hipStream_t stream = 0) {
+        return packSendBufferHIP(haloId, bufferId, reinterpret_cast<const unsigned char*>(buf), blocking, stream);
+    }
+
+    /**
+     * @brief
+     * Packs a HIP buffer for the given halo and buffer id.
+     *
+     * Packs a HIP buffer for the given halo and buffer id. Once this function has been called the
+     * HIP buffer is free to be used and changed as desired.
+     *
+     * @param haloId
+     * The halo id returned by the addSendHaloInfo() member function.
+     * @param bufferId
+     * The id of the current buffer (numbered starting at 0).
+     * @param buf
+     * Pointer to the HIP buffer.
+     * @param blocking
+     * Whether to wait for the completion of the memory copies before returning.
+     * @param stream
+     * The hipStream to be used for queueing up the memory copies.
+     *
+     * @return
+     * The Status object associated with the packing process.
+     */
+    inline Status packSendBufferHIP(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true, hipStream_t stream = 0) {
+
+        size_t bufferOffset = 0;
+        for(size_t i = 0; i < bufferId; ++i)
+            bufferOffset += sendHaloIndicesSizePerBuffer[haloId][i];
+
+        if((sendHaloCommunicationStrategy[haloId]&Communication::GPUMultiCopy) == Communication::GPUMultiCopy) {
+
+            size_t mpiSendBufferIndex = 0;
+            for(auto const & region : sendHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                hipError_t err = hipMemcpy2DAsync(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                                  &buf[region_start], region_striderow*sizeof(unsigned char),
+                                                  region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                                  hipMemcpyDeviceToHost, stream);
+
+                mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
+
+                if(err != hipSuccess)
+                    std::cout << "Tausch::packSendBufferHIP(): HIP error detected: " << hipGetErrorString(err) << " (" << err << ")" << std::endl;
+
+            }
+
+        } else {
+
+            unsigned char *tmpSendBuffer;
+            hipMalloc(&tmpSendBuffer, sendHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
+
+            size_t mpiSendBufferIndex = 0;
+            for(auto const & region : sendHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                hipError_t err = hipMemcpy2DAsync(&tmpSendBuffer[mpiSendBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                                  &buf[region_start], region_striderow*sizeof(unsigned char),
+                                                  region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                                  hipMemcpyDeviceToDevice, stream);
+
+                mpiSendBufferIndex += region_howmanyrows*region_howmanycols;
+
+                if(err != hipSuccess)
+                    std::cout << "Tausch::packSendBufferHIP(): HIP error detected: " << hipGetErrorString(err) << " (" << err << ")" << std::endl;
+
+            }
+
+            hipMemcpyAsync(&sendBuffer[haloId][bufferOffset], tmpSendBuffer, sendHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char), hipMemcpyDeviceToHost, stream);
+
+        }
+
+        if(blocking) {
+
+            hipEvent_t ev;
+            hipEventCreate(&ev);
+            hipEventRecord(ev, stream);
+            hipEventSynchronize(ev);
+
+        }
+
+        return Status(stream);
+
+    }
+
+    /***********************************************************************/
+    /*                        UNPACK BUFFER (HIP)                         */
+    /***********************************************************************/
+
+    /**
+     * \overload
+     *
+     * Internally the data buffer will be recast to unsigned char.
+     */
+    inline Status unpackRecvBufferHIP(const size_t haloId, const size_t bufferId, double *buf, const bool blocking = true, hipStream_t stream = 0) {
+        return unpackRecvBufferHIP(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking, stream);
+    }
+
+    /**
+     * \overload
+     *
+     * Internally the data buffer will be recast to unsigned char.
+     */
+    inline Status unpackRecvBufferHIP(const size_t haloId, const size_t bufferId, int *buf, const bool blocking = true, hipStream_t stream = 0) {
+        return unpackRecvBufferHIP(haloId, bufferId, reinterpret_cast<unsigned char*>(buf), blocking, stream);
+    }
+
+    /**
+     * @brief
+     * Unpacks a HIP buffer for the given halo and buffer id.
+     *
+     * Unpacks a HIP buffer for the given halo and buffer id. Once this function has been called
+     * the received data can be immediately used.
+     *
+     * @param haloId
+     * The halo id returned by the addRecvHaloInfo() member function.
+     * @param bufferId
+     * The id of the current buffer (numbered starting at 0).
+     * @param buf
+     * Pointer to the HIP buffer.
+     * @param blocking
+     * Whether to wait for the completion of the memory copies before returning.
+     * @param stream
+     * The hipStream to be used for queueing up the memory copies.
+     *
+     * @return
+     * The Status object associated with the unpacking process.
+     */
+    inline Status unpackRecvBufferHIP(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true, hipStream_t stream = 0) {
+
+        size_t bufferOffset = 0;
+        for(size_t i = 0; i < bufferId; ++i)
+            bufferOffset += recvHaloIndicesSizePerBuffer[haloId][i];
+
+        if((recvHaloCommunicationStrategy[haloId]&Communication::GPUMultiCopy) == Communication::GPUMultiCopy) {
+
+            size_t mpiRecvBufferIndex = 0;
+            for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                hipError_t err = hipMemcpy2DAsync(&buf[region_start], region_striderow*sizeof(unsigned char),
+                                                  &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                                  region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                                  hipMemcpyHostToDevice, stream);
+
+                if(err != hipSuccess)
+                    std::cout << "Tausch::unpackRecvBufferHIP(): HIP error detected: " << hipGetErrorString(err) << " (" << err << ")" << std::endl;
+
+                mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
+
+            }
+
+        } else {
+
+            unsigned char *tmpRecvBuffer;
+            hipMalloc(&tmpRecvBuffer, recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char));
+            hipMemcpyAsync(tmpRecvBuffer, &recvBuffer[haloId][bufferOffset], recvHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char), hipMemcpyHostToDevice, stream);
+
+            size_t mpiRecvBufferIndex = 0;
+            for(auto const & region : recvHaloIndices[haloId][bufferId]) {
+
+                const size_t &region_start = region[0];
+                const size_t &region_howmanycols = region[1];
+                const size_t &region_howmanyrows = region[2];
+                const size_t &region_striderow = region[3];
+
+                hipError_t err = hipMemcpy2DAsync(&buf[region_start], region_striderow*sizeof(unsigned char),
+                                                  &tmpRecvBuffer[mpiRecvBufferIndex], region_howmanycols*sizeof(unsigned char),
+                                                  region_howmanycols*sizeof(unsigned char), region_howmanyrows,
+                                                  hipMemcpyDeviceToDevice, stream);
+
+                if(err != hipSuccess)
+                    std::cout << "Tausch::unpackRecvBufferHIP(): HIP error detected: " << hipGetErrorString(err) << " (" << err << ")" << std::endl;
+
+                mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
+
+            }
+
+        }
+
+        if(blocking) {
+
+            hipEvent_t ev;
+            hipEventCreate(&ev);
+            hipEventRecord(ev, stream);
+            hipEventSynchronize(ev);
+
+        }
+
+        return Status(stream);
+
+    }
+
+    /**@}*/
+
+#endif
+
 
 
     /***********************************************************************/
@@ -2441,6 +2797,11 @@ private:
 #ifdef TAUSCH_CUDA
     std::vector<unsigned char*> cudaSendBuffer;
     std::vector<unsigned char*> cudaRecvBuffer;
+#endif
+
+#ifdef TAUSCH_HIP
+    std::vector<unsigned char*> hipSendBuffer;
+    std::vector<unsigned char*> hipRecvBuffer;
 #endif
 
 #ifdef TAUSCH_OPENCL

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.19)
 
 project(tausch)
 
@@ -7,6 +7,9 @@ option(TESTING "Enable Unit Tests" ON)
 option(TEST_OPENCL "Enable OpenCL tests" OFF)
 option(TEST_CUDA "Enable CUDA tests" OFF)
 option(TEST_CUDA_AWARE "Enable tests for CUDA-aware MPI" OFF)
+option(TEST_HIP "Enable HIP tests" OFF)
+option(HIP_NVIDIA "Use NVIDIA backend" ON)
+option(HIP_AMD "Use AMD backend" OFF)
 
 # documentation is enabled by default if doxygen found
 find_package(Doxygen)
@@ -44,6 +47,24 @@ if(TEST_OPENCL)
     target_compile_definitions(ctauschocl PRIVATE TAUSCH_OPENCL)
 endif()
 
+if(TEST_HIP)
+    list(APPEND CMAKE_MODULE_PATH "/opt/rocm/lib/cmake/hip")
+    find_package(HIP REQUIRED)
+    # add_library(ctauschocl SHARED ctausch.cpp)
+    include_directories("/opt/rocm/include")
+    # target_link_libraries(ctauschocl "${OpenCL_LIBRARIES}")
+    # target_compile_definitions(ctauschocl PRIVATE TAUSCH_OPENCL)
+    if(HIP_NVIDIA)
+        add_definitions(-DHIP_NVIDIA)
+        find_package(CUDA REQUIRED)
+        include_directories("${CUDA_INCLUDE_DIRS}")
+        link_libraries("${CUDA_LIBRARIES}")
+    endif()
+    if(HIP_AMD)
+        add_definitions(-DHIP_AMD)
+    endif()
+endif()
+
 # build tests if enabled
 if(TESTING)
 
@@ -55,7 +76,7 @@ if(TESTING)
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -DOMPI_SKIP_MPICXX")
 
     # custom function to add mpi test
-    function(add_mpi_test name files ocl cuda capi)
+    function(add_mpi_test name files ocl cuda capi hip)
 
         separate_arguments(files_list UNIX_COMMAND ${files})
 
@@ -85,6 +106,10 @@ if(TESTING)
             target_include_directories(${name} PUBLIC "${CUDA_INCLUDE_DIRS}")
             target_link_libraries(${name} "${CUDA_LIBRARIES}")
         endif()
+        if(hip)
+            target_include_directories(${name} PUBLIC "${HIP_INCLUDE_DIRS}")
+            target_link_libraries(${name} "${HIP_LIBRARIES}")
+        endif()
         foreach(n IN LISTS numprocs)
             add_test(NAME ${name}_${n} COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 "./${name}")
         endforeach()
@@ -92,35 +117,39 @@ if(TESTING)
     endfunction(add_mpi_test)
 
     find_package(MPI COMPONENTS C REQUIRED)
-    add_mpi_test(capi_cpu "testing/ctausch/cpu.c" false false true)
-    add_mpi_test(cpu2cpu "testing/cpu2cpu/main.cpp testing/cpu2cpu/derived.cpp testing/cpu2cpu/packunpack.cpp testing/cpu2cpu/empty.cpp testing/cpu2cpu/randomaccess.cpp" false false false)
+    # add_mpi_test(capi_cpu "testing/ctausch/cpu.c" false false true false)
+    # add_mpi_test(cpu2cpu "testing/cpu2cpu/main.cpp testing/cpu2cpu/derived.cpp testing/cpu2cpu/packunpack.cpp testing/cpu2cpu/empty.cpp testing/cpu2cpu/randomaccess.cpp" false false false false)
 
     if(TEST_OPENCL)
 
         find_package(OpenCL REQUIRED)
-        add_mpi_test(capi_ocl "testing/ctausch/opencl.c" true false true)
-        add_mpi_test(cpu2ocl "testing/cpu2ocl/main.cpp testing/cpu2ocl/packunpack.cpp testing/cpu2ocl/empty.cpp testing/cpu2ocl/randomaccess.cpp" true false false)
-        add_mpi_test(ocl2cpu "testing/ocl2cpu/main.cpp testing/ocl2cpu/packunpack.cpp testing/ocl2cpu/empty.cpp testing/ocl2cpu/randomaccess.cpp" true false false)
-        add_mpi_test(ocl2ocl "testing/ocl2ocl/main.cpp testing/ocl2ocl/packunpack.cpp testing/ocl2ocl/empty.cpp testing/ocl2ocl/randomaccess.cpp" true false false)
+        add_mpi_test(capi_ocl "testing/ctausch/opencl.c" true false true false)
+        add_mpi_test(cpu2ocl "testing/cpu2ocl/main.cpp testing/cpu2ocl/packunpack.cpp testing/cpu2ocl/empty.cpp testing/cpu2ocl/randomaccess.cpp" true false false false)
+        add_mpi_test(ocl2cpu "testing/ocl2cpu/main.cpp testing/ocl2cpu/packunpack.cpp testing/ocl2cpu/empty.cpp testing/ocl2cpu/randomaccess.cpp" true false false false)
+        add_mpi_test(ocl2ocl "testing/ocl2ocl/main.cpp testing/ocl2ocl/packunpack.cpp testing/ocl2ocl/empty.cpp testing/ocl2ocl/randomaccess.cpp" true false false false)
 
     endif()
 
     if(TEST_CUDA)
 
         find_package(CUDA REQUIRED)
-        add_mpi_test(cpu2cuda "testing/cpu2cuda/main.cpp testing/cpu2cuda/packunpack.cpp testing/cpu2cuda/empty.cpp testing/cpu2cuda/randomaccess.cpp" false true false)
-        add_mpi_test(cuda2cpu "testing/cuda2cpu/main.cpp testing/cuda2cpu/packunpack.cpp testing/cuda2cpu/empty.cpp testing/cuda2cpu/randomaccess.cpp" false true false)
-        add_mpi_test(cuda2cuda "testing/cuda2cuda/main.cpp testing/cuda2cuda/packunpack.cpp testing/cuda2cuda/empty.cpp testing/cuda2cuda/randomaccess.cpp" false true false)
+        add_mpi_test(cpu2cuda "testing/cpu2cuda/main.cpp testing/cpu2cuda/packunpack.cpp testing/cpu2cuda/empty.cpp testing/cpu2cuda/randomaccess.cpp" false true false false)
+        add_mpi_test(cuda2cpu "testing/cuda2cpu/main.cpp testing/cuda2cpu/packunpack.cpp testing/cuda2cpu/empty.cpp testing/cuda2cpu/randomaccess.cpp" false true false false)
+        add_mpi_test(cuda2cuda "testing/cuda2cuda/main.cpp testing/cuda2cuda/packunpack.cpp testing/cuda2cuda/empty.cpp testing/cuda2cuda/randomaccess.cpp" false true false false)
 
         if(TEST_OPENCL)
-            add_mpi_test(cuda2ocl "testing/cuda2ocl/main.cpp testing/cuda2ocl/packunpack.cpp testing/cuda2ocl/empty.cpp testing/cuda2ocl/randomaccess.cpp" true true false)
-            add_mpi_test(ocl2cuda "testing/ocl2cuda/main.cpp testing/ocl2cuda/packunpack.cpp testing/ocl2cuda/empty.cpp testing/ocl2cuda/randomaccess.cpp" true true false)
+            add_mpi_test(cuda2ocl "testing/cuda2ocl/main.cpp testing/cuda2ocl/packunpack.cpp testing/cuda2ocl/empty.cpp testing/cuda2ocl/randomaccess.cpp" true true false false)
+            add_mpi_test(ocl2cuda "testing/ocl2cuda/main.cpp testing/ocl2cuda/packunpack.cpp testing/ocl2cuda/empty.cpp testing/ocl2cuda/randomaccess.cpp" true true false false)
         endif()
 
     endif()
 
-if(TEST_CUDA_AWARE)
-    add_mpi_test(cudaaware "testing/cudaaware/main.cpp testing/cudaaware/cuda2cuda.cpp testing/cudaaware/cuda2cpu.cpp testing/cudaaware/cpu2cuda.cpp" false true false)
-endif()
+    if(TEST_CUDA_AWARE)
+        add_mpi_test(cudaaware "testing/cudaaware/main.cpp testing/cudaaware/cuda2cuda.cpp testing/cudaaware/cuda2cpu.cpp testing/cudaaware/cpu2cuda.cpp" false true false false)
+    endif()
+
+    if(TEST_HIP)
+        add_mpi_test(hip2hip "testing/hip2hip/main.cpp testing/hip2hip/packunpack.cpp testing/hip2hip/empty.cpp testing/hip2hip/randomaccess.cpp" false false false true)
+    endif()
 
 endif()

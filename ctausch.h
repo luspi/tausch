@@ -14,13 +14,16 @@ extern "C" {
 #ifdef TAUSCH_OPENCL
 #   ifdef __has_include
 #       if __has_include("CL/opencl.h")
+#           undef CL_TARGET_OPENCL_VERSION
 #           define CL_TARGET_OPENCL_VERSION 120
 #           include <CL/opencl.h>
 #       elif __has_include("CL/cl.h")
+#           undef CL_TARGET_OPENCL_VERSION
 #           define CL_TARGET_OPENCL_VERSION 120
 #           include <CL/cl.h>
 #       endif
 #   else
+#      undef CL_TARGET_OPENCL_VERSION
 #      define CL_TARGET_OPENCL_VERSION 120
 #      include <CL/cl.h>
 #   endif
