@@ -48,9 +48,8 @@ void tausch_addRecvHaloInfo(CTausch *tC, int *haloIndices, const size_t numHaloI
 void tausch_setSendCommunicationStrategy(CTausch *tC, const size_t haloId, int strategy) {
     Tausch *t = reinterpret_cast<Tausch*>(tC);
 
-    Tausch::Communication str;
-    if(strategy == Tausch::Communication::Default) str = Tausch::Communication::Default;
-    else if(strategy == Tausch::Communication::TryDirectCopy) str = Tausch::Communication::TryDirectCopy;
+    Tausch::Communication str = Tausch::Communication::Default;
+    if(strategy == Tausch::Communication::TryDirectCopy) str = Tausch::Communication::TryDirectCopy;
     else if(strategy == Tausch::Communication::DerivedMpiDatatype) str = Tausch::Communication::DerivedMpiDatatype;
     else if(strategy == Tausch::Communication::CUDAAwareMPI) str = Tausch::Communication::CUDAAwareMPI;
     else if(strategy == Tausch::Communication::MPIPersistent) str = Tausch::Communication::MPIPersistent;
@@ -65,9 +64,8 @@ void tausch_setSendCommunicationStrategy(CTausch *tC, const size_t haloId, int s
 void tausch_setRecvCommunicationStrategy(CTausch *tC, const size_t haloId, int strategy) {
     Tausch *t = reinterpret_cast<Tausch*>(tC);
 
-    Tausch::Communication str;
-    if(strategy == Tausch::Communication::Default) str = Tausch::Communication::Default;
-    else if(strategy == Tausch::Communication::TryDirectCopy) str = Tausch::Communication::TryDirectCopy;
+    Tausch::Communication str = Tausch::Communication::Default;
+    if(strategy == Tausch::Communication::TryDirectCopy) str = Tausch::Communication::TryDirectCopy;
     else if(strategy == Tausch::Communication::DerivedMpiDatatype) str = Tausch::Communication::DerivedMpiDatatype;
     else if(strategy == Tausch::Communication::CUDAAwareMPI) str = Tausch::Communication::CUDAAwareMPI;
     else if(strategy == Tausch::Communication::MPIPersistent) str = Tausch::Communication::MPIPersistent;

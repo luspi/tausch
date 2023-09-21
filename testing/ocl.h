@@ -1,6 +1,7 @@
 #ifndef TAUSCH_SETUP_OPENCL
 #define TAUSCH_SETUP_OPENCL
 
+
 static cl::Device tauschcl_device;
 static cl::Context tauschcl_context;
 static cl::CommandQueue tauschcl_queue;
@@ -8,15 +9,29 @@ static cl::CommandQueue tauschcl_queue;
 static void setupOpenCL() {
     try {
 
+        // Get platform
         std::vector<cl::Platform> all_platforms;
         cl::Platform::get(&all_platforms);
-        cl::Platform tauschcl_platform = all_platforms[0];
+        cl::Platform tauschcl_platform;
+        if(all_platforms.size() == 0) {
+            std::cerr << "ERROR: no OpenCL capable platform found... Exiting!" << std::endl;
+            std::exit(1);
+        } else {
+            tauschcl_platform = all_platforms[0];
+            std::cout << "Using OpenCL platform: " << tauschcl_platform.getInfo<CL_PLATFORM_NAME>() << std::endl;
+        }
 
+        // Get device
         std::vector<cl::Device> all_devices;
         tauschcl_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
         tauschcl_device = all_devices[0];
-
-        std::cout << "Using OpenCL device " << tauschcl_device.getInfo<CL_DEVICE_NAME>() << std::endl;
+        if(all_platforms.size() == 0) {
+            std::cerr << "ERROR: no OpenCL capable device on platform found... Exiting!" << std::endl;
+            std::exit(1);
+        } else {
+            tauschcl_device = all_devices[0];
+            std::cout << "Using OpenCL device: " << tauschcl_device.getInfo<CL_DEVICE_NAME>() << std::endl;
+        }
 
         // Create context and queue
         tauschcl_context = cl::Context({tauschcl_device});

@@ -113,44 +113,51 @@
  */
 class Status {
 public:
-#ifdef TAUSCH_CUDA
+#if defined(TAUSCH_CUDA) || (defined(TAUSCH_HIP) && defined(HIP_NVIDIA))
     /**
      * @brief
-     * Constructor of a new Status object for CUDA streams.
+     * Constructor of a new Status object for CUDA/HIP(NVIDIA) streams.
      *
-     * This constructs a new Status object for CUDA streams.
+     * This constructs a new Status object for CUDA/HIP(NVIDIA) streams.
      *
-     * @param cudastream
-     * The CUDA stream connected to the underlying operation.
+     * @param cudahipstream
+     * The CUDA/HIP(NVIDIA) stream connected to the underlying operation.
      */
-    Status(cudaStream_t cudastream) {
+    // both cudaStream_t and hipStream_T are represented as CUStream's internally when hip uses the NVIDIA backend
+    Status(cudaStream_t &cudastream) {
         running = false;
         finished = false;
         isCPU = false;
         isMPI = false;
-        isCUDA = true;
         isOCL = false;
+#ifdef TAUSCH_CUDA
+        isCUDA = true;
         isHIP = false;
         cudaop = cudastream;
+#elifdef TAUSCH_HIP
+        isCUDA = false;
+        isHIP = true;
+        hipop = cudastream;
+#endif
     }
 #endif
-#ifdef TAUSCH_HIP
+#if defined(TAUSCH_HIP) && defined(HIP_AMD)
     /**
      * @brief
-     * Constructor of a new Status object for HIP streams.
+     * Constructor of a new Status object for HIP(AMD) streams.
      *
-     * This constructs a new Status object for HIP streams.
+     * This constructs a new Status object for HIP(AMD) streams.
      *
      * @param hipstream
-     * The HIP stream connected to the underlying operation.
+     * The HIP(AMD) stream connected to the underlying operation.
      */
-    Status(hipStream_t hipstream) {
+    Status(hipStream_t &hipstream) {
         running = false;
         finished = false;
         isCPU = false;
         isMPI = false;
-        isCUDA = false;
         isOCL = false;
+        isCUDA = false;
         isHIP = true;
         hipop = hipstream;
     }
@@ -388,43 +395,29 @@ public:
         isHIP = false;
     }
 
-#ifdef TAUSCH_CUDA
+#if defined(TAUSCH_CUDA) || defined(TAUSCH_HIP)
     /**
      * @brief
-     * Sets the CUDA stream.
+     * Sets the CUDA/HIP stream.
      *
-     * This replaces the existing CUDA stream and marks this Status as to be used for a CUDA operation.
+     * This replaces the existing CUDA/HIP stream and marks this Status as to be used for a CUDA/HIP operation.
      *
-     * @param cudastream
-     * The CUDA stream to be used from now on.
+     * @param cudahipstream
+     * The CUDA/HIP stream to be used from now on.
      **/
-    void set(cudaStream_t &cudastream) {
-        cudaop = cudastream;
+    void set(cudaStream_t &cudahipstream) {
         isCPU = false;
         isMPI = false;
         isOCL = false;
+#ifdef TAUSCH_CUDA
+        cudaop = cudahipstream;
         isCUDA = true;
         isHIP = false;
-    }
-#endif
-
-#ifdef TAUSCH_HIP
-    /**
-     * @brief
-     * Sets the HIP stream.
-     *
-     * This replaces the existing HIP stream and marks this Status as to be used for a HIP operation.
-     *
-     * @param hipstream
-     * The HIP stream to be used from now on.
-     **/
-    void set(hipStream_t &hipstream) {
-        hipop = hipstream;
-        isCPU = false;
-        isMPI = false;
-        isOCL = false;
+#elifdef TAUSCH_HIP
+        hipop = cudahipstream;
         isCUDA = false;
         isHIP = true;
+#endif
     }
 #endif
 
@@ -577,12 +570,14 @@ public:
      * Destructor.
      */
     ~Tausch() {
+
         for(int i = 0; i < static_cast<int>(sendBuffer.size()); ++i) {
             std::vector<int>::iterator it = std::find(sendBufferHaloIdDeleted.begin(), sendBufferHaloIdDeleted.end(), i);
             if(it == sendBufferHaloIdDeleted.end())
                 delete[] sendBuffer[i];
 
         }
+
         for(int i = 0; i < static_cast<int>(recvBuffer.size()); ++i) {
             std::vector<int>::iterator it = std::find(recvBufferHaloIdDeleted.begin(), recvBufferHaloIdDeleted.end(), i);
             if(it == recvBufferHaloIdDeleted.end())
@@ -601,21 +596,6 @@ public:
             cudaError_t err = cudaFree(ele);
             if(err != cudaSuccess)
                 std::cout << "Tausch::~Tausch(): Error when freeing recv CUDA memory: " << cudaGetErrorString(err) << " (" << err << ")" << std::endl;
-        }
-
-#endif
-
-#ifdef TAUSCH_HIP
-
-        for(unsigned char* ele : hipSendBuffer) {
-            hipError_t err = hipFree(ele);
-            if(err != hipSuccess)
-                std::cout << "Tausch::~Tausch(): Error when freeing send HIP memory: " << hipGetErrorString(err) << " (" << err << ")" << std::endl;
-        }
-        for(unsigned char* ele : hipRecvBuffer) {
-            hipError_t err = hipFree(ele);
-            if(err != hipSuccess)
-                std::cout << "Tausch::~Tausch(): Error when freeing recv HIP memory: " << hipGetErrorString(err) << " (" << err << ")" << std::endl;
         }
 
 #endif
@@ -799,9 +779,6 @@ public:
 
 #ifdef TAUSCH_CUDA
         cudaSendBuffer.push_back(nullptr);
-#endif
-#ifdef TAUSCH_HIP
-        hipSendBuffer.push_back(nullptr);
 #endif
 
         std::vector<MPI_Request> perBufRequests;
@@ -1008,9 +985,6 @@ public:
 
 #ifdef TAUSCH_CUDA
         cudaRecvBuffer.push_back(nullptr);
-#endif
-#ifdef TAUSCH_HIP
-        hipRecvBuffer.push_back(nullptr);
 #endif
 
         std::vector<MPI_Request> perBufRequests;
@@ -2759,7 +2733,6 @@ private:
 
     MPI_Comm TAUSCH_COMM;
 
-
     std::vector<std::vector<std::vector<std::array<int, 4> > > > sendHaloIndices;
     std::vector<std::vector<int> > sendHaloIndicesSizePerBuffer;
     std::vector<int> sendHaloIndicesSizeTotal;
@@ -2797,11 +2770,6 @@ private:
 #ifdef TAUSCH_CUDA
     std::vector<unsigned char*> cudaSendBuffer;
     std::vector<unsigned char*> cudaRecvBuffer;
-#endif
-
-#ifdef TAUSCH_HIP
-    std::vector<unsigned char*> hipSendBuffer;
-    std::vector<unsigned char*> hipRecvBuffer;
 #endif
 
 #ifdef TAUSCH_OPENCL
