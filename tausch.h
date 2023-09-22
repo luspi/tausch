@@ -52,6 +52,9 @@
 #include <cstring>
 #include <algorithm>
 #include <future>
+#include <cmath>
+#include <numeric>
+#include <iomanip>
 
 #ifdef TAUSCH_CUDA
 #   include <cuda_runtime.h>
@@ -2726,6 +2729,209 @@ public:
                            region[3]*static_cast<int>(typeSize)});
 
         return ret;
+
+    }
+
+    /**
+     * @brief
+     * Static member function doing halo exchanges with all possible and applicable
+     * configurations.
+     *
+     * Static member function doing halo exchanges with all possible and applicable
+     * configurations to find the fastest communication path
+     *
+     * @param testcomm
+     * Which communicator to use
+     *
+     * @return
+     * Returns a vector containing the best send and the best receiving
+     * communication strategy.
+     */
+    static std::vector<Communication> testForBestCommunication(MPI_Comm testcomm, bool printProgress = true) {
+
+        std::vector<Communication> strategies;
+        std::vector<std::string> strategyNames;
+
+        strategies.push_back(Communication::Default);
+        strategyNames.push_back("Default");
+
+        strategies.push_back(Communication::TryDirectCopy);
+        strategyNames.push_back("TryDirectCopy");
+
+        strategies.push_back(Communication::DerivedMpiDatatype);
+        strategyNames.push_back("DerivedMpiDatatype");
+
+        strategies.push_back(Communication::CUDAAwareMPI);
+        strategyNames.push_back("CUDAAwareMPI");
+
+        strategies.push_back(Communication::MPIPersistent);
+        strategyNames.push_back("MPIPersistent");
+
+        strategies.push_back(Communication::GPUMultiCopy);
+        strategyNames.push_back("GPUMultiCopy");
+
+        int bestSend = 0;
+        int bestRecv = 0;
+
+        double t_best = -1;
+
+        int mpiRank, mpiSize;
+        MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
+        MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
+
+        if(mpiRank == 0 && printProgress)
+            std::cout << " ** Testing communication stratgies" << std::endl << std::endl;
+
+        for(size_t iSend = 0; iSend < strategies.size(); ++iSend) {
+
+            for(size_t iRecv = 0; iRecv < strategies.size(); ++iRecv) {
+
+#ifndef TAUSCH_CUDA
+                // require CUDA
+                if(strategies[iSend] == Communication::CUDAAwareMPI || strategies[iRecv] == Communication::CUDAAwareMPI)
+                    continue;
+#endif
+
+#if !defined(TAUSCH_CUDA) && !defined(TAUSCH_HIP) && !defined(TAUSCH_OPENCL)
+                // requires GPGPU
+                if(strategies[iSend] == Communication::GPUMultiCopy || strategies[iRecv] == Communication::GPUMultiCopy)
+                    continue;
+#endif
+
+#if defined(TAUSCH_CUDA) || defined(TAUSCH_HIP) || defined(TAUSCH_OPENCL)
+                // requires CPU
+                if(strategies[iSend] == Communication::TryDirectCopy || strategies[iRecv] == Communication::TryDirectCopy)
+                    continue;
+#endif
+
+                // required on both sides and for single MPI rank only
+                if((strategies[iRecv] == Communication::TryDirectCopy && (strategies[iSend] != Communication::TryDirectCopy || mpiSize > 1)) ||
+                   (strategies[iSend] == Communication::TryDirectCopy && (strategies[iRecv] != Communication::TryDirectCopy || mpiSize > 1)))
+                    continue;
+
+                if(mpiRank == 0 && printProgress)
+                    std::cout << "   > Testing " << strategyNames[iSend] << " (send) / " << strategyNames[iRecv] << " (recv) ... " << std::flush;
+
+                std::vector<double> allt;
+
+                // we try multiple problem and halo sizes
+                for(int sizepower = 1; sizepower < 5; ++sizepower) {
+
+                    const int size = std::pow(10,sizepower);
+
+                    for(int halowidth = 1; halowidth < 4; ++halowidth) {
+
+                        Tausch testtausch(testcomm, true);
+
+                        std::vector<unsigned char> sendbuf(size*size);
+                        std::vector<unsigned char> recvbuf(size*size);
+
+                        std::vector<std::array<int,4> > indices;
+                        std::array<int,4> bottom = {0, size, halowidth, size};
+                        std::array<int,4> top = {size*(size-halowidth), size, halowidth, size};
+                        std::array<int,4> left = {size*halowidth, halowidth, size-2*halowidth, size};
+                        std::array<int,4> right = {size*halowidth-2*halowidth, halowidth, size-2*halowidth, size};
+                        indices.push_back(bottom);
+                        indices.push_back(top);
+                        indices.push_back(left);
+                        indices.push_back(right);
+
+                        testtausch.addSendHaloInfo(indices, 1, -1);
+                        testtausch.addRecvHaloInfo(indices, 1, -1);
+
+                        testtausch.setSendCommunicationStrategy(0, strategies[iSend]);
+                        testtausch.setRecvCommunicationStrategy(0, strategies[iRecv]);
+
+                        int sendRank = (mpiRank+1)%mpiSize;
+                        int recvRank = (mpiRank+mpiSize-1)%mpiSize;
+
+                        if(strategies[iRecv] == Communication::TryDirectCopy) {
+                            sendRank = mpiRank;
+                            recvRank = mpiRank;
+                        }
+
+                        if(strategies[iSend] == Communication::DerivedMpiDatatype)
+                            testtausch.setSendHaloBuffer(0, 0, &sendbuf[0]);
+                        if(strategies[iRecv] == Communication::DerivedMpiDatatype)
+                            testtausch.setRecvHaloBuffer(0, 0, &recvbuf[0]);
+
+                        auto t1 = std::chrono::steady_clock::now();
+
+                        for(int iter = 0; iter < 10; ++iter) {
+
+                            if(strategies[iSend] != Communication::DerivedMpiDatatype && strategies[iSend] != Communication::TryDirectCopy)
+                                testtausch.packSendBuffer(0, 0, &sendbuf[0]);
+
+                            Status sendstatus(MPI_REQUEST_NULL);
+                            Status recvstatus(MPI_REQUEST_NULL);
+
+                            if(strategies[iSend] == Communication::DerivedMpiDatatype)
+                                sendstatus = testtausch.send(0, 0, sendRank, 0);
+                            else
+                                sendstatus = testtausch.send(0, 0, sendRank);
+
+                            if(strategies[iRecv] == Communication::DerivedMpiDatatype)
+                                recvstatus = testtausch.recv(0, 0, recvRank, 0);
+                            else
+                                recvstatus = testtausch.recv(0, 0, recvRank);
+
+                            sendstatus.wait();
+                            recvstatus.wait();
+
+                            if(strategies[iRecv] != Communication::DerivedMpiDatatype && strategies[iRecv] != Communication::TryDirectCopy)
+                                testtausch.unpackRecvBuffer(0, 0, &recvbuf[0]);
+
+                        }
+
+                        auto t2 = std::chrono::steady_clock::now();
+
+                        double duration = std::chrono::duration<double, std::milli>(t2-t1).count();
+                        allt.push_back(duration);
+
+                        MPI_Barrier(testcomm);
+
+                    }
+
+                }
+
+                double t = std::accumulate(allt.begin(), allt.end(), 0.0);
+
+                double t_reduced;
+                MPI_Reduce(&t, &t_reduced, 1, MPI_DOUBLE, MPI_SUM, 0, testcomm);
+
+                if(mpiRank == 0) {
+
+                    t_reduced /= static_cast<double>(mpiSize);
+
+                    if(t_best == -1 || (t_best > t_reduced)) {
+                        bestSend = iSend;
+                        bestRecv = iRecv;
+                        t_best = t_reduced;
+                    }
+
+                    if(printProgress)
+                        std::cout << t_reduced << " ms" << std::endl;
+
+                }
+
+            }
+
+        }
+
+        MPI_Bcast(&bestSend, 1, MPI_INT, 0, testcomm);
+        MPI_Bcast(&bestRecv, 1, MPI_INT, 0, testcomm);
+
+        if(mpiRank == 0 && printProgress) {
+
+            std::cout << std::endl;
+            std::cout << " ** Best strategy combo:" << std::endl << std::endl
+                    << std::setw(24) << " Sending: " << strategyNames[bestSend] << std::endl
+                    << std::setw(24) << " Receiving: " << strategyNames[bestRecv] << std::endl
+                    << " Average time required: " << t_best << " ms" << std::endl << std::endl;
+
+        }
+
+        return {strategies[bestSend], strategies[bestRecv]};
 
     }
 
