@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#ifdef TAUSCH_OPENCL
+#if defined(TAUSCH_OPENCL) && !defined(TAUSCH_OPENCL_NOINCLUDES)
 #   ifdef __has_include
 #       if __has_include("CL/opencl.h")
 #           undef CL_TARGET_OPENCL_VERSION

@@ -56,11 +56,11 @@
 #include <numeric>
 #include <iomanip>
 
-#ifdef TAUSCH_CUDA
+#if defined(TAUSCH_CUDA) && !defined(TAUSCH_CUDA_NOINCLUDES)
 #   include <cuda_runtime.h>
 #endif
 
-#ifdef TAUSCH_HIP
+#if defined(TAUSCH_HIP) && !defined(TAUSCH_HIP_NOINCLUDES)
 #   ifdef HIP_NVIDIA
 #       define __HIP_PLATFORM_NVIDIA__
 #       include <cuda_runtime.h>
@@ -70,7 +70,7 @@
 #   include <hip/hip_runtime.h>
 #endif
 
-#ifdef TAUSCH_OPENCL
+#if defined(TAUSCH_OPENCL) && !defined(TAUSCH_OPENCL_NOINCLUDES)
 #   ifdef __has_include
 #       if __has_include("CL/opencl.hpp")
 #           define CL_TARGET_OPENCL_VERSION 120
