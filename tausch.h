@@ -276,7 +276,7 @@ public:
             std::cout << "Status warning: No MPI_Request active!" << std::endl;
         return mpiop;
     }
-#ifdef TAUCH_CUDA
+#ifdef TAUSCH_CUDA
     /**
      * @brief
      * Conversion operator exposing CUDA stream.
@@ -293,7 +293,7 @@ public:
         return cudaop;
     }
 #endif
-#ifdef TAUCH_HIP
+#ifdef TAUSCH_HIP
     /**
      * @brief
      * Conversion operator exposing HIP stream.
