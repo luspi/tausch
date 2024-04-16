@@ -64,7 +64,7 @@
 #   ifdef HIP_NVIDIA
 #       define __HIP_PLATFORM_NVIDIA__
 #       include <cuda_runtime.h>
-#   elifdef HIP_AMD
+#   elif defined(HIP_AMD)
 #       define __HIP_PLATFORM_AMD__
 #   endif
 #   include <hip/hip_runtime.h>
@@ -137,7 +137,7 @@ public:
         isCUDA = true;
         isHIP = false;
         cudaop = cudastream;
-#elifdef TAUSCH_HIP
+#elif defined(TAUSCH_HIP)
         isCUDA = false;
         isHIP = true;
         hipop = cudastream;
@@ -416,7 +416,7 @@ public:
         cudaop = cudahipstream;
         isCUDA = true;
         isHIP = false;
-#elifdef TAUSCH_HIP
+#elif defined(TAUSCH_HIP)
         hipop = cudahipstream;
         isCUDA = false;
         isHIP = true;
@@ -1929,7 +1929,7 @@ public:
                                                 0,
                                                 region_howmanycols,  // host stride
                                                 0,
-                                                sendBuffer[haloId],
+                                                sendBuffer[haloId].data(),
                                                 NULL, &ev);
 
 
@@ -2042,7 +2042,7 @@ public:
                                                  0,
                                                  region_howmanycols,  // host stride
                                                  0,
-                                                 recvBuffer[haloId],
+                                                 recvBuffer[haloId].data(),
                                                  NULL, &ev);
 
 
@@ -2227,6 +2227,8 @@ public:
 
             cudaMemcpyAsync(&sendBuffer[haloId][bufferOffset], tmpSendBuffer, sendHaloIndicesSizePerBuffer[haloId][bufferId]*sizeof(unsigned char), cudaMemcpyDeviceToHost, stream);
 
+            cudaFree(tmpSendBuffer);
+
         }
 
         if(blocking) {
@@ -2360,6 +2362,8 @@ public:
                 mpiRecvBufferIndex += region_howmanyrows*region_howmanycols;
 
             }
+
+            cudaFree(tmpRecvBuffer);
 
         }
 

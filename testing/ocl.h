@@ -21,6 +21,15 @@ static void setupOpenCL() {
             std::cout << "Using OpenCL platform: " << tauschcl_platform.getInfo<CL_PLATFORM_NAME>() << std::endl;
         }
 
+        for(size_t s = 0; s < all_platforms.size(); ++s) {
+
+            tauschcl_platform = all_platforms[s];
+
+            std::string name = tauschcl_platform.getInfo<CL_PLATFORM_NAME>();
+            if(name == "Intel(R) OpenCL Graphics")
+                break;
+        }
+
         // Get device
         std::vector<cl::Device> all_devices;
         tauschcl_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);

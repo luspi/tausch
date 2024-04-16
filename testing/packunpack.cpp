@@ -1,6 +1,8 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #if defined(TEST_SEND_TAUSCH_CUDA) || defined(TEST_RECV_TAUSCH_CUDA)
     #define TAUSCH_CUDA
+    #include <thrust/device_vector.h>
+    #include <thrust/copy.h>
 #endif
 #if defined(TEST_SEND_TAUSCH_HIP) || defined(TEST_RECV_TAUSCH_HIP)
     #define TAUSCH_HIP
@@ -43,26 +45,22 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
             }
 
 #ifdef TEST_SEND_TAUSCH_CUDA
-            double *cuda_in;
-            cudaMalloc(&cuda_in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_in, &in[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-#elifdef TEST_SEND_TAUSCH_HIP
+            thrust::device_vector<double> cuda_in(in);
+#elif defined(TEST_SEND_TAUSCH_HIP)
             double *hip_in;
             hipMalloc(&hip_in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMemcpy(hip_in, &in[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
-#elifdef TEST_SEND_TAUSCH_OPENCL
+#elif defined(TEST_SEND_TAUSCH_OPENCLUSCH_HIP)
             cl::Buffer cl_in(tausch.getOclQueue(), &in[0], &in[(size+2*halowidth)*(size+2*halowidth)], false);
 #endif
 
 #ifdef TEST_RECV_TAUSCH_CUDA
-            double *cuda_out;
-            cudaMalloc(&cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_out, &out[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-#elifdef TEST_RECV_TAUSCH_HIP
+            thrust::device_vector<double> cuda_out(out);
+#elif defined(TEST_RECV_TAUSCH_HIP)
             double *hip_out;
             hipMalloc(&hip_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMemcpy(hip_out, &out[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
-#elifdef TEST_RECV_TAUSCH_OPENCL
+#elif defined(TEST_RECV_TAUSCH_OPENCL)
             cl::Buffer cl_out(tausch.getOclQueue(), &out[0], &out[(size+2*halowidth)*(size+2*halowidth)], false);
 #endif
 
@@ -101,10 +99,10 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
             tausch.addRecvHaloInfo(recvIndices, sizeof(double));
 
 #ifdef TEST_SEND_TAUSCH_CUDA
-            tausch.packSendBufferCUDA(0, 0, cuda_in);
-#elifdef TEST_SEND_TAUSCH_HIP
+            tausch.packSendBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_in.data()));
+#elif defined(TEST_SEND_TAUSCH_HIP)
             tausch.packSendBufferHIP(0, 0, hip_in);
-#elifdef TEST_SEND_TAUSCH_OPENCL
+#elif defined(TEST_SEND_TAUSCH_OPENCLUSCH_HIP)
             tausch.packSendBufferOCL(0, 0, cl_in);
 #else
             tausch.packSendBuffer(0, 0, &in[0]);
@@ -116,12 +114,12 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
             status.wait();
 
 #ifdef TEST_RECV_TAUSCH_CUDA
-            tausch.unpackRecvBufferCUDA(0, 0, cuda_out);
-            cudaMemcpy(&out[0], cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
-#elifdef TEST_RECV_TAUSCH_HIP
+            tausch.unpackRecvBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_out.data()));
+            thrust::copy(cuda_out.begin(), cuda_out.end(), out.begin());
+#elif defined(TEST_RECV_TAUSCH_HIP)
             tausch.unpackRecvBufferHIP(0, 0, hip_out);
             hipMemcpy(&out[0], hip_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyDeviceToHost);
-#elifdef TEST_RECV_TAUSCH_OPENCL
+#elif defined(TEST_RECV_TAUSCH_OPENCL)
             tausch.unpackRecvBufferOCL(0, 0, cl_out);
             cl::copy(tausch.getOclQueue(), cl_out, &out[0], &out[(size+2*halowidth)*(size+2*halowidth)]);
 #else
@@ -148,15 +146,11 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank") {
                 for(int j = 0; j < (size+2*halowidth); ++j)
                     REQUIRE(expected[i*(size+2*halowidth)+j] == out[i*(size+2*halowidth)+j]);
 
-#ifdef TEST_SEND_TAUSCH_CUDA
-            cudaFree(cuda_in);
-#elifdef TEST_SEND_TAUSCH_HIP
+#ifdef TEST_SEND_TAUSCH_HIP
             hipFree(hip_in);
 #endif
 
-#ifdef TEST_RECV_TAUSCH_CUDA
-            cudaFree(cuda_out);
-#elifdef TEST_RECV_TAUSCH_HIP
+#ifdef TEST_RECV_TAUSCH_HIP
             hipFree(hip_out);
 #endif
 
@@ -197,26 +191,22 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank, GPUMultiCopy") {
             }
 
 #ifdef TEST_SEND_TAUSCH_CUDA
-            double *cuda_in;
-            cudaMalloc(&cuda_in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_in, &in[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-#elifdef TEST_SEND_TAUSCH_HIP
+            thrust::device_vector<double> cuda_in(in);
+#elif defined(TEST_SEND_TAUSCH_HIP)
             double *hip_in;
             hipMalloc(&hip_in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMemcpy(hip_in, &in[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
-#elifdef TEST_SEND_TAUSCH_OPENCL
+#elif defined(TEST_SEND_TAUSCH_OPENCLUSCH_HIP)
             cl::Buffer cl_in(tausch.getOclQueue(), &in[0], &in[(size+2*halowidth)*(size+2*halowidth)], false);
 #endif
 
 #ifdef TEST_RECV_TAUSCH_CUDA
-            double *cuda_out;
-            cudaMalloc(&cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_out, &out[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-#elifdef TEST_RECV_TAUSCH_HIP
+            thrust::device_vector<double> cuda_out(out);
+#elif defined(TEST_RECV_TAUSCH_HIP)
             double *hip_out;
             hipMalloc(&hip_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMemcpy(hip_out, &out[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
-#elifdef TEST_RECV_TAUSCH_OPENCL
+#elif defined(TEST_RECV_TAUSCH_OPENCL)
             cl::Buffer cl_out(tausch.getOclQueue(), &out[0], &out[(size+2*halowidth)*(size+2*halowidth)], false);
 #endif
 
@@ -257,10 +247,10 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank, GPUMultiCopy") {
             tausch.setRecvCommunicationStrategy(0, Tausch::Communication::GPUMultiCopy);
 
 #ifdef TEST_SEND_TAUSCH_CUDA
-            tausch.packSendBufferCUDA(0, 0, cuda_in);
-#elifdef TEST_SEND_TAUSCH_HIP
+            tausch.packSendBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_in.data()));
+#elif defined(TEST_SEND_TAUSCH_HIP)
             tausch.packSendBufferHIP(0, 0, hip_in);
-#elifdef TEST_SEND_TAUSCH_OPENCL
+#elif defined(TEST_SEND_TAUSCH_OPENCLUSCH_HIP)
             tausch.packSendBufferOCL(0, 0, cl_in);
 #else
             tausch.packSendBuffer(0, 0, &in[0]);
@@ -272,12 +262,12 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank, GPUMultiCopy") {
             status.wait();
 
 #ifdef TEST_RECV_TAUSCH_CUDA
-            tausch.unpackRecvBufferCUDA(0, 0, cuda_out);
-            cudaMemcpy(&out[0], cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
-#elifdef TEST_RECV_TAUSCH_HIP
+            tausch.unpackRecvBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_out.data()));
+            thrust::copy(cuda_out.begin(), cuda_out.end(), out.begin());
+#elif defined(TEST_RECV_TAUSCH_HIP)
             tausch.unpackRecvBufferHIP(0, 0, hip_out);
             hipMemcpy(&out[0], hip_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyDeviceToHost);
-#elifdef TEST_RECV_TAUSCH_OPENCL
+#elif defined(TEST_RECV_TAUSCH_OPENCL)
             tausch.unpackRecvBufferOCL(0, 0, cl_out);
             cl::copy(tausch.getOclQueue(), cl_out, &out[0], &out[(size+2*halowidth)*(size+2*halowidth)]);
 #else
@@ -304,15 +294,11 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank, GPUMultiCopy") {
                 for(int j = 0; j < (size+2*halowidth); ++j)
                     REQUIRE(expected[i*(size+2*halowidth)+j] == out[i*(size+2*halowidth)+j]);
 
-#ifdef TEST_SEND_TAUSCH_CUDA
-            cudaFree(cuda_in);
-#elifdef TEST_SEND_TAUSCH_HIP
+#ifdef TEST_SEND_TAUSCH_HIP
             hipFree(hip_in);
 #endif
 
-#ifdef TEST_RECV_TAUSCH_CUDA
-            cudaFree(cuda_out);
-#elifdef TEST_RECV_TAUSCH_HIP
+#ifdef TEST_RECV_TAUSCH_HIP
             hipFree(hip_out);
 #endif
 
@@ -353,26 +339,22 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
             }
 
 #ifdef TEST_SEND_TAUSCH_CUDA
-            double *cuda_in;
-            cudaMalloc(&cuda_in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_in, &in[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-#elifdef TEST_SEND_TAUSCH_HIP
+            thrust::device_vector<double> cuda_in(in);
+#elif defined(TEST_SEND_TAUSCH_HIP)
             double *hip_in;
             hipMalloc(&hip_in, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMemcpy(hip_in, &in[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
-#elifdef TEST_SEND_TAUSCH_OPENCL
+#elif defined(TEST_SEND_TAUSCH_OPENCLUSCH_HIP)
             cl::Buffer cl_in(tausch.getOclQueue(), &in[0], &in[(size+2*halowidth)*(size+2*halowidth)], false);
 #endif
 
 #ifdef TEST_RECV_TAUSCH_CUDA
-            double *cuda_out;
-            cudaMalloc(&cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_out, &out[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-#elifdef TEST_RECV_TAUSCH_HIP
+            thrust::device_vector<double> cuda_out(out);
+#elif defined(TEST_RECV_TAUSCH_HIP)
             double *hip_out;
             hipMalloc(&hip_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMemcpy(hip_out, &out[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
-#elifdef TEST_RECV_TAUSCH_OPENCL
+#elif defined(TEST_RECV_TAUSCH_OPENCL)
             cl::Buffer cl_out(tausch.getOclQueue(), &out[0], &out[(size+2*halowidth)*(size+2*halowidth)], false);
 #endif
 
@@ -411,10 +393,10 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
             tausch.addRecvHaloInfo(recvIndices, sizeof(double));
 
 #ifdef TEST_SEND_TAUSCH_CUDA
-            tausch.packSendBufferCUDA(0, 0, cuda_in);
-#elifdef TEST_SEND_TAUSCH_HIP
+            tausch.packSendBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_in.data()));
+#elif defined(TEST_SEND_TAUSCH_HIP)
             tausch.packSendBufferHIP(0, 0, hip_in);
-#elifdef TEST_SEND_TAUSCH_OPENCL
+#elif defined(TEST_SEND_TAUSCH_OPENCLUSCH_HIP)
             tausch.packSendBufferOCL(0, 0, cl_in);
 #else
             tausch.packSendBuffer(0, 0, &in[0]);
@@ -426,12 +408,12 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
             status.wait();
 
 #ifdef TEST_RECV_TAUSCH_CUDA
-            tausch.unpackRecvBufferCUDA(0, 0, cuda_out);
-            cudaMemcpy(&out[0], cuda_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
-#elifdef TEST_RECV_TAUSCH_HIP
+            tausch.unpackRecvBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_out.data()));
+            thrust::copy(cuda_out.begin(), cuda_out.end(), out.begin());
+#elif defined(TEST_RECV_TAUSCH_HIP)
             tausch.unpackRecvBufferHIP(0, 0, hip_out);
             hipMemcpy(&out[0], hip_out, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyDeviceToHost);
-#elifdef TEST_RECV_TAUSCH_OPENCL
+#elif defined(TEST_RECV_TAUSCH_OPENCL)
             tausch.unpackRecvBufferOCL(0, 0, cl_out);
             cl::copy(tausch.getOclQueue(), cl_out, &out[0], &out[(size+2*halowidth)*(size+2*halowidth)]);
 #else
@@ -458,15 +440,11 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks") {
                 for(int j = 0; j < (size+2*halowidth); ++j)
                     REQUIRE(expected[i*(size+2*halowidth)+j] == out[i*(size+2*halowidth)+j]);
 
-#ifdef TEST_SEND_TAUSCH_CUDA
-            cudaFree(cuda_in);
-#elifdef TEST_SEND_TAUSCH_HIP
+#ifdef TEST_SEND_TAUSCH_HIP
             hipFree(hip_in);
 #endif
 
-#ifdef TEST_RECV_TAUSCH_CUDA
-            cudaFree(cuda_out);
-#elifdef TEST_RECV_TAUSCH_HIP
+#ifdef TEST_RECV_TAUSCH_HIP
             hipFree(hip_out);
 #endif
 
@@ -508,35 +486,29 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
             }
 
 #ifdef TEST_SEND_TAUSCH_CUDA
-            double *cuda_in1, *cuda_in2;
-            cudaMalloc(&cuda_in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMalloc(&cuda_in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_in1, &in1[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-            cudaMemcpy(cuda_in2, &in2[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-#elifdef TEST_SEND_TAUSCH_HIP
+            thrust::device_vector<double> cuda_in1(in1);
+            thrust::device_vector<double> cuda_in2(in2);
+#elif defined(TEST_SEND_TAUSCH_HIP)
             double *hip_in1, *hip_in2;
             hipMalloc(&hip_in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMalloc(&hip_in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMemcpy(hip_in1, &in1[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
             hipMemcpy(hip_in2, &in2[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
-#elifdef TEST_SEND_TAUSCH_OPENCL
+#elif defined(TEST_SEND_TAUSCH_OPENCLUSCH_HIP)
             cl::Buffer cl_in1(tausch.getOclQueue(), &in1[0], &in1[(size+2*halowidth)*(size+2*halowidth)], false);
             cl::Buffer cl_in2(tausch.getOclQueue(), &in2[0], &in2[(size+2*halowidth)*(size+2*halowidth)], false);
 #endif
 
 #ifdef TEST_RECV_TAUSCH_CUDA
-            double *cuda_out1, *cuda_out2;
-            cudaMalloc(&cuda_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMalloc(&cuda_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_out1, &out1[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-            cudaMemcpy(cuda_out2, &out2[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-#elifdef TEST_RECV_TAUSCH_HIP
+            thrust::device_vector<double> cuda_out1(out1);
+            thrust::device_vector<double> cuda_out2(out2);
+#elif defined(TEST_RECV_TAUSCH_HIP)
             double *hip_out1, *hip_out2;
             hipMalloc(&hip_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMalloc(&hip_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMemcpy(hip_out1, &out1[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
             hipMemcpy(hip_out2, &out2[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
-#elifdef TEST_RECV_TAUSCH_OPENCL
+#elif defined(TEST_RECV_TAUSCH_OPENCL)
             cl::Buffer cl_out1(tausch.getOclQueue(), &out1[0], &out1[(size+2*halowidth)*(size+2*halowidth)], false);
             cl::Buffer cl_out2(tausch.getOclQueue(), &out2[0], &out2[(size+2*halowidth)*(size+2*halowidth)], false);
 #endif
@@ -575,12 +547,12 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
             tausch.addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
 #ifdef TEST_SEND_TAUSCH_CUDA
-            tausch.packSendBufferCUDA(0, 0, cuda_in1);
-            tausch.packSendBufferCUDA(0, 1, cuda_in2);
-#elifdef TEST_SEND_TAUSCH_HIP
+            tausch.packSendBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_in1.data()));
+            tausch.packSendBufferCUDA(0, 1, thrust::raw_pointer_cast(cuda_in2.data()));
+#elif defined(TEST_SEND_TAUSCH_HIP)
             tausch.packSendBufferHIP(0, 0, hip_in1);
             tausch.packSendBufferHIP(0, 1, hip_in2);
-#elifdef TEST_SEND_TAUSCH_OPENCL
+#elif defined(TEST_SEND_TAUSCH_OPENCLUSCH_HIP)
             tausch.packSendBufferOCL(0, 0, cl_in1);
             tausch.packSendBufferOCL(0, 1, cl_in2);
 #else
@@ -594,16 +566,16 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
             status.wait();
 
 #ifdef TEST_RECV_TAUSCH_CUDA
-            tausch.unpackRecvBufferCUDA(0, 0, cuda_out2);
-            tausch.unpackRecvBufferCUDA(0, 1, cuda_out1);
-            cudaMemcpy(&out1[0], cuda_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
-            cudaMemcpy(&out2[0], cuda_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
-#elifdef TEST_RECV_TAUSCH_HIP
+            tausch.unpackRecvBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_out2.data()));
+            tausch.unpackRecvBufferCUDA(0, 1, thrust::raw_pointer_cast(cuda_out1.data()));
+            thrust::copy(cuda_out1.begin(), cuda_out1.end(), out1.begin());
+            thrust::copy(cuda_out2.begin(), cuda_out2.end(), out2.begin());
+#elif defined(TEST_RECV_TAUSCH_HIP)
             tausch.unpackRecvBufferHIP(0, 0, hip_out2);
             tausch.unpackRecvBufferHIP(0, 1, hip_out1);
             hipMemcpy(&out1[0], hip_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyDeviceToHost);
             hipMemcpy(&out2[0], hip_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyDeviceToHost);
-#elifdef TEST_RECV_TAUSCH_OPENCL
+#elif defined(TEST_RECV_TAUSCH_OPENCL)
             tausch.unpackRecvBufferOCL(0, 0, cl_out2);
             tausch.unpackRecvBufferOCL(0, 1, cl_out1);
             cl::copy(tausch.getOclQueue(), cl_out1, &out1[0], &out1[(size+2*halowidth)*(size+2*halowidth)]);
@@ -636,18 +608,12 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank") {
                     REQUIRE(expected2[i*(size+2*halowidth)+j] == out2[i*(size+2*halowidth)+j]);
                 }
 
-#ifdef TEST_SEND_TAUSCH_CUDA
-            cudaFree(cuda_in1);
-            cudaFree(cuda_in2);
-#elifdef TEST_SEND_TAUSCH_HIP
+#ifdef TEST_SEND_TAUSCH_HIP
             hipFree(hip_in1);
             hipFree(hip_in2);
 #endif
 
-#ifdef TEST_RECV_TAUSCH_CUDA
-            cudaFree(cuda_out1);
-            cudaFree(cuda_out2);
-#elifdef TEST_RECV_TAUSCH_HIP
+#ifdef TEST_RECV_TAUSCH_HIP
             hipFree(hip_out1);
             hipFree(hip_out2);
 #endif
@@ -691,35 +657,29 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank, GPUMultiCopy") {
             }
 
 #ifdef TEST_SEND_TAUSCH_CUDA
-            double *cuda_in1, *cuda_in2;
-            cudaMalloc(&cuda_in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMalloc(&cuda_in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_in1, &in1[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-            cudaMemcpy(cuda_in2, &in2[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-#elifdef TEST_SEND_TAUSCH_HIP
+            thrust::device_vector<double> cuda_in1(in1);
+            thrust::device_vector<double> cuda_in2(in2);
+#elif defined(TEST_SEND_TAUSCH_HIP)
             double *hip_in1, *hip_in2;
             hipMalloc(&hip_in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMalloc(&hip_in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMemcpy(hip_in1, &in1[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
             hipMemcpy(hip_in2, &in2[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
-#elifdef TEST_SEND_TAUSCH_OPENCL
+#elif defined(TEST_SEND_TAUSCH_OPENCL)
             cl::Buffer cl_in1(tausch.getOclQueue(), &in1[0], &in1[(size+2*halowidth)*(size+2*halowidth)], false);
             cl::Buffer cl_in2(tausch.getOclQueue(), &in2[0], &in2[(size+2*halowidth)*(size+2*halowidth)], false);
 #endif
 
 #ifdef TEST_RECV_TAUSCH_CUDA
-            double *cuda_out1, *cuda_out2;
-            cudaMalloc(&cuda_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMalloc(&cuda_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_out1, &out1[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-            cudaMemcpy(cuda_out2, &out2[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-#elifdef TEST_RECV_TAUSCH_HIP
+            thrust::device_vector<double> cuda_out1(out1);
+            thrust::device_vector<double> cuda_out2(out2);
+#elif defined(TEST_RECV_TAUSCH_HIP)
             double *hip_out1, *hip_out2;
             hipMalloc(&hip_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMalloc(&hip_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMemcpy(hip_out1, &out1[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
             hipMemcpy(hip_out2, &out2[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
-#elifdef TEST_RECV_TAUSCH_OPENCL
+#elif defined(TEST_RECV_TAUSCH_OPENCL)
             cl::Buffer cl_out1(tausch.getOclQueue(), &out1[0], &out1[(size+2*halowidth)*(size+2*halowidth)], false);
             cl::Buffer cl_out2(tausch.getOclQueue(), &out2[0], &out2[(size+2*halowidth)*(size+2*halowidth)], false);
 #endif
@@ -761,12 +721,12 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank, GPUMultiCopy") {
             tausch.setRecvCommunicationStrategy(0, Tausch::Communication::GPUMultiCopy);
 
 #ifdef TEST_SEND_TAUSCH_CUDA
-            tausch.packSendBufferCUDA(0, 0, cuda_in1);
-            tausch.packSendBufferCUDA(0, 1, cuda_in2);
-#elifdef TEST_SEND_TAUSCH_HIP
+            tausch.packSendBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_in1.data()));
+            tausch.packSendBufferCUDA(0, 1, thrust::raw_pointer_cast(cuda_in2.data()));
+#elif defined(TEST_SEND_TAUSCH_HIP)
             tausch.packSendBufferHIP(0, 0, hip_in1);
             tausch.packSendBufferHIP(0, 1, hip_in2);
-#elifdef TEST_SEND_TAUSCH_OPENCL
+#elif defined(TEST_SEND_TAUSCH_OPENCL)
             tausch.packSendBufferOCL(0, 0, cl_in1);
             tausch.packSendBufferOCL(0, 1, cl_in2);
 #else
@@ -780,16 +740,16 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank, GPUMultiCopy") {
             status.wait();
 
 #ifdef TEST_RECV_TAUSCH_CUDA
-            tausch.unpackRecvBufferCUDA(0, 0, cuda_out2);
-            tausch.unpackRecvBufferCUDA(0, 1, cuda_out1);
-            cudaMemcpy(&out1[0], cuda_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
-            cudaMemcpy(&out2[0], cuda_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
-#elifdef TEST_RECV_TAUSCH_HIP
+            tausch.unpackRecvBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_out2.data()));
+            tausch.unpackRecvBufferCUDA(0, 1, thrust::raw_pointer_cast(cuda_out1.data()));
+            thrust::copy(cuda_out1.begin(), cuda_out1.end(), out1.begin());
+            thrust::copy(cuda_out2.begin(), cuda_out2.end(), out2.begin());
+#elif defined(TEST_RECV_TAUSCH_HIP)
             tausch.unpackRecvBufferHIP(0, 0, hip_out2);
             tausch.unpackRecvBufferHIP(0, 1, hip_out1);
             hipMemcpy(&out1[0], hip_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyDeviceToHost);
             hipMemcpy(&out2[0], hip_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyDeviceToHost);
-#elifdef TEST_RECV_TAUSCH_OPENCL
+#elif defined(TEST_RECV_TAUSCH_OPENCL)
             tausch.unpackRecvBufferOCL(0, 0, cl_out2);
             tausch.unpackRecvBufferOCL(0, 1, cl_out1);
             cl::copy(tausch.getOclQueue(), cl_out1, &out1[0], &out1[(size+2*halowidth)*(size+2*halowidth)]);
@@ -822,18 +782,12 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank, GPUMultiCopy") {
                     REQUIRE(expected2[i*(size+2*halowidth)+j] == out2[i*(size+2*halowidth)+j]);
                 }
 
-#ifdef TEST_SEND_TAUSCH_CUDA
-            cudaFree(cuda_in1);
-            cudaFree(cuda_in2);
-#elifdef TEST_SEND_TAUSCH_HIP
+#ifdef TEST_SEND_TAUSCH_HIP
             hipFree(hip_in1);
             hipFree(hip_in2);
 #endif
 
-#ifdef TEST_RECV_TAUSCH_CUDA
-            cudaFree(cuda_out1);
-            cudaFree(cuda_out2);
-#elifdef TEST_RECV_TAUSCH_HIP
+#ifdef TEST_RECV_TAUSCH_HIP
             hipFree(hip_out1);
             hipFree(hip_out2);
 #endif
@@ -877,35 +831,29 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
             }
 
 #ifdef TEST_SEND_TAUSCH_CUDA
-            double *cuda_in1, *cuda_in2;
-            cudaMalloc(&cuda_in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMalloc(&cuda_in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_in1, &in1[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-            cudaMemcpy(cuda_in2, &in2[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-#elifdef TEST_SEND_TAUSCH_HIP
+            thrust::device_vector<double> cuda_in1(in1);
+            thrust::device_vector<double> cuda_in2(in2);
+#elif defined(TEST_SEND_TAUSCH_HIP)
             double *hip_in1, *hip_in2;
             hipMalloc(&hip_in1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMalloc(&hip_in2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMemcpy(hip_in1, &in1[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
             hipMemcpy(hip_in2, &in2[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
-#elifdef TEST_SEND_TAUSCH_OPENCL
+#elif defined(TEST_SEND_TAUSCH_OPENCL)
             cl::Buffer cl_in1(tausch.getOclQueue(), &in1[0], &in1[(size+2*halowidth)*(size+2*halowidth)], false);
             cl::Buffer cl_in2(tausch.getOclQueue(), &in2[0], &in2[(size+2*halowidth)*(size+2*halowidth)], false);
 #endif
 
 #ifdef TEST_RECV_TAUSCH_CUDA
-            double *cuda_out1, *cuda_out2;
-            cudaMalloc(&cuda_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMalloc(&cuda_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
-            cudaMemcpy(cuda_out1, &out1[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-            cudaMemcpy(cuda_out2, &out2[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyHostToDevice);
-#elifdef TEST_RECV_TAUSCH_HIP
+            thrust::device_vector<double> cuda_out1(out1);
+            thrust::device_vector<double> cuda_out2(out2);
+#elif defined(TEST_RECV_TAUSCH_HIP)
             double *hip_out1, *hip_out2;
             hipMalloc(&hip_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMalloc(&hip_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double));
             hipMemcpy(hip_out1, &out1[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
             hipMemcpy(hip_out2, &out2[0], (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyHostToDevice);
-#elifdef TEST_RECV_TAUSCH_OPENCL
+#elif defined(TEST_RECV_TAUSCH_OPENCL)
             cl::Buffer cl_out1(tausch.getOclQueue(), &out1[0], &out1[(size+2*halowidth)*(size+2*halowidth)], false);
             cl::Buffer cl_out2(tausch.getOclQueue(), &out2[0], &out2[(size+2*halowidth)*(size+2*halowidth)], false);
 #endif
@@ -945,12 +893,12 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
             tausch.addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
 #ifdef TEST_SEND_TAUSCH_CUDA
-            tausch.packSendBufferCUDA(0, 0, cuda_in1);
-            tausch.packSendBufferCUDA(0, 1, cuda_in2);
-#elifdef TEST_SEND_TAUSCH_HIP
+            tausch.packSendBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_in1.data()));
+            tausch.packSendBufferCUDA(0, 1, thrust::raw_pointer_cast(cuda_in2.data()));
+#elif defined(TEST_SEND_TAUSCH_HIP)
             tausch.packSendBufferHIP(0, 0, hip_in1);
             tausch.packSendBufferHIP(0, 1, hip_in2);
-#elifdef TEST_SEND_TAUSCH_OPENCL
+#elif defined(TEST_SEND_TAUSCH_OPENCL)
             tausch.packSendBufferOCL(0, 0, cl_in1);
             tausch.packSendBufferOCL(0, 1, cl_in2);
 #else
@@ -964,16 +912,16 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
             status.wait();
 
 #ifdef TEST_RECV_TAUSCH_CUDA
-            tausch.unpackRecvBufferCUDA(0, 0, cuda_out2);
-            tausch.unpackRecvBufferCUDA(0, 1, cuda_out1);
-            cudaMemcpy(&out1[0], cuda_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
-            cudaMemcpy(&out2[0], cuda_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), cudaMemcpyDeviceToHost);
-#elifdef TEST_RECV_TAUSCH_HIP
+            tausch.unpackRecvBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_out2.data()));
+            tausch.unpackRecvBufferCUDA(0, 1, thrust::raw_pointer_cast(cuda_out1.data()));
+            thrust::copy(cuda_out1.begin(), cuda_out1.end(), out1.begin());
+            thrust::copy(cuda_out2.begin(), cuda_out2.end(), out2.begin());
+#elif defined(TEST_RECV_TAUSCH_HIP)
             tausch.unpackRecvBufferHIP(0, 0, hip_out2);
             tausch.unpackRecvBufferHIP(0, 1, hip_out1);
             hipMemcpy(&out1[0], hip_out1, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyDeviceToHost);
             hipMemcpy(&out2[0], hip_out2, (size+2*halowidth)*(size+2*halowidth)*sizeof(double), hipMemcpyDeviceToHost);
-#elifdef TEST_RECV_TAUSCH_OPENCL
+#elif defined(TEST_RECV_TAUSCH_OPENCL)
             tausch.unpackRecvBufferOCL(0, 0, cl_out2);
             tausch.unpackRecvBufferOCL(0, 1, cl_out1);
             cl::copy(tausch.getOclQueue(), cl_out1, &out1[0], &out1[(size+2*halowidth)*(size+2*halowidth)]);
@@ -1006,18 +954,12 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks") {
                     REQUIRE(expected2[i*(size+2*halowidth)+j] == out2[i*(size+2*halowidth)+j]);
                 }
 
-#ifdef TEST_SEND_TAUSCH_CUDA
-            cudaFree(cuda_in1);
-            cudaFree(cuda_in2);
-#elifdef TEST_SEND_TAUSCH_HIP
+#ifdef TEST_SEND_TAUSCH_HIP
             hipFree(hip_in1);
             hipFree(hip_in2);
 #endif
 
-#ifdef TEST_RECV_TAUSCH_CUDA
-            cudaFree(cuda_out1);
-            cudaFree(cuda_out2);
-#elifdef TEST_RECV_TAUSCH_HIP
+#ifdef TEST_RECV_TAUSCH_HIP
             hipFree(hip_out1);
             hipFree(hip_out2);
 #endif

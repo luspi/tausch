@@ -71,6 +71,8 @@ if(TESTING)
 
     enable_testing()
 
+    find_package(Catch2 3 REQUIRED)
+
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -DOMPI_SKIP_MPICXX -O0 -g -Wno-deprecated-declarations")
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -DOMPI_SKIP_MPICXX -O0 -g -Wno-deprecated-declarations")
 
@@ -85,6 +87,8 @@ if(TESTING)
         add_executable(${name} ${files_list})
         target_link_libraries(${name} ${MPI_C_LIBRARIES})
         target_link_libraries(${name} ${MPI_CXX_LIBRARIES})
+
+        target_link_libraries(${name} Catch2::Catch2)
 
         if(senddevice STREQUAL "cpu")
             target_compile_definitions(${name} PRIVATE "TEST_SEND_TAUSCH_CPU")
