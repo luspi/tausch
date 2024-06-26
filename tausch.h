@@ -526,7 +526,8 @@ public:
         DerivedMpiDatatype = 4,
         CUDAAwareMPI = 8,
         MPIPersistent = 16,
-        GPUMultiCopy = 32
+        GPUMultiCopy = 32,
+        RMA = 64
     };
 
     /**
@@ -765,6 +766,7 @@ public:
         packFutures.push_back(Status(std::shared_future<void>()));
 
         sendBuffer.push_back(std::vector<unsigned char>(totalHaloSize));
+        rmaWindows.push_back(MPI_Win());
 
 #ifdef TAUSCH_CUDA
         cudaSendBuffer.push_back(nullptr);
@@ -1060,6 +1062,17 @@ public:
 
             sendBuffer[haloId].clear();
             sendBuffer[haloId].shrink_to_fit();
+
+        } else if((strategy&Communication::RMA) == Communication::RMA) {
+
+            MPI_Win_create(sendBuffer[haloId].data(),
+                           sendHaloIndicesSizeTotal[haloId] * sizeof(unsigned char),
+                           sizeof(unsigned char),
+                           MPI_INFO_NULL,
+                           MPI_COMM_WORLD,
+                           &rmaWindows[haloId]);
+
+            recvHaloCommunicationStrategy[haloId] = strategy;
 
 #ifdef TAUSCH_CUDA
         } else if((strategy&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
@@ -1439,68 +1452,78 @@ public:
         if((sendHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
             useBufferId = bufferId;
 
-        // Take this path if we are to use MPI persistent communication
-        // Depending on the implementation this can be a good or bad idea.
-        // Using persistent communication could pin the communication protocol to eager (tends to bad performance for larger messages)
-        if((sendHaloCommunicationStrategy[haloId]&Communication::MPIPersistent) == Communication::MPIPersistent) {
+        if((sendHaloCommunicationStrategy[haloId]&Communication::RMA) == Communication::RMA) {
 
-            if(!sendHaloMpiSetup[haloId][useBufferId]) {
+            MPI_Win_fence(0, rmaWindows[haloId]);
 
-                sendHaloMpiSetup[haloId][useBufferId] = true;
+            return Status(MPI_REQUEST_NULL);
 
-#ifdef TAUSCH_CUDA
-                if((sendHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
-
-                    MPI_Send_init(cudaSendBuffer[haloId], sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
-                                  useRemoteMpiRank, msgtag, communicator,
-                                  &sendHaloMpiRequests[haloId][0]);
-
-                } else
-#endif
-                if((sendHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
-                    MPI_Send_init(sendHaloBuffer[haloId][useBufferId], 1, sendHaloDerivedDatatype[haloId][useBufferId],
-                                  useRemoteMpiRank, msgtag, communicator,
-                                  &sendHaloMpiRequests[haloId][useBufferId]);
-                else
-                    MPI_Send_init(sendBuffer[haloId].data(), sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
-                                  useRemoteMpiRank, msgtag, communicator,
-                                  &sendHaloMpiRequests[haloId][0]);
-
-            } else
-
-                MPI_Wait(&sendHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
-
-            MPI_Start(&sendHaloMpiRequests[haloId][useBufferId]);
-
-        // Take this path to use normal Isend/Irecv communication
-        // This is the default.
         } else {
 
-#ifdef TAUSCH_CUDA
-            if((sendHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
+            // Take this path if we are to use MPI persistent communication
+            // Depending on the implementation this can be a good or bad idea.
+            // Using persistent communication could pin the communication protocol to eager (tends to bad performance for larger messages)
+            if((sendHaloCommunicationStrategy[haloId]&Communication::MPIPersistent) == Communication::MPIPersistent) {
 
-                MPI_Isend(cudaSendBuffer[haloId], sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
-                          useRemoteMpiRank, msgtag, communicator,
-                          &sendHaloMpiRequests[haloId][0]);
+                if(!sendHaloMpiSetup[haloId][useBufferId]) {
 
-            } else
-#endif
+                    sendHaloMpiSetup[haloId][useBufferId] = true;
 
-                if((sendHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
-                    MPI_Isend(sendHaloBuffer[haloId][useBufferId], 1, sendHaloDerivedDatatype[haloId][useBufferId],
-                              useRemoteMpiRank, msgtag, communicator,
-                              &sendHaloMpiRequests[haloId][useBufferId]);
-                else
-                    MPI_Isend(sendBuffer[haloId].data(), sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
-                              useRemoteMpiRank, msgtag, communicator,
-                              &sendHaloMpiRequests[haloId][0]);
+    #ifdef TAUSCH_CUDA
+                    if((sendHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
+
+                        MPI_Send_init(cudaSendBuffer[haloId], sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                                    useRemoteMpiRank, msgtag, communicator,
+                                    &sendHaloMpiRequests[haloId][0]);
+
+                    } else
+    #endif
+                    if((sendHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
+                        MPI_Send_init(sendHaloBuffer[haloId][useBufferId], 1, sendHaloDerivedDatatype[haloId][useBufferId],
+                                    useRemoteMpiRank, msgtag, communicator,
+                                    &sendHaloMpiRequests[haloId][useBufferId]);
+                    else
+                        MPI_Send_init(sendBuffer[haloId].data(), sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                                    useRemoteMpiRank, msgtag, communicator,
+                                    &sendHaloMpiRequests[haloId][0]);
+
+                } else
+
+                    MPI_Wait(&sendHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
+
+                MPI_Start(&sendHaloMpiRequests[haloId][useBufferId]);
+
+            // Take this path to use normal Isend/Irecv communication
+            // This is the default.
+            } else {
+
+    #ifdef TAUSCH_CUDA
+                if((sendHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
+
+                    MPI_Isend(cudaSendBuffer[haloId], sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                            useRemoteMpiRank, msgtag, communicator,
+                            &sendHaloMpiRequests[haloId][0]);
+
+                } else
+    #endif
+
+                    if((sendHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
+                        MPI_Isend(sendHaloBuffer[haloId][useBufferId], 1, sendHaloDerivedDatatype[haloId][useBufferId],
+                                useRemoteMpiRank, msgtag, communicator,
+                                &sendHaloMpiRequests[haloId][useBufferId]);
+                    else
+                        MPI_Isend(sendBuffer[haloId].data(), sendHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                                useRemoteMpiRank, msgtag, communicator,
+                                &sendHaloMpiRequests[haloId][0]);
+
+            }
+
+            if(blocking)
+                MPI_Wait(&sendHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
+
+            return Status(sendHaloMpiRequests[haloId][0]);
 
         }
-
-        if(blocking)
-            MPI_Wait(&sendHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
-
-        return Status(sendHaloMpiRequests[haloId][0]);
 
     }
 
@@ -1561,66 +1584,85 @@ public:
         if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
             useBufferId = bufferId;
 
-        // Take this path if we are to use MPI persistent communication
-        // Depending on the implementation this can be a good or bad idea.
-        // Using persistent communication could pin the communication protocol to eager (tends to bad performance for larger messages)
-        if((recvHaloCommunicationStrategy[haloId]&Communication::MPIPersistent) == Communication::MPIPersistent) {
+        if((recvHaloCommunicationStrategy[haloId]&Communication::RMA) == Communication::RMA) {
 
-            if(!recvHaloMpiSetup[haloId][useBufferId]) {
+            MPI_Get(recvBuffer[haloId].data(),
+                    recvHaloIndicesSizeTotal[haloId],
+                    MPI_CHAR,
+                    useRemoteMpiRank,
+                    0,
+                    recvHaloIndicesSizeTotal[haloId],
+                    MPI_CHAR,
+                    rmaWindows[haloId]);
 
-                recvHaloMpiSetup[haloId][useBufferId] = true;
+            MPI_Win_fence(0, rmaWindows[haloId]);
 
-#ifdef TAUSCH_CUDA
-                if((recvHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
+            return Status(std::shared_future<void>());
 
-                    MPI_Recv_init(cudaRecvBuffer[haloId], recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
-                                  useRemoteMpiRank, msgtag, communicator,
-                                  &recvHaloMpiRequests[haloId][0]);
-
-                } else
-#endif
-                if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
-                    MPI_Recv_init(recvHaloBuffer[haloId][useBufferId], 1, recvHaloDerivedDatatype[haloId][useBufferId],
-                                  useRemoteMpiRank, msgtag, communicator,
-                                  &recvHaloMpiRequests[haloId][useBufferId]);
-                else
-                    MPI_Recv_init(recvBuffer[haloId].data(), recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
-                                  useRemoteMpiRank, msgtag, communicator,
-                                  &recvHaloMpiRequests[haloId][0]);
-
-            } else
-                MPI_Wait(&recvHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
-
-            MPI_Start(&recvHaloMpiRequests[haloId][useBufferId]);
-
-        // Take this path to use normal Isend/Irecv communication
-        // This is the default.
         } else {
 
-#ifdef TAUSCH_CUDA
-            if((recvHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
+            // Take this path if we are to use MPI persistent communication
+            // Depending on the implementation this can be a good or bad idea.
+            // Using persistent communication could pin the communication protocol to eager (tends to bad performance for larger messages)
+            if((recvHaloCommunicationStrategy[haloId]&Communication::MPIPersistent) == Communication::MPIPersistent) {
 
-                MPI_Irecv(cudaRecvBuffer[haloId], recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
-                          useRemoteMpiRank, msgtag, communicator,
-                          &recvHaloMpiRequests[haloId][0]);
+                if(!recvHaloMpiSetup[haloId][useBufferId]) {
 
-            } else
-#endif
-            if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
-                MPI_Irecv(recvHaloBuffer[haloId][useBufferId], 1, recvHaloDerivedDatatype[haloId][useBufferId],
-                          useRemoteMpiRank, msgtag, communicator,
-                          &recvHaloMpiRequests[haloId][useBufferId]);
-            else
-                MPI_Irecv(recvBuffer[haloId].data(), recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
-                          useRemoteMpiRank, msgtag, communicator,
-                          &recvHaloMpiRequests[haloId][0]);
+                    recvHaloMpiSetup[haloId][useBufferId] = true;
+
+    #ifdef TAUSCH_CUDA
+                    if((recvHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
+
+                        MPI_Recv_init(cudaRecvBuffer[haloId], recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                                    useRemoteMpiRank, msgtag, communicator,
+                                    &recvHaloMpiRequests[haloId][0]);
+
+                    } else
+    #endif
+                    if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
+                        MPI_Recv_init(recvHaloBuffer[haloId][useBufferId], 1, recvHaloDerivedDatatype[haloId][useBufferId],
+                                    useRemoteMpiRank, msgtag, communicator,
+                                    &recvHaloMpiRequests[haloId][useBufferId]);
+                    else
+                        MPI_Recv_init(recvBuffer[haloId].data(), recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                                    useRemoteMpiRank, msgtag, communicator,
+                                    &recvHaloMpiRequests[haloId][0]);
+
+                } else
+                    MPI_Wait(&recvHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
+
+                MPI_Start(&recvHaloMpiRequests[haloId][useBufferId]);
+
+            // Take this path to use normal Isend/Irecv communication
+            // This is the default.
+            } else {
+
+    #ifdef TAUSCH_CUDA
+                if((recvHaloCommunicationStrategy[haloId]&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
+
+                    MPI_Irecv(cudaRecvBuffer[haloId], recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                            useRemoteMpiRank, msgtag, communicator,
+                            &recvHaloMpiRequests[haloId][0]);
+
+                } else
+    #endif
+                if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
+                    MPI_Irecv(recvHaloBuffer[haloId][useBufferId], 1, recvHaloDerivedDatatype[haloId][useBufferId],
+                            useRemoteMpiRank, msgtag, communicator,
+                            &recvHaloMpiRequests[haloId][useBufferId]);
+                else
+                    MPI_Irecv(recvBuffer[haloId].data(), recvHaloIndicesSizeTotal[haloId], MPI_CHAR,
+                            useRemoteMpiRank, msgtag, communicator,
+                            &recvHaloMpiRequests[haloId][0]);
+
+            }
+
+            if(blocking)
+                MPI_Wait(&recvHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
+
+            return Status(recvHaloMpiRequests[haloId][0]);
 
         }
-
-        if(blocking)
-            MPI_Wait(&recvHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
-
-        return Status(recvHaloMpiRequests[haloId][0]);
 
     }
 
@@ -1667,28 +1709,32 @@ public:
      */
     inline Status unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true) {
 
-        if((handleOutOfSync&OutOfSync::DontCheck) != OutOfSync::DontCheck && recvHaloMpiRequests[haloId][0] != MPI_REQUEST_NULL) {
+        if((recvHaloCommunicationStrategy[haloId]&Communication::RMA) != Communication::RMA) {
 
-            if((handleOutOfSync&OutOfSync::WarnMe) == OutOfSync::WarnMe) {
+            if((handleOutOfSync&OutOfSync::DontCheck) != OutOfSync::DontCheck && recvHaloMpiRequests[haloId][0] != MPI_REQUEST_NULL) {
 
-                int useBufferId = 0;
-                if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
-                    useBufferId = bufferId;
+                if((handleOutOfSync&OutOfSync::WarnMe) == OutOfSync::WarnMe) {
 
-                int flag;
-                MPI_Test(&recvHaloMpiRequests[haloId][useBufferId], &flag, MPI_STATUS_IGNORE);
-                if(!flag)
-                    std::cout << "Warning: Halo " << haloId << " has not finished receiving..." << std::endl;
+                    int useBufferId = 0;
+                    if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
+                        useBufferId = bufferId;
 
-            }
+                    int flag;
+                    MPI_Test(&recvHaloMpiRequests[haloId][useBufferId], &flag, MPI_STATUS_IGNORE);
+                    if(!flag)
+                        std::cout << "Warning: Halo " << haloId << " has not finished receiving..." << std::endl;
 
-            if((handleOutOfSync&OutOfSync::Wait) == OutOfSync::Wait) {
+                }
 
-                int useBufferId = 0;
-                if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
-                    useBufferId = bufferId;
+                if((handleOutOfSync&OutOfSync::Wait) == OutOfSync::Wait) {
 
-                MPI_Wait(&recvHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
+                    int useBufferId = 0;
+                    if((recvHaloCommunicationStrategy[haloId]&Communication::DerivedMpiDatatype) == Communication::DerivedMpiDatatype)
+                        useBufferId = bufferId;
+
+                    MPI_Wait(&recvHaloMpiRequests[haloId][useBufferId], MPI_STATUS_IGNORE);
+
+                }
 
             }
 
@@ -2764,6 +2810,9 @@ public:
         strategies.push_back(Communication::GPUMultiCopy);
         strategyNames.push_back("GPUMultiCopy");
 
+        strategies.push_back(Communication::RMA);
+        strategyNames.push_back("RMA");
+
         int bestSend = 0;
         int bestRecv = 0;
 
@@ -2774,7 +2823,7 @@ public:
         MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
 
         if(mpiRank == 0 && printProgress)
-            std::cout << " ** Testing communication stratgies" << std::endl << std::endl;
+            std::cout << " ** Testing communication strategies" << std::endl << std::endl;
 
         for(size_t iSend = 0; iSend < strategies.size(); ++iSend) {
 
@@ -2797,6 +2846,11 @@ public:
                 if(strategies[iSend] == Communication::TryDirectCopy || strategies[iRecv] == Communication::TryDirectCopy)
                     continue;
 #endif
+
+                // RMA needs to be set for both sides
+                if((strategies[iSend] == Communication::RMA || strategies[iRecv] == Communication::RMA) && strategies[iSend] != strategies[iRecv]) {
+                    continue;
+                }
 
                 // required on both sides and for single MPI rank only
                 if((strategies[iRecv] == Communication::TryDirectCopy && (strategies[iSend] != Communication::TryDirectCopy || mpiSize > 1)) ||
@@ -2959,6 +3013,8 @@ private:
 
     // this is used for exchanges on same mpi rank
     std::map<int, int> msgtagToHaloId;
+
+    std::vector<MPI_Win> rmaWindows;
 
     std::vector<int> recvBufferHaloIdDeleted;
     std::vector<int> sendBufferHaloIdDeleted;

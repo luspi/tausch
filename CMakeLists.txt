@@ -79,7 +79,7 @@ if(TESTING)
     # custom function to add mpi test
     function(add_mpi_test name senddevice recvdevice)
 
-        separate_arguments(files_list UNIX_COMMAND "testing/main.cpp testing/packunpack.cpp testing/randomaccess.cpp testing/empty.cpp")
+        separate_arguments(files_list UNIX_COMMAND "testing/main.cpp testing/rma.cpp testing/packunpack.cpp testing/randomaccess.cpp testing/empty.cpp")
 
         # each test is run with 1, 2, and 4 mpi ranks
         set(numprocs 1 2 4)
