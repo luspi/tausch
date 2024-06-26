@@ -1412,7 +1412,7 @@ public:
      * @brief
      * Communicates all halo data using neighborhood collectives.
      *
-     * Send a given halo data off using neighborhood collectives.
+     * Communicates all halo data using neighborhood collectives.
      *
      * @param sendRemoteMpiRank
      * Array of MPI ranks where data is sent to. Needs one entry for each send halo set.
