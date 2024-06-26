@@ -528,7 +528,7 @@ public:
         MPIPersistent = 16,
         GPUMultiCopy = 32,
         RMA = 64,
-        NB = 128
+        Collectives = 128
     };
 
     /**
@@ -1075,7 +1075,7 @@ public:
 
             recvHaloCommunicationStrategy[haloId] = strategy;
 
-        } else if((strategy&Communication::NB) == Communication::NB) {
+        } else if((strategy&Communication::Collectives) == Communication::Collectives) {
 
             int totalsize = 0;
             for(auto const &s : sendHaloIndicesSizeTotal)
@@ -1341,7 +1341,7 @@ public:
     inline Status packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true) {
 
         unsigned char *packedBuffer = sendBuffer[haloId].data();
-        if((sendHaloCommunicationStrategy[haloId]&Communication::NB) == Communication::NB) {
+        if((sendHaloCommunicationStrategy[haloId]&Communication::Collectives) == Communication::Collectives) {
             int offset = 0;
             if(haloId > 0) {
                 for(size_t i = 0; i < haloId-1; ++i)
@@ -1428,7 +1428,7 @@ public:
      * @return
      * Returns the Status object containing a handle for this operation.
      */
-    inline Status sendRecvNB(std::vector<int> sendRemoteMPIRanks, std::vector<int> recvRemoteMPIRanks, const bool blocking = false, MPI_Comm communicator = MPI_COMM_NULL) {
+    inline Status sendRecvCollectives(std::vector<int> sendRemoteMPIRanks, std::vector<int> recvRemoteMPIRanks, const bool blocking = false, MPI_Comm communicator = MPI_COMM_NULL) {
 
         if(communicator == MPI_COMM_NULL)
             communicator = TAUSCH_COMM;
@@ -1802,7 +1802,7 @@ public:
     inline Status unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true) {
 
         if((recvHaloCommunicationStrategy[haloId]&Communication::RMA) != Communication::RMA &&
-           (recvHaloCommunicationStrategy[haloId]&Communication::NB) != Communication::NB) {
+           (recvHaloCommunicationStrategy[haloId]&Communication::Collectives) != Communication::Collectives) {
 
             if((handleOutOfSync&OutOfSync::DontCheck) != OutOfSync::DontCheck && recvHaloMpiRequests[haloId][0] != MPI_REQUEST_NULL) {
 
@@ -1834,7 +1834,7 @@ public:
         }
 
         unsigned char *packedBuffer = recvBuffer[haloId].data();
-        if((recvHaloCommunicationStrategy[haloId]&Communication::NB) == Communication::NB) {
+        if((recvHaloCommunicationStrategy[haloId]&Communication::Collectives) == Communication::Collectives) {
             int offset = 0;
             if(haloId > 0) {
                 for(size_t i = 0; i < haloId-1; ++i)
@@ -2913,11 +2913,8 @@ public:
         strategies.push_back(Communication::GPUMultiCopy);
         strategyNames.push_back("GPUMultiCopy");
 
-        strategies.push_back(Communication::RMA);
-        strategyNames.push_back("RMA");
-
-        strategies.push_back(Communication::NB);
-        strategyNames.push_back("Neighborhood Collectives (NB)");
+        strategies.push_back(Communication::Collectives);
+        strategyNames.push_back("Collectives");
 
         int bestSend = 0;
         int bestRecv = 0;
@@ -2927,6 +2924,12 @@ public:
         int mpiRank, mpiSize;
         MPI_Comm_rank(MPI_COMM_WORLD, &mpiRank);
         MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
+
+        // RMA does not work with all implementation with only 1 MPI rank
+        if(mpiSize > 1) {
+            strategies.push_back(Communication::RMA);
+            strategyNames.push_back("RMA");
+        }
 
         if(mpiRank == 0 && printProgress)
             std::cout << " ** Testing communication strategies" << std::endl << std::endl;
@@ -2958,7 +2961,7 @@ public:
                     continue;
 
                 // Neighborhood collectives needs to be set for both sides
-                if((strategies[iSend] == Communication::NB || strategies[iRecv] == Communication::NB) && strategies[iSend] != strategies[iRecv])
+                if((strategies[iSend] == Communication::Collectives || strategies[iRecv] == Communication::Collectives) && strategies[iSend] != strategies[iRecv])
                     continue;
 
                 // required on both sides and for single MPI rank only
@@ -3022,9 +3025,9 @@ public:
                             Status sendstatus(MPI_REQUEST_NULL);
                             Status recvstatus(MPI_REQUEST_NULL);
 
-                            if(strategies[iSend] == Communication::NB) {
+                            if(strategies[iSend] == Communication::Collectives) {
 
-                                sendstatus = testtausch.sendRecvNB({sendRank}, {recvRank}, false);
+                                testtausch.sendRecvCollectives({sendRank}, {recvRank}, true);
 
                             } else {
 
@@ -3038,10 +3041,10 @@ public:
                                 else
                                     recvstatus = testtausch.recv(0, 0, recvRank);
 
-                            }
+                                sendstatus.wait();
+                                recvstatus.wait();
 
-                            sendstatus.wait();
-                            recvstatus.wait();
+                            }
 
                             if(strategies[iRecv] != Communication::DerivedMpiDatatype && strategies[iRecv] != Communication::TryDirectCopy)
                                 testtausch.unpackRecvBuffer(0, 0, &recvbuf[0]);

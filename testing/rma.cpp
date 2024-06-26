@@ -17,6 +17,11 @@
 
 TEST_CASE("1 buffer, with pack/unpack, same MPI rank, RMA") {
 
+    int mpiSize;
+    MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
+    if(mpiSize < 2)
+        return;
+
     std::cout << " * Test: " << "1 buffer, with pack/unpack, same MPI rank, RMA" << std::endl;
 
 #if defined(TEST_SEND_TAUSCH_OPENCL) || defined(TEST_RECV_TAUSCH_OPENCL)
@@ -165,6 +170,11 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank, RMA") {
 
 TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks, RMA") {
 
+    int mpiSize;
+    MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
+    if(mpiSize < 2)
+        return;
+
     std::cout << " * Test: " << "1 buffer, with pack/unpack, multiple MPI rank, RMA" << std::endl;
 
 #if defined(TEST_SEND_TAUSCH_OPENCL) || defined(TEST_RECV_TAUSCH_OPENCL)
@@ -310,6 +320,11 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks, RMA") {
 }
 
 TEST_CASE("2 buffers, with pack/unpack, same MPI rank, RMA") {
+
+    int mpiSize;
+    MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
+    if(mpiSize < 2)
+        return;
 
     std::cout << " * Test: " << "2 buffers, with pack/unpack, same MPI rank, RMA" << std::endl;
 
@@ -483,6 +498,11 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank, RMA") {
 }
 
 TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks, RMA") {
+
+    int mpiSize;
+    MPI_Comm_size(MPI_COMM_WORLD, &mpiSize);
+    if(mpiSize < 2)
+        return;
 
     std::cout << " * Test: " << "2 buffers, with pack/unpack, multiple MPI rank, RMA" << std::endl;
 

@@ -98,8 +98,8 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank, neighborhood collectives")
             tausch.addSendHaloInfo(sendIndices, sizeof(double));
             tausch.addRecvHaloInfo(recvIndices, sizeof(double));
 
-            tausch.setSendCommunicationStrategy(0, Tausch::Communication::NB);
-            tausch.setRecvCommunicationStrategy(0, Tausch::Communication::NB);
+            tausch.setSendCommunicationStrategy(0, Tausch::Communication::Collectives);
+            tausch.setRecvCommunicationStrategy(0, Tausch::Communication::Collectives);
 
 #ifdef TEST_SEND_TAUSCH_CUDA
             tausch.packSendBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_in.data()));
@@ -111,7 +111,7 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank, neighborhood collectives")
             tausch.packSendBuffer(0, 0, &in[0]);
 #endif
 
-            Status status = tausch.sendRecvNB({mpiRank}, {mpiRank}, true);
+            Status status = tausch.sendRecvCollectives({mpiRank}, {mpiRank}, true);
             status.wait();
 
 #ifdef TEST_RECV_TAUSCH_CUDA
@@ -244,8 +244,8 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks, neighborhood collecti
             tausch.addSendHaloInfo(sendIndices, sizeof(double));
             tausch.addRecvHaloInfo(recvIndices, sizeof(double));
 
-            tausch.setSendCommunicationStrategy(0, Tausch::Communication::NB);
-            tausch.setRecvCommunicationStrategy(0, Tausch::Communication::NB);
+            tausch.setSendCommunicationStrategy(0, Tausch::Communication::Collectives);
+            tausch.setRecvCommunicationStrategy(0, Tausch::Communication::Collectives);
 
 #ifdef TEST_SEND_TAUSCH_CUDA
             tausch.packSendBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_in.data()));
@@ -257,7 +257,7 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks, neighborhood collecti
             tausch.packSendBuffer(0, 0, &in[0]);
 #endif
 
-            Status status = tausch.sendRecvNB({(mpiRank+1)%mpiSize}, {(mpiRank+mpiSize-1)%mpiSize}, false);
+            Status status = tausch.sendRecvCollectives({(mpiRank+1)%mpiSize}, {(mpiRank+mpiSize-1)%mpiSize}, false);
             status.wait();
 
 #ifdef TEST_RECV_TAUSCH_CUDA
@@ -399,8 +399,8 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank, neighborhood collectives"
             tausch.addSendHaloInfos(sendIndices, sizeof(double), 2);
             tausch.addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
-            tausch.setSendCommunicationStrategy(0, Tausch::Communication::NB);
-            tausch.setRecvCommunicationStrategy(0, Tausch::Communication::NB);
+            tausch.setSendCommunicationStrategy(0, Tausch::Communication::Collectives);
+            tausch.setRecvCommunicationStrategy(0, Tausch::Communication::Collectives);
 
 #ifdef TEST_SEND_TAUSCH_CUDA
             tausch.packSendBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_in1.data()));
@@ -416,7 +416,7 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank, neighborhood collectives"
             tausch.packSendBuffer(0, 1, &in2[0]);
 #endif
 
-            Status status = tausch.sendRecvNB({mpiRank}, {mpiRank}, false);
+            Status status = tausch.sendRecvCollectives({mpiRank}, {mpiRank}, false);
             status.wait();
 
 #ifdef TEST_RECV_TAUSCH_CUDA
@@ -571,8 +571,8 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks, neighborhood collect
             tausch.addSendHaloInfos(sendIndices, sizeof(double), 2);
             tausch.addRecvHaloInfos(recvIndices, sizeof(double), 2);
 
-            tausch.setSendCommunicationStrategy(0, Tausch::Communication::NB);
-            tausch.setRecvCommunicationStrategy(0, Tausch::Communication::NB);
+            tausch.setSendCommunicationStrategy(0, Tausch::Communication::Collectives);
+            tausch.setRecvCommunicationStrategy(0, Tausch::Communication::Collectives);
 
 #ifdef TEST_SEND_TAUSCH_CUDA
             tausch.packSendBufferCUDA(0, 0, thrust::raw_pointer_cast(cuda_in1.data()));
@@ -588,7 +588,7 @@ TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks, neighborhood collect
             tausch.packSendBuffer(0, 1, &in2[0]);
 #endif
 
-            Status status = tausch.sendRecvNB({(mpiRank+1)%mpiSize}, {(mpiRank+mpiSize-1)%mpiSize}, false);
+            Status status = tausch.sendRecvCollectives({(mpiRank+1)%mpiSize}, {(mpiRank+mpiSize-1)%mpiSize}, false);
             status.wait();
 
 #ifdef TEST_RECV_TAUSCH_CUDA
