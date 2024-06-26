@@ -17,7 +17,7 @@
 
 TEST_CASE("1 buffer, with pack/unpack, same MPI rank, RMA") {
 
-    std::cout << " * Test: " << "1 buffer, with pack/unpack, same MPI rank" << std::endl;
+    std::cout << " * Test: " << "1 buffer, with pack/unpack, same MPI rank, RMA" << std::endl;
 
 #if defined(TEST_SEND_TAUSCH_OPENCL) || defined(TEST_RECV_TAUSCH_OPENCL)
     setupOpenCL();
@@ -165,7 +165,7 @@ TEST_CASE("1 buffer, with pack/unpack, same MPI rank, RMA") {
 
 TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks, RMA") {
 
-    std::cout << " * Test: " << "1 buffer, with pack/unpack, multiple MPI rank" << std::endl;
+    std::cout << " * Test: " << "1 buffer, with pack/unpack, multiple MPI rank, RMA" << std::endl;
 
 #if defined(TEST_SEND_TAUSCH_OPENCL) || defined(TEST_RECV_TAUSCH_OPENCL)
     setupOpenCL();
@@ -311,7 +311,7 @@ TEST_CASE("1 buffer, with pack/unpack, multiple MPI ranks, RMA") {
 
 TEST_CASE("2 buffers, with pack/unpack, same MPI rank, RMA") {
 
-    std::cout << " * Test: " << "2 buffers, with pack/unpack, same MPI rank" << std::endl;
+    std::cout << " * Test: " << "2 buffers, with pack/unpack, same MPI rank, RMA" << std::endl;
 
 #if defined(TEST_SEND_TAUSCH_OPENCL) || defined(TEST_RECV_TAUSCH_OPENCL)
     setupOpenCL();
@@ -484,7 +484,7 @@ TEST_CASE("2 buffers, with pack/unpack, same MPI rank, RMA") {
 
 TEST_CASE("2 buffers, with pack/unpack, multiple MPI ranks, RMA") {
 
-    std::cout << " * Test: " << "2 buffers, with pack/unpack, multiple MPI rank" << std::endl;
+    std::cout << " * Test: " << "2 buffers, with pack/unpack, multiple MPI rank, RMA" << std::endl;
 
 #if defined(TEST_SEND_TAUSCH_OPENCL) || defined(TEST_RECV_TAUSCH_OPENCL)
     setupOpenCL();
