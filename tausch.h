@@ -3022,15 +3022,23 @@ public:
                             Status sendstatus(MPI_REQUEST_NULL);
                             Status recvstatus(MPI_REQUEST_NULL);
 
-                            if(strategies[iSend] == Communication::DerivedMpiDatatype)
-                                sendstatus = testtausch.send(0, 0, sendRank, 0);
-                            else
-                                sendstatus = testtausch.send(0, 0, sendRank);
+                            if(strategies[iSend] == Communication::NB) {
 
-                            if(strategies[iRecv] == Communication::DerivedMpiDatatype)
-                                recvstatus = testtausch.recv(0, 0, recvRank, 0);
-                            else
-                                recvstatus = testtausch.recv(0, 0, recvRank);
+                                sendstatus = testtausch.sendRecvNB({sendRank}, {recvRank}, false);
+
+                            } else {
+
+                                if(strategies[iSend] == Communication::DerivedMpiDatatype)
+                                    sendstatus = testtausch.send(0, 0, sendRank, 0);
+                                else
+                                    sendstatus = testtausch.send(0, 0, sendRank);
+
+                                if(strategies[iRecv] == Communication::DerivedMpiDatatype)
+                                    recvstatus = testtausch.recv(0, 0, recvRank, 0);
+                                else
+                                    recvstatus = testtausch.recv(0, 0, recvRank);
+
+                            }
 
                             sendstatus.wait();
                             recvstatus.wait();
