@@ -527,7 +527,8 @@ public:
         CUDAAwareMPI = 8,
         MPIPersistent = 16,
         GPUMultiCopy = 32,
-        RMA = 64
+        RMA = 64,
+        NB = 128
     };
 
     /**
@@ -1074,6 +1075,20 @@ public:
 
             recvHaloCommunicationStrategy[haloId] = strategy;
 
+        } else if((strategy&Communication::NB) == Communication::NB) {
+
+            int totalsize = 0;
+            for(auto const &s : sendHaloIndicesSizeTotal)
+                totalsize += s;
+            nbSendBuffer.resize(totalsize);
+
+            totalsize = 0;
+            for(auto const &s : recvHaloIndicesSizeTotal)
+                totalsize += s;
+            nbRecvBuffer.resize(totalsize);
+
+            recvHaloCommunicationStrategy[haloId] = strategy;
+
 #ifdef TAUSCH_CUDA
         } else if((strategy&Communication::CUDAAwareMPI) == Communication::CUDAAwareMPI) {
 
@@ -1325,6 +1340,16 @@ public:
      */
     inline Status packSendBuffer(const size_t haloId, const size_t bufferId, const unsigned char *buf, const bool blocking = true) {
 
+        unsigned char *packedBuffer = sendBuffer[haloId].data();
+        if((sendHaloCommunicationStrategy[haloId]&Communication::NB) == Communication::NB) {
+            int offset = 0;
+            if(haloId > 0) {
+                for(size_t i = 0; i < haloId-1; ++i)
+                    offset += sendHaloIndicesSizeTotal[i];
+            }
+            packedBuffer = &nbSendBuffer[offset];
+        }
+
         if(blocking) {
 
             size_t bufferOffset = 0;
@@ -1341,7 +1366,7 @@ public:
 
                 for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
 
-                    std::memcpy(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], &buf[region_start + rows*region_stridecol], region_howmanycols);
+                    std::memcpy(&packedBuffer[bufferOffset + mpiSendBufferIndex], &buf[region_start + rows*region_stridecol], region_howmanycols);
                     mpiSendBufferIndex += region_howmanycols;
 
                 }
@@ -1368,7 +1393,7 @@ public:
 
                     for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
 
-                        std::memcpy(&sendBuffer[haloId][bufferOffset + mpiSendBufferIndex], &buf[region_start + rows*region_stridecol], region_howmanycols);
+                        std::memcpy(&packedBuffer[bufferOffset + mpiSendBufferIndex], &buf[region_start + rows*region_stridecol], region_howmanycols);
                         mpiSendBufferIndex += region_howmanycols;
 
                     }
@@ -1380,6 +1405,73 @@ public:
             return packFutures[haloId];
 
         }
+
+    }
+
+    /**
+     * @brief
+     * Communicates all halo data using neighborhood collectives.
+     *
+     * Send a given halo data off using neighborhood collectives.
+     *
+     * @param sendRemoteMpiRank
+     * Array of MPI ranks where data is sent to. Needs one entry for each send halo set.
+     * @param recvRemoteMPIRanks
+     * Array of MPI ranks where data is received from. Needs one entry for each recv halo set.
+     * @param blocking
+     * If set to true Tausch will block until the send routine has been fully received. If set to
+     * false this routine will return immediately and the data will be sent in the background.
+     * @param communicator
+     * If a communicator is specified here then Tausch will ignore the global communicator set
+     * during construction.
+     *
+     * @return
+     * Returns the Status object containing a handle for this operation.
+     */
+    inline Status sendRecvNB(std::vector<int> sendRemoteMPIRanks, std::vector<int> recvRemoteMPIRanks, const bool blocking = false, MPI_Comm communicator = MPI_COMM_NULL) {
+
+        if(communicator == MPI_COMM_NULL)
+            communicator = TAUSCH_COMM;
+
+        int myRank;
+        MPI_Comm_rank(communicator, &myRank);
+
+        int nsend = static_cast<int>(sendRemoteMPIRanks.size());
+        int nrecv = static_cast<int>(recvRemoteMPIRanks.size());
+
+        int degrees[nsend];
+        for(int i = 0; i < nsend; ++i)
+            degrees[i] = 1;
+
+        MPI_Comm nbcomm;
+        MPI_Dist_graph_create(communicator,
+                              nsend,
+                              sendRemoteMPIRanks.data(),
+                              degrees,
+                              recvRemoteMPIRanks.data(),
+                              MPI_UNWEIGHTED,
+                              MPI_INFO_NULL,
+                              false,
+                              &nbcomm);
+
+        int sdispls[nsend] = {};
+        for(int i = 1; i < nsend; ++i)
+            sdispls[i] = sendHaloIndicesSizeTotal[i-1];
+
+        int rdispls[nrecv] = {};
+        for(int i = 1; i < nrecv; ++i)
+            rdispls[i] = recvHaloIndicesSizeTotal[i-1];
+
+        MPI_Ineighbor_alltoallv(nbSendBuffer.data(), sendHaloIndicesSizeTotal.data(), sdispls, MPI_CHAR,
+                               nbRecvBuffer.data(), recvHaloIndicesSizeTotal.data(), rdispls, MPI_CHAR,
+                               nbcomm,
+                               &sendHaloMpiRequests[0][0]);
+
+        if(blocking)
+            MPI_Wait(&sendHaloMpiRequests[0][0], MPI_STATUS_IGNORE);
+
+        return Status(sendHaloMpiRequests[0][0]);
+
 
     }
 
@@ -1709,7 +1801,8 @@ public:
      */
     inline Status unpackRecvBuffer(const size_t haloId, const size_t bufferId, unsigned char *buf, const bool blocking = true) {
 
-        if((recvHaloCommunicationStrategy[haloId]&Communication::RMA) != Communication::RMA) {
+        if((recvHaloCommunicationStrategy[haloId]&Communication::RMA) != Communication::RMA &&
+           (recvHaloCommunicationStrategy[haloId]&Communication::NB) != Communication::NB) {
 
             if((handleOutOfSync&OutOfSync::DontCheck) != OutOfSync::DontCheck && recvHaloMpiRequests[haloId][0] != MPI_REQUEST_NULL) {
 
@@ -1740,6 +1833,16 @@ public:
 
         }
 
+        unsigned char *packedBuffer = recvBuffer[haloId].data();
+        if((recvHaloCommunicationStrategy[haloId]&Communication::NB) == Communication::NB) {
+            int offset = 0;
+            if(haloId > 0) {
+                for(size_t i = 0; i < haloId-1; ++i)
+                    offset += recvHaloIndicesSizeTotal[i];
+            }
+            packedBuffer = &nbRecvBuffer[offset];
+        }
+
         if(blocking) {
 
             size_t bufferOffset = 0;
@@ -1757,7 +1860,7 @@ public:
 
                 for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
 
-                    std::memcpy(&buf[region_start + rows*region_stridecol], &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols);
+                    std::memcpy(&buf[region_start + rows*region_stridecol], &packedBuffer[bufferOffset + mpiRecvBufferIndex], region_howmanycols);
                     mpiRecvBufferIndex += region_howmanycols;
 
                 }
@@ -1785,7 +1888,7 @@ public:
 
                     for(size_t rows = 0; rows < region_howmanyrows; ++rows) {
 
-                        std::memcpy(&buf[region_start + rows*region_stridecol], &recvBuffer[haloId][bufferOffset + mpiRecvBufferIndex], region_howmanycols);
+                        std::memcpy(&buf[region_start + rows*region_stridecol], &packedBuffer[bufferOffset + mpiRecvBufferIndex], region_howmanycols);
                         mpiRecvBufferIndex += region_howmanycols;
 
                     }
@@ -2813,6 +2916,9 @@ public:
         strategies.push_back(Communication::RMA);
         strategyNames.push_back("RMA");
 
+        strategies.push_back(Communication::NB);
+        strategyNames.push_back("Neighborhood Collectives (NB)");
+
         int bestSend = 0;
         int bestRecv = 0;
 
@@ -2848,9 +2954,12 @@ public:
 #endif
 
                 // RMA needs to be set for both sides
-                if((strategies[iSend] == Communication::RMA || strategies[iRecv] == Communication::RMA) && strategies[iSend] != strategies[iRecv]) {
+                if((strategies[iSend] == Communication::RMA || strategies[iRecv] == Communication::RMA) && strategies[iSend] != strategies[iRecv])
                     continue;
-                }
+
+                // Neighborhood collectives needs to be set for both sides
+                if((strategies[iSend] == Communication::NB || strategies[iRecv] == Communication::NB) && strategies[iSend] != strategies[iRecv])
+                    continue;
 
                 // required on both sides and for single MPI rank only
                 if((strategies[iRecv] == Communication::TryDirectCopy && (strategies[iSend] != Communication::TryDirectCopy || mpiSize > 1)) ||
@@ -3015,6 +3124,8 @@ private:
     std::map<int, int> msgtagToHaloId;
 
     std::vector<MPI_Win> rmaWindows;
+    std::vector<unsigned char> nbSendBuffer;
+    std::vector<unsigned char> nbRecvBuffer;
 
     std::vector<int> recvBufferHaloIdDeleted;
     std::vector<int> sendBufferHaloIdDeleted;
